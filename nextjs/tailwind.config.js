@@ -1,23 +1,25 @@
-const defaultTheme = require("tailwindcss/defaultTheme");
-const colors = require("tailwindcss/colors");
-
 module.exports = {
   mode: "jit",
-  content: ["./pages/**/*.{js,ts,jsx,tsx}", "./components/**/*.{js,ts,jsx,tsx}"],
-  darkMode: "class",
+  content: ["./app/**/*.{js,ts,jsx,tsx}", "./components/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ["Inter var"],
+      },
       colors: {
-        trueGray: colors.neutral,
+        transparent: "transparent",
+        white: "#ffffff",
+        black: "#000000",
+        background: "#3366ff",
+      },
+      backgroundImage: {
+        "efsa-one": "url('/images/efsa-one_1.jpg')",
+        "ohcon-one": "url('/images/oh-con_1.jpg')",
+        "olavinlinna-one": "url('/images/olavinlinna_1.jpg')",
+        "punkaharju-one": "url('/images/punkaharju_1.jpg')",
+        "savonlinna-one": "url('/images/savonlinna_1.jpg')",
       },
     },
-    fontFamily: {
-      sans: ["Inter", ...defaultTheme.fontFamily.sans],
-      stock: [defaultTheme.fontFamily.sans],
-    },
-  },
-  variants: {
-    extend: {},
   },
   plugins: [require("@tailwindcss/aspect-ratio")],
 };

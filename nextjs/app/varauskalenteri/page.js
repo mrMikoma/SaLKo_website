@@ -1,6 +1,7 @@
+"use client";
 import React, { useState } from "react";
-import Timeline from "../components/timeline";
-import AddReservationForm from "../components/addReservationForm";
+import Timeline from "../../components/timeline";
+import AddReservationForm from "../../components/addReservationForm";
 
 const Scheduler = () => {
   const planes = ["OH-CON", "OH-SEE"];
