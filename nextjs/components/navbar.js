@@ -1,5 +1,5 @@
+"use client";
 import Link from "next/link";
-import ThemeChanger from "./DarkSwitch";
 import Image from "next/image";
 import { Disclosure } from "@headlessui/react";
 
@@ -7,22 +7,22 @@ const Navbar = () => {
   const navigation = [
     "Kalusto",
     "Varauskalenteri",
-    "Kenttä",
+    "Kentta",
     "Historia",
     "Yhteystiedot",
   ];
 
   return (
-    <div className="w-full">
+    <div className="w-full bg-transparent">
       <nav className="container relative flex flex-wrap items-center justify-between p-8 mx-auto lg:justify-between xl:px-0">
         <Disclosure>
           {({ open }) => (
             <>
               <div className="flex flex-wrap items-center justify-between w-full lg:w-auto">
                 <Link href="/">
-                  <span className="flex items-center space-x-2 text-2xl font-medium text-indigo-500 dark:text-gray-100">
+                  <span className="flex items-center space-x-2 text-2xl font-medium">
                     <Image
-                      src="/img/header_short.jpg"
+                      src="/images/header_short.jpg"
                       width={400}
                       height={40}
                     />
@@ -31,7 +31,7 @@ const Navbar = () => {
 
                 <Disclosure.Button
                   aria-label="Toggle Menu"
-                  className="px-2 py-1 ml-auto text-gray-500 rounded-md lg:hidden hover:text-indigo-500 focus:text-indigo-500 focus:bg-indigo-100 focus:outline-none dark:text-gray-300 dark:focus:bg-trueGray-700"
+                  className="px-2 py-1 ml-auto rounded-md lg:hidden hover:text-indigo-500 focus:text-indigo-500"
                 >
                   <svg
                     className="w-6 h-6 fill-current"
@@ -59,8 +59,8 @@ const Navbar = () => {
                     {navigation.map((item, index) => (
                       <Link
                         key={index}
-                        href={`/${item.toLowerCase().replace(/\s+/g, '')}`}
-                        className="w-full px-4 py-2 -ml-4 text-gray-500 rounded-md dark:text-gray-300 hover:text-indigo-500 focus:text-indigo-500 focus:bg-indigo-100 dark:focus:bg-gray-800 focus:outline-none"
+                        href={`/${item.toLowerCase().replace(/\s+/g, "")}`}
+                        className="w-full px-4 py-2 -ml-4 rounded-md"
                       >
                         {item}
                       </Link>
@@ -84,7 +84,7 @@ const Navbar = () => {
               <li className="mr-3 nav__item" key={index}>
                 <Link
                   href={`/${menu.toLowerCase().replace(/\s+/g, "")}`}
-                  className="inline-block px-4 py-2 text-lg font-normal text-gray-800 no-underline rounded-md dark:text-gray-200 hover:text-indigo-500 focus:text-indigo-500 focus:bg-indigo-100 focus:outline-none dark:focus:bg-gray-800"
+                  className="inline-block px-4 py-2 text-lg font-normal no-underline rounded-md"
                 >
                   {menu}
                 </Link>
@@ -96,12 +96,10 @@ const Navbar = () => {
         <div className="hidden mr-3 space-x-4 lg:flex nav__item">
           <Link
             href="/"
-            className="px-6 py-2 text-white bg-indigo-600 rounded-md md:ml-5"
+            className="px-6 py-2 text-white bg-indigo-900 rounded-md md:ml-5"
           >
             Jäsenalue
           </Link>
-
-          <ThemeChanger />
         </div>
       </nav>
     </div>

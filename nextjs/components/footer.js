@@ -14,19 +14,19 @@ export default function Footer() {
   return (
     <div className="relative">
       <Container>
-        <div className="grid max-w-screen-xl grid-cols-1 gap-10 pt-10 mx-auto mt-5 border-t border-gray-100 dark:border-trueGray-700 lg:grid-cols-5">
+        <div className="grid max-w-screen-xl grid-cols-1 gap-10 pt-10 mx-auto mt-5 border-t border-gray-100 lg:grid-cols-5">
           <div className="lg:col-span-2">
             <div>
               {" "}
               <Link
                 href="/"
-                className="flex items-center space-x-2 text-2xl font-medium text-indigo-500 dark:text-gray-100"
+                className="flex items-center space-x-2 text-2xl font-medium"
               >
-                <Image src="/img/header_short.jpg" width={400} height={40} />
+                <Image src="/images/header_short.jpg" width={400} height={40} />
               </Link>
             </div>
 
-            <div className="max-w-md mt-4 text-gray-500 dark:text-gray-400">
+            <div className="max-w-md mt-4">
               Savonlinnan Lentokerho ry on 1962 perustettu yleisilmailun
               harrastustoimintaan ja koulutukseen keskittynyt ilmailuyhdistys.
               Kerhomme toiminta tukeutuu Savonlinnan Lentoasemalle, 15 km
@@ -40,7 +40,7 @@ export default function Footer() {
                 <Link
                   key={index}
                   href="/"
-                  className="w-full px-4 py-2 text-gray-500 rounded-md dark:text-gray-300 hover:text-indigo-500 focus:text-indigo-500 focus:bg-indigo-100 focus:outline-none dark:focus:bg-trueGray-700"
+                  className="w-full px-4 py-2"
                 >
                   {item}
                 </Link>
@@ -54,7 +54,7 @@ export default function Footer() {
                 <Link
                   key={index}
                   href="/"
-                  className="w-full px-4 py-2 text-gray-500 rounded-md dark:text-gray-300 hover:text-indigo-500 focus:text-indigo-500 focus:bg-indigo-100 focus:outline-none dark:focus:bg-trueGray-700"
+                  className="w-full px-4 py-2"
                 >
                   {item}
                 </Link>
@@ -63,7 +63,7 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="my-10 text-sm text-center text-gray-600 dark:text-gray-400">
+        <div className="my-10 text-sm text-center">
           Copyright © {new Date().getFullYear()}. Savonlinnan Lentokerho ry
         </div>
       </Container>
@@ -123,8 +123,8 @@ const Backlink = () => {
     <a
       href="https://web3templates.com"
       target="_blank"
-      rel="noopener"
-      className="absolute flex px-3 py-1 space-x-2 text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded shadow-sm place-items-center left-5 bottom-5 dark:bg-trueGray-900 dark:border-trueGray-700 dark:text-trueGray-300"
+      rel="noopener noreferrer"
+      className="absolute flex px-3 py-1 space-x-2 text-sm font-semibold bg-white border border-gray-300 rounded shadow-sm place-items-center left-5 bottom-5"
     >
       <svg
         width="20"
@@ -140,8 +140,6 @@ const Backlink = () => {
           fill="#F7FAFC"
         />
       </svg>
-
-      <span>Web3Templates</span>
     </a>
   );
 };
