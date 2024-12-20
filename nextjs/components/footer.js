@@ -22,7 +22,7 @@ export default function Footer() {
                 href="/"
                 className="flex items-center space-x-2 text-2xl font-medium"
               >
-                <Image src="/images/header_short.jpg" width={400} height={40} />
+                <Image src="/images/header_short.jpg" alt="SaLKo" width={400} height={40} />
               </Link>
             </div>
 

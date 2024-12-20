@@ -23,6 +23,7 @@ const Navbar = () => {
                   <span className="flex items-center space-x-2 text-2xl font-medium">
                     <Image
                       src="/images/header_short.jpg"
+                      alt="SaLKo"
                       width={400}
                       height={40}
                     />
