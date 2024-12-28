@@ -1,4 +1,4 @@
-import SectionTitle from "../components/sectionTitle";
+import SectionTitle from "../../components/sectionTitle";
 
 export default function Page() {
   return (
@@ -13,14 +13,8 @@ export default function Page() {
                   pretitle="SaLKo"
                   title="Savonlinnan Lentokerho ry"
                 >
-                  Savonlinnan Lentokerho ry on 1962 perustettu yleisilmailun
-                  harrastustoimintaan ja koulutukseen keskittynyt
-                  ilmailuyhdistys. Kerhomme toiminta tukeutuu Savonlinnan
-                  Lentoasemalle, 15 km Savonlinnasta Enonkoskelle päin.
-                  Kerhossamme on noin 70 jäsentä, joista lentämistä harrastaa
-                  vajaa puolet.
+                  Kerho
                 </SectionTitle>
-                ;
               </div>
             </div>
           </div>

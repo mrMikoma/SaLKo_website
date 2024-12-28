@@ -4,6 +4,7 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
+        finlandica: ['var(--font-finlandica)'],
         sans: ["Inter var"],
       },
       colors: {
