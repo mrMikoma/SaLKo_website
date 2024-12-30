@@ -60,7 +60,7 @@ jobs:
         uses: docker/metadata-action@v5.0.0
         if: github.event_name != 'pull_request'
         with:
-          images: ${{ env.REGISTRY }}/${{ github.repository }}
+          images: ${{ env.REGISTRY }}/${{ github.repository }}-${{ github.ref_name }}
           tags: |
             ${{ env.new_version }}
             latest
@@ -71,10 +71,9 @@ jobs:
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5.0.0
-        if: github.event_name != 'pull_request'
         with:
           context: ./nextjs
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
