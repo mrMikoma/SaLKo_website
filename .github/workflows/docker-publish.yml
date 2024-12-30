@@ -37,7 +37,7 @@ jobs:
         if: github.event_name != 'pull_request'
         run: |
           # Get the latest tag, default to "v0.0.0" if none exist
-          git fetch --tags origin main  # Ensure we have all tags
+          git fetch --tags
           latest_tag=$(git describe --tags --abbrev=0 --match "v[0-9]*.[0-9]*.[0-9]*" 2>/dev/null || echo "v0.0.0")
           echo "Latest tag: $latest_tag"
               
@@ -63,10 +63,15 @@ jobs:
       - name: Determine image name
         id: image-name
         run: |
-          if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
-            echo "image_name=${{ env.REGISTRY }}/${{ github.repository }}-nextjs" >> $GITHUB_ENV
+          # Fetch all tags to ensure we don't duplicate
+          git fetch --tags
+              
+          # Check if the tag already exists
+          if git tag -l | grep -q "^${{ env.new_version }}$"; then
+            echo "Tag ${{ env.new_version }} already exists. Skipping tag creation."
           else
-            echo "image_name=${{ env.REGISTRY }}/${{ github.repository }}-nextjs-${{ github.ref_name }}" >> $GITHUB_ENV
+            git tag ${{ env.new_version }}
+            git push origin ${{ env.new_version }}
           fi
 
       - name: Extract Docker metadata
