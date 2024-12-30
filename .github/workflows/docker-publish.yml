@@ -76,6 +76,7 @@ jobs:
             echo "image_name=${{ env.REGISTRY }}/${{ github.repository }}-nextjs" >> $GITHUB_ENV
           else
             echo "image_name=${{ env.REGISTRY }}/${{ github.repository }}-nextjs-${{ github.ref_name }}" >> $GITHUB_ENV
+          fi
 
       - name: Extract Docker metadata
         id: meta
