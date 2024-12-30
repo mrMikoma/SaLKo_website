@@ -1,20 +1,20 @@
-version: "3.8"
-
 services:
   traefik:
     image: "traefik:v3.2"
     container_name: salko-traefik
     command:
       - "--log.level=DEBUG"
-      - "--api.insecure=true"
+      - "--api.insecure=false"
+      - "--api.dashboard=false"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--entryPoints.websecure.address=:443"
-      - "--certificatesresolvers.myresolver.acme.httpchallenge=true"
-      - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
-      - "--certificatesresolvers.myresolver.acme.email=mikoma114@gmail.com"
-      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+      - "--certificatesresolvers.httpresolver.acme.httpchallenge=true"
+      - "--certificatesresolvers.httpresolver.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.httpresolver.acme.email=mikoma114@gmail.com"
+      - "--certificatesresolvers.httpresolver.acme.storage=/letsencrypt/acme.json"
     ports:
+      - "80:80"
       - "443:443"
     volumes:
       - "./letsencrypt:/letsencrypt"
@@ -22,42 +22,70 @@ services:
     restart: always
 
   watchtower:
-    image: containrrr/watchtower:v1.7.1
+    image: "ghcr.io/containrrr/watchtower:amd64-1.7.1"
     container_name: salko-watchtower
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /root/.docker/config.json:/config.json
-    command: --interval 30
+    command: --interval 30 --cleanup
     restart: always
 
-  whoami:
-    image: "traefik/whoami"
-    container_name: "simple-service"
+  nextjs-dev:
+    image: "ghcr.io/mrmikoma/salko_website-nextjs-dev:latest"
+    container_name: salko-nextjs-dev
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: production
+      HOSTNAME: 0.0.0.0
+      PORT: 3001
+    restart: always
+    # healthcheck:
+    #   test: curl --fail http://localhost:3001/ || exit 1
+    #   interval: 60s
+    #   timeout: 30s
+    #   retries: 3
+    #   start_period: 30s
     labels:
       - traefik.enable=true
-      - traefik.http.routers.whoami.rule=Host(`salko-dev.mikoma.fi`)
-      - traefik.http.routers.whoami.entrypoints=websecure
-      - traefik.http.routers.whoami.tls.certresolver=myresolver
-      - traefik.http.routers.whoami.middlewares=redirect-to-https
+      - traefik.http.routers.nextjs-dev.rule=Host(`salko-dev.mikoma.fi`)
+      - traefik.http.routers.nextjs-dev.entrypoints=websecure
+      - traefik.http.routers.nextjs-dev.tls.certresolver=httpresolver
+      - traefik.http.routers.nextjs-dev.tls=true
+      - traefik.http.routers.nextjs-dev.middlewares=redirect-to-https
       - traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https
       - traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true
-      # - traefik.http.services.my-website-frontend.loadbalancer.server.port=3000
-      # - traefik.http.services.my-website-frontend.loadbalancer.healthcheck
-      # - traefik.http.services.my-website-frontend.rateLimit.burst=5
-      # - traefik.http.services.my-website-frontend.rateLimit.period=1s
+      - traefik.http.services.nextjs-dev.loadbalancer.server.port=3001
+      # - traefik.http.services.nextjs-prod.loadbalancer.healthcheck
+      # - traefik.http.services.nextjs-prod.rateLimit.burst=100
+      # - traefik.http.services.nextjs-prod.rateLimit.average=50
 
-  whoamii:
-    image: "traefik/whoami"
-    container_name: "simple-service-2"
+  nextjs-prod:
+    image: "ghcr.io/mrmikoma/salko_website-nextjs:latest"
+    container_name: salko-nextjs-prod
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      HOSTNAME: 0.0.0.0
+      PORT: 3000
+    restart: always
+    # healthcheck:
+    #   test: curl --fail http://localhost:3000/ || exit 1
+    #   interval: 60s
+    #   timeout: 30s
+    #   retries: 3
+    #   start_period: 30s
     labels:
       - traefik.enable=true
-      - traefik.http.routers.whoami.rule=Host(`salko-prod.mikoma.fi`)
-      - traefik.http.routers.whoami.entrypoints=websecure
-      - traefik.http.routers.whoami.tls.certresolver=myresolver
-      - traefik.http.routers.whoami.middlewares=redirect-to-https
+      - traefik.http.routers.nextjs-prod.rule=Host(`salko-prod.mikoma.fi`)
+      - traefik.http.routers.nextjs-prod.entrypoints=websecure
+      - traefik.http.routers.nextjs-prod.tls.certresolver=httpresolver
+      - traefik.http.routers.nextjs-prod.tls=true
+      - traefik.http.routers.nextjs-prod.middlewares=redirect-to-https
       - traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https
       - traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true
-      # - traefik.http.services.my-website-frontend.loadbalancer.server.port=3000
-      # - traefik.http.services.my-website-frontend.loadbalancer.healthcheck
-      # - traefik.http.services.my-website-frontend.rateLimit.burst=5
-      # - traefik.http.services.my-website-frontend.rateLimit.period=1s
+      - traefik.http.services.nextjs-prod.loadbalancer.server.port=3000
+      # - traefik.http.services.nextjs-prod.loadbalancer.healthcheck
+      # - traefik.http.services.nextjs-prod.rateLimit.burst=100
+      # - traefik.http.services.nextjs-prod.rateLimit.average=50
