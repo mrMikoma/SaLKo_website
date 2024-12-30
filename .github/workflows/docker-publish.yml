@@ -55,12 +55,21 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Determine image name
+        id: image-name
+        run: |
+          if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
+            echo "image_name=${{ env.REGISTRY }}/${{ github.repository }}-nextjs" >> $GITHUB_ENV
+          else
+            echo "image_name=${{ env.REGISTRY }}/${{ github.repository }}-nextjs-${{ github.ref_name }}" >> $GITHUB_ENV
+          fi
+
       - name: Extract Docker metadata
         id: meta
         uses: docker/metadata-action@v5.0.0
         if: github.event_name != 'pull_request'
         with:
-          images: ${{ env.REGISTRY }}/${{ github.repository }}-${{ github.ref_name }}
+          images: ${{ env.image_name }}
           tags: |
             ${{ env.new_version }}
             latest
