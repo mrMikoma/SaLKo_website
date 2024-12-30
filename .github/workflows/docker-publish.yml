@@ -57,15 +57,8 @@ jobs:
 
       - name: Create Git Tag
         if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-        run: |
-          git tag ${{ env.new_version }}
-          git push origin ${{ env.new_version }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Determine image name
-        id: image-name
-        if: github.event_name != 'pull_request'
         run: |
           # Check if the tag already exists
           if git rev-parse "refs/tags/${{ env.new_version }}" >/dev/null 2>&1; then
@@ -75,6 +68,14 @@ jobs:
             git tag ${{ env.new_version }}
             git push origin ${{ env.new_version }}
           fi
+
+      - name: Determine image name
+        id: image-name
+        run: |
+          if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
+            echo "image_name=${{ env.REGISTRY }}/${{ github.repository }}-nextjs" >> $GITHUB_ENV
+          else
+            echo "image_name=${{ env.REGISTRY }}/${{ github.repository }}-nextjs-${{ github.ref_name }}" >> $GITHUB_ENV
 
       - name: Extract Docker metadata
         id: meta
