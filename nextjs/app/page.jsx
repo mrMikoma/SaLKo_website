@@ -33,7 +33,7 @@ export default function Page() {
       <section className="max-w-screen relative px-8 py-16">
         <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
           <span className="text-gray-800 text-lg font-medium">
-            [Insert Image Here]
+            [Insert dev Here]
           </span>
           <p className="mb-4 text-gray-800">
             Savonlinnan Lentoasema (ICAO: EFSA, IATA: SVL) sijaitsee 15 km
