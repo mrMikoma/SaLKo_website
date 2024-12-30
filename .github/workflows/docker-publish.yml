@@ -36,15 +36,19 @@ jobs:
         id: version
         if: github.event_name != 'pull_request'
         run: |
-          # Get the latest tag
-          latest_tag=$(git describe --tags --abbrev=0 --match "v[0-9]*.[0-9]*.[0-9]*" || echo "v0.0.0")
+          # Get the latest tag, default to "v0.0.0" if none exist
+          latest_tag=$(git describe --tags --abbrev=0 --match "v[0-9]*.[0-9]*.[0-9]*" 2>/dev/null || echo "v0.0.0")
+          echo "Latest tag: $latest_tag"
+              
           # Extract major, minor, and patch
           IFS='.' read -ra ver <<< "${latest_tag#v}"
           major=${ver[0]}
           minor=${ver[1]}
           patch=${ver[2]}
+              
           # Increment patch version
           new_version="v$major.$minor.$((patch + 1))"
+          echo "New version: $new_version"
           echo "new_version=$new_version" >> $GITHUB_ENV
 
       - name: Create Git Tag
