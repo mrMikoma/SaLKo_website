@@ -11,7 +11,7 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
-  build:
+  amd64:
     runs-on: ubuntu-24.04
     permissions:
       contents: write
