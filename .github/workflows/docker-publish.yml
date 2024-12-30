@@ -41,6 +41,7 @@ jobs:
         if: github.event_name != 'pull_request'
         run: |
           # Get the latest tag, default to "v0.0.0" if none exist
+          git describe --tags --abbrev=0 --match "v[0-9]*.[0-9]*.[0-9]*"
           latest_tag=$(git describe --tags --abbrev=0 --match "v[0-9]*.[0-9]*.[0-9]*" 2>/dev/null || echo "v0.0.0")
           echo "Latest tag: $latest_tag"
               
