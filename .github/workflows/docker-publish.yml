@@ -73,7 +73,7 @@ jobs:
         uses: docker/build-push-action@v5.0.0
         if: github.event_name != 'pull_request'
         with:
-          context: .
+          context: ./nextjs
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
