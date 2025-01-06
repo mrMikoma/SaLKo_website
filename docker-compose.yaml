@@ -1,7 +1,7 @@
 services:
   traefik:
     image: "traefik:v3.2"
-    container_name: salko-traefik
+    container_name: ${NAME_PREFIX}-traefik
     command:
       - "--log.level=DEBUG"
       - "--api.insecure=false"
@@ -11,34 +11,50 @@ services:
       - "--entryPoints.websecure.address=:443"
       - "--certificatesresolvers.httpresolver.acme.httpchallenge=true"
       - "--certificatesresolvers.httpresolver.acme.httpchallenge.entrypoint=web"
-      - "--certificatesresolvers.httpresolver.acme.email=mikoma114@gmail.com"
+      - "--certificatesresolvers.httpresolver.acme.email=${HTTP_RESOLVER_EMAIL}"
       - "--certificatesresolvers.httpresolver.acme.storage=/letsencrypt/acme.json"
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - "./letsencrypt:/letsencrypt"
+      - "/letsencrypt:/letsencrypt"
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
     restart: always
 
   watchtower:
     image: "ghcr.io/containrrr/watchtower:amd64-1.7.1"
-    container_name: salko-watchtower
+    container_name: ${NAME_PREFIX}-watchtower
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /root/.docker/config.json:/config.json
     command: --interval 30 --cleanup
     restart: always
 
+  postgres-dev:
+    image: "postgres:17.2"
+    container_name: ${NAME_PREFIX}-postgres-${DEV_SUFFIX}
+    ports:
+      - ${DEV_POSTGRES_HOST_PORT}:5432
+    environment:
+      - POSTGRES_USER=${DEV_POSTGRES_USER}
+      - POSTGRES_PASSWORD=${DEV_POSTGRES_PASSWORD}
+      - POSTGRES_DB=${DEV_POSTGRES_DB}
+    volumes:
+      - ../postgres-${DEV_SUFFIX}/postgres-data:/var/lib/postgresql/data
+      - ../postgres-${DEV_SUFFIX}/init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: always
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
   nextjs-dev:
     image: "ghcr.io/mrmikoma/salko_website-nextjs-dev:latest"
-    container_name: salko-nextjs-dev
+    container_name: ${NAME_PREFIX}-nextjs-${DEV_SUFFIX}
     ports:
-      - "3001:3001"
-    environment:
-      NODE_ENV: production
-      HOSTNAME: 0.0.0.0
-      PORT: 3001
+      - ${DEV_HOST_PORT}:${DEV_CONTAINER_PORT}
+    env_file: .env
     restart: always
     # healthcheck:
     #   test: curl --fail http://localhost:3001/ || exit 1
@@ -48,27 +64,44 @@ services:
     #   start_period: 30s
     labels:
       - traefik.enable=true
-      - traefik.http.routers.nextjs-dev.rule=Host(`salko-dev.mikoma.fi`)
-      - traefik.http.routers.nextjs-dev.entrypoints=websecure
-      - traefik.http.routers.nextjs-dev.tls.certresolver=httpresolver
-      - traefik.http.routers.nextjs-dev.tls=true
-      - traefik.http.routers.nextjs-dev.middlewares=redirect-to-https
+      - traefik.http.routers.nextjs-${DEV_SUFFIX}.rule=Host(`${DEV_HOST_URL}`)
+      - traefik.http.routers.nextjs-${DEV_SUFFIX}.entrypoints=websecure
+      - traefik.http.routers.nextjs-${DEV_SUFFIX}.tls.certresolver=httpresolver
+      - traefik.http.routers.nextjs-${DEV_SUFFIX}.tls=true
+      - traefik.http.routers.nextjs-${DEV_SUFFIX}.middlewares=redirect-to-https
       - traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https
       - traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true
-      - traefik.http.services.nextjs-dev.loadbalancer.server.port=3001
-      # - traefik.http.services.nextjs-prod.loadbalancer.healthcheck
-      # - traefik.http.services.nextjs-prod.rateLimit.burst=100
-      # - traefik.http.services.nextjs-prod.rateLimit.average=50
+      - traefik.http.services.nextjs-${DEV_SUFFIX}.loadbalancer.server.port=${DEV_CONTAINER_PORT}
+      # - traefik.http.services.nextjs-${DEV_SUFFIX}.loadbalancer.healthcheck
+      # - traefik.http.services.nextjs-${DEV_SUFFIX}.rateLimit.burst=100
+      # - traefik.http.services.nextjs-${DEV_SUFFIX}.rateLimit.average=50
+
+  postgres-prod:
+    image: "postgres:17.2"
+    container_name: ${NAME_PREFIX}-postgres-${PROD_SUFFIX}
+    ports:
+      - ${PROD_POSTGRES_HOST_PORT}:5432
+    environment:
+      - POSTGRES_USER=${PROD_POSTGRES_USER}
+      - POSTGRES_PASSWORD=${PROD_POSTGRES_PASSWORD}
+      - POSTGRES_DB=${PROD_POSTGRES_DB}
+    volumes:
+      - ../postgres-${PROD_SUFFIX}/postgres-data:/var/lib/postgresql/data
+      - ../postgres-${PROD_SUFFIX}/init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: always
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   nextjs-prod:
     image: "ghcr.io/mrmikoma/salko_website-nextjs:latest"
-    container_name: salko-nextjs-prod
+    container_name: ${NAME_PREFIX}-nextjs-${PROD_SUFFIX}
     ports:
-      - "3000:3000"
-    environment:
-      NODE_ENV: production
-      HOSTNAME: 0.0.0.0
-      PORT: 3000
+      - ${PROD_HOST_PORT}:${PROD_CONTAINER_PORT}
+    env_file:
+      - .env
     restart: always
     # healthcheck:
     #   test: curl --fail http://localhost:3000/ || exit 1
@@ -78,14 +111,14 @@ services:
     #   start_period: 30s
     labels:
       - traefik.enable=true
-      - traefik.http.routers.nextjs-prod.rule=Host(`salko-prod.mikoma.fi`)
-      - traefik.http.routers.nextjs-prod.entrypoints=websecure
-      - traefik.http.routers.nextjs-prod.tls.certresolver=httpresolver
-      - traefik.http.routers.nextjs-prod.tls=true
-      - traefik.http.routers.nextjs-prod.middlewares=redirect-to-https
+      - traefik.http.routers.nextjs-${PROD_SUFFIX}.rule=Host(`${PROD_HOST_URL}`)
+      - traefik.http.routers.nextjs-${PROD_SUFFIX}.entrypoints=websecure
+      - traefik.http.routers.nextjs-${PROD_SUFFIX}.tls.certresolver=httpresolver
+      - traefik.http.routers.nextjs-${PROD_SUFFIX}.tls=true
+      - traefik.http.routers.nextjs-${PROD_SUFFIX}.middlewares=redirect-to-https
       - traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https
       - traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true
-      - traefik.http.services.nextjs-prod.loadbalancer.server.port=3000
-      # - traefik.http.services.nextjs-prod.loadbalancer.healthcheck
-      # - traefik.http.services.nextjs-prod.rateLimit.burst=100
-      # - traefik.http.services.nextjs-prod.rateLimit.average=50
+      - traefik.http.services.nextjs-${PROD_SUFFIX}.loadbalancer.server.port=${PROD_CONTAINER_PORT}
+      # - traefik.http.services.nextjs-${PROD_SUFFIX}.loadbalancer.healthcheck
+      # - traefik.http.services.nextjs-${PROD_SUFFIX}.rateLimit.burst=100
+      # - traefik.http.services.nextjs-${PROD_SUFFIX}.rateLimit.average=50

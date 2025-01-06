@@ -1,32 +1,33 @@
 services:
-  nextjs:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
-    environment:
-      NODE_ENV: production
-      HOSTNAME: 0.0.0.0
-      PORT: 3000
-    restart: unless-stopped
-    depends_on:
-      - postgres
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-    networks:
-      - backend
+  # nextjs:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: salko-nextjs
+  #   ports:
+  #     - 3000:3000
+  #   environment:
+  #     NODE_ENV: production
+  #     HOSTNAME: 0.0.0.0
+  #     PORT: 3000
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - postgres
+  #   # healthcheck:
+  #   #   test: ["CMD", "curl", "-f", "http://localhost:3000"]
+  #   #   interval: 30s
+  #   #   timeout: 10s
+  #   #   retries: 5
 
   postgres:
     image: "postgres:17.2"
     container_name: "salko-postgres"
+    ports:
+      - 5432:5432
     env_file:
       - .env
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - ../postgres/postgres-data:/var/lib/postgresql/data
       - ../postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
     restart: unless-stopped
     healthcheck:
@@ -34,25 +35,16 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-    networks:
-      - backend
 
   pgadmin:
-    image: dpage/pgadmin4
+    image: dpage/pgadmin4:latest
+    container_name: salko-pgadmin
     ports:
-      - 15433:80
+      - 5000:80
     env_file:
       - .env
     depends_on:
       - postgres
     volumes:
-      - ${PWD}/pgadmin-data/:/var/lib/pgadmin/
+      - ../postgres/pgadmin-data/:/var/lib/pgadmin/
     restart: unless-stopped
-    networks:
-      - backend
-
-networks:
-  backend:
-    driver: bridge
-  frontend:
-    driver: bridge
