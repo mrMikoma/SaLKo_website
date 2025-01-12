@@ -13,7 +13,7 @@ export default function Footer() {
   ];
   const legal = ["Tietosuojaseloste"];
   return (
-    <div className="relative">
+    <div className="relative bg-blue-950">
       <Container>
         <div className="grid max-w-screen-xl grid-cols-1 gap-10 pt-10 mx-auto mt-5 border-t border-white lg:grid-cols-5">
           <div className="lg:col-span-2">
