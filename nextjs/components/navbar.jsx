@@ -1,112 +1,226 @@
 "use client";
 import Link from "next/link";
 import Image from "next/image";
-import {
-  Disclosure,
-  DisclosureButton,
-  DisclosurePanel,
-} from "@headlessui/react";
+import NavbarMobile from "@/components/navbarMobile";
+import ArrowDownIcon from "@/components/icons/arrowDown";
+import { Menu, MenuButton, MenuItems, MenuItem } from "@headlessui/react";
 
 const Navbar = () => {
-  const navigation = [
-    "Kerho",
-    "Kalusto",
-    "Koulutus",
-    "Kenttä",
-    "Historia",
-    "Yhteystiedot",
-  ];
-
+  const isLoggedIn = true;
   return (
-    <div className="w-full bg-transparent">
-      <nav className="container relative flex flex-wrap items-center justify-between p-8 mx-auto lg:justify-between xl:px-0">
-        <Disclosure>
-          {({ open }) => (
-            <div className="flex flex-wrap items-center justify-between w-full lg:w-auto">
-              <Link href="/">
-                <span className="flex items-center space-x-2 text-2xl font-medium">
-                  <Image
-                    src="/images/header_short.jpg"
-                    alt="SaLKo"
-                    width={400}
-                    height={40}
-                  />
-                </span>
-              </Link>
+    <div className="w-full bg-blue-950">
+      <nav className="container relative flex flex-wrap items-center justify-between p-4 px-4">
+        {/* Logo and Desktop Navigation */}
+        <div className="flex flex-wrap items-center justify-between w-full lg:w-auto">
+          <Link href="/">
+            <span className="flex items-center space-x-4 text-2xl font-medium">
+              <Image
+                src="/images/SaLKon Logo_vaakunaversio.png"
+                alt="SaLKo"
+                width={120}
+                height={40}
+              />
+            </span>
+          </Link>
 
-              <DisclosureButton
-                aria-label="Toggle Menu"
-                className="px-2 py-1 ml-auto rounded-md lg:hidden hover:text-indigo-500 focus:text-indigo-500"
+          {/* Mobile menu toggle button */}
+          <NavbarMobile />
+        </div>
+
+        {/* Desktop Navigation Menu */}
+        <div className="hidden text-center lg:flex items-center justify-center">
+          <ul className="items-center justify-center flex-1 pt-6 pl-6 list-none lg:pt-0 lg:flex">
+            {/* Kerho (Club) */}
+            <li className="mr-3 nav__item border-white hover:border-b-2">
+              <Menu as="div" className="ml-auto relative">
+                {({ open }) => (
+                  <div className="relative">
+                    <MenuButton className="group inline-block px-4 py-2 text-2xl uppercase no-underline text-center">
+                      <div className="flex flex-row items-center">
+                        <span>Kerho</span>
+                        {/* Arrow Icon */}
+                        <span
+                          className={`transition-transform ${
+                            open ? "rotate-180" : ""
+                          } mt-1`}
+                        >
+                          <ArrowDownIcon size={30} />
+                        </span>
+                      </div>
+                    </MenuButton>
+
+                    {/* Menu Items*/}
+                    <MenuItems
+                      className={`${
+                        open ? "block" : "hidden"
+                      } absolute w-48 bg-blue-800 shadow-lg z-50 uppercase text-left`}
+                    >
+                      <MenuItem>
+                        <Link
+                          href="/kerho"
+                          className="block py-4 pl-2 hover:bg-indigo-600"
+                        >
+                          Kerho
+                        </Link>
+                      </MenuItem>
+                      <MenuItem>
+                        <Link
+                          href="/kerho/jasenyys"
+                          className="block py-4 pl-2 hover:bg-indigo-600"
+                        >
+                          Jäsenyys
+                        </Link>
+                      </MenuItem>
+                      <MenuItem>
+                        <Link
+                          href="/kerho/historiaa"
+                          className="block py-4 pl-2 hover:bg-indigo-600"
+                        >
+                          Historiaa
+                        </Link>
+                      </MenuItem>
+                      <MenuItem>
+                        <Link
+                          href="/kerho/hallit"
+                          className="block py-4 pl-2 hover:bg-indigo-600"
+                        >
+                          hallit
+                        </Link>
+                      </MenuItem>
+                    </MenuItems>
+                  </div>
+                )}
+              </Menu>
+            </li>
+
+            {/* Kalusto (Planes) with Dropdown Menu */}
+            <li className="mr-3 nav__item border-white hover:border-b-2">
+              <Menu as="div" className="ml-auto relative">
+                {({ open }) => (
+                  <div className="relative">
+                    <MenuButton className="group inline-block px-4 py-2 text-2xl uppercase no-underline text-center">
+                      <div className="flex flex-row items-center">
+                        <span>Kalusto</span>
+                        {/* Arrow Icon */}
+                        <span
+                          className={`transition-transform ${
+                            open ? "rotate-180" : ""
+                          } mt-1`}
+                        >
+                          <ArrowDownIcon size={30} />
+                        </span>
+                      </div>
+                    </MenuButton>
+
+                    {/* Menu Items*/}
+                    <MenuItems
+                      className={`${
+                        open ? "block" : "hidden"
+                      } absolute w-48 bg-blue-800 shadow-lg z-50 uppercase text-left`}
+                    >
+                      <MenuItem>
+                        <Link
+                          href="/kalusto"
+                          className="block py-4 pl-2 hover:bg-indigo-600"
+                        >
+                          Kalusto
+                        </Link>
+                      </MenuItem>
+                      <MenuItem>
+                        <Link
+                          href="/kalusto/varauskalenteri"
+                          className="block py-4 pl-2 hover:bg-indigo-600"
+                        >
+                          Varauskalenteri
+                        </Link>
+                      </MenuItem>
+                    </MenuItems>
+                  </div>
+                )}
+              </Menu>
+            </li>
+
+            {/* Koulutus */}
+            <li className="mr-3 nav__item border-white hover:border-b-2">
+              <Link
+                href="/koulutus"
+                className="inline-block px-6 py-2 text-2xl uppercase no-underline rounded-md"
               >
-                <svg
-                  className="w-6 h-6 fill-current"
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                >
-                  {open && (
-                    <path
-                      fillRule="evenodd"
-                      clipRule="evenodd"
-                      d="M18.278 16.864a1 1 0 0 1-1.414 1.414l-4.829-4.828-4.828 4.828a1 1 0 0 1-1.414-1.414l4.828-4.829-4.828-4.828a1 1 0 0 1 1.414-1.414l4.829 4.828 4.828-4.828a1 1 0 1 1 1.414 1.414l-4.828 4.829 4.828 4.828z"
-                    />
-                  )}
-                  {!open && (
-                    <path
-                      fillRule="evenodd"
-                      d="M4 5h16a1 1 0 0 1 0 2H4a1 1 0 1 1 0-2zm0 6h16a1 1 0 0 1 0 2H4a1 1 0 0 1 0-2zm0 6h16a1 1 0 0 1 0 2H4a1 1 0 0 1 0-2z"
-                    />
-                  )}
-                </svg>
-              </DisclosureButton>
+                Koulutus
+              </Link>
+            </li>
 
-              <DisclosurePanel className="flex flex-wrap w-full my-5 lg:hidden text-xl">
-                {navigation.map((item, index) => (
-                  <Link
-                    key={index}
-                    href={`/${item.toLowerCase().replace(/\s+/g, "")}`}
-                    className="w-full px-4 py-2 -ml-4 rounded-md"
-                  >
-                    {item}
-                  </Link>
-                ))}
-                <Link
-                  href="/"
-                  className="w-full px-6 py-2 mt-3 text-center text-white bg-indigo-600 rounded-md lg:ml-5"
-                >
-                  Jäsenalue
-                </Link>
-              </DisclosurePanel>
-            </div>
-          )}
-        </Disclosure>
+            {/* Kenttä */}
+            <li className="mr-3 nav__item border-white hover:border-b-2">
+              <Link
+                href="/kentta"
+                className="inline-block px-6 py-2 text-2xl uppercase no-underline rounded-md"
+              >
+                Kenttä
+              </Link>
+            </li>
 
-        <div className="hidden text-center lg:flex lg:items-center">
-          <ul className="items-center justify-end flex-1 pt-6 list-none lg:pt-0 lg:flex">
-            {navigation.map((menu, index) => (
-              <li className="mr-3 nav__item" key={index}>
-                <Link
-                  href={`/${menu
-                    .toLowerCase()
-                    .replace(/\s+/g, "")
-                    .replace(/ä/g, "a")
-                    .replace(/ö/g, "o")}`}
-                  className="inline-block px-4 py-2 text-2xl uppercase no-underline rounded-md"
-                >
-                  {menu}
-                </Link>
-              </li>
-            ))}
+            {/* Yhteystiedot */}
+            <li className="mr-3 nav__item border-white hover:border-b-2">
+              <Link
+                href="/yhteystiedot"
+                className="inline-block px-6 py-2 text-2xl uppercase no-underline rounded-md"
+              >
+                Yhteystiedot
+              </Link>
+            </li>
           </ul>
         </div>
 
-        <div className="hidden mr-3 space-x-4 lg:flex nav__item">
-          <Link
-            href="/"
-            className="px-6 py-2 text-white text-xl bg-indigo-900 rounded-md md:ml-5"
-          >
-            Jäsenalue
-          </Link>
-        </div>
+        {/* Conditionally render Member Area Dropdown if the user is logged in */}
+        {isLoggedIn && (
+          <Menu as="div" className="ml-auto relative">
+            {({ open }) => (
+              <div className="relative">
+                {/* Menu Button for Member Area */}
+                <MenuButton className="px-6 py-2 text-white text-xl bg-indigo-600 rounded-md shadow-xl hover:border-2 border-indigo-200">
+                  Jäsenalue
+                </MenuButton>
+
+                {/* Menu Items with "Profiili" and "Kirjaudu ulos" */}
+                <MenuItems
+                  className={`${
+                    open ? "block" : "hidden"
+                  } absolute right-0 w-48 mt-2 bg-white shadow-lg z-50 rounded-md`}
+                >
+                  <MenuItem>
+                    <Link
+                      href="/profiili"
+                      className="block px-4 py-2 text-black rounded-t-md hover:bg-indigo-200"
+                    >
+                      Profiili
+                    </Link>
+                  </MenuItem>
+                  <MenuItem>
+                    <Link
+                      href="/logout"
+                      className="block px-4 py-2 text-black rounded-b-md hover:bg-indigo-200"
+                    >
+                      Kirjaudu ulos
+                    </Link>
+                  </MenuItem>
+                </MenuItems>
+              </div>
+            )}
+          </Menu>
+        )}
+
+        {/* Non-logged-in Member Area Button */}
+        {!isLoggedIn && (
+          <div className="hidden mr-3 space-x-4 lg:flex nav__item">
+            <Link
+              href="/login"
+              className="px-6 py-2 text-white text-xl bg-indigo-900 rounded-md md:ml-5"
+            >
+              Jäsenalue
+            </Link>
+          </div>
+        )}
       </nav>
     </div>
   );

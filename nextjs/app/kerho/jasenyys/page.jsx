@@ -1,4 +1,4 @@
-import SectionTitle from "@/components/sectionTitle";
+import SectionTitle from "../../../components/sectionTitle";
 
 export default function Page() {
   return (
@@ -13,7 +13,7 @@ export default function Page() {
                   pretitle="SaLKo"
                   title="Savonlinnan Lentokerho ry"
                 >
-                  Kerho
+                  Jäsenyys
                 </SectionTitle>
               </div>
             </div>
