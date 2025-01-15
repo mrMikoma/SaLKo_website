@@ -3,17 +3,22 @@ import Image from "next/image";
 import Container from "./container";
 
 export default function Footer() {
-  const navigation = [
+  const firstNavigation = [
     "Kerho",
     "Kalusto",
     "Koulutus",
+    "Historiaa",
+    "Hallit",
     "Kenttä",
-    "Historia",
-    "Yhteystiedot",
   ];
-  const legal = ["Tietosuojaseloste"];
+  const secondNavigation = [
+    "Jäsenyys",
+    "Yhteystiedot",
+    "Varauskalenteri",
+    "Tietosuojaseloste",
+  ];
   return (
-    <div className="relative bg-blue-950">
+    <div className="relative bg-sblue text-swhite">
       <Container>
         <div className="grid max-w-screen-xl grid-cols-1 gap-10 pt-10 mx-auto mt-5 border-t border-white lg:grid-cols-5">
           <div className="lg:col-span-2">
@@ -21,12 +26,12 @@ export default function Footer() {
               {" "}
               <Link
                 href="/"
-                className="flex items-center space-x-2 text-2xl font-medium"
+                className="flex items-center justify-center space-x-2 text-2xl font-medium"
               >
                 <Image
-                  src="/images/header_short.jpg"
+                  src="/images/SaLKon Logo_vaakunaversio.png"
                   alt="SaLKo"
-                  width={400}
+                  width={120}
                   height={40}
                 />
               </Link>
@@ -41,8 +46,8 @@ export default function Footer() {
           </div>
 
           <div>
-            <div className="flex flex-wrap w-full -mt-2 -ml-3 lg:ml-0">
-              {navigation.map((item, index) => (
+            <div className="flex flex-wrap w-full -mt-2 -ml-3 lg:ml-0 uppercase">
+              {firstNavigation.map((item, index) => (
                 <Link key={index} href="/" className="w-full px-4 py-2">
                   {item}
                 </Link>
@@ -51,8 +56,8 @@ export default function Footer() {
           </div>
 
           <div>
-            <div className="flex flex-wrap w-full -mt-2 -ml-3 lg:ml-0">
-              {legal.map((item, index) => (
+            <div className="flex flex-wrap w-full -mt-2 -ml-3 lg:ml-0 uppercase">
+              {secondNavigation.map((item, index) => (
                 <Link key={index} href="/" className="w-full px-4 py-2">
                   {item}
                 </Link>
@@ -62,7 +67,8 @@ export default function Footer() {
         </div>
 
         <div className="my-10 text-sm text-center">
-          Copyright © {new Date().getFullYear()}. Savonlinnan Lentokerho ry.   Pictures by ...
+          Copyright © {new Date().getFullYear()}. Savonlinnan Lentokerho ry.
+          Pictures by ...
         </div>
       </Container>
     </div>
@@ -102,4 +108,3 @@ const Youtube = ({ size = 24 }) => (
     <path d="M23.5 5.5a2.5 2.5 0 0 0-2.5-2.5H3a2.5 2.5 0 0 0-2.5 2.5v13a2.5 2.5 0 0 0 2.5 2.5h18a2.5 2.5 0 0 0 2.5-2.5v-13zM9.5 15.5V8.5l6 3zm11-3.5v7a.5.5 0 0 1-.5.5H4a.5.5 0 0 1-.5-.5v-7a.5.5 0 0 1 .5-.5h16a.5.5 0 0 1 .5.5z" />
   </svg>
 );
-

@@ -1,5 +1,10 @@
-import Bulletin from "@/components/bulletin";
+import Bulletings from "@/components/bulletings/bulletings";
 import SectionTitle from "@/components/sectionTitle";
+
+export const metadata = {
+  title: "SaLKo",
+  description: "Savonlinnan Lentokerho ry",
+};
 
 export default function Page() {
   return (
@@ -16,31 +21,17 @@ export default function Page() {
                   harrastustoimintaan ja koulutukseen keskittynyt
                   ilmailuyhdistys. Kerhomme toiminta tukeutuu Savonlinnan
                   Lentoasemalle, 15 km Savonlinnasta Enonkoskelle päin.
-                  Kerhossamme on noin 70 jäsentä, joista lentämistä harrastaa
+                  Kerhossamme on noin 40 jäsentä, joista lentämistä harrastaa
                   vajaa puolet.
                 </SectionTitle>
               </div>
 
               {/* Bulletin taking 1/3 */}
-              <div className="w-full sm:w-1/3 h-full px-4 bg-black bg-opacity-50 overflow-y-auto">
-                <Bulletin />
+              <div className="w-full sm:w-1/3 h-full px-4 bg-sblue bg-opacity-50 overflow-y-auto">
+                <Bulletings />
               </div>
             </div>
           </div>
-        </div>
-      </section>
-
-      <section className="max-w-screen relative px-8 py-16">
-        <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-          <span className="text-gray-800 text-lg font-medium">
-            [Insert dev Here]
-          </span>
-          <p className="mb-4 text-gray-800">
-            Savonlinnan Lentoasema (ICAO: EFSA, IATA: SVL) sijaitsee 15 km
-            Savonlinnan pohjoispuolella, Enonkoskentien 471 varrella.
-            Lentoaseman osoite on Lentoasemantie 50, 57310 Savonlinna.
-            Lentoaseman ylläpitäjä ja omistaja on Finavia.
-          </p>
         </div>
       </section>
     </div>

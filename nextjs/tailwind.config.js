@@ -12,6 +12,11 @@ module.exports = {
         white: "#ffffff",
         black: "#000000",
         background: "#3366ff",
+        sblack: "#0c1821",
+        sblue: "#162752",
+        sred: "#e84855",
+        sgrey: "#e6e6e6",
+        swhite: "#f6f4f3",
       },
       backgroundImage: {
         "efsa-one": "url('/images/efsa-one_1.jpg')",

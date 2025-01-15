@@ -8,7 +8,7 @@ import { Menu, MenuButton, MenuItems, MenuItem } from "@headlessui/react";
 const Navbar = () => {
   const isLoggedIn = true;
   return (
-    <div className="w-full bg-blue-950">
+    <div className="w-full bg-sblue border-b border-sred">
       <nav className="container relative flex flex-wrap items-center justify-between p-4 px-4">
         {/* Logo and Desktop Navigation */}
         <div className="flex flex-wrap items-center justify-between w-full lg:w-auto">
@@ -31,7 +31,7 @@ const Navbar = () => {
         <div className="hidden text-center lg:flex items-center justify-center">
           <ul className="items-center justify-center flex-1 pt-6 pl-6 list-none lg:pt-0 lg:flex">
             {/* Kerho (Club) */}
-            <li className="mr-3 nav__item border-white hover:border-b-2">
+            <li className="mr-3 nav__item border-sred hover:border-b-2">
               <Menu as="div" className="ml-auto relative">
                 {({ open }) => (
                   <div className="relative">
@@ -84,7 +84,7 @@ const Navbar = () => {
                           href="/kerho/hallit"
                           className="block py-4 pl-2 hover:bg-indigo-600"
                         >
-                          hallit
+                          Hallit
                         </Link>
                       </MenuItem>
                     </MenuItems>
@@ -94,7 +94,7 @@ const Navbar = () => {
             </li>
 
             {/* Kalusto (Planes) with Dropdown Menu */}
-            <li className="mr-3 nav__item border-white hover:border-b-2">
+            <li className="mr-3 nav__item border-sred hover:border-b-2">
               <Menu as="div" className="ml-auto relative">
                 {({ open }) => (
                   <div className="relative">
@@ -141,7 +141,7 @@ const Navbar = () => {
             </li>
 
             {/* Koulutus */}
-            <li className="mr-3 nav__item border-white hover:border-b-2">
+            <li className="mr-3 nav__item border-sred hover:border-b-2">
               <Link
                 href="/koulutus"
                 className="inline-block px-6 py-2 text-2xl uppercase no-underline rounded-md"
@@ -151,7 +151,7 @@ const Navbar = () => {
             </li>
 
             {/* Kenttä */}
-            <li className="mr-3 nav__item border-white hover:border-b-2">
+            <li className="mr-3 nav__item border-sred hover:border-b-2">
               <Link
                 href="/kentta"
                 className="inline-block px-6 py-2 text-2xl uppercase no-underline rounded-md"
@@ -161,7 +161,7 @@ const Navbar = () => {
             </li>
 
             {/* Yhteystiedot */}
-            <li className="mr-3 nav__item border-white hover:border-b-2">
+            <li className="mr-3 nav__item border-sred hover:border-b-2">
               <Link
                 href="/yhteystiedot"
                 className="inline-block px-6 py-2 text-2xl uppercase no-underline rounded-md"
@@ -178,7 +178,7 @@ const Navbar = () => {
             {({ open }) => (
               <div className="relative">
                 {/* Menu Button for Member Area */}
-                <MenuButton className="px-6 py-2 text-white text-xl bg-indigo-600 rounded-md shadow-xl hover:border-2 border-indigo-200">
+                <MenuButton className="px-6 py-2 text-swhite text-xl bg-indigo-600 rounded-md shadow-xl hover:border-2 border-indigo-200">
                   Jäsenalue
                 </MenuButton>
 
@@ -215,7 +215,7 @@ const Navbar = () => {
           <div className="hidden mr-3 space-x-4 lg:flex nav__item">
             <Link
               href="/login"
-              className="px-6 py-2 text-white text-xl bg-indigo-900 rounded-md md:ml-5"
+              className="px-6 py-2 text-swhite text-xl bg-indigo-900 rounded-md md:ml-5"
             >
               Jäsenalue
             </Link>
