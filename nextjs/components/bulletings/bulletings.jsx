@@ -5,8 +5,8 @@ const Bulletings = async () => {
   const { status, result } = await fetchLatestFiveBulletings();
 
   return (
-    <div className="w-full h-full flex flex-col gap-2 uppercase z-50">
-      <span className="text-2xl text-center font-semibold text-white mx-4 my-6 border-b border-sred">
+    <div className="w-full h-full flex flex-col gap-2 z-50">
+      <span className="text-2xl text-center font-semibold uppercase text-white mx-4 my-6 pb-4 border-b border-sred">
         Kerho tiedotteet
       </span>
       {status === "success" ? (

@@ -94,7 +94,7 @@ const NavbarMobile = () => {
                       </span>
                     </div>
                   </DisclosureButton>
-                  <DisclosurePanel className="w-full text-xl text-center">
+                  <DisclosurePanel className="w-full text-xl text-center grid grid-cols-2 gap-2">
                     <Link
                       href="/kerho"
                       className="w-full px-6 py-4 hover:bg-indigo-600"
@@ -145,7 +145,7 @@ const NavbarMobile = () => {
                       </span>
                     </div>
                   </DisclosureButton>
-                  <DisclosurePanel className="w-full text-xl text-center">
+                  <DisclosurePanel className="w-full text-xl text-center grid grid-cols-2 gap-2">
                     <Link
                       href="/kalusto"
                       className="w-full px-6 py-4 hover:bg-indigo-600"
