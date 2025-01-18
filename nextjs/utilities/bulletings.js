@@ -1,7 +1,7 @@
 "use server";
 
 /*
-
+  * Fetches the five newest bulletins from the JSON file.
 */
 export async function fetchLatestFiveBulletings() {
   try {

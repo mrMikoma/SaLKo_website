@@ -25,7 +25,7 @@ export default function Page() {
             </div>
 
             {/* Bulletin taking 1/3 */}
-            <div className="hidden md:block w-full md:w-1/3 h-full px-4 bg-sblue bg-opacity-50 overflow-y-auto">
+            <div className="hidden md:block w-full md:w-1/3 h-full px-4 bg-sblued bg-opacity-50 overflow-y-auto">
               <Bulletings />
             </div>
           </div>
@@ -33,13 +33,13 @@ export default function Page() {
       </section>
 
       <section className="block w-full bg-sblack text-white text-center">
-        <div className="w-full h-full px-4 bg-sblue overflow-y-auto">
+        <div className="w-full h-full px-4 bg-sblued overflow-y-auto">
           <Bulletings />
         </div>
       </section>
 
       <section className="block md:hidden w-full bg-sblack text-white text-center">
-        <div className="w-full h-full px-4 bg-sblue overflow-y-auto">
+        <div className="w-full h-full px-4 bg-sblued overflow-y-auto">
           <Bulletings />
         </div>
       </section>

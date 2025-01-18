@@ -11,7 +11,7 @@ const finlandica = Finlandica({
 
 export const metadata = {
   title: "SaLKo",
-  description: "This is a landing page for a Savonlinna flying club.",
+  description: "SaLKo - Savonlinnan Lentokerho ry",
   keywords: [
     "Savonlinna",
     "lentokerho",
@@ -29,7 +29,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="fi" className={`${finlandica.variable}`}>
       <body>
-        <main className="max-w-screen min-h-screen flex flex-col overflow-x-hidden relative bg-background text-white font-finlandica">
+        <main className="max-w-screen min-h-screen flex flex-col overflow-x-hidden relative bg-background bg-sblued text-white font-finlandica">
           <Navbar className="text-white" />
           {children}
           <Footer />

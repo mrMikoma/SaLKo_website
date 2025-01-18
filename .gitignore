@@ -1,6 +1,7 @@
 .env
 .env.*
 !.env.template
+lentokerho.sql
 
 /letsencrypt
 /postgres/postgres-data

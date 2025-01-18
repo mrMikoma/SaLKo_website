@@ -55,7 +55,7 @@ const Page = () => {
                 <a
                   key={plane.id}
                   href={`/kalusto/${plane.registeration}`}
-                  className="flex flex-col gap-4 p-4 bg-blue-200 rounded shadow text-black"
+                  className="flex flex-col gap-4 p-4 bg-sbluel rounded shadow text-black"
                 >
                   <h2 className="text-2xl font-bold">{plane.name}</h2>
                   <h3 className="text-xl italic">{plane.name_extended}</h3>

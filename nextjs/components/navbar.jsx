@@ -8,7 +8,7 @@ import { Menu, MenuButton, MenuItems, MenuItem } from "@headlessui/react";
 const Navbar = () => {
   const isLoggedIn = true;
   return (
-    <div className="w-full bg-sblue border-b border-sred">
+    <div className="w-full bg-sblued border-b border-sred">
       <nav className="container relative flex flex-wrap items-center justify-between p-4 px-4">
         {/* Logo and Desktop Navigation */}
         <div className="flex flex-wrap items-center justify-between w-full lg:w-auto">
@@ -178,7 +178,7 @@ const Navbar = () => {
             {({ open }) => (
               <div className="relative">
                 {/* Menu Button for Member Area */}
-                <MenuButton className="px-6 py-2 text-swhite text-xl bg-indigo-600 rounded-md shadow-xl hover:border-2 border-indigo-200">
+                <MenuButton className="px-6 py-2 text-swhite text-xl bg-sblue rounded-md shadow-xl hover:border-2 border-sred">
                   Jäsenalue
                 </MenuButton>
 
@@ -191,7 +191,7 @@ const Navbar = () => {
                   <MenuItem>
                     <Link
                       href="/profiili"
-                      className="block px-4 py-2 text-black rounded-t-md hover:bg-indigo-200"
+                      className="block px-4 py-2 text-black rounded-t-md hover:bg-sbluel"
                     >
                       Profiili
                     </Link>
@@ -199,7 +199,7 @@ const Navbar = () => {
                   <MenuItem>
                     <Link
                       href="/logout"
-                      className="block px-4 py-2 text-black rounded-b-md hover:bg-indigo-200"
+                      className="block px-4 py-2 text-black rounded-b-md hover:bg-sbluel"
                     >
                       Kirjaudu ulos
                     </Link>

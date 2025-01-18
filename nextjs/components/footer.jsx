@@ -18,7 +18,7 @@ export default function Footer() {
     "Tietosuojaseloste",
   ];
   return (
-    <div className="relative bg-sblue text-swhite">
+    <div className="relative bg-sblued text-swhite">
       <Container>
         <div className="grid max-w-screen-xl grid-cols-1 gap-10 pt-10 mx-auto mt-5 border-t border-sred lg:grid-cols-5">
           <div className="lg:col-span-2">
