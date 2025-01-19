@@ -8,25 +8,32 @@ import { fetchDayBookings } from "@/utilities/bookings";
 
 const planes = ["OH-CON", "OH-SEE", "OH-PDX", "OH-816", "OH-829", "OH-475"];
 const flightTypes = [
-  { value: "local", label: "Paikallislento", color: "blue" },
-  { value: "trip", label: "Matkalento", color: "green" },
-  { value: "training", label: "Koululento", color: "yellow" },
-  { value: "maintenance", label: "Huolto", color: "red" },
-  { value: "fire", label: "Palolento", color: "purple" },
-  { value: "other", label: "Muu", color: "gray" },
+  { value: "local", label: "Paikallislento", color: "#ADD8E6" }, // Light Blue
+  { value: "trip", label: "Matkalento", color: "#90EE90" }, // Light Green
+  { value: "training", label: "Koululento", color: "#FFFFE0" }, // Light Yellow
+  { value: "maintenance", label: "Huolto", color: "#FFA07A" }, // Light Coral (Soft Red)
+  { value: "fire", label: "Palolento", color: "#FFECB3" }, // Light Amber (Soft Orange)
+  { value: "other", label: "Muu", color: "#D3D3D3" }, // Light Gray
 ];
 
 const Scheduler = () => {
-  const isLoggedIn = false;
+  const isLoggedIn = true;
+  const userId = "admin";
   const [bookings, setBookings] = useState([]);
   const [selectedPlane, setSelectedPlane] = useState(planes[0]);
   const [selectedDate, setSelectedDate] = useState(null);
   const [fullHours, setFullHours] = useState([]);
   const [previewBooking, setPreviewBooking] = useState(null);
 
-  // Define the initial date as today
+  // Define the initial date as today with Finnish locale
   useEffect(() => {
-    setSelectedDate(new Date().toISOString().split("T")[0]);
+    const today = new Date();
+    const formattedDate = today
+      .toLocaleDateString("fi-FI")
+      .split(".")
+      .reverse()
+      .join("-");
+    setSelectedDate(formattedDate);
   }, []);
 
   // Update full hours when the selected date changes
@@ -61,15 +68,18 @@ const Scheduler = () => {
     console.log("Bookings fetched:", bookings); // debug
   }, [selectedPlane, selectedDate]);
 
+  // Update the preview booking when the form changes
   const handleFormChange = (booking) => {
     setPreviewBooking({ ...booking, plane: selectedPlane });
   };
 
+  // Add a new booking to the list
   const handleAddBooking = (newBooking) => {
     setBookings([...bookings, newBooking]);
     setPreviewBooking(null);
   };
 
+  // Delete a booking from the list
   const handleDeleteBooking = (bookingToDelete) => {
     setBookings((prevBookings) =>
       prevBookings.filter((booking) => booking.id !== bookingToDelete.id)
@@ -120,6 +130,7 @@ const Scheduler = () => {
             {isLoggedIn ? (
               <div className="flex-1 relative w-full min-h-[400px] py-4">
                 <AddBookingForm
+                  userId={userId}
                   plane={selectedPlane}
                   selectedDate={selectedDate}
                   flightTypes={flightTypes}
@@ -130,7 +141,9 @@ const Scheduler = () => {
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center w-1/2 max-w-4xl py-8">
-                <span className="font-semibold text-sred">Kirjaudu sisään varataksesi</span>
+                <span className="font-semibold text-sred">
+                  Kirjaudu sisään varataksesi
+                </span>
                 <button className="bg-sred text-white p-2 mt-4 rounded w-full border">
                   <Link href="/login">Kirjaudu sisään</Link>
                 </button>

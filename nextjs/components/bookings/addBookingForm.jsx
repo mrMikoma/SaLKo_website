@@ -1,8 +1,9 @@
 "use client";
 import { useState } from "react";
-import { addNewBooking } from "@/utilities/bookings";
+import { addBooking } from "@/utilities/bookings";
 
 const AddBookingForm = ({
+  userId,
   plane,
   selectedDate,
   flightTypes,
@@ -31,35 +32,53 @@ const AddBookingForm = ({
   async function handleSubmit(formData) {
     const start = formData.get("start");
     const end = formData.get("end");
+    const type = formData.get("type");
     const title = formData.get("title");
     const description = formData.get("description");
 
     // Show confirmation alert
     const confirmation = confirm(
-      `Vahvistetaanko varaus?\n\nKone: ${plane}\nLennon tyyppi: ${
-        newBooking.type.value
-      }Alkaa: ${new Date(start).toLocaleString("fi-FI", {
+      `Vahvistetaanko varaus?\n\nOtsikko: ${title}\nKone: ${plane}\nLennon tyyppi: ${type}\nAlkaa: ${new Date(
+        start
+      ).toLocaleString("fi-FI", {
         hour: "2-digit",
         minute: "2-digit",
       })}\nPäättyy: ${new Date(end).toLocaleString("fi-FI", {
         hour: "2-digit",
         minute: "2-digit",
-      })}\n\nOtsikko: ${title}\nKuvaus: ${description}\n`
+      })}\nKuvaus: ${description}\n`
     );
 
     if (!confirmation) {
       return; // User canceled the action
     }
 
-    // Perform your booking logic here (e.g., save to database)
-    console.log({ start, end, title, description });
-    // const result = await addNewBooking({
-    //   start,
-    //   end,
-    //   title,
-    //   description,
-    //   plane,
-    // });
+    console.log(start, end, title, description);  // debug
+
+    // Add the booking to the database
+    const result = await addBooking({
+      userId,
+      plane,
+      startTime: start,
+      endTime: end,
+      type,
+      title,
+      description,
+    });
+
+    if (result.status === "success") {
+      onAddBooking({
+        userId,
+        start,
+        end,
+        type,
+        title,
+        description,
+      });
+      alert("Varaus lisätty onnistuneesti");
+    } else {
+      alert("Varauksen lisääminen epäonnistui");
+    }
   }
 
   return (

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import TrashIcon from "../icons/trash";
 import XCrossIcon from "../icons/xCross";
+import { removeBooking } from "@/utilities/bookings";
 
 const Timeline = ({
   fullHours,
@@ -89,19 +90,17 @@ const Timeline = ({
   };
 
   // Handle the delete action with confirmation
-  const handleDelete = (booking) => {
+  const handleDelete = async (booking) => {
     const isConfirmed = window.confirm(
       "Oletko varma, että haluat poistaa tämän varauksen?"
     );
     if (isConfirmed) {
-      if (onDeleteBooking) {
-        onDeleteBooking(booking);
+      const response = await removeBooking(booking.Id);
+      if (response.status === "success") {
+        window.alert(`Varaus "${booking.title}" poistettu onnistuneesti.`);
+      } else {
+        window.alert(`Varauksen poistaminen epäonnistui.\n"${response.result}`);
       }
-      // Show confirmation message
-      setConfirmationMessage(
-        `Varaus "${booking.title}" poistettu onnistuneesti.`
-      );
-      // Clear the active booking
       setActiveBooking(null);
     }
   };
@@ -168,21 +167,25 @@ const Timeline = ({
                     return (
                       <div
                         key={index}
-                        className={`absolute border shadow-sm h-full bg-${backgroundColor}-200 border-${backgroundColor}-400`}
+                        className="absolute border shadow-sm h-full"
                         style={{
                           top: `${topPercentage}%`,
                           height: `${heightPercentage}%`,
                           left: `${colIndex * columnWidth}%`, // Dynamically adjust left position for column
                           width: `${columnWidth}%`,
+                          backgroundColor: flightType?.color || "gray", // Use the color from flightType or default to gray
+                          borderColor: "sblued", // Use the same color for the border
                         }}
                         onMouseEnter={() => handleMouseEnter(res)}
                         onMouseLeave={handleMouseLeave}
                         onClick={() => handleClick(res)} // On click show details
                       >
-                        {res.title}
+                        <span className="text-sblack p-1 font-semibold">
+                          {res.title}
+                        </span>
                         {/* Hover popup - Only show once per continuous booking */}
                         {hoveredBooking === res && (
-                          <div className="absolute left-0 top-0 bg-white border border-gray-300 shadow-lg p-2 rounded">
+                          <div className="absolute left-0 top-0 bg-white border border-gray-300 shadow-lg p-2 rounded z-10">
                             <p>
                               <strong>{res.title}</strong>
                             </p>
@@ -207,7 +210,7 @@ const Timeline = ({
                             <div className="flex flex-row items-center justify-between mb-2">
                               <h3>{res.title}</h3>
                               <button
-                                onClick={() => handleDelete()}
+                                onClick={() => handleDelete(res)}
                                 className="p-2 bg-sred text-white rounded"
                               >
                                 <TrashIcon size={20} />

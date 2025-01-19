@@ -1,6 +1,5 @@
 "use server";
-
-import { z } from "zod";
+import connectionPool from "@/utilities/db";
 
 /*
  * Allowed types
@@ -24,113 +23,13 @@ const allowedPlaneTypes = [
 ];
 
 /*
- * Stub data
- */
-
-const stubBookingData = [
-  {
-    id: 1,
-    plane: "OH-CON",
-    startTime: 1737194400, // 2025-01-18T10:00:00Z in UNIX time
-    endTime: 1737198000, // 2025-01-18T11:00:00Z in UNIX time
-    userId: "admin",
-    type: "trip",
-    title: "Lorem ipsum",
-    description:
-      "Dolore laborum ex officia aliqua proident esse officia veniam id eu aliquip qui incididunt. In magna irure ipsum occaecat. Labore commodo magna qui exercitation ipsum sint et pariatur cupidatat. Pariatur cupidatat quis incididunt officia pariatur non nisi elit. Laboris reprehenderit sit laboris cupidatat aute irure dolore consequat velit consectetur reprehenderit amet.",
-  },
-  {
-    id: 2,
-    plane: "OH-SEE",
-    startTime: 1737194400, // 2025-01-18T10:00:00Z in UNIX time
-    endTime: 1737198000, // 2025-01-18T11:00:00Z in UNIX time
-    userId: "admin",
-    type: "trip",
-    title: "Lorem ipsum",
-    description:
-      "Culpa deserunt consequat ut exercitation irure elit occaecat cillum. Do eiusmod eu culpa aliqua id elit do aliquip dolor ex et. Dolor magna deserunt non velit minim. Anim ipsum Lorem sit ipsum esse do tempor duis tempor in pariatur cillum eiusmod.",
-  },
-  {
-    id: 3,
-    plane: "OH-CON",
-    startTime: 1737280800, // 2025-01-19T10:00:00Z in UNIX time
-    endTime: 1737295200, // 2025-01-19T14:00:00Z in UNIX time
-    userId: "admin",
-    type: "trip",
-    title: "Lorem ipsum",
-    description:
-      "Dolor irure cupidatat aliqua eu labore velit elit id nostrud. Mollit ex",
-  },
-  {
-    id: 4,
-    plane: "OH-SEE",
-    startTime: 1737280800, // 2025-01-19T10:00:00Z in UNIX time
-    endTime: 1737295200, // 2025-01-19T14:00:00Z in UNIX time
-    userId: "admin",
-    type: "trip",
-    title: "Lorem ipsum",
-    description:
-      "Dolor irure cupidatat aliqua eu labore velit elit id nostrud. Mollit ex",
-  },
-  {
-    id: 5,
-    plane: "OH-CON",
-    startTime: 1737367200, // 2025-01-20T10:00:00Z in UNIX time
-    endTime: 1737370800, // 2025-01-20T11:00:00Z in UNIX time
-    userId: "admin",
-    type: "trip",
-    title: "Lorem ipsum",
-    description:
-      "Dolor irure cupidatat aliqua eu labore velit elit id nostrud. Mollit ex",
-  },
-  {
-    id: 6,
-    plane: "OH-SEE",
-    startTime: 1737367200, // 2025-01-20T10:00:00Z in UNIX time
-    endTime: 1737370800, // 2025-01-20T11:00:00Z in UNIX time
-    userId: "admin",
-    type: "trip",
-    title: "Lorem ipsum",
-    description:
-      "Dolor irure cupidatat aliqua eu labore velit elit id nostrud. Mollit ex",
-  },
-  {
-    id: 7,
-    plane: "OH-CON",
-    startTime: 1737453600, // 2025-01-21T10:00:00Z in UNIX time
-    endTime: 1737457200, // 2025-01-21T11:00:00Z in UNIX time
-    userId: "admin",
-    type: "trip",
-    title: "Lorem ipsum",
-    description:
-      "Dolor irure cupidatat aliqua eu labore velit elit id nostrud. Mollit ex",
-  },
-  {
-    id: 8,
-    plane: "OH-CON",
-    startTime: 1737194400, // 2025-01-18T10:00:00Z in UNIX time
-    endTime: 1737198000, // 2025-01-18T11:00:00Z in UNIX time
-    userId: "admin",
-    type: "local",
-    title: "ipsum Lorem",
-    description:
-      "Dolore laborum ex officia aliqua proident esse officia veniam id eu aliquip qui incididunt. In magna irure ipsum occaecat. Labore commodo magna qui exercitation ipsum sint et pariatur cupidatat. Pariatur cupidatat quis incididunt officia pariatur non nisi elit. Laboris reprehenderit sit laboris cupidatat aute irure dolore consequat velit consectetur reprehenderit amet.",
-  },
-];
-/*
  * Fetch day bookings
  */
 
 export async function fetchDayBookings(selectedPlane, selectedDate) {
   try {
-    console.log("Fetching day bookings..."); // debug
-
     let data = [];
 
-    console.log(selectedPlane); // debug
-    console.log(selectedDate); // debug
-
-    // Validate and re-format the parameters
     if (!allowedPlaneTypes.includes(selectedPlane)) {
       throw new Error("Invalid plane type");
     }
@@ -141,33 +40,27 @@ export async function fetchDayBookings(selectedPlane, selectedDate) {
       selectedDate = new Date(selectedDate).getTime() / 1000;
     }
 
-    console.log(selectedDate); // debug
-
-    // Fetch the data from the database
     try {
-      // data = await db.query("SELECT * FROM bookings WHERE plane = ? AND startTime >= ? AND endTime <= ?", [plane, date, date + 86400]);
-      data = stubBookingData.filter(
-        (booking) =>
-          booking.plane === selectedPlane &&
-          booking.startTime >= selectedDate &&
-          booking.endTime <= selectedDate + 86400
+      const response = await connectionPool.query(
+        "SELECT * FROM bookings WHERE plane = $1 AND start_time >= $2 AND end_time <= $3",
+        [selectedPlane, selectedDate, selectedDate + 86400]
       );
+      data = response.rows;
     } catch (error) {
       console.error("Error fetching data:", error);
       return {
         status: "error",
-        result: null,
+        result: error,
       };
     }
 
-    // Format the data
     if (data.length > 0) {
       data = data.map((booking) => {
         return {
           Id: booking.id,
           plane: booking.plane,
-          startTime: booking.startTime,
-          endTime: booking.endTime,
+          startTime: booking.start_time,
+          endTime: booking.end_time,
           userId: booking.userId,
           type: booking.type,
           title: booking.title,
@@ -177,8 +70,6 @@ export async function fetchDayBookings(selectedPlane, selectedDate) {
     } else {
       data = [];
     }
-
-    console.log("Fetching day bookings successful"); // debug
     return {
       status: "success",
       result: data,
@@ -199,54 +90,48 @@ export async function addBooking({
   startTime,
   endTime,
   type,
+  title,
+  description,
 }) {
   try {
-    console.log("Adding new booking..."); // debug
-
-    // Validate the parameters
     if (!allowedPlaneTypes.includes(plane)) {
       throw new Error("Invalid plane type");
-    }
-
-    if (typeof startTime !== "number" || typeof endTime !== "number") {
-      throw new Error("Invalid time parameters");
-    }
-
-    if (startTime >= endTime) {
-      throw new Error("Invalid time range");
-    }
-
-    if (typeof userId !== "string") {
-      throw new Error("Invalid user ID");
     }
 
     if (!allowedFlightTypes.includes(type)) {
       throw new Error("Invalid flight type");
     }
 
-    // Add the data to the database
-    try {
-      // await db.query("INSERT INTO bookings (plane, startTime, endTime, userId, type) VALUES (?, ?, ?, ?, ?)", [plane, startTime, endTime, userId, type]);
-      stubBookingData.push({
-        Id: stubBookingData.length + 1,
-        plane: plane,
-        startTime: startTime,
-        endTime: endTime,
-        userId: userId,
-        type: type,
-      });
-    } catch (error) {
-      console.error("Error adding data:", error);
-      return {
-        status: "error",
-        result: null,
-      };
+    if (typeof startTime !== "number" || typeof endTime !== "number") {
+      const start = new Date(startTime).getTime() / 1000;
+      const end = new Date(endTime).getTime() / 1000;
+
+      if (start >= end) {
+        throw new Error("Invalid time range");
+      }
+    } else {
+      throw new Error("Invalid time format");
     }
 
-    console.log("Adding new booking successful"); // debug
+    if (typeof userId !== "string") {
+      throw new Error("Invalid user ID");
+    }
+
+    try {
+      await connectionPool.query(
+        "INSERT INTO bookings (user_id, plane, start_time, end_time, type, title, description) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
+        [userId, plane, startTime, endTime, type, title, description]
+      );
+    } catch (error) {
+      console.error("Error inserting data:", error);
+      return {
+        status: "error",
+        result: error,
+      };
+    }
     return {
       status: "success",
-      result: null,
+      data: null,
     };
   } catch (error) {
     console.error("Error occured:", error);
@@ -260,26 +145,21 @@ export async function addBooking({
 
 export async function removeBooking(bookingId) {
   try {
-    console.log("Removing booking..."); // debug
-
-    // Validate the parameters
     if (typeof bookingId !== "number") {
       throw new Error("Invalid booking ID");
     }
 
-    // Remove the data from the database
     try {
-      // await db.query("DELETE FROM bookings WHERE id = ?", [bookingId]);
-      console.log(bookingId); // debug
+      await connectionPool.query("DELETE FROM bookings WHERE id = $1", [
+        bookingId,
+      ]);
     } catch (error) {
       console.error("Error removing data:", error);
       return {
         status: "error",
-        result: null,
+        result: error,
       };
     }
-
-    console.log("Removing booking successful"); // debug
     return {
       status: "success",
       result: null,

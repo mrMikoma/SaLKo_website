@@ -1,0 +1,32 @@
+services:
+  postgres:
+    image: "postgres:17.2"
+    container_name: "salko-postgres"
+    ports:
+      - 5432:5432
+    env_file:
+      - .env
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+      - ./init/init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: salko-pgadmin
+    ports:
+      - 5000:80
+    user: "${UID}:${GID}"
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+    volumes:
+      - ./pgadmin-data:/var/lib/pgadmin/
+    restart: unless-stopped
+# docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' salko-postgres
