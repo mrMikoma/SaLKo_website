@@ -40,8 +40,6 @@ services:
   postgres-dev:
     image: "postgres:17.2"
     container_name: ${NAME_PREFIX}-postgres-${DEV_SUFFIX}
-    ports:
-      - ${DEV_POSTGRES_HOST_PORT}:5432
     networks:
       - internal
     environment:
@@ -50,7 +48,7 @@ services:
       - POSTGRES_DB=${DEV_POSTGRES_DB}
     volumes:
       - ./postgres-${DEV_SUFFIX}/postgres-data:/var/lib/postgresql/data
-      - ./postgres-${DEV_SUFFIX}/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./postgres-${DEV_SUFFIX}/init/init.sql:/docker-entrypoint-initdb.d/init.sql
     restart: always
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres"]
@@ -68,9 +66,10 @@ services:
     environment:
       - PORT=${DEV_CONTAINER_PORT}
       - HOSTNAME=${DEV_HOSTNAME}
-    # depends_on:
-    #   postgres-dev:
-    #     condition: service_healthy
+      - DATABASE_CONNECTION_STRING=postgresql://${DEV_POSTGRES_USER}:${DEV_POSTGRES_PASSWORD}@postgres-${DEV_SUFFIX}:${DEV_POSTGRES_HOST_PORT}/${DEV_POSTGRES_DB}
+    depends_on:
+      postgres-dev:
+        condition: service_healthy
     restart: always
     # healthcheck:
     #   test: curl --fail http://localhost:3001/ || exit 1
@@ -124,6 +123,10 @@ services:
     environment:
       - PORT=${PROD_CONTAINER_PORT}
       - HOSTNAME=${PROD_HOSTNAME}
+      - DATABASE_CONNECTION_STRING=postgresql://${PROD_POSTGRES_USER}:${PROD_POSTGRES_PASSWORD}@postgres-${PROD_SUFFIX}:${PROD_POSTGRES_HOST_PORT}/${PROD_POSTGRES_DB}
+    # depends_on:
+    #   postgres-prod:
+    #     condition: service_healthy
     restart: always
     # healthcheck:
     #   test: curl --fail http://localhost:3000/ || exit 1

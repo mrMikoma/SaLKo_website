@@ -57,6 +57,8 @@ const Scheduler = () => {
       const { status, result } = await fetchDayBookingsWithParams();
       if (status === "success") {
         setBookings(result);
+      } else if (status === "error") {
+        console.error("Error fetching bookings:", result);
       } else {
         setBookings([]);
       }

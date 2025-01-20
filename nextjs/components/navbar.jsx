@@ -3,10 +3,20 @@ import Link from "next/link";
 import Image from "next/image";
 import NavbarMobile from "@/components/navbarMobile";
 import ArrowDownIcon from "@/components/icons/arrowDown";
-import { Menu, MenuButton, MenuItems, MenuItem } from "@headlessui/react";
+import Login from "@/components/auth/login";
+import {
+  Menu,
+  MenuButton,
+  MenuItems,
+  MenuItem,
+  Popover,
+  PopoverButton,
+  PopoverPanel,
+} from "@headlessui/react";
+import XCrossIcon from "./icons/xCross";
 
 const Navbar = () => {
-  const isLoggedIn = true;
+  const isLoggedIn = false;
   return (
     <div className="w-full bg-sblued border-b border-sred">
       <nav className="container relative flex flex-wrap items-center justify-between p-4 px-4">
@@ -174,7 +184,7 @@ const Navbar = () => {
 
         {/* Conditionally render Member Area Dropdown if the user is logged in */}
         {isLoggedIn && (
-          <Menu as="div" className="ml-auto relative">
+          <Menu as="div" className="relative">
             {({ open }) => (
               <div className="relative">
                 {/* Menu Button for Member Area */}
@@ -212,14 +222,28 @@ const Navbar = () => {
 
         {/* Non-logged-in Member Area Button */}
         {!isLoggedIn && (
-          <div className="hidden mr-3 space-x-4 lg:flex nav__item">
-            <Link
-              href="/login"
-              className="px-6 py-2 text-swhite text-xl bg-indigo-900 rounded-md md:ml-5"
-            >
+          <Popover className="relative">
+            <PopoverButton className="px-6 py-2 text-swhite text-xl bg-sblue rounded-md shadow-xl hover:border-2 border-sred">
               Jäsenalue
-            </Link>
-          </div>
+            </PopoverButton>
+            <PopoverPanel
+              anchor="bottom start"
+              className="relative w-96 min-h-64 h-auto bg-sbluel rounded-lg shadow-lg z-50 mt-4 transition duration-200 ease-out data-[closed]:scale-95 data-[closed]:opacity-0"
+            >
+              {({ close }) => (
+                <div className="relative p-4">
+                  <button
+                    onClick={close}
+                    className="absolute top-2 right-2 text-sblued hover:text-sred focus:outline-none"
+                    aria-label="Close"
+                  >
+                    <XCrossIcon size={40} />
+                  </button>
+                  <Login />
+                </div>
+              )}
+            </PopoverPanel>
+          </Popover>
         )}
       </nav>
     </div>
