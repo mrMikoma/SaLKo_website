@@ -1,6 +1,14 @@
+"use client";
 import Link from "next/link";
+import { useActionState } from "react";
+import { login } from "@/utilities/auth";
+
+// References:
+// - https://nextjs.org/docs/app/building-your-application/authentication
 
 const Login = () => {
+  const [state, action, pending] = useActionState(login, undefined);
+
   return (
     <div className="flex min-h-full flex-1 flex-col justify-center px-6 py-12 lg:px-8 font-finlandica">
       <div className="sm:mx-auto sm:w-full sm:max-w-sm">
@@ -11,7 +19,7 @@ const Login = () => {
       </div>
 
       <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
-        <form action="#" className="space-y-6">
+        <form action={action} className="space-y-6">
           <div>
             <label
               htmlFor="email"
@@ -30,6 +38,7 @@ const Login = () => {
                 className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-sblued outline outline-1 -outline-offset-1 outline-sblue placeholder:text-text-gray-400 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-sblue sm:text-sm/6"
               />
             </div>
+            {state?.errors?.email && <p>{state.errors.email}</p>}
           </div>
 
           <div>
@@ -62,6 +71,16 @@ const Login = () => {
                 className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-sblued outline outline-1 -outline-offset-1 outline-sblue placeholder:text-text-gray-400 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-sblue sm:text-sm/6"
               />
             </div>
+            {state?.errors?.password && (
+              <div>
+                <p>Salasanan täytyy:</p>
+                <ul>
+                  {state.errors.password.map((error) => (
+                    <li key={error}>- {error}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
 
           <div>
@@ -72,6 +91,15 @@ const Login = () => {
               Kirjaudu sisään
             </button>
           </div>
+          {state?.errors?.general && (
+            <div>
+              <ul className="text-center">
+                {state.errors.general.map((error) => (
+                  <li key={error}>{error}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </form>
 
         <div className="mt-8 text-center">

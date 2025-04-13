@@ -30,7 +30,7 @@ export default function RootLayout({ children }) {
     <html lang="fi" className={`${finlandica.variable}`}>
       <body>
         <main className="max-w-screen min-h-screen flex flex-col overflow-x-hidden relative bg-background bg-sblued text-white font-finlandica">
-          <Navbar className="text-white" />
+          <Navbar />
           {children}
           <Footer />
         </main>
