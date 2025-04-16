@@ -4,18 +4,22 @@ import Container from "./container";
 
 export default function Footer() {
   const firstNavigation = [
-    "Kerho",
-    "Kalusto",
-    "Koulutus",
-    "Historiaa",
-    "Hallit",
-    "Kenttä",
+    { Kerho: "/kerho" },
+    { Kalusto: "/kalusto" },
+    { Koulutus: "/koulutus" },
+    { Historiaa: "/kentta/historiaa" },
+    { Hallit: "/kentta/hallit" },
+    { Kenttä: "/kentta" },
   ];
   const secondNavigation = [
-    "Jäsenyys",
-    "Yhteystiedot",
-    "Varauskalenteri",
-    "Tietosuojaseloste",
+    { Jäsenyys: "/jasenyys" },
+    { Yhteystiedot: "/yhteystiedot" },
+    { Varauskalenteri: "/kalusto/varauskalenteri" },
+    { Tietosuojaseloste: "/" },
+    {
+      "DTO-ilmoitus":
+        "https://docs.google.com/forms/d/e/1FAIpQLScSw5Un81PuQq_cmwmKXVFPFK2IPWo5Bs6uBrrfLUSqyDdIgQ/viewform?pli=1",
+    },
   ];
   return (
     <div className="relative bg-sblued text-swhite">
@@ -47,21 +51,27 @@ export default function Footer() {
 
           <div>
             <div className="flex flex-wrap w-full -mt-2 -ml-3 lg:ml-0 uppercase">
-              {firstNavigation.map((item, index) => (
-                <Link key={index} href="/" className="w-full px-4 py-2">
-                  {item}
-                </Link>
-              ))}
+              {firstNavigation.map((item, index) => {
+                const [key, value] = Object.entries(item)[0];
+                return (
+                  <Link key={index} href={value} className="w-full px-4 py-2">
+                    {key}
+                  </Link>
+                );
+              })}
             </div>
           </div>
 
           <div>
             <div className="flex flex-wrap w-full -mt-2 -ml-3 lg:ml-0 uppercase">
-              {secondNavigation.map((item, index) => (
-                <Link key={index} href="/" className="w-full px-4 py-2">
-                  {item}
-                </Link>
-              ))}
+              {secondNavigation.map((item, index) => {
+                const [key, value] = Object.entries(item)[0];
+                return (
+                  <Link key={index} href={value} className="w-full px-4 py-2">
+                    {key}
+                  </Link>
+                );
+              })}
             </div>
           </div>
         </div>

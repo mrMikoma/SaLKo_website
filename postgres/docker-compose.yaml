@@ -16,17 +16,18 @@ services:
       timeout: 10s
       retries: 5
 
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: salko-pgadmin
-    ports:
-      - 5000:80
-    user: "${UID}:${GID}"
-    env_file:
-      - .env
-    depends_on:
-      - postgres
-    volumes:
-      - ./pgadmin-data:/var/lib/pgadmin/
-    restart: unless-stopped
+#  pgadmin:
+#    image: dpage/pgadmin4:latest
+#    container_name: salko-pgadmin
+#    ports:
+#      - 5000:80
+#    env_file:
+#      - .env
+#    depends_on:
+#      - postgres
+#    volumes:
+#      - ./pgadmin-data:/var/lib/pgadmin
+#    restart: unless-stopped
+
+## Check ip address of postgres container
 # docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' salko-postgres

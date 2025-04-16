@@ -1,0 +1,110 @@
+{
+  "general": {
+    "name": "Savonlinnan Lentokerho r.y.",
+    "address": "Lentoasemantie 50",
+    "city": "Savonlinna",
+    "postalCode": "57310",
+    "country": "Suomi - Finland",
+    "buseinessId": "Y-0481856-3",
+    "IBAN": "FI00 1234 5600 0000 00",
+    "BIC": "OKOYFIxx",
+    "bank": "Säästöpankki"
+  },
+  "board": [
+    {
+      "role": "Puheenjohtaja",
+      "name": "Joonatan Jääskeläinen",
+      "email": "jussi.laine@savonlinnanlentokerho.fi",
+      "phone": "+358"
+    },
+    {
+      "role": "Varapuheenjohtaja",
+      "name": "Jussi Laine",
+      "email": "jussi.laine@savonlinnanlentokerho.fi",
+      "phone": "+358"
+    },
+    {
+      "role": "Koulutuspäällikkö",
+      "name": "Tero Kuutti",
+      "email": "tero.kuutti@savonlinnanlentokerho.fi",
+      "phone": "+358"
+    },
+    {
+      "role": "Rahastonhoitaja",
+      "name": "Simo Marila",
+      "email": "simo.marila@savonlinnanlentokerho.fi",
+      "phone": "+358"
+    },
+    {
+      "role": "Sihteeri",
+      "name": "Miro Brunou",
+      "email": "miro.brunou@savonlinnanlentokerho.fi",
+      "phone": "+358"
+    },
+    {
+      "role": "Hallituksen jäsen",
+      "name": "Miko Mattila",
+      "email": "miko.mattila@savonlinnanlentokerho.fi"
+    }
+  ],
+  "other": [
+    {
+      "role": "Laskutus, maksut ja jäsenasiat",
+      "name": "Simo Marila",
+      "email": "@savonlinnanlentokerho.fi",
+      "phone": "+358"
+    },
+    {
+      "role": "Palolento - Tukikohdan päällikkö",
+      "name": "Jukka Honkanen",
+      "email": "",
+      "phone": "+358"
+    },
+    {
+      "role": "DTO Vastaava",
+      "name": "Joonatan Jääskeläinen",
+      "email": "",
+      "phone": "+358"
+    }
+  ],
+  "instructors": [
+    {
+      "name": "Tero Kuutti",
+      "role": "Päälennonopettaja",
+      "email": "tero.kuutti@savonlinnanlentokerho.fi",
+      "phone": "+358"
+    },
+    {
+      "name": "Pekka Hiltunen",
+      "role": "Tarkastuslentäjä",
+      "email": "",
+      "phone": ""
+    },
+    {
+      "name": "Joonatan Jääskeläinen",
+      "role": "Purjelennonopettaja",
+      "email": "",
+      "phone": ""
+    }
+  ],
+  "towPilots": [
+    {
+      "name": "Ari Kuutti",
+      "role": "Hinauslentäjä",
+      "email": "",
+      "phone": ""
+    },
+    {
+      "name": "Joonatan Jääskeläinen",
+      "role": "Hinauslentäjä",
+      "email": "",
+      "phone": ""
+    },
+    {
+      "name": "Tero Kuutti",
+      "role": "Hinauslentäjä",
+      "email": "",
+      "phone": ""
+    }
+  ]
+}
