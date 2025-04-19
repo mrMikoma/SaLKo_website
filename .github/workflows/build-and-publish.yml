@@ -1,16 +1,31 @@
-name: Docker Publish
+name: Build and Publish
 
 on:
   push:
-    branches: ["main", "dev"]
-    tags: ["v*.*.*"]
-  pull_request:
     branches: ["main", "dev"]
 
 env:
   REGISTRY: ghcr.io
 
 jobs:
+#  test:
+#    runs-on: ubuntu-24.04
+#    steps:
+#      - name: Checkout repository
+#        uses: actions/checkout@v4.2.2
+#
+#      - name: Set up Node.js
+#        uses: actions/setup-node@v4.4.0
+#        with:
+#          node-version: '24'
+#
+#      - name: Run tests
+#        run: |
+#          cd nextjs
+#          npm ci
+#          npm run lint
+#          npm test
+
   build-and-publish:
     runs-on: ubuntu-24.04
     permissions:
@@ -19,13 +34,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3.0.0
 
       - name: Log into registry
-        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3.0.0
         with:
           registry: ${{ env.REGISTRY }}
@@ -34,7 +48,6 @@ jobs:
 
       - name: Determine version
         id: version
-        if: github.event_name != 'pull_request'
         run: |
           # Fetch all tags
           git fetch --tags --all
@@ -59,7 +72,7 @@ jobs:
           echo "new_version=$new_version" >> $GITHUB_ENV
 
       - name: Create Git Tag
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -84,7 +97,6 @@ jobs:
       - name: Extract Docker metadata
         id: meta
         uses: docker/metadata-action@v5.0.0
-        if: github.event_name != 'pull_request'
         with:
           images: ${{ env.image_name }}
           tags: |
@@ -104,3 +116,27 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  trigger-deploy-workflow:
+    if: github.ref == 'refs/heads/dev'
+    needs: build-and-publish
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Trigger deployment via repository dispatch
+        uses: peter-evans/repository-dispatch@v3.0.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          event-type: deploy
+          client-payload: |
+            {
+              "branch_name": "${{ github.ref_name }}",
+              "image_tag_name": "${{ env.image_name }}",
+              "version": "${{ env.new_version }}"
+            }
+      - name: Notify deployment
+        run: |
+          echo "Deployment triggered for version ${{ env.new_version }} in branch ${{ github.ref_name }}."
+          # TODO: Add notification logic here
+          # e.g., send a message to Discord, email etc.
