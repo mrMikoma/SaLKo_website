@@ -53,7 +53,7 @@ const AddBookingForm = ({
       return; // User canceled the action
     }
 
-    console.log(start, end, title, description);  // debug
+    console.log(start, end, title, description); // debug
 
     // Add the booking to the database
     const result = await addBooking({
@@ -112,7 +112,7 @@ const AddBookingForm = ({
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            handleSubmit(new FormData(e.target));
+            handleSubmit(new FormData(e.target as HTMLFormElement));
           }}
           className="flex flex-col space-y-4"
         >
@@ -188,7 +188,7 @@ const AddBookingForm = ({
               <select
                 name="type"
                 id="type"
-                value={newBooking.type.value}
+                value={newBooking.type}
                 onChange={handleChange}
                 className="border border-sblued rounded p-2 w-full lg:w-auto"
               >

@@ -233,7 +233,7 @@ const Navbar = () => {
               {({ close }) => (
                 <div className="relative p-4">
                   <button
-                    onClick={close}
+                    onClick={() => close()}
                     className="absolute top-2 right-2 text-sblued hover:text-sred focus:outline-none"
                     aria-label="Close"
                   >

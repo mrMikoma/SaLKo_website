@@ -11,6 +11,7 @@ const Timeline = ({
   previewBooking,
   selectedPlane,
   flightTypes,
+  onDeleteBooking,
 }) => {
   console.log("Rendering timeline..."); // Debug
   console.log({ bookings }); // Debug
@@ -94,15 +95,9 @@ const Timeline = ({
     const isConfirmed = window.confirm(
       "Oletko varma, että haluat poistaa tämän varauksen?"
     );
-    if (isConfirmed) {
-      const response = await removeBooking(booking.Id);
-      if (response.status === "success") {
-        window.alert(`Varaus "${booking.title}" poistettu onnistuneesti.`);
-      } else {
-        window.alert(`Varauksen poistaminen epäonnistui.\n"${response.result}`);
-      }
+      onDeleteBooking(booking);
       setActiveBooking(null);
-    }
+      setActiveBooking(null);
   };
 
   return (
