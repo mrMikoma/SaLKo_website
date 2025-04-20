@@ -12,8 +12,6 @@ const Bullet = ({ item }) => {
     year: "numeric",
   });
 
-  console.log(item);
-
   return (
     <Disclosure>
       {({ open }) => (

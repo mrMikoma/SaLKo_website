@@ -1,13 +1,22 @@
 "use client";
 import Link from "next/link";
-import { useActionState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useActionState, use } from "react";
 import { login } from "@/utilities/auth";
 
 // References:
 // - https://nextjs.org/docs/app/building-your-application/authentication
 
-const Login = () => {
+const Login = ({ onHandleLogin }: { onHandleLogin: () => void }) => {
   const [state, action, pending] = useActionState(login, undefined);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (state?.status === "success") {
+      router.push("/");
+      onHandleLogin();
+    }
+  }, [state, router]);
 
   return (
     <div className="flex min-h-full flex-1 flex-col justify-center px-6 py-12 lg:px-8 font-finlandica">
@@ -85,6 +94,7 @@ const Login = () => {
 
           <div>
             <button
+              disabled={pending}
               type="submit"
               className="flex w-full justify-center rounded-md bg-sblue px-3 py-1.5 text-md font-semibold tracking-wide text-white shadow-lg hover:bg-sred"
             >

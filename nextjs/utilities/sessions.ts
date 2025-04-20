@@ -6,7 +6,6 @@ import { cookies } from "next/headers";
 
 const secretKey = process.env.SESSION_SECRET;
 const encodedKey = new TextEncoder().encode(secretKey);
-
 const sessionTimeDays = 30; // 30 days
 
 export async function encrypt(payload: SessionPayload) {
@@ -29,7 +28,9 @@ export async function decrypt(session: string | undefined = "") {
 }
 
 export async function createSession(userId: string) {
-  const expiresAt = new Date(Date.now() + sessionTimeDays * 24 * 60 * 60 * 1000);
+  const expiresAt = new Date(
+    Date.now() + sessionTimeDays * 24 * 60 * 60 * 1000
+  );
   const session = await encrypt({ userId, expiresAt });
   const cookieStore = await cookies();
 
@@ -65,4 +66,15 @@ export async function updateSession() {
 export async function deleteSession() {
   const cookieStore = await cookies();
   cookieStore.delete("session");
+}
+
+export async function verifySession() {
+  const session = (await cookies()).get("session")?.value;
+  const payload = await decrypt(session);
+
+  if (!session || !payload) {
+    return null;
+  }
+
+  return payload;
 }

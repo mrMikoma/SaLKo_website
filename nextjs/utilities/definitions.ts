@@ -18,6 +18,7 @@ export const LoginFormSchema = z.object({
 
 export type FormState =
   | {
+      status: string;
       errors?: {
         general?: string[];
         email?: string[];

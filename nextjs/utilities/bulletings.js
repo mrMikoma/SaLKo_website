@@ -6,8 +6,6 @@ import connectionPool from "@/utilities/db";
  */
 export async function fetchLatestFiveBulletings() {
   try {
-    console.log("Fetching newest five bulletins..."); // debug
-
     let data;
     try {
       // Fetch the five newest bulletins from the database with user names
@@ -29,8 +27,6 @@ export async function fetchLatestFiveBulletings() {
 
     // Sort five newest bulletins
     data = data.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
-
-    console.log("Data fetched successfully"); // debug
     return {
       status: "success",
       result: data,

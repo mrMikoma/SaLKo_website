@@ -14,9 +14,46 @@ import {
   PopoverPanel,
 } from "@headlessui/react";
 import XCrossIcon from "./icons/xCross";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Logout from "./auth/logout";
+import { check, set } from "zod";
 
 const Navbar = () => {
-  const isLoggedIn = false;
+  const [authenticated, setAuthenticated] = useState(false);
+  const router = useRouter();
+
+  const handleLogin = () => {
+    router.refresh();
+    checkAuth();
+  };
+
+  const handleLogout = async () => {
+    router.refresh();
+    setAuthenticated(false);
+  };
+
+  const checkAuth = async () => {
+    const response = await fetch("/api/auth/session", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    if (response.ok) {
+      const data = await response.json();
+      if (data.message === "Authorized") {
+        setAuthenticated(true);
+      } else {
+        setAuthenticated(false);
+      }
+    }
+  };
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
   return (
     <div className="w-full bg-sblued border-b border-sred">
       <nav className="container relative flex flex-wrap items-center justify-between p-4 px-4">
@@ -183,7 +220,7 @@ const Navbar = () => {
         </div>
 
         {/* Conditionally render Member Area Dropdown if the user is logged in */}
-        {isLoggedIn && (
+        {authenticated && (
           <Menu as="div" className="relative">
             {({ open }) => (
               <div className="relative">
@@ -207,12 +244,9 @@ const Navbar = () => {
                     </Link>
                   </MenuItem>
                   <MenuItem>
-                    <Link
-                      href="/logout"
-                      className="block px-4 py-2 text-black rounded-b-md hover:bg-sbluel"
-                    >
-                      Kirjaudu ulos
-                    </Link>
+                    <div className="block px-4 py-2 text-black rounded-t-md hover:bg-sbluel">
+                      <Logout onHandleLogout={handleLogout} />
+                    </div>
                   </MenuItem>
                 </MenuItems>
               </div>
@@ -221,7 +255,7 @@ const Navbar = () => {
         )}
 
         {/* Non-logged-in Member Area Button */}
-        {!isLoggedIn && (
+        {!authenticated && (
           <Popover className="relative">
             <PopoverButton className="px-6 py-2 text-swhite text-xl bg-sblue rounded-md shadow-xl hover:border-2 border-sred">
               Jäsenalue
@@ -239,7 +273,7 @@ const Navbar = () => {
                   >
                     <XCrossIcon size={40} />
                   </button>
-                  <Login />
+                  <Login onHandleLogin={handleLogin} />
                 </div>
               )}
             </PopoverPanel>

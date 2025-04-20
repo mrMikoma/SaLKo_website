@@ -2,12 +2,12 @@
 
 import { LoginFormSchema, FormState } from "@/utilities/definitions";
 import connectionPool from "@/utilities/db";
+import { createSession, deleteSession } from "@/utilities/sessions";
 import bcrypt from "bcrypt";
-import { createSession } from "@/utilities/sessions";
+import { redirect } from "next/navigation";
 
-/*
- * Login function to handle user login
- */
+const SALT_ROUNDS = 10;
+
 export async function login(state: FormState, formData: FormData) {
   try {
     console.log("Kirjautumispyyntö vastaanotettu");
@@ -46,7 +46,7 @@ export async function login(state: FormState, formData: FormData) {
     const user = userData.rows[0];
 
     // Compare the provided password with the hashed password in the database
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = password === user.password; // await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return {
         status: "error",
@@ -74,5 +74,15 @@ export async function login(state: FormState, formData: FormData) {
       message: "Tapahtui odottamaton virhe. Yritä myöhemmin uudelleen.",
       error: error instanceof Error ? error.message : "Tuntematon virhe",
     };
+  }
+}
+
+export async function logout() {
+  try {
+    console.log("Kirjautumisen poisto käynnissä");
+    await deleteSession();
+    console.log("Kirjautuminen poistettu onnistuneesti");
+  } catch (error) {
+    console.error("Virhe kirjautumisen poistamisessa:", error);
   }
 }

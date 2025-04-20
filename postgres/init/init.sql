@@ -38,7 +38,7 @@ VALUES
     'Lentokentäntie 50',
     'Savonlinna',
     'admin@savonlinnanlentokerho.fi',
-    'adminpassword'
+    'Admin123!'
   ),
   (
     'user',
@@ -48,7 +48,7 @@ VALUES
     'Lentokentäntie 50',
     'Savonlinna',
     'kayttaja@savonlinnanlentokerho.fi',
-    'userpassword'
+    'Kayttaja123!'
   );
 
 
