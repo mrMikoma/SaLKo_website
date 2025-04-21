@@ -1,7 +1,7 @@
 import { verifySession } from "@/utilities/sessions";
 import connectionPool from "@/utilities/db";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     // User authentication
     const payload = await verifySession();

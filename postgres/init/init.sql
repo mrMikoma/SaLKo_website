@@ -13,8 +13,10 @@ CREATE TABLE
     phone TEXT NOT NULL,
     address TEXT NOT NULL,
     city TEXT NOT NULL,
+    postal_code TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE,
-    password TEXT NOT NULL
+    password TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW()
   );
 
 -- Insert test data into users
@@ -26,6 +28,7 @@ INSERT INTO
     phone,
     address,
     city,
+    postal_code,
     email,
     password
   )
@@ -35,8 +38,9 @@ VALUES
     'Admin',
     'Järjestelmän Valvoja',
     '1234567890',
-    'Lentokentäntie 50',
+    'Lentoasemantie 50',
     'Savonlinna',
+    '57310',
     'admin@savonlinnanlentokerho.fi',
     'Admin123!'
   ),
@@ -45,8 +49,9 @@ VALUES
     'Käyttäjä',
     'SaLKo Käyttäjä',
     '0987654321',
-    'Lentokentäntie 50',
+    'Lentoasemantie 50',
     'Savonlinna',
+    '57310',
     'kayttaja@savonlinnanlentokerho.fi',
     'Kayttaja123!'
   );

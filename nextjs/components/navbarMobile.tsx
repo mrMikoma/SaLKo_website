@@ -41,7 +41,7 @@ const NavbarMobile = () => {
             onClick={handleToggle}
             className="px-2 py-1 ml-auto rounded-md lg:hidden hover:text-indigo-500 focus:text-indigo-500"
           >
-            <MenuIcon size={40}/>
+            <MenuIcon size={60}/>
           </DisclosureButton>
         )}
       </Disclosure>

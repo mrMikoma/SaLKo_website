@@ -27,11 +27,11 @@ export async function decrypt(session: string | undefined = "") {
   }
 }
 
-export async function createSession(userId: string) {
+export async function createSession(userId: string, userName: string) {
   const expiresAt = new Date(
     Date.now() + sessionTimeDays * 24 * 60 * 60 * 1000
   );
-  const session = await encrypt({ userId, expiresAt });
+  const session = await encrypt({ userId, userName, expiresAt });
   const cookieStore = await cookies();
 
   cookieStore.set("session", session, {
@@ -68,6 +68,7 @@ export async function deleteSession() {
   cookieStore.delete("session");
 }
 
+// TODO: Add cache for preventing multiple calls to the database
 export async function verifySession() {
   const session = (await cookies()).get("session")?.value;
   const payload = await decrypt(session);

@@ -17,47 +17,43 @@ import XCrossIcon from "./icons/xCross";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Logout from "./auth/logout";
-import { check, set } from "zod";
+import { getUserName } from "@/utilities/user";
+import { set } from "zod";
 
-const Navbar = () => {
+export interface SessionPayload {
+  userId: string;
+  userName: string;
+  expiresAt: Date;
+}
+
+const Navbar = ({ payload }: { payload: SessionPayload | null }) => {
   const [authenticated, setAuthenticated] = useState(false);
+  const [userName, setUserName] = useState("");
   const router = useRouter();
+
+  useEffect(() => {
+    if (payload) {
+      setAuthenticated(true);
+      setUserName(payload.userName);
+    }
+  }, [payload]);
 
   const handleLogin = () => {
     router.refresh();
-    checkAuth();
+    setAuthenticated(true);
+    setUserName(payload?.userName);
   };
 
   const handleLogout = async () => {
     router.refresh();
     setAuthenticated(false);
+    setUserName("");
   };
-
-  const checkAuth = async () => {
-    const response = await fetch("/api/auth/session", {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-    if (response.ok) {
-      const data = await response.json();
-      if (data.message === "Authorized") {
-        setAuthenticated(true);
-      } else {
-        setAuthenticated(false);
-      }
-    }
-  };
-
-  useEffect(() => {
-    checkAuth();
-  }, []);
 
   return (
     <div className="w-full bg-sblued border-b border-sred">
       <nav className="container relative flex flex-wrap items-center justify-between p-4 px-4">
-        {/* Logo and Desktop Navigation */}
+        {/* Logo and Mobile Menu Toggle */}
         <div className="flex flex-wrap items-center justify-between w-full lg:w-auto">
           <Link href="/">
             <span className="flex items-center space-x-4 text-2xl font-medium">
@@ -221,7 +217,7 @@ const Navbar = () => {
 
         {/* Conditionally render Member Area Dropdown if the user is logged in */}
         {authenticated && (
-          <Menu as="div" className="relative">
+          <Menu as="div" className="relative ml-auto">
             {({ open }) => (
               <div className="relative">
                 {/* Menu Button for Member Area */}
@@ -240,11 +236,11 @@ const Navbar = () => {
                       href="/profiili"
                       className="block px-4 py-2 text-black rounded-t-md hover:bg-sbluel"
                     >
-                      Profiili
+                      Omat tiedot
                     </Link>
                   </MenuItem>
                   <MenuItem>
-                    <div className="block px-4 py-2 text-black rounded-t-md hover:bg-sbluel">
+                    <div className="block px-4 py-2 text-black rounded-b-md hover:bg-sbluel">
                       <Logout onHandleLogout={handleLogout} />
                     </div>
                   </MenuItem>
@@ -279,6 +275,13 @@ const Navbar = () => {
             </PopoverPanel>
           </Popover>
         )}
+
+        {/* Show User Name or Login if not authenticated */}
+        <div className="absolute top-4 right-4">
+          <span className="text-swhite text-md font-semibold whitespace-nowrap">
+            {userName ? userName : "Et ole kirjautunut sisään"}
+          </span>
+        </div>
       </nav>
     </div>
   );

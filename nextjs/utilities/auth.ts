@@ -29,7 +29,7 @@ export async function login(state: FormState, formData: FormData) {
     // Fetch user data from the database
     const { email, password } = validatedFields.data;
     const userData = await connectionPool.query(
-      "SELECT * FROM users WHERE email = $1",
+      "SELECT id, name, password FROM users WHERE email = $1",
       [email]
     );
 
@@ -58,9 +58,9 @@ export async function login(state: FormState, formData: FormData) {
     }
 
     // Create a session for the user
-    await createSession(user.id);
+    await createSession(user.id, user.name);
 
-    console.log("Kirjautuminen onnistui käyttäjälle:", user.email);
+    console.log("Kirjautuminen onnistui käyttäjälle:", user.name);
 
     // If the password is valid, return success
     return {
