@@ -129,8 +129,8 @@ const BookingSection = (isLoggedIn: BookingSectionProps) => {
             />
           </section>
 
-          <section className="flex flex-col items-center justify-center w-full max-w-4xl space-y-4 border my-4">
-            <div className="flex-1 relative w-full bg-swhite">
+          <section className="flex flex-col items-center justify-center w-full max-w-4xl space-y-4 border my-4 bg-swhite">
+            <div className="flex-1 relative w-full">
               <Timeline
                 fullHours={fullHours}
                 bookings={bookings}

@@ -38,7 +38,7 @@ export default async function RootLayout({
     <html lang="fi" className={`${finlandica.variable}`}>
       <body>
         <main className="max-w-screen min-h-screen flex flex-col overflow-x-hidden relative bg-background bg-sblued text-white font-finlandica">
-          {session ? <Navbar payload={session} /> : <Navbar payload={null} />}
+          <Navbar payload={session} />
           {children}
           <Footer />
         </main>
