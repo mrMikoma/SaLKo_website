@@ -185,10 +185,12 @@ const BookingSection = ({ isLoggedIn }: BookingSectionProps) => {
 
   return (
     <div className="p-4 text-black">
+      {/* Date Picker */}
       <div className="flex justify-center items-center mb-4 text-swhite">
         <DatePicker value={selectedDate} onChange={handleDateChange} />
       </div>
 
+      {/* Booking Table */}
       <div className="w-full overflow-auto">
         <table className="w-full border-collapse bg-gray-50 table-fixed">
           <thead>
@@ -260,6 +262,7 @@ const BookingSection = ({ isLoggedIn }: BookingSectionProps) => {
         </table>
       </div>
 
+      {/* Render Booking Modal */}
       {modalMode && (
         <BookingModal
           mode={modalMode}
