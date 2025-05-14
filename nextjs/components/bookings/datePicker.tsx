@@ -36,14 +36,7 @@ const DatePicker = ({ selectedDate, setSelectedDate }) => {
       </div>
       <div className="text-center text-white text-xl mt-2" suppressHydrationWarning>
         Valittu päivä:{" "}
-        <span className="text-sred">
-          {new Date(selectedDate).toLocaleDateString("fi-FI", {
-            weekday: "long",
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          })}
-        </span>
+        <span className="text-sred">{selectedDate}</span>
       </div>
     </div>
   );

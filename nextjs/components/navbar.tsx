@@ -17,8 +17,6 @@ import XCrossIcon from "./icons/xCross";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Logout from "./auth/logout";
-import { getUserName } from "@/utilities/user";
-import { set } from "zod";
 
 export interface SessionPayload {
   userId: string;

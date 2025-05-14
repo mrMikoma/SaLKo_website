@@ -1,7 +1,13 @@
--- Change default encoding
+-- Change encoding to UTF-8
 -- SET client_encoding = 'UTF8';
--- Set the timezone to Europe/Helsinki
+-- Change timezone for Helsinki
 -- SET timezone = 'Europe/Helsinki';
+-- Change locale to Finnish
+-- SET lc_time = 'fi_FI.UTF-8';
+-- SET lc_messages = 'fi_FI.UTF-8';
+-- SET lc_monetary = 'fi_FI.UTF-8';
+-- SET lc_numeric = 'fi_FI.UTF-8';
+
 
 -- Create users table
 CREATE TABLE
@@ -66,6 +72,7 @@ CREATE TABLE
     date BIGINT NOT NULL,
     title TEXT NOT NULL,
     content TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
     FOREIGN KEY (user_id) REFERENCES users (id)
   );
 
@@ -75,11 +82,13 @@ CREATE TABLE
     id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     user_id TEXT NOT NULL,
     plane TEXT NOT NULL,
-    start_time BIGINT NOT NULL,
-    end_time BIGINT NOT NULL,
+    start_time TIMESTAMP NOT NULL,
+    end_time TIMESTAMP NOT NULL,
     type TEXT NOT NULL,
     title TEXT NOT NULL,
     description TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
     FOREIGN KEY (user_id) REFERENCES users (id)
   );
 
@@ -140,20 +149,20 @@ BEGIN
       title,
       description
     )
-  VALUES
+    VALUES
     (
       'OH-CON',
-      1737194400,
-      1737198000,
+      (NOW()::DATE + INTERVAL '8 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14)),
+      (NOW()::DATE + INTERVAL '8 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14) + INTERVAL '1 hour'),
       admin_user_id,
       'trip',
       'Lorem ipsum',
       'Dolore laborum ex officia aliqua proident esse officia veniam id eu aliquip qui incididunt.'
     ),
     (
-      'OH-SEE',
-      1737194400,
-      1737198000,
+      'OH-PDX',
+      (NOW()::DATE + INTERVAL '8 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14)),
+      (NOW()::DATE + INTERVAL '8 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14) + INTERVAL '1 hour'),
       admin_user_id,
       'trip',
       'Lorem ipsum',
@@ -161,35 +170,17 @@ BEGIN
     ),
     (
       'OH-CON',
-      1737280800,
-      1737295200,
+      (NOW()::DATE + INTERVAL '8 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14)),
+      (NOW()::DATE + INTERVAL '8 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14) + INTERVAL '1 hour'),
       admin_user_id,
       'trip',
       'Lorem ipsum',
       'Dolor irure cupidatat aliqua eu labore velit elit id nostrud.'
     ),
     (
-      'OH-SEE',
-      1737280800,
-      1737295200,
-      admin_user_id,
-      'trip',
-      'Lorem ipsum',
-      'Dolor irure cupidatat aliqua eu labore velit elit id nostrud.'
-    ),
-    (
-      'OH-CON',
-      1737367200,
-      1737370800,
-      admin_user_id,
-      'trip',
-      'Lorem ipsum',
-      'Dolor irure cupidatat aliqua eu labore velit elit id nostrud.'
-    ),
-    (
-      'OH-SEE',
-      1737367200,
-      1737370800,
+      'OH-PDX',
+      (NOW()::DATE + INTERVAL '8 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14)),
+      (NOW()::DATE + INTERVAL '8 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14) + INTERVAL '1 hour'),
       admin_user_id,
       'trip',
       'Lorem ipsum',
@@ -197,8 +188,17 @@ BEGIN
     ),
     (
       'OH-CON',
-      1737453600,
-      1737457200,
+      (NOW()::DATE + INTERVAL '8 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14)),
+      (NOW()::DATE + INTERVAL '8 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14) + INTERVAL '1 hour'),
+      admin_user_id,
+      'trip',
+      'Lorem ipsum',
+      'Dolor irure cupidatat aliqua eu labore velit elit id nostrud.'
+    ),
+    (
+      'OH-PDX',
+      (NOW()::DATE + INTERVAL '8 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14)),
+      (NOW()::DATE + INTERVAL '8 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14) + INTERVAL '1 hour'),
       admin_user_id,
       'trip',
       'Lorem ipsum',
@@ -206,11 +206,27 @@ BEGIN
     ),
     (
       'OH-CON',
-      1737194400,
-      1737198000,
+      (NOW()::DATE + INTERVAL '8 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14)),
+      (NOW()::DATE + INTERVAL '8 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14) + INTERVAL '1 hour'),
+      admin_user_id,
+      'trip',
+      'Lorem ipsum',
+      'Dolor irure cupidatat aliqua eu labore velit elit id nostrud.'
+    ),
+    (
+      'OH-CON',
+      (NOW()::DATE + INTERVAL '8 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14)),
+      (NOW()::DATE + INTERVAL '8 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14) + INTERVAL '1 hour'),
       admin_user_id,
       'local',
       'ipsum Lorem',
       'Dolore laborum ex officia aliqua proident esse officia veniam id eu aliquip qui incididunt.'
     );
+
+    -- Replace the end_time with the start_time + random interval
+    -- UPDATE bookings
+    -- SET end_time = start_time + INTERVAL '1 hour' * FLOOR(RANDOM() * 4)
 END $$;
+
+
+

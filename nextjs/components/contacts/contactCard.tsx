@@ -1,4 +1,4 @@
-const PersonCard = ({ member, idx }: { member: any; idx: number }) => {
+const ContactCard = ({ member, idx }: { member: any; idx: number }) => {
   return (
     <div className="flex flex-col w-[350px] sm:w-[450px] items-center p-6 bg-swhite rounded-xl shadow-lg text-sblack">
       <li key={idx} className="w-full max-w-md space-y-4">
@@ -9,25 +9,33 @@ const PersonCard = ({ member, idx }: { member: any; idx: number }) => {
 
         <p className="text-lg font-semibold">
           <strong className="block text-sm text-sblued">Sähköposti:</strong>{" "}
-          <a
-            href={`mailto:${member.email}`}
-            className="underline hover:text-gray-300"
-          >
-            {member.email}
-          </a>
+          {member.email ? (
+            <a
+              href={`mailto:${member.email}`}
+              className="underline hover:text-gray-300"
+            >
+              {member.email}
+            </a>
+          ) : (
+            <span className="text-gray-500">Ei saatavilla</span>
+          )}
         </p>
         <p className="text-lg font-semibold">
           <strong className="block text-sm text-sblued">Puhelin:</strong>{" "}
-          <a
-            href={`tel:${member.phone}`}
-            className="underline hover:text-gray-300"
-          >
-            {member.phone}
-          </a>
+          {member.phone ? (
+            <a
+              href={member.phone ? `tel:${member.phone}` : "#"}
+              className="underline hover:text-gray-300"
+            >
+              {member.phone}
+            </a>
+          ) : (
+            <span className="text-gray-500">Ei saatavilla</span>
+          )}
         </p>
       </li>
     </div>
   );
 };
 
-export default PersonCard;
+export default ContactCard;
