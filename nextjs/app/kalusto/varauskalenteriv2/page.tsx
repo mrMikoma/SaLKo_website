@@ -3,34 +3,36 @@
 import { useState, useMemo } from "react";
 import { DateTime } from "luxon";
 import { Modal, Button } from "antd";
+import BookingCell from "@/components/bookings/bookingCell";
+import DatePicker from "@/components/bookings/datePicker";
 
-interface Task {
+interface Booking {
   id: number;
   user: string;
   startDate: string;
   endDate: string;
-  task: string;
+  booking: string;
   color: string;
 }
 
 const DEFAULT_COLOR = "#1677ff";
-const DEFAULT_TASK: Task = {
+const DEFAULT_BOOKING: Booking = {
   id: -1,
   user: "",
   startDate: "",
   endDate: "",
-  task: "",
+  booking: "",
   color: DEFAULT_COLOR,
 };
 
 const PLANES = ["OH-CON", "OH-PDX", "OH-816", "OH-829", "OH-475", "OH-386"];
-const TASKS: Task[] = [
+const bookingS: Booking[] = [
   {
     id: 1,
     user: "OH-CON",
     startDate: "2025-05-14T01:00:00.000Z",
     endDate: "2025-05-14T04:00:00.000Z",
-    task: "Extended Team Meeting",
+    booking: "Extended Team Meeting",
     color: "#1677ff",
   },
   {
@@ -38,7 +40,7 @@ const TASKS: Task[] = [
     user: "OH-CON",
     startDate: "2025-05-14T04:00:00.000Z",
     endDate: "2025-05-14T05:00:00.000Z",
-    task: "Client Follow-up",
+    booking: "Client Follow-up",
     color: "#52c41a",
   },
   {
@@ -46,7 +48,7 @@ const TASKS: Task[] = [
     user: "OH-CON",
     startDate: "2025-05-14T00:00:00.000Z",
     endDate: "2025-05-14T06:00:00.000Z",
-    task: "Client Follow-up",
+    booking: "Client Follow-up",
     color: "#faad14",
   },
   {
@@ -54,7 +56,7 @@ const TASKS: Task[] = [
     user: "OH-386",
     startDate: "2025-05-14T00:00:00.000Z",
     endDate: "2025-05-14T04:00:00.000Z",
-    task: "Extended Team Meeting",
+    booking: "Extended Team Meeting",
     color: "#1677ff",
   },
 ];
@@ -64,7 +66,7 @@ const TASKS: Task[] = [
     user: "OH-CON",
     startDate: "2025-05-14T01:00:00.000Z",
     endDate: "2025-05-14T05:00:00.000Z",
-    task: "Client Follow-up",
+    booking: "Client Follow-up",
     color: "#52c41a",
   },
   {
@@ -72,7 +74,7 @@ const TASKS: Task[] = [
     user: "OH-CON",
     startDate: "2025-05-14T00:00:00.000Z",
     endDate: "2025-05-14T06:00:00.000Z",
-    task: "Client Follow-up",
+    booking: "Client Follow-up",
     color: "#faad14",
   },
   {
@@ -80,36 +82,14 @@ const TASKS: Task[] = [
     user: "OH-386",
     startDate: "2025-05-14T00:00:00.000Z",
     endDate: "2025-05-14T04:00:00.000Z",
-    task: "Extended Team Meeting",
+    booking: "Extended Team Meeting",
     color: "#1677ff",
   },
 */
 
-const LuxonDatePicker = ({
-  value,
-  onChange,
-}: {
-  value: DateTime;
-  onChange: (date: DateTime | null) => void;
-}) => {
-  return (
-    <input
-      type="date"
-      value={value.toFormat("yyyy-MM-dd")}
-      onChange={(e) => {
-        const newDate = DateTime.fromISO(e.target.value);
-        if (newDate.isValid) {
-          onChange(newDate);
-        }
-      }}
-      className="w-48 p-2 border rounded"
-    />
-  );
-};
-
-const TaskModal = ({
+const BookingModal = ({
   mode,
-  task,
+  booking,
   onSave,
   onUpdate,
   onDelete,
@@ -117,20 +97,20 @@ const TaskModal = ({
   onChange,
 }: {
   mode: "create" | "update";
-  task: Task;
+  booking: Booking;
   onSave: () => void;
   onUpdate: () => void;
   onDelete: () => void;
   onCancel: () => void;
-  onChange: (updatedTask: Task) => void;
+  onChange: (updatedbooking: Booking) => void;
 }) => {
-  const handleChange = (field: keyof Task, value: string) => {
-    onChange({ ...task, [field]: value });
+  const handleChange = (field: keyof Booking, value: string) => {
+    onChange({ ...booking, [field]: value });
   };
 
   return (
     <Modal
-      title={mode === "create" ? "Add Task" : "Update Task"}
+      title={mode === "create" ? "Add booking" : "Update booking"}
       open={true}
       onOk={mode === "create" ? onSave : onUpdate}
       onCancel={onCancel}
@@ -154,14 +134,14 @@ const TaskModal = ({
         </Button>,
       ]}
     >
-      <p>User: {task.user}</p>
+      <p>User: {booking.user}</p>
       <div className="mb-4">
         <label>Start Date:</label>
         <input
           type="datetime-local"
           value={
-            task.startDate
-              ? DateTime.fromISO(task.startDate).toFormat("yyyy-MM-dd'T'HH:mm")
+            booking.startDate
+              ? DateTime.fromISO(booking.startDate).toFormat("yyyy-MM-dd'T'HH:mm")
               : ""
           }
           onChange={(e) => handleChange("startDate", e.target.value)}
@@ -173,8 +153,8 @@ const TaskModal = ({
         <input
           type="datetime-local"
           value={
-            task.endDate
-              ? DateTime.fromISO(task.endDate).toFormat("yyyy-MM-dd'T'HH:mm")
+            booking.endDate
+              ? DateTime.fromISO(booking.endDate).toFormat("yyyy-MM-dd'T'HH:mm")
               : ""
           }
           onChange={(e) => handleChange("endDate", e.target.value)}
@@ -183,9 +163,9 @@ const TaskModal = ({
       </div>
       <input
         type="text"
-        placeholder="Enter task description"
-        value={task.task}
-        onChange={(e) => handleChange("task", e.target.value)}
+        placeholder="Enter booking description"
+        value={booking.booking}
+        onChange={(e) => handleChange("booking", e.target.value)}
         className="border p-2 w-full mb-4"
       />
       <div className="mb-4">{/* Add something */}</div>
@@ -193,95 +173,13 @@ const TaskModal = ({
   );
 };
 
-const TaskCell = ({
-  task,
-  hour,
-  user,
-  onClick,
-}: {
-  task: Task;
-  hour: string;
-  user: string;
-  onClick: () => void;
-}) => {
-  const hourValue = parseInt(hour.split(":")[0]);
-  const span = calculateEventSpan(task, hour, hourValue);
-  if (span === 0) return null;
-
-  const heightPercentage = calculateTaskHeight(task);
-  const top = calculateTaskOffset(task, hour);
-
-  return (
-    <td
-      onDoubleClick={onClick}
-      className="cursor-pointer border border-gray-300 relative"
-      rowSpan={span}
-      data-cell-key={`${user}-${hour}`}
-      style={{ width: "100px", height: "50px", padding: 0 }}
-    >
-      <div
-        className="absolute left-0 right-0 text-white px-2 py-1 overflow-hidden"
-        style={{
-          top: `${top}%`,
-          height: `${heightPercentage}%`,
-          backgroundColor: task.color,
-        }}
-      >
-        <p className="text-sm font-medium text-ellipsis whitespace-nowrap overflow-hidden">
-          {task.task}
-        </p>
-      </div>
-    </td>
-  );
-};
-
-const calculateEventSpan = (task: Task, hour: string, hourValue: number) => {
-  const taskStart = DateTime.fromISO(task.startDate);
-  const taskEnd = DateTime.fromISO(task.endDate);
-  const cellStart = DateTime.fromISO(task.startDate).set({ hour: hourValue });
-  const cellEnd = cellStart.plus({ hours: 1 });
-
-  if (taskStart.hasSame(cellStart, "hour")) {
-    const duration = taskEnd.diff(taskStart, "hours").hours;
-    return Math.ceil(duration);
-  }
-
-  if (taskStart < cellEnd && taskEnd > cellStart) {
-    return 0;
-  }
-
-  return 0;
-};
-
-const calculateTaskHeight = (task: Task) => {
-  const taskStart = DateTime.fromISO(task.startDate);
-  const taskEnd = DateTime.fromISO(task.endDate);
-  const durationTask = taskEnd.diff(taskStart, "hours").hours;
-  const rowSpan = Math.ceil(durationTask);
-  const height = rowSpan > 0 ? (rowSpan / durationTask) * 100 : 100;
-  return height;
-};
-
-const calculateTaskOffset = (task: Task, hour: string) => {
-  const taskStart = DateTime.fromISO(task.startDate);
-  const cellStart = DateTime.fromISO(task.startDate).set({
-    hour: parseInt(hour.split(":")[0]),
-  });
-  let top = 0;
-  let diff = cellStart.diff(taskStart, "hours").hours;
-  if (diff < 0) {
-    top = diff * -100;
-  }
-  return top;
-};
-
 export default function CustomCalendar() {
   const now = DateTime.now();
   const [selectedDate, setSelectedDate] = useState<DateTime>(now);
   const [hourInterval] = useState(1);
   const [modalMode, setModalMode] = useState<"create" | "update" | null>(null);
-  const [taskData, setTaskData] = useState<Task[]>(TASKS);
-  const [selectedTask, setSelectedTask] = useState<Task>(DEFAULT_TASK);
+  const [bookingData, setbookingData] = useState<Booking[]>(bookingS);
+  const [selectedbooking, setSelectedbooking] = useState<Booking>(DEFAULT_BOOKING);
 
   const hours = useMemo(
     () =>
@@ -299,9 +197,9 @@ export default function CustomCalendar() {
   };
 
   const handleCellClick = (user: string, hour: string) => {
-    setSelectedTask({
-      ...DEFAULT_TASK,
-      id: taskData.length + 1,
+    setSelectedbooking({
+      ...DEFAULT_BOOKING,
+      id: bookingData.length + 1,
       user,
       startDate:
         selectedDate.set({ hour: parseInt(hour.split(":")[0]) }).toISO() ?? "",
@@ -314,62 +212,62 @@ export default function CustomCalendar() {
     setModalMode("create");
   };
 
-  const handleTaskClick = (task: Task) => {
-    setSelectedTask(task);
+  const handlebookingClick = (booking: Booking) => {
+    setSelectedbooking(booking);
     setModalMode("update");
   };
 
-  const handleSaveTask = () => {
-    if (!isTaskValid(selectedTask)) return;
+  const handleSavebooking = () => {
+    if (!isbookingValid(selectedbooking)) return;
 
-    setTaskData([...taskData, selectedTask]);
+    setbookingData([...bookingData, selectedbooking]);
     resetModal();
   };
 
-  const handleUpdateTask = () => {
-    if (!isTaskValid(selectedTask)) return;
+  const handleUpdatebooking = () => {
+    if (!isbookingValid(selectedbooking)) return;
 
-    setTaskData((prevTaskData) =>
-      prevTaskData.map((task) =>
-        task.id === selectedTask.id ? selectedTask : task
+    setbookingData((prevbookingData) =>
+      prevbookingData.map((booking) =>
+        booking.id === selectedbooking.id ? selectedbooking : booking
       )
     );
     resetModal();
   };
 
-  const handleDeleteTask = () => {
-    if (selectedTask.id < 0) return;
-    setTaskData((prevTaskData) =>
-      prevTaskData.filter((task) => task.id !== selectedTask.id)
+  const handleDeletebooking = () => {
+    if (selectedbooking.id < 0) return;
+    setbookingData((prevbookingData) =>
+      prevbookingData.filter((booking) => booking.id !== selectedbooking.id)
     );
     resetModal();
   };
 
   const resetModal = () => {
     setModalMode(null);
-    setSelectedTask(DEFAULT_TASK);
+    setSelectedbooking(DEFAULT_BOOKING);
   };
 
-  const isTaskValid = (task: Task) => {
+  const isbookingValid = (booking: Booking) => {
     return (
-      task.color &&
-      task.endDate &&
-      task.id >= 0 &&
-      task.startDate &&
-      task.task &&
-      task.user
+      booking.color &&
+      booking.endDate &&
+      booking.id >= 0 &&
+      booking.startDate &&
+      booking.booking &&
+      booking.user
     );
   };
 
-  const isTaskInSelectedDate = (task: Task) => {
-    const taskDate = DateTime.fromISO(task.startDate);
-    return taskDate.hasSame(selectedDate, "day");
+  const isbookingInSelectedDate = (booking: Booking) => {
+    const bookingDate = DateTime.fromISO(booking.startDate);
+    return bookingDate.hasSame(selectedDate, "day");
   };
 
   return (
     <div className="p-4 text-black">
-      <div className="flex gap-4 mb-4 bg-gray-100 w-fit">
-        <LuxonDatePicker value={selectedDate} onChange={handleDateChange} />
+      <div className="flex justify-center items-center mb-4 text-swhite">
+        <DatePicker value={selectedDate} onChange={handleDateChange} />
       </div>
 
       <div className="w-full overflow-auto">
@@ -400,30 +298,30 @@ export default function CustomCalendar() {
                 </th>
                 {PLANES.map((user) => {
                   const hourValue = parseInt(hour.split(":")[0]);
-                  const tasksForCell = taskData.filter((task) => {
-                    if (!isTaskInSelectedDate(task)) return false;
+                  const bookingsForCell = bookingData.filter((booking) => {
+                    if (!isbookingInSelectedDate(booking)) return false;
 
-                    const taskStart = DateTime.fromISO(task.startDate);
-                    const taskEnd = DateTime.fromISO(task.endDate);
+                    const bookingStart = DateTime.fromISO(booking.startDate);
+                    const bookingEnd = DateTime.fromISO(booking.endDate);
                     return (
-                      task.user === user &&
-                      taskStart.hour <= hourValue &&
-                      taskEnd.hour > hourValue
+                      booking.user === user &&
+                      bookingStart.hour <= hourValue &&
+                      bookingEnd.hour > hourValue
                     );
                   });
 
-                  const primaryTask = tasksForCell.find(
-                    (task) =>
-                      DateTime.fromISO(task.startDate).hour === hourValue
+                  const primarybooking = bookingsForCell.find(
+                    (booking) =>
+                      DateTime.fromISO(booking.startDate).hour === hourValue
                   );
 
-                  return primaryTask ? (
-                    <TaskCell
+                  return primarybooking ? (
+                    <BookingCell
                       key={`${user}-${hour}`}
-                      task={primaryTask}
+                      booking={primarybooking}
                       hour={hour}
                       user={user}
-                      onClick={() => handleTaskClick(primaryTask)}
+                      onClick={() => handlebookingClick(primarybooking)}
                     />
                   ) : (
                     <td
@@ -444,14 +342,14 @@ export default function CustomCalendar() {
       </div>
 
       {modalMode && (
-        <TaskModal
+        <BookingModal
           mode={modalMode}
-          task={selectedTask}
-          onSave={handleSaveTask}
-          onUpdate={handleUpdateTask}
-          onDelete={handleDeleteTask}
+          booking={selectedbooking}
+          onSave={handleSavebooking}
+          onUpdate={handleUpdatebooking}
+          onDelete={handleDeletebooking}
           onCancel={resetModal}
-          onChange={setSelectedTask}
+          onChange={setSelectedbooking}
         />
       )}
     </div>
