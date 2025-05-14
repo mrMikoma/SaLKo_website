@@ -1,178 +1,275 @@
 "use client";
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import Timeline from "@/components/bookings/timeline";
-import AddBookingForm from "@/components/bookings/addBookingForm";
-import DatePicker from "@/components/bookings/datePicker";
-import { fetchDayBookings } from "@/utilities/bookings";
 
-const planesTypes = ["OH-CON", "OH-PDX", "OH-816", "OH-829", "OH-475"];
-const flightTypes = [
-  { value: "local", label: "Paikallislento", color: "#ADD8E6" }, // Light Blue
-  { value: "trip", label: "Matkalento", color: "#90EE90" }, // Light Green
-  { value: "training", label: "Koululento", color: "#FFFFE0" }, // Light Yellow
-  { value: "maintenance", label: "Huolto", color: "#FFA07A" }, // Light Coral (Soft Red)
-  { value: "fire", label: "Palolento", color: "#FFECB3" }, // Light Amber (Soft Orange)
-  { value: "other", label: "Muu", color: "#D3D3D3" }, // Light Gray
+import { useState, useMemo } from "react";
+import { DateTime } from "luxon";
+import BookingCell from "@/components/bookings/bookingCell";
+import DatePicker from "@/components/bookings/datePicker";
+import BookingModal from "@/components/bookings/bookingModal";
+
+interface Booking {
+  id: number;
+  user: string;
+  startDate: string;
+  endDate: string;
+  booking: string;
+  color: string;
+}
+
+const DEFAULT_COLOR = "#1677ff";
+const DEFAULT_BOOKING: Booking = {
+  id: -1,
+  user: "",
+  startDate: "",
+  endDate: "",
+  booking: "",
+  color: DEFAULT_COLOR,
+};
+
+const PLANES = ["OH-CON", "OH-PDX", "OH-816", "OH-829", "OH-475", "OH-386"];
+const bookingS: Booking[] = [
+  {
+    id: 1,
+    user: "OH-CON",
+    startDate: "2025-05-14T01:00:00.000Z",
+    endDate: "2025-05-14T04:00:00.000Z",
+    booking: "Extended Team Meeting",
+    color: "#1677ff",
+  },
+  {
+    id: 2,
+    user: "OH-CON",
+    startDate: "2025-05-14T04:00:00.000Z",
+    endDate: "2025-05-14T05:00:00.000Z",
+    booking: "Client Follow-up",
+    color: "#52c41a",
+  },
+  {
+    id: 3,
+    user: "OH-CON",
+    startDate: "2025-05-14T00:00:00.000Z",
+    endDate: "2025-05-14T06:00:00.000Z",
+    booking: "Client Follow-up",
+    color: "#faad14",
+  },
+  {
+    id: 4,
+    user: "OH-386",
+    startDate: "2025-05-14T00:00:00.000Z",
+    endDate: "2025-05-14T04:00:00.000Z",
+    booking: "Extended Team Meeting",
+    color: "#1677ff",
+  },
 ];
+/*
+  {
+    id: 2,
+    user: "OH-CON",
+    startDate: "2025-05-14T01:00:00.000Z",
+    endDate: "2025-05-14T05:00:00.000Z",
+    booking: "Client Follow-up",
+    color: "#52c41a",
+  },
+  {
+    id: 3,
+    user: "OH-CON",
+    startDate: "2025-05-14T00:00:00.000Z",
+    endDate: "2025-05-14T06:00:00.000Z",
+    booking: "Client Follow-up",
+    color: "#faad14",
+  },
+  {
+    id: 4,
+    user: "OH-386",
+    startDate: "2025-05-14T00:00:00.000Z",
+    endDate: "2025-05-14T04:00:00.000Z",
+    booking: "Extended Team Meeting",
+    color: "#1677ff",
+  },
+*/
 
 interface BookingSectionProps {
   isLoggedIn: boolean;
 }
 
-const BookingSection = (isLoggedIn: BookingSectionProps) => {
-  const userId = "admin";
-  const [bookings, setBookings] = useState([]);
-  const [selectedPlane, setSelectedPlane] = useState(planesTypes[0]);
-  const [selectedDate, setSelectedDate] = useState(null);
-  const [fullHours, setFullHours] = useState([]);
-  const [previewBooking, setPreviewBooking] = useState(null);
+const BookingSection = ({ isLoggedIn }: BookingSectionProps) => {
+  const now = DateTime.now();
+  const [selectedDate, setSelectedDate] = useState<DateTime>(now);
+  const [hourInterval] = useState(1);
+  const [modalMode, setModalMode] = useState<"create" | "update" | null>(null);
+  const [bookingData, setbookingData] = useState<Booking[]>(bookingS);
+  const [selectedbooking, setSelectedbooking] =
+    useState<Booking>(DEFAULT_BOOKING);
 
-  // Define the initial date as today with Finnish locale
-  useEffect(() => {
-    const today = new Date();
-    const formattedDate = today.toISOString().split("T")[0]; // Format date to YYYY-MM-DD
-    setSelectedDate(formattedDate);
-    console.log("Selected date set to today:", formattedDate); // debug
-  }, []);
-
-  // Create a list of full hours for the selected date, always start from 6 AM and end at 23 PM in Helsinki time
-  // output as date objects:
-  // summer time [2023-10-01T06:00:00+03:00, 2023-10-01T07:00:00+03:00, ...]
-  // winter time [2023-10-01T06:00:00+02:00, 2023-10-01T07:00:00+02:00, ...]
-  useEffect(() => {
-    const startHour = 6; // 6 AM
-    const endHour = 23; // 11 PM
-    const hours = [];
-    const date = new Date(selectedDate);
-    const timezoneOffset = date.getTimezoneOffset() * 60 * 1000; // Convert to milliseconds
-    const localDate = new Date(date.getTime() + timezoneOffset); // Adjust to local time
-    const localDateString = localDate.toISOString().split("T")[0]; // Format date to YYYY-MM-DD
-    for (let hour = startHour; hour <= endHour; hour++) {
-      const fullHour = new Date(
-        `${localDateString}T${String(hour).padStart(2, "0")}:00:00`
-      );
-      hours.push(fullHour);
-    }
-    setFullHours(hours);
-  }, [selectedDate]);
-
-  // Fetch bookings for the selected plane and date
-  const fetchDayBookingsWithParams = fetchDayBookings.bind(
-    null,
-    selectedPlane,
-    selectedDate
+  const hours = useMemo(
+    () =>
+      Array.from(
+        { length: 24 / hourInterval },
+        (_, i) => `${i * hourInterval}:00`
+      ),
+    [hourInterval]
   );
-  useEffect(() => {
-    console.log("Fetching bookings for", selectedPlane, selectedDate); // debug
 
-    const updateBookings = async () => {
-      const { status, result } = await fetchDayBookingsWithParams();
-      console.log("Bookings fetched:", result); // debug
-      if (status === "success") {
-        setBookings(result);
-      } else if (status === "error") {
-        console.error("Error fetching bookings:", result);
-      } else {
-        setBookings([]);
-      }
-    };
-
-    if (selectedDate) {
-      updateBookings();
+  const handleDateChange = (date: DateTime | null) => {
+    if (date) {
+      setSelectedDate(date);
     }
-    console.log("Bookings fetched:", bookings); // debug
-  }, [selectedPlane, selectedDate]);
-
-  // Update the preview booking when the form changes
-  const handleFormChange = (booking) => {
-    setPreviewBooking({ ...booking, plane: selectedPlane });
   };
 
-  // Add a new booking to the list
-  const handleAddBooking = (newBooking) => {
-    setBookings([...bookings, newBooking]);
-    setPreviewBooking(null);
+  const handleCellClick = (user: string, hour: string) => {
+    setSelectedbooking({
+      ...DEFAULT_BOOKING,
+      id: bookingData.length + 1,
+      user,
+      startDate:
+        selectedDate.set({ hour: parseInt(hour.split(":")[0]) }).toISO() ?? "",
+      endDate:
+        selectedDate
+          .set({ hour: parseInt(hour.split(":")[0]) })
+          .plus({ hours: hourInterval })
+          .toISO() ?? "",
+    });
+    setModalMode("create");
   };
 
-  // Delete a booking from the list
-  const handleDeleteBooking = (bookingToDelete) => {
-    setBookings((prevBookings) =>
-      prevBookings.filter((booking) => booking.id !== bookingToDelete.id)
+  const handlebookingClick = (booking: Booking) => {
+    setSelectedbooking(booking);
+    setModalMode("update");
+  };
+
+  const handleSavebooking = () => {
+    if (!isbookingValid(selectedbooking)) return;
+
+    setbookingData([...bookingData, selectedbooking]);
+    resetModal();
+  };
+
+  const handleUpdatebooking = () => {
+    if (!isbookingValid(selectedbooking)) return;
+
+    setbookingData((prevbookingData) =>
+      prevbookingData.map((booking) =>
+        booking.id === selectedbooking.id ? selectedbooking : booking
+      )
+    );
+    resetModal();
+  };
+
+  const handleDeletebooking = () => {
+    if (selectedbooking.id < 0) return;
+    setbookingData((prevbookingData) =>
+      prevbookingData.filter((booking) => booking.id !== selectedbooking.id)
+    );
+    resetModal();
+  };
+
+  const resetModal = () => {
+    setModalMode(null);
+    setSelectedbooking(DEFAULT_BOOKING);
+  };
+
+  const isbookingValid = (booking: Booking) => {
+    return (
+      booking.color &&
+      booking.endDate &&
+      booking.id >= 0 &&
+      booking.startDate &&
+      booking.booking &&
+      booking.user
     );
   };
 
+  const isbookingInSelectedDate = (booking: Booking) => {
+    const bookingDate = DateTime.fromISO(booking.startDate);
+    return bookingDate.hasSame(selectedDate, "day");
+  };
+
   return (
-    <div>
-      {selectedDate ? (
-        <div className="flex flex-col items-center justify-center w-full max-w-[1200px] mx-auto">
-          <section className="flex flex-col items-center justify-center w-full max-w-4xl space-y-4">
-            <div className="flex flex-row justify-center w-full border m-4">
-              {planesTypes.map((plane, index) => (
-                <button
-                  key={plane}
-                  onClick={() => setSelectedPlane(plane)}
-                  className={`w-full text-center text-white p-2 ${
-                    selectedPlane === plane ? "bg-sred" : "bg-sbluel"
-                  } ${index > 0 ? "border-l border-white" : ""}`}
+    <div className="p-4 text-black">
+      <div className="flex justify-center items-center mb-4 text-swhite">
+        <DatePicker value={selectedDate} onChange={handleDateChange} />
+      </div>
+
+      <div className="w-full overflow-auto">
+        <table className="w-full border-collapse bg-gray-50 table-fixed">
+          <thead>
+            <tr>
+              <th className="border border-gray-300 p-2 bg-gray-100">HOURS</th>
+              {PLANES.map((user) => (
+                <th
+                  key={user}
+                  className="border border-gray-300 p-2 bg-gray-100"
+                  style={{ height: "50px" }}
                 >
-                  {plane}
-                </button>
+                  {user}
+                </th>
               ))}
-            </div>
-          </section>
+            </tr>
+          </thead>
 
-          <section className="flex flex-col items-center justify-center w-full max-w-4xl space-y-4 text-sred">
-            <DatePicker
-              selectedDate={selectedDate}
-              setSelectedDate={setSelectedDate}
-            />
-          </section>
+          <tbody>
+            {hours.map((hour) => (
+              <tr key={hour}>
+                <th
+                  className="border border-gray-300 p-2 bg-gray-100"
+                  style={{ height: "50px" }}
+                >
+                  {hour}
+                </th>
+                {PLANES.map((user) => {
+                  const hourValue = parseInt(hour.split(":")[0]);
+                  const bookingsForCell = bookingData.filter((booking) => {
+                    if (!isbookingInSelectedDate(booking)) return false;
 
-          <section className="flex flex-col items-center justify-center w-full max-w-4xl space-y-4 border my-4 bg-swhite">
-            <div className="flex-1 relative w-full">
-              <Timeline
-                fullHours={fullHours}
-                bookings={bookings}
-                previewBooking={previewBooking}
-                flightTypes={flightTypes}
-                onDeleteBooking={handleDeleteBooking}
-              />
-            </div>
-          </section>
+                    const bookingStart = DateTime.fromISO(booking.startDate);
+                    const bookingEnd = DateTime.fromISO(booking.endDate);
+                    return (
+                      booking.user === user &&
+                      bookingStart.hour <= hourValue &&
+                      bookingEnd.hour > hourValue
+                    );
+                  });
 
-          <section className="flex flex-col items-center justify-center w-full max-w-4xl space-y-4">
-            {isLoggedIn ? (
-              <div className="flex-1 relative w-full min-h-[400px] py-4">
-                <AddBookingForm
-                  userId={userId}
-                  plane={selectedPlane}
-                  selectedDate={selectedDate}
-                  flightTypes={flightTypes}
-                  fullHours={fullHours}
-                  onAddBooking={handleAddBooking}
-                  onChange={handleFormChange}
-                />
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center w-1/2 max-w-4xl py-8">
-                <span className="font-semibold text-sred">
-                  Kirjaudu sisään jäsenalueelle varataksesi
-                </span>
-              </div>
-            )}
-          </section>
-        </div>
-      ) : (
-        <div className="flex flex-col items-center justify-center w-full max-w-4xl py-8">
-          <span className="font-semibold text-sred">
-            Tapahtui virhe, yritä myöhemmin uudelleen tai ota yhteyttä
-            järjestelmän valvojaan.
-          </span>
-          <button className="mt-4 bg-sred text-white p-2 rounded">
-            <Link href="/yhteystiedot">Yhteystiedot</Link>
-          </button>
-        </div>
+                  const primarybooking = bookingsForCell.find(
+                    (booking) =>
+                      DateTime.fromISO(booking.startDate).hour === hourValue
+                  );
+
+                  return primarybooking ? (
+                    <BookingCell
+                      key={`${user}-${hour}`}
+                      booking={primarybooking}
+                      hour={hour}
+                      user={user}
+                      onClick={() => handlebookingClick(primarybooking)}
+                    />
+                  ) : (
+                    <td
+                      key={`${user}-${hour}`}
+                      onClick={() => handleCellClick(user, hour)}
+                      className="cursor-pointer border border-gray-300 p-2"
+                      data-cell-key={`${user}-${hour}`}
+                      style={{ height: "50px" }}
+                    >
+                      <div></div>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {modalMode && (
+        <BookingModal
+          mode={modalMode}
+          booking={selectedbooking}
+          onSave={handleSavebooking}
+          onUpdate={handleUpdatebooking}
+          onDelete={handleDeletebooking}
+          onCancel={resetModal}
+          onChange={setSelectedbooking}
+        />
       )}
     </div>
   );
