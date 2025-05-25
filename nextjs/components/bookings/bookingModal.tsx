@@ -28,7 +28,7 @@ const BookingModal = ({
 
   return (
     <Modal
-      title={mode === "create" ? "Add booking" : "Update booking"}
+      title={mode === "create" ? "Uusi varaus" : "Päivitä varaustietoja"}
       open={true}
       onOk={mode === "create" ? onSave : onUpdate}
       onCancel={onCancel}
@@ -36,19 +36,20 @@ const BookingModal = ({
       cancelText="Cancel"
       footer={[
         <Button key="cancel" onClick={onCancel}>
-          Cancel
+          Peruuta
         </Button>,
         mode === "update" && (
           <Button key="delete" danger onClick={onDelete}>
-            Delete
+            Poista
           </Button>
         ),
         <Button
           key="submit"
           type="primary"
+          className="bg-sblue"
           onClick={mode === "create" ? onSave : onUpdate}
         >
-          {mode === "create" ? "Save" : "Update"}
+          {mode === "create" ? "Tallenna" : "Päivitä"}
         </Button>,
       ]}
     >

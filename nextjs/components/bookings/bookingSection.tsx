@@ -4,9 +4,13 @@ import { useState, useMemo, useEffect } from "react";
 import { DateTime } from "luxon";
 import BookingCell from "@/components/bookings/bookingCell";
 import DatePicker from "@/components/bookings/datePicker";
-import BookingModal from "@/components/bookings/bookingModal";
+import BookingUpdateModal from "@/components/bookings/bookingModal";
 import { fetchDayBookings } from "@/utilities/bookings";
 import { BookingType } from "@/utilities/bookings";
+
+/*
+ * Types and Constants
+ */
 
 const DEFAULT_BOOKING: BookingType = {
   id: -1,
@@ -42,6 +46,11 @@ interface BookingSectionProps {
   isLoggedIn: boolean;
 }
 
+/*
+ * BookingSection Component
+ * Displays a booking calendar with date selection, booking cells, and a modal for creating/updating bookings.
+ */
+
 const BookingSection = ({ isLoggedIn }: BookingSectionProps) => {
   const now = DateTime.now();
   const [selectedDate, setSelectedDate] = useState<DateTime>(now);
@@ -51,7 +60,6 @@ const BookingSection = ({ isLoggedIn }: BookingSectionProps) => {
   const [selectedbooking, setSelectedbooking] =
     useState<BookingType>(DEFAULT_BOOKING);
 
-  // NOT IN USE AS OF NOW
   useEffect(() => {
     const fetchBookings = async () => {
       try {
@@ -293,7 +301,7 @@ const BookingSection = ({ isLoggedIn }: BookingSectionProps) => {
 
       {/* Render Booking Modal */}
       {modalMode && (
-        <BookingModal
+        <BookingUpdateModal
           mode={modalMode}
           booking={selectedbooking}
           onSave={handleSavebooking}
@@ -308,195 +316,3 @@ const BookingSection = ({ isLoggedIn }: BookingSectionProps) => {
 };
 
 export default BookingSection;
-
-const bookingS: BookingType[] = [
-  {
-    id: 1,
-    user_id: "user1",
-    start_time: "2025-05-25T02:00:00.000Z",
-    end_time: "2025-05-25T04:00:00.000Z",
-    full_name: "Test User 1",
-    title: "Test Booking 1",
-    type: "local",
-    plane: "OH-CON",
-    description: "This is a test booking 1",
-  },
-  {
-    id: 2,
-    user_id: "user2",
-    start_time: "2025-05-25T05:00:00.000Z",
-    end_time: "2025-05-25T07:00:00.000Z",
-    full_name: "Test User 2",
-    title: "Test Booking 2",
-    type: "training",
-    plane: "OH-PDX",
-    description: "This is a test booking 2",
-  },
-  {
-    id: 3,
-    user_id: "user3",
-    start_time: "2025-05-25T08:00:00.000Z",
-    end_time: "2025-05-25T09:00:00.000Z",
-    full_name: "Test User 3",
-    title: "Test Booking 3",
-    type: "maintenance",
-    plane: "OH-816",
-    description: "This is a test booking 3",
-  },
-  {
-    id: 4,
-    user_id: "user4",
-    start_time: "2025-05-25T10:00:00.000Z",
-    end_time: "2025-05-25T12:00:00.000Z",
-    full_name: "Test User 4",
-    title: "Test Booking 4",
-    type: "local",
-    plane: "OH-829",
-    description: "This is a test booking 4",
-  },
-  {
-    id: 5,
-    user_id: "user5",
-    start_time: "2025-05-25T13:00:00.000Z",
-    end_time: "2025-05-25T14:00:00.000Z",
-    full_name: "Test User 5",
-    title: "Test Booking 5",
-    type: "training",
-    plane: "OH-475",
-    description: "This is a test booking 5",
-  },
-  {
-    id: 6,
-    user_id: "user6",
-    start_time: "2025-05-25T15:00:00.000Z",
-    end_time: "2025-05-25T16:00:00.000Z",
-    full_name: "Test User 6",
-    title: "Test Booking 6",
-    type: "local",
-    plane: "OH-386",
-    description: "This is a test booking 6",
-  },
-  {
-    id: 7,
-    user_id: "user7",
-    start_time: "2025-05-25T17:00:00.000Z",
-    end_time: "2025-05-25T18:00:00.000Z",
-    full_name: "Test User 7",
-    title: "Test Booking 7",
-    type: "maintenance",
-    plane: "OH-CON",
-    description: "This is a test booking 7",
-  },
-  {
-    id: 8,
-    user_id: "user8",
-    start_time: "2025-05-25T19:00:00.000Z",
-    end_time: "2025-05-25T20:00:00.000Z",
-    full_name: "Test User 8",
-    title: "Test Booking 8",
-    type: "training",
-    plane: "OH-PDX",
-    description: "This is a test booking 8",
-  },
-  {
-    id: 9,
-    user_id: "user9",
-    start_time: "2025-05-25T21:00:00.000Z",
-    end_time: "2025-05-25T22:00:00.000Z",
-    full_name: "Test User 9",
-    title: "Test Booking 9",
-    type: "local",
-    plane: "OH-816",
-    description: "This is a test booking 9",
-  },
-  {
-    id: 10,
-    user_id: "user10",
-    start_time: "2025-05-25T23:00:00.000Z",
-    end_time: "2025-05-26T00:00:00.000Z",
-    full_name: "Test User 10",
-    title: "Test Booking 10",
-    type: "maintenance",
-    plane: "OH-829",
-    description: "This is a test booking 10",
-  },
-  // Overlapping bookings
-  {
-    id: 11,
-    user_id: "user11",
-    start_time: "2025-05-25T03:00:00.000Z",
-    end_time: "2025-05-25T05:00:00.000Z",
-    full_name: "Test User 11",
-    title: "Overlapping Booking 1",
-    type: "local",
-    plane: "OH-CON",
-    description: "This is an overlapping booking 1",
-  },
-  {
-    id: 12,
-    user_id: "user12",
-    start_time: "2025-05-25T06:00:00.000Z",
-    end_time: "2025-05-25T08:00:00.000Z",
-    full_name: "Test User 12",
-    title: "Overlapping Booking 2",
-    type: "training",
-    plane: "OH-PDX",
-    description: "This is an overlapping booking 2",
-  },
-  {
-    id: 13,
-    user_id: "user13",
-    start_time: "2025-05-25T08:30:00.000Z",
-    end_time: "2025-05-25T10:00:00.000Z",
-    full_name: "Test User 13",
-    title: "Overlapping Booking 3",
-    type: "maintenance",
-    plane: "OH-816",
-    description: "This is an overlapping booking 3",
-  },
-  {
-    id: 14,
-    user_id: "user14",
-    start_time: "2025-05-25T11:00:00.000Z",
-    end_time: "2025-05-25T13:00:00.000Z",
-    full_name: "Test User 14",
-    title: "Overlapping Booking 4",
-    type: "local",
-    plane: "OH-829",
-    description: "This is an overlapping booking 4",
-  },
-  // Multiday bookings
-  {
-    id: 15,
-    user_id: "user15",
-    start_time: "2025-05-24T10:00:00.000Z",
-    end_time: "2025-05-26T10:00:00.000Z",
-    full_name: "Test User 15",
-    title: "Multiday Maintenance 1",
-    type: "maintenance",
-    plane: "OH-CON",
-    description: "This is a multiday maintenance booking 1",
-  },
-  {
-    id: 16,
-    user_id: "user16",
-    start_time: "2025-05-23T08:00:00.000Z",
-    end_time: "2025-05-25T18:00:00.000Z",
-    full_name: "Test User 16",
-    title: "Multiday Maintenance 2",
-    type: "maintenance",
-    plane: "OH-PDX",
-    description: "This is a multiday maintenance booking 2",
-  },
-  {
-    id: 17,
-    user_id: "user17",
-    start_time: "2025-05-25T12:00:00.000Z",
-    end_time: "2025-05-27T12:00:00.000Z",
-    full_name: "Test User 17",
-    title: "Multiday Maintenance 3",
-    type: "maintenance",
-    plane: "OH-816",
-    description: "This is a multiday maintenance booking 3",
-  },
-];
