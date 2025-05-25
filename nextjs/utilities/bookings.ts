@@ -19,18 +19,19 @@ const allowedPlaneTypes: string[] = [
   "OH-816",
   "OH-829",
   "OH-475",
+  "OH-386",
 ];
 
 /*
  * Types
  */
 
-interface Booking {
-  id: string;
+export interface BookingType {
+  id: number;
   user_id: string;
   title: string;
-  start_time: number;
-  end_time: number;
+  start_time: string;
+  end_time: string;
   type: string;
   plane: string;
   description: string;
@@ -46,10 +47,14 @@ interface AddBookingParams {
   description: string;
 }
 
+/*
+ * Functions
+ */
+
 export async function fetchDayBookings(
   selectedPlane: string,
   selectedDate: string
-): Promise<{ status: string; result: Booking[] | Error }> {
+): Promise<{ status: string; result: BookingType[] | Error }> {
   try {
     if (!allowedPlaneTypes.includes(selectedPlane)) {
       console.error("Invalid plane type");
@@ -77,7 +82,7 @@ export async function fetchDayBookings(
         `SELECT b.id, b.plane, b.start_time, b.end_time, u.full_name, b.type, b.title, b.description
          FROM bookings b
          JOIN users u ON b.user_id = u.id
-         WHERE b.plane = $1 AND b.start_time::date = $2`,
+         WHERE b.plane = $1 AND b.start_time::date = $2`, // TODO: Should be fixed to match timezone deviation
         [selectedPlane, selectedDate]
       );
       console.log("Response from database:", response.rows); // debug
@@ -87,6 +92,7 @@ export async function fetchDayBookings(
           result: [],
         };
       } else {
+        console.log("Bookings found:", response.rows); // debug
         return {
           status: "success",
           result: response.rows,
@@ -187,44 +193,4 @@ export async function removeBooking(
     console.error("Error occurred:", error);
     throw error;
   }
-}
-
-// This function arranges bookings into columns if there are overlapping bookings
-// It takes an array of bookings and returns a 2D array of bookings
-// Each inner array represents a column of bookings
-// The function assumes that the bookings are sorted by start_time
-// If there are overlapping bookings, they will be arranged into separate columns
-export async function arrangeBookingsColumns(
-  bookings: Booking[]
-): Promise<Booking[][]> {
-  const columns: Booking[][] = [];
-  const sortedBookings = bookings.sort(
-    (a, b) =>
-      new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
-  );
-
-  for (const booking of sortedBookings) {
-    let placed = false;
-
-    for (const column of columns) {
-      const lastBooking = column[column.length - 1];
-
-      if (
-        new Date(booking.start_time).getTime() >=
-          new Date(lastBooking.end_time).getTime() ||
-        new Date(booking.end_time).getTime() <=
-          new Date(lastBooking.start_time).getTime()
-      ) {
-        column.push(booking);
-        placed = true;
-        break;
-      }
-    }
-
-    if (!placed) {
-      columns.push([booking]);
-    }
-  }
-
-  return columns;
 }

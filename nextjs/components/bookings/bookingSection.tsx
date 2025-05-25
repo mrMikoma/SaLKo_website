@@ -1,91 +1,25 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { DateTime } from "luxon";
 import BookingCell from "@/components/bookings/bookingCell";
 import DatePicker from "@/components/bookings/datePicker";
 import BookingModal from "@/components/bookings/bookingModal";
+import { fetchDayBookings } from "@/utilities/bookings";
+import { BookingType } from "@/utilities/bookings";
 
-interface Booking {
-  id: number;
-  user: string;
-  startDate: string;
-  endDate: string;
-  booking: string;
-  color: string;
-}
-
-const DEFAULT_COLOR = "#1677ff";
-const DEFAULT_BOOKING: Booking = {
+const DEFAULT_BOOKING: BookingType = {
   id: -1,
-  user: "",
-  startDate: "",
-  endDate: "",
-  booking: "",
-  color: DEFAULT_COLOR,
+  user_id: "",
+  title: "",
+  start_time: "",
+  end_time: "",
+  type: "other",
+  plane: "",
+  description: "",
 };
 
 const PLANES = ["OH-CON", "OH-PDX", "OH-816", "OH-829", "OH-475", "OH-386"];
-const bookingS: Booking[] = [
-  {
-    id: 1,
-    user: "OH-CON",
-    startDate: "2025-05-14T01:00:00.000Z",
-    endDate: "2025-05-14T04:00:00.000Z",
-    booking: "Extended Team Meeting",
-    color: "#1677ff",
-  },
-  {
-    id: 2,
-    user: "OH-CON",
-    startDate: "2025-05-14T04:00:00.000Z",
-    endDate: "2025-05-14T05:00:00.000Z",
-    booking: "Client Follow-up",
-    color: "#52c41a",
-  },
-  {
-    id: 3,
-    user: "OH-CON",
-    startDate: "2025-05-14T00:00:00.000Z",
-    endDate: "2025-05-14T06:00:00.000Z",
-    booking: "Client Follow-up",
-    color: "#faad14",
-  },
-  {
-    id: 4,
-    user: "OH-386",
-    startDate: "2025-05-14T00:00:00.000Z",
-    endDate: "2025-05-14T04:00:00.000Z",
-    booking: "Extended Team Meeting",
-    color: "#1677ff",
-  },
-];
-/*
-  {
-    id: 2,
-    user: "OH-CON",
-    startDate: "2025-05-14T01:00:00.000Z",
-    endDate: "2025-05-14T05:00:00.000Z",
-    booking: "Client Follow-up",
-    color: "#52c41a",
-  },
-  {
-    id: 3,
-    user: "OH-CON",
-    startDate: "2025-05-14T00:00:00.000Z",
-    endDate: "2025-05-14T06:00:00.000Z",
-    booking: "Client Follow-up",
-    color: "#faad14",
-  },
-  {
-    id: 4,
-    user: "OH-386",
-    startDate: "2025-05-14T00:00:00.000Z",
-    endDate: "2025-05-14T04:00:00.000Z",
-    booking: "Extended Team Meeting",
-    color: "#1677ff",
-  },
-*/
 
 interface BookingSectionProps {
   isLoggedIn: boolean;
@@ -96,9 +30,33 @@ const BookingSection = ({ isLoggedIn }: BookingSectionProps) => {
   const [selectedDate, setSelectedDate] = useState<DateTime>(now);
   const [hourInterval] = useState(1);
   const [modalMode, setModalMode] = useState<"create" | "update" | null>(null);
-  const [bookingData, setbookingData] = useState<Booking[]>(bookingS);
+  const [bookingData, setbookingData] = useState<BookingType[]>(bookingS);
   const [selectedbooking, setSelectedbooking] =
-    useState<Booking>(DEFAULT_BOOKING);
+    useState<BookingType>(DEFAULT_BOOKING);
+
+  // NOT IN USE AS OF NOW
+  useEffect(() => {
+    const fetchBookings = async () => {
+      try {
+        const promises = PLANES.map((plane) =>
+          fetchDayBookings(plane, selectedDate.toISODate() ?? "")
+        );
+        const results = await Promise.all(promises);
+
+        console.log("FETCHED BOOKINGS:", results);
+
+        const fetchedBookings: BookingType[] = results
+          .filter((result) => result.status === "success")
+          .flatMap((result) => result.result as BookingType[]);
+
+        // setbookingData(fetchedBookings);
+      } catch (error) {
+        console.error("Error fetching bookings:", error);
+      }
+    };
+
+    fetchBookings();
+  }, [selectedDate]);
 
   const hours = useMemo(
     () =>
@@ -115,14 +73,14 @@ const BookingSection = ({ isLoggedIn }: BookingSectionProps) => {
     }
   };
 
-  const handleCellClick = (user: string, hour: string) => {
+  const handleCellClick = (plane: string, hour: string) => {
     setSelectedbooking({
       ...DEFAULT_BOOKING,
       id: bookingData.length + 1,
-      user,
-      startDate:
+      plane,
+      start_time:
         selectedDate.set({ hour: parseInt(hour.split(":")[0]) }).toISO() ?? "",
-      endDate:
+      end_time:
         selectedDate
           .set({ hour: parseInt(hour.split(":")[0]) })
           .plus({ hours: hourInterval })
@@ -131,7 +89,7 @@ const BookingSection = ({ isLoggedIn }: BookingSectionProps) => {
     setModalMode("create");
   };
 
-  const handlebookingClick = (booking: Booking) => {
+  const handlebookingClick = (booking: BookingType) => {
     setSelectedbooking(booking);
     setModalMode("update");
   };
@@ -167,19 +125,19 @@ const BookingSection = ({ isLoggedIn }: BookingSectionProps) => {
     setSelectedbooking(DEFAULT_BOOKING);
   };
 
-  const isbookingValid = (booking: Booking) => {
+  const isbookingValid = (booking: BookingType) => {
     return (
-      booking.color &&
-      booking.endDate &&
+      booking.end_time &&
       booking.id >= 0 &&
-      booking.startDate &&
-      booking.booking &&
-      booking.user
+      booking.start_time &&
+      booking.title &&
+      booking.type &&
+      booking.plane
     );
   };
 
-  const isbookingInSelectedDate = (booking: Booking) => {
-    const bookingDate = DateTime.fromISO(booking.startDate);
+  const isbookingInSelectedDate = (booking: BookingType) => {
+    const bookingDate = DateTime.fromISO(booking.start_time);
     return bookingDate.hasSame(selectedDate, "day");
   };
 
@@ -196,13 +154,13 @@ const BookingSection = ({ isLoggedIn }: BookingSectionProps) => {
           <thead>
             <tr>
               <th className="border border-gray-300 p-2 bg-gray-100">HOURS</th>
-              {PLANES.map((user) => (
+              {PLANES.map((plane) => (
                 <th
-                  key={user}
+                  key={plane}
                   className="border border-gray-300 p-2 bg-gray-100"
                   style={{ height: "50px" }}
                 >
-                  {user}
+                  {plane}
                 </th>
               ))}
             </tr>
@@ -217,15 +175,15 @@ const BookingSection = ({ isLoggedIn }: BookingSectionProps) => {
                 >
                   {hour}
                 </th>
-                {PLANES.map((user) => {
+                {PLANES.map((plane) => {
                   const hourValue = parseInt(hour.split(":")[0]);
                   const bookingsForCell = bookingData.filter((booking) => {
                     if (!isbookingInSelectedDate(booking)) return false;
 
-                    const bookingStart = DateTime.fromISO(booking.startDate);
-                    const bookingEnd = DateTime.fromISO(booking.endDate);
+                    const bookingStart = DateTime.fromISO(booking.start_time);
+                    const bookingEnd = DateTime.fromISO(booking.end_time);
                     return (
-                      booking.user === user &&
+                      booking.plane === plane &&
                       bookingStart.hour <= hourValue &&
                       bookingEnd.hour > hourValue
                     );
@@ -233,23 +191,39 @@ const BookingSection = ({ isLoggedIn }: BookingSectionProps) => {
 
                   const primarybooking = bookingsForCell.find(
                     (booking) =>
-                      DateTime.fromISO(booking.startDate).hour === hourValue
+                      DateTime.fromISO(booking.start_time).hour === hourValue
                   );
 
-                  return primarybooking ? (
-                    <BookingCell
-                      key={`${user}-${hour}`}
-                      booking={primarybooking}
-                      hour={hour}
-                      user={user}
-                      onClick={() => handlebookingClick(primarybooking)}
-                    />
-                  ) : (
+                  if (primarybooking) {
+                    return (
+                      <BookingCell
+                        key={`${plane}-${hour}`}
+                        booking={primarybooking}
+                        hour={hour}
+                        plane={plane}
+                        onClick={() => handlebookingClick(primarybooking)}
+                      />
+                    );
+                  }
+
+                  const isOccupied = bookingData.some((booking) => {
+                    if (!isbookingInSelectedDate(booking)) return false;
+
+                    const bookingStart = DateTime.fromISO(booking.start_time);
+                    const bookingEnd = DateTime.fromISO(booking.end_time);
+                    return (
+                      booking.plane === plane &&
+                      bookingStart.hour < hourValue &&
+                      bookingEnd.hour > hourValue
+                    );
+                  });
+
+                  return isOccupied ? null : (
                     <td
-                      key={`${user}-${hour}`}
-                      onClick={() => handleCellClick(user, hour)}
+                      key={`${plane}-${hour}`}
+                      onClick={() => handleCellClick(plane, hour)}
                       className="cursor-pointer border border-gray-300 p-2"
-                      data-cell-key={`${user}-${hour}`}
+                      data-cell-key={`${plane}-${hour}`}
                       style={{ height: "50px" }}
                     >
                       <div></div>
@@ -279,3 +253,147 @@ const BookingSection = ({ isLoggedIn }: BookingSectionProps) => {
 };
 
 export default BookingSection;
+
+const bookingS: BookingType[] = [
+  {
+    id: 1,
+    user_id: "user1",
+    start_time: "2025-05-25T02:00:00.000Z",
+    end_time: "2025-05-25T04:00:00.000Z",
+    title: "Test Booking 1",
+    type: "local",
+    plane: "OH-CON",
+    description: "This is a test booking 1",
+  },
+  {
+    id: 2,
+    user_id: "user2",
+    start_time: "2025-05-25T05:00:00.000Z",
+    end_time: "2025-05-25T07:00:00.000Z",
+    title: "Test Booking 2",
+    type: "training",
+    plane: "OH-PDX",
+    description: "This is a test booking 2",
+  },
+  {
+    id: 3,
+    user_id: "user3",
+    start_time: "2025-05-25T08:00:00.000Z",
+    end_time: "2025-05-25T09:00:00.000Z",
+    title: "Test Booking 3",
+    type: "maintenance",
+    plane: "OH-816",
+    description: "This is a test booking 3",
+  },
+  {
+    id: 4,
+    user_id: "user4",
+    start_time: "2025-05-25T10:00:00.000Z",
+    end_time: "2025-05-25T12:00:00.000Z",
+    title: "Test Booking 4",
+    type: "local",
+    plane: "OH-829",
+    description: "This is a test booking 4",
+  },
+  {
+    id: 5,
+    user_id: "user5",
+    start_time: "2025-05-25T13:00:00.000Z",
+    end_time: "2025-05-25T14:00:00.000Z",
+    title: "Test Booking 5",
+    type: "training",
+    plane: "OH-475",
+    description: "This is a test booking 5",
+  },
+  {
+    id: 6,
+    user_id: "user6",
+    start_time: "2025-05-25T15:00:00.000Z",
+    end_time: "2025-05-25T16:00:00.000Z",
+    title: "Test Booking 6",
+    type: "local",
+    plane: "OH-386",
+    description: "This is a test booking 6",
+  },
+  {
+    id: 7,
+    user_id: "user7",
+    start_time: "2025-05-25T17:00:00.000Z",
+    end_time: "2025-05-25T18:00:00.000Z",
+    title: "Test Booking 7",
+    type: "maintenance",
+    plane: "OH-CON",
+    description: "This is a test booking 7",
+  },
+  {
+    id: 8,
+    user_id: "user8",
+    start_time: "2025-05-25T19:00:00.000Z",
+    end_time: "2025-05-25T20:00:00.000Z",
+    title: "Test Booking 8",
+    type: "training",
+    plane: "OH-PDX",
+    description: "This is a test booking 8",
+  },
+  {
+    id: 9,
+    user_id: "user9",
+    start_time: "2025-05-25T21:00:00.000Z",
+    end_time: "2025-05-25T22:00:00.000Z",
+    title: "Test Booking 9",
+    type: "local",
+    plane: "OH-816",
+    description: "This is a test booking 9",
+  },
+  {
+    id: 10,
+    user_id: "user10",
+    start_time: "2025-05-25T23:00:00.000Z",
+    end_time: "2025-05-26T00:00:00.000Z",
+    title: "Test Booking 10",
+    type: "maintenance",
+    plane: "OH-829",
+    description: "This is a test booking 10",
+  },
+  // Overlapping bookings
+  {
+    id: 11,
+    user_id: "user11",
+    start_time: "2025-05-25T03:00:00.000Z",
+    end_time: "2025-05-25T05:00:00.000Z",
+    title: "Overlapping Booking 1",
+    type: "local",
+    plane: "OH-CON",
+    description: "This is an overlapping booking 1",
+  },
+  {
+    id: 12,
+    user_id: "user12",
+    start_time: "2025-05-25T06:00:00.000Z",
+    end_time: "2025-05-25T08:00:00.000Z",
+    title: "Overlapping Booking 2",
+    type: "training",
+    plane: "OH-PDX",
+    description: "This is an overlapping booking 2",
+  },
+  {
+    id: 13,
+    user_id: "user13",
+    start_time: "2025-05-25T08:30:00.000Z",
+    end_time: "2025-05-25T10:00:00.000Z",
+    title: "Overlapping Booking 3",
+    type: "maintenance",
+    plane: "OH-816",
+    description: "This is an overlapping booking 3",
+  },
+  {
+    id: 14,
+    user_id: "user14",
+    start_time: "2025-05-25T11:00:00.000Z",
+    end_time: "2025-05-25T13:00:00.000Z",
+    title: "Overlapping Booking 4",
+    type: "local",
+    plane: "OH-829",
+    description: "This is an overlapping booking 4",
+  },
+];

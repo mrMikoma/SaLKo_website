@@ -25,7 +25,7 @@ const Bullet = ({ item }) => {
               {item.title}
             </span>
             <div className="flex items-center">
-              <span className="text-md text-right text-sblack mr-4 min-w-64 whitespace-nowrap">
+              <span className="text-md text-right text-sblack mr-4 min-w-64 whitespace-nowrap" suppressHydrationWarning={true}>
                 {formattedDate}
               </span>
               <span
