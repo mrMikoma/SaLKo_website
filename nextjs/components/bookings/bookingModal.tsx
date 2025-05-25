@@ -60,13 +60,14 @@ const BookingModal = ({
           type="datetime-local"
           value={
             booking.start_time
-              ? DateTime.fromISO(booking.start_time).toFormat(
-                  "yyyy-MM-dd'T'HH:mm"
-                )
+              ? DateTime.fromISO(booking.start_time)
+                  .startOf("hour")
+                  .toFormat("yyyy-MM-dd'T'HH:mm")
               : ""
           }
           onChange={(e) => handleChange("start_time", e.target.value)}
           className="border p-2 w-full"
+          step="3600" // 1 hour step
         />
       </div>
       <div className="mb-4">
@@ -75,13 +76,14 @@ const BookingModal = ({
           type="datetime-local"
           value={
             booking.end_time
-              ? DateTime.fromISO(booking.end_time).toFormat(
-                  "yyyy-MM-dd'T'HH:mm"
-                )
+              ? DateTime.fromISO(booking.end_time)
+                  .startOf("hour")
+                  .toFormat("yyyy-MM-dd'T'HH:mm")
               : ""
           }
           onChange={(e) => handleChange("end_time", e.target.value)}
           className="border p-2 w-full"
+          step="3600" // 1 hour step
         />
         <input
           type="hidden"

@@ -5,7 +5,7 @@ import { DateTime } from "luxon";
 import BookingCell from "@/components/bookings/bookingCell";
 import DatePicker from "@/components/bookings/datePicker";
 import BookingUpdateModal from "@/components/bookings/bookingModal";
-import { fetchDayBookings } from "@/utilities/bookings";
+import { fetchDayBookings, addBooking, removeBooking } from "@/utilities/bookings";
 import { BookingType } from "@/utilities/bookings";
 
 /*
@@ -144,12 +144,23 @@ const BookingSection = ({ isLoggedIn }: BookingSectionProps) => {
     resetModal();
   };
 
-  const handleDeletebooking = () => {
+  const handleDeletebooking = async () => {
+    if (!isbookingValid(selectedbooking)) return;
     if (selectedbooking.id < 0) return;
-    setbookingData((prevbookingData) =>
-      prevbookingData.filter((booking) => booking.id !== selectedbooking.id)
-    );
-    resetModal();
+
+    const response = await removeBooking(selectedbooking.id)
+
+    if (response.status !== "success") {
+      console.error("Failed to delete booking:", response.result); // debug
+      return;
+    } else {
+      console.log("Booking deleted successfully:", response.result); // debug
+      // Remove the booking from the local state
+      setbookingData((prevbookingData) =>
+        prevbookingData.filter((booking) => booking.id !== selectedbooking.id)
+      );
+      resetModal();
+    }
   };
 
   const resetModal = () => {
