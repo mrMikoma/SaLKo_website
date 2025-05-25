@@ -77,7 +77,7 @@ export async function fetchDayBookings(
     }
 
     try {
-      // Fetch single day bookings for the selected plane and date
+      // Fetch bookings for the selected plane and date
       console.log(
         "Fetching bookings for plane:",
         selectedPlane,
@@ -91,19 +91,7 @@ export async function fetchDayBookings(
          WHERE b.plane = $1 AND b.start_time::date = $2`,
         [selectedPlane, selectedDate]
       );
-      console.log("Single day bookings query successful"); // debug
-
-      // TODO: Uncomment the following code block if you want to support multi-day bookings
-      // Fetch multi-day bookings for the selected plane and date
-      // const multiDayResponse = await connectionPool.query(
-      //   `SELECT b.id, b.plane, b.start_time, b.end_time, u.full_name, b.type, b.title, b.description
-      //    FROM bookings b
-      //    JOIN users u ON b.user_id = u.id
-      //    WHERE b.plane = $1 AND b.start_time::date < $2 AND b.end_time::date > $2`,
-      //   [selectedPlane, selectedDate]
-      // );
-      // console.log("Multi-day bookings response:", multiDayResponse.rows); // debug
-      // const allBookings = [...response.rows, ...multiDayResponse.rows];
+      console.log("Bookings query successful"); // debug
 
       if (response.rowCount === 0) {
         return {
@@ -111,7 +99,13 @@ export async function fetchDayBookings(
           result: [],
         };
       } else {
-        console.log("Bookings found:", response.rows); // debug
+        // Change timeformat to ISO string
+        response.rows.forEach((booking: BookingType) => {
+          booking.start_time = new Date(booking.start_time).toISOString();
+          booking.end_time = new Date(booking.end_time).toISOString();
+        });
+        console.log("Bookings after formatting:", response.rows); // debug
+
         return {
           status: "success",
           result: response.rows,

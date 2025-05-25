@@ -37,11 +37,14 @@ const BookingCell = ({
           backgroundColor: getFlightTypeColor(booking.type),
         }}
       >
-        <p className="text-md font-bold text-sblued text-ellipsis whitespace-nowrap overflow-hidden">
+        <p className="font-bold text-sblued text-ellipsis whitespace-nowrap overflow-hidden">
           {booking.title}
         </p>
-        <p className="text-md font-bold text-sblued text-ellipsis whitespace-nowrap overflow-hidden">
-          Varaaja: <span className="font-medium">{booking.full_name}</span>
+        <p className="font-bold text-sblued text-ellipsis whitespace-nowrap overflow-hidden">
+          Varaaja:{" "}
+          <span className="font-medium">
+            {getShortenedName(booking.full_name)}
+          </span>
         </p>
       </div>
     </td>
@@ -99,4 +102,12 @@ const calculatebookingOffset = (booking: BookingType, hour: string) => {
 const getFlightTypeColor = (type: string): string => {
   const flightType = FLIGHT_TYPES.find((flight) => flight.type === type);
   return flightType ? flightType.color : "#4A90E2";
+};
+
+const getShortenedName = (name: string): string => {
+  const parts = name.split(" ");
+  if (parts.length > 1) {
+    return `${parts[0]} ${parts[1]?.charAt(0) || ""}.`;
+  }
+  return name;
 };

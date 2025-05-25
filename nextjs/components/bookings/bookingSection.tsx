@@ -47,7 +47,7 @@ const BookingSection = ({ isLoggedIn }: BookingSectionProps) => {
   const [selectedDate, setSelectedDate] = useState<DateTime>(now);
   const [hourInterval] = useState(1);
   const [modalMode, setModalMode] = useState<"create" | "update" | null>(null);
-  const [bookingData, setbookingData] = useState<BookingType[]>(bookingS);
+  const [bookingData, setbookingData] = useState<BookingType[]>([]);
   const [selectedbooking, setSelectedbooking] =
     useState<BookingType>(DEFAULT_BOOKING);
 
@@ -63,10 +63,15 @@ const BookingSection = ({ isLoggedIn }: BookingSectionProps) => {
         console.log("FETCHED BOOKINGS:", results);
 
         const fetchedBookings: BookingType[] = results
-          .filter((result) => result.status === "success")
+          .filter(
+            (result) =>
+              result.status === "success" &&
+              Array.isArray(result.result) &&
+              result.result.length > 0
+          )
           .flatMap((result) => result.result as BookingType[]);
 
-        // setbookingData(fetchedBookings);
+        setbookingData(fetchedBookings);
       } catch (error) {
         console.error("Error fetching bookings:", error);
       }
@@ -74,6 +79,8 @@ const BookingSection = ({ isLoggedIn }: BookingSectionProps) => {
 
     fetchBookings();
   }, [selectedDate]);
+
+  console.log("BOOKING DATA:", bookingData);
 
   const hours = useMemo(
     () =>

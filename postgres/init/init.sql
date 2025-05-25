@@ -138,7 +138,11 @@ BEGIN
       'Dolore laborum ex officia aliqua proident esse officia veniam id eu aliquip qui incididunt.'
     );
 
-  -- Insert test data into bookings
+  -- Insert 50 random bookings for the admin user
+  -- The bookings will be for planes: OH-CON, OH-PDX, OH-816, OH-829, OH-475, OH-386
+  -- The type will be one of the allowed types: local, trip, training, maintenance, fire, other
+  -- The start_time will be a random time today or tomorrow between 6 AM and 11 PM in EEST timezone
+
   INSERT INTO
     bookings (
       plane,
@@ -178,7 +182,7 @@ BEGIN
       'Dolor irure cupidatat aliqua eu labore velit elit id nostrud.'
     ),
     (
-      'OH-PDX',
+      'OH-829',
       (NOW()::DATE + INTERVAL '8 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14)),
       (NOW()::DATE + INTERVAL '8 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14) + INTERVAL '1 hour'),
       admin_user_id,
@@ -196,7 +200,7 @@ BEGIN
       'Dolor irure cupidatat aliqua eu labore velit elit id nostrud.'
     ),
     (
-      'OH-PDX',
+      'OH-829',
       (NOW()::DATE + INTERVAL '8 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14)),
       (NOW()::DATE + INTERVAL '8 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14) + INTERVAL '1 hour'),
       admin_user_id,
@@ -221,11 +225,124 @@ BEGIN
       'local',
       'ipsum Lorem',
       'Dolore laborum ex officia aliqua proident esse officia veniam id eu aliquip qui incididunt.'
+    ),
+    (
+      'OH-829',
+      (NOW()::DATE + INTERVAL '8 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14)),
+      (NOW()::DATE + INTERVAL '8 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14) + INTERVAL '1 hour'),
+      admin_user_id,
+      'local',
+      'ipsum Lorem',
+      'Culpa deserunt consequat ut exercitation irure elit occaecat cillum.'
+    ),
+    (
+      'OH-CON',
+      (NOW()::DATE + INTERVAL '8 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14)),
+      (NOW()::DATE + INTERVAL '8 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14) + INTERVAL '1 hour'),
+      admin_user_id,
+      'local',
+      'ipsum Lorem',
+      'Dolor irure cupidatat aliqua eu labore velit elit id nostrud.'
+    ),
+    (
+      'OH-829',
+      (NOW()::DATE + INTERVAL '8 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14)),
+      (NOW()::DATE + INTERVAL '8 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14) + INTERVAL '1 hour'),
+      admin_user_id,
+      'local',
+      'ipsum Lorem',
+      'Dolor irure cupidatat aliqua eu labore velit elit id nostrud.'
+    ),
+    (
+      'OH-816',
+      (NOW()::DATE + INTERVAL '8 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14)),
+      (NOW()::DATE + INTERVAL '8 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14) + INTERVAL '1 hour'),
+      admin_user_id,
+      'local',
+      'ipsum Lorem',
+      'Dolor irure cupidatat aliqua eu labore velit elit id nostrud.'
+    ),
+    (
+      'OH-PDX',
+      (NOW()::DATE + INTERVAL '8 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14)),
+      (NOW()::DATE + INTERVAL '8 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14) + INTERVAL '1 hour'),
+      admin_user_id,
+      'local',
+      'ipsum Lorem',
+      'Dolor irure cupidatat aliqua eu labore velit elit id nostrud.'
+    ),
+    (
+      'OH-816',
+      (NOW()::DATE + INTERVAL '8 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14)),
+      (NOW()::DATE + INTERVAL '8 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14) + INTERVAL '1 hour'),
+      admin_user_id,
+      'local',
+      'ipsum Lorem',
+      'Dolor irure cupidatat aliqua eu labore velit elit id nostrud.'
+    ),
+    (
+      'OH-475',
+      (NOW()::DATE + INTERVAL '8 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14)),
+      (NOW()::DATE + INTERVAL '8 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14) + INTERVAL '1 hour'),
+      admin_user_id,
+      'local',
+      'ipsum Lorem',
+      'Dolor irure cupidatat aliqua eu labore velit elit id nostrud.'
+    ),
+    (
+      'OH-386',
+      (NOW()::DATE + INTERVAL '32 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14)),
+      (NOW()::DATE + INTERVAL '32 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14) + INTERVAL '1 hour'),
+      admin_user_id,
+      'local',
+      'ipsum Lorem',
+      'Dolor irure cupidatat aliqua eu labore velit elit id nostrud.'
+    ),
+    (
+      'OH-386',
+      (NOW()::DATE + INTERVAL '32 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14)),
+      (NOW()::DATE + INTERVAL '32 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14) + INTERVAL '1 hour'),
+      admin_user_id,
+      'local',
+      'ipsum Lorem',
+      'Dolor irure cupidatat aliqua eu labore velit elit id nostrud.'
+    ),
+    (
+      'OH-386',
+      (NOW()::DATE + INTERVAL '32 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14)),
+      (NOW()::DATE + INTERVAL '32 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14) + INTERVAL '1 hour'),
+      admin_user_id,
+      'local',
+      'ipsum Lorem',
+      'Dolor irure cupidatat aliqua eu labore velit elit id nostrud.'
+    ),
+    (
+      'OH-PDX',
+      (NOW()::DATE + INTERVAL '32 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14)),
+      (NOW()::DATE + INTERVAL '32 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14) + INTERVAL '1 hour'),
+      admin_user_id,
+      'local',
+      'ipsum Lorem',
+      'Dolor irure cupidatat aliqua eu labore velit elit id nostrud.'
+    ),
+    (
+      'OH-CON',
+      (NOW()::DATE + INTERVAL '32 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14)),
+      (NOW()::DATE + INTERVAL '32 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14) + INTERVAL '1 hour'),
+      admin_user_id,
+      'local',
+      'ipsum Lorem',
+      'Dolor irure cupidatat aliqua eu labore velit elit id nostrud.'
+    ),
+    (
+      'OH-CON',
+      (NOW()::DATE + INTERVAL '32 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14)),
+      (NOW()::DATE + INTERVAL '32 hours' + INTERVAL '1 hour' * FLOOR(RANDOM() * 14) + INTERVAL '1 hour'),
+      admin_user_id,
+      'local',
+      'ipsum Lorem',
+      'Dolor irure cupidatat aliqua eu labore velit elit id nostrud.'
     );
-
-    -- Replace the end_time with the start_time + random interval
-    -- UPDATE bookings
-    -- SET end_time = start_time + INTERVAL '1 hour' * FLOOR(RANDOM() * 4)
 END $$;
 
 
