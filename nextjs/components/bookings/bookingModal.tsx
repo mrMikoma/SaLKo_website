@@ -3,6 +3,7 @@
 import { DateTime } from "luxon";
 import { Modal, Button } from "antd";
 import { BookingType } from "@/utilities/bookings";
+import { FLIGHT_TYPES } from "./bookingSection";
 
 const BookingModal = ({
   mode,
@@ -51,9 +52,9 @@ const BookingModal = ({
         </Button>,
       ]}
     >
-      <p>Plane: {booking.plane}</p>
+      <p>Lentokone: {booking.plane}</p>
       <div className="mb-4">
-        <label>Start Date:</label>
+        <label>Aloitusaika:</label>
         <input
           type="datetime-local"
           value={
@@ -68,7 +69,7 @@ const BookingModal = ({
         />
       </div>
       <div className="mb-4">
-        <label>End Date:</label>
+        <label>Lopetusaika:</label>
         <input
           type="datetime-local"
           value={
@@ -88,14 +89,40 @@ const BookingModal = ({
           value="Europe/Helsinki"
         />
       </div>
-      <input
-        type="text"
-        placeholder="Enter booking description"
-        value={booking.description || ""}
-        onChange={(e) => handleChange("description", e.target.value)}
-        className="border p-2 w-full mb-4"
-      />
-      <div className="mb-4">{/* Add something */}</div>
+      <div className="mb-4">
+        <label>Lennon tyyppi:</label>
+        <select
+          value={booking.type || ""}
+          onChange={(e) => handleChange("type", e.target.value)}
+          className="border p-2 w-full"
+        >
+          {FLIGHT_TYPES.map((flightType) => (
+            <option key={flightType.type} value={flightType.type}>
+              {flightType.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="mb-4">
+        <label>Otsikko:</label>
+        <input
+          type="text"
+          placeholder="Enter booking title"
+          value={booking.title || ""}
+          onChange={(e) => handleChange("title", e.target.value)}
+          className="border p-2 w-full"
+        />
+      </div>
+      <div className="mb-4">
+        <label>Lennon kuvaus:</label>
+        <input
+          type="text"
+          placeholder="Enter booking description"
+          value={booking.description || ""}
+          onChange={(e) => handleChange("description", e.target.value)}
+          className="border p-2 w-full mb-4"
+        />
+      </div>
     </Modal>
   );
 };

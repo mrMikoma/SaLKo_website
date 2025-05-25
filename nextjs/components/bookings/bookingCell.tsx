@@ -1,6 +1,7 @@
 "use client";
 import { DateTime } from "luxon";
 import { BookingType } from "@/utilities/bookings";
+import { FLIGHT_TYPES } from "./bookingSection";
 
 const BookingCell = ({
   booking,
@@ -20,6 +21,11 @@ const BookingCell = ({
   const heightPercentage = calculatebookingHeight(booking);
   const top = calculatebookingOffset(booking, hour);
 
+  const getFlightTypeColor = (type: string): string => {
+    const flightType = FLIGHT_TYPES.find((flight) => flight.type === type);
+    return flightType ? flightType.color : "#4A90E2";
+  };
+
   return (
     <td
       onDoubleClick={onClick}
@@ -33,7 +39,7 @@ const BookingCell = ({
         style={{
           top: `${top}%`,
           height: `${heightPercentage}%`,
-          backgroundColor: "#4A90E2",
+          backgroundColor: getFlightTypeColor(booking.type),
         }}
       >
         <p className="text-sm font-medium text-ellipsis whitespace-nowrap overflow-hidden">

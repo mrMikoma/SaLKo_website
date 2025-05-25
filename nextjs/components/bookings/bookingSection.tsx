@@ -15,9 +15,25 @@ const DEFAULT_BOOKING: BookingType = {
   start_time: "",
   end_time: "",
   type: "other",
-  plane: "",
+  plane: "OH-CON",
   description: "",
 };
+
+export interface FlightTypes {
+  type: string;
+  label: string;
+  color: string;
+  priority: number;
+}
+
+export const FLIGHT_TYPES: FlightTypes[] = [
+  { type: "local", label: "Paikallinen lento", color: "#90EE90", priority: 3 }, // Light Green
+  { type: "trip", label: "Matkalento", color: "#87CEEB", priority: 3 }, // Sky Blue
+  { type: "training", label: "Koululento", color: "#ADD8E6", priority: 2 }, // Light Blue
+  { type: "maintenance", label: "Huolto", color: "#FFB6C1", priority: 1 }, // Light Red
+  { type: "fire", label: "Palolento", color: "#FFA500", priority: 1 }, // Orange
+  { type: "other", label: "Muu lento", color: "#D3D3D3", priority: 2 }, // Light Grey
+];
 
 const PLANES = ["OH-CON", "OH-PDX", "OH-816", "OH-829", "OH-475", "OH-386"];
 
@@ -141,6 +157,37 @@ const BookingSection = ({ isLoggedIn }: BookingSectionProps) => {
     return bookingDate.hasSame(selectedDate, "day");
   };
 
+  // This function determines the "primary booking" for a specific time slot (hourValue) from a list of bookings (bookingsForCell).
+  // 1. It filters the bookings to include only those that are active during the given hourValue.
+  //    - A booking is considered active if its start_time is less than or equal to hourValue and its end_time is greater than hourValue.
+  // 2. The filtered bookings are then sorted based on two criteria:
+  //    a. Priority: Bookings with higher priority (defined in FLIGHT_TYPES) are sorted first.
+  //    b. Start time: If two bookings have the same priority, the one with the earlier start_time is prioritized.
+  // 3. Finally, the first booking in the sorted list (the highest-priority booking) is selected as the primary booking.
+  const getPriorityBooking = (
+    bookingsForCell: BookingType[],
+    hourValue: number
+  ): BookingType | null => {
+    return bookingsForCell
+      .filter(
+        (booking) =>
+          DateTime.fromISO(booking.start_time).hour <= hourValue &&
+          DateTime.fromISO(booking.end_time).hour > hourValue
+      )
+      .sort((a, b) => {
+        const priorityDiff =
+          FLIGHT_TYPES.find((type) => type.type === a.type)?.priority -
+          FLIGHT_TYPES.find((type) => type.type === b.type)?.priority;
+
+        if (priorityDiff !== 0) return priorityDiff;
+
+        return (
+          DateTime.fromISO(a.start_time).toMillis() -
+          DateTime.fromISO(b.start_time).toMillis()
+        );
+      })[0];
+  };
+
   return (
     <div className="p-4 text-black">
       {/* Date Picker */}
@@ -189,19 +236,19 @@ const BookingSection = ({ isLoggedIn }: BookingSectionProps) => {
                     );
                   });
 
-                  const primarybooking = bookingsForCell.find(
-                    (booking) =>
-                      DateTime.fromISO(booking.start_time).hour === hourValue
+                  const priorityBooking = getPriorityBooking(
+                    bookingsForCell,
+                    hourValue
                   );
 
-                  if (primarybooking) {
+                  if (priorityBooking) {
                     return (
                       <BookingCell
                         key={`${plane}-${hour}`}
-                        booking={primarybooking}
+                        booking={priorityBooking}
                         hour={hour}
                         plane={plane}
-                        onClick={() => handlebookingClick(primarybooking)}
+                        onClick={() => handlebookingClick(priorityBooking)}
                       />
                     );
                   }

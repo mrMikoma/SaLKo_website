@@ -13,6 +13,7 @@ const allowedFlightTypes: string[] = [
   "fire",
   "other",
 ];
+
 const allowedPlaneTypes: string[] = [
   "OH-CON",
   "OH-PDX",
