@@ -33,6 +33,7 @@ export interface BookingType {
   title: string;
   start_time: string;
   end_time: string;
+  full_name: string;
   type: string;
   plane: string;
   description: string;
@@ -76,17 +77,34 @@ export async function fetchDayBookings(
     }
 
     try {
-      console.log("Fetching data from database..."); // debug
-      console.log("Selected plane:", selectedPlane); // debug
-      console.log("Selected date:", selectedDate); // debug
+      // Fetch single day bookings for the selected plane and date
+      console.log(
+        "Fetching bookings for plane:",
+        selectedPlane,
+        "on date:",
+        selectedDate
+      ); // debug
       const response = await connectionPool.query(
         `SELECT b.id, b.plane, b.start_time, b.end_time, u.full_name, b.type, b.title, b.description
          FROM bookings b
          JOIN users u ON b.user_id = u.id
-         WHERE b.plane = $1 AND b.start_time::date = $2`, // TODO: Should be fixed to match timezone deviation
+         WHERE b.plane = $1 AND b.start_time::date = $2`,
         [selectedPlane, selectedDate]
       );
-      console.log("Response from database:", response.rows); // debug
+      console.log("Single day bookings query successful"); // debug
+
+      // TODO: Uncomment the following code block if you want to support multi-day bookings
+      // Fetch multi-day bookings for the selected plane and date
+      // const multiDayResponse = await connectionPool.query(
+      //   `SELECT b.id, b.plane, b.start_time, b.end_time, u.full_name, b.type, b.title, b.description
+      //    FROM bookings b
+      //    JOIN users u ON b.user_id = u.id
+      //    WHERE b.plane = $1 AND b.start_time::date < $2 AND b.end_time::date > $2`,
+      //   [selectedPlane, selectedDate]
+      // );
+      // console.log("Multi-day bookings response:", multiDayResponse.rows); // debug
+      // const allBookings = [...response.rows, ...multiDayResponse.rows];
+
       if (response.rowCount === 0) {
         return {
           status: "success",

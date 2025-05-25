@@ -21,34 +21,34 @@ const BookingCell = ({
   const heightPercentage = calculatebookingHeight(booking);
   const top = calculatebookingOffset(booking, hour);
 
-  const getFlightTypeColor = (type: string): string => {
-    const flightType = FLIGHT_TYPES.find((flight) => flight.type === type);
-    return flightType ? flightType.color : "#4A90E2";
-  };
-
   return (
     <td
-      onDoubleClick={onClick}
-      className="cursor-pointer border border-gray-300 relative"
+      onClick={onClick}
+      className="cursor-pointer border border-gray-300 relative font-black"
       rowSpan={span}
       data-cell-key={`${plane}-${hour}`}
       style={{ width: "100px", height: "50px", padding: 0 }}
     >
       <div
-        className="absolute left-0 right-0 text-white px-2 py-1 overflow-hidden"
+        className="absolute left-0 right-0 text-white px-2 overflow-hidden"
         style={{
           top: `${top}%`,
           height: `${heightPercentage}%`,
           backgroundColor: getFlightTypeColor(booking.type),
         }}
       >
-        <p className="text-sm font-medium text-ellipsis whitespace-nowrap overflow-hidden">
+        <p className="text-md font-bold text-sblued text-ellipsis whitespace-nowrap overflow-hidden">
           {booking.title}
+        </p>
+        <p className="text-md font-bold text-sblued text-ellipsis whitespace-nowrap overflow-hidden">
+          Varaaja: <span className="font-medium">{booking.full_name}</span>
         </p>
       </div>
     </td>
   );
 };
+
+export default BookingCell;
 
 const calculateEventSpan = (
   booking: BookingType,
@@ -96,4 +96,7 @@ const calculatebookingOffset = (booking: BookingType, hour: string) => {
   return top;
 };
 
-export default BookingCell;
+const getFlightTypeColor = (type: string): string => {
+  const flightType = FLIGHT_TYPES.find((flight) => flight.type === type);
+  return flightType ? flightType.color : "#4A90E2";
+};
