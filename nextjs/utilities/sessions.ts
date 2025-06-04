@@ -66,6 +66,7 @@ export async function updateSession() {
 export async function deleteSession() {
   const cookieStore = await cookies();
   cookieStore.delete("session");
+  // TO-DO: Force redirect to home page
 }
 
 // TODO: Add cache for preventing multiple calls to the database

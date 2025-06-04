@@ -4,6 +4,7 @@ import { DateTime } from "luxon";
 import { Modal, Button } from "antd";
 import { BookingType } from "@/utilities/bookings";
 import { FLIGHT_TYPES } from "./bookingSection";
+import { useState, useEffect } from "react";
 
 const BookingModal = ({
   mode,
@@ -14,7 +15,7 @@ const BookingModal = ({
   onCancel,
   onChange,
 }: {
-  mode: "create" | "update";
+  mode: "create" | "update" | "view";
   booking: BookingType;
   onSave: () => void;
   onUpdate: () => void;
@@ -22,36 +23,73 @@ const BookingModal = ({
   onCancel: () => void;
   onChange: (updatedbooking: BookingType) => void;
 }) => {
+  const [inputValues, setInputValues] = useState<Partial<BookingType>>({});
+  const [debouncedValues, setDebouncedValues] = useState<Partial<BookingType>>(
+    {}
+  );
+
+  useEffect(() => {
+    const timerId = setTimeout(() => {
+      setDebouncedValues(inputValues);
+    }, 500); // Wait 500ms after the last input
+
+    return () => clearTimeout(timerId); // Clear the previous timeout
+  }, [inputValues]);
+
+  useEffect(() => {
+    if (Object.keys(debouncedValues).length > 0) {
+      onChange({ ...booking, ...debouncedValues });
+    }
+  }, [debouncedValues]);
+
   const handleChange = (field: keyof BookingType, value: string) => {
-    onChange({ ...booking, [field]: value });
+    setInputValues((prev) => ({ ...prev, [field]: value }));
   };
 
   return (
     <Modal
-      title={mode === "create" ? "Uusi varaus" : "Päivitä varaustietoja"}
+      title={
+        mode === "create"
+          ? "Uusi varaus"
+          : mode === "update"
+          ? "Päivitä varaustietoja"
+          : "Varaustiedot"
+      }
       open={true}
-      onOk={mode === "create" ? onSave : onUpdate}
+      onOk={
+        mode === "create" ? onSave : mode === "update" ? onUpdate : undefined
+      }
       onCancel={onCancel}
-      okText={mode === "create" ? "Save" : "Update"}
+      okText={
+        mode === "create" ? "Save" : mode === "update" ? "Update" : undefined
+      }
       cancelText="Cancel"
-      footer={[
-        <Button key="cancel" onClick={onCancel}>
-          Peruuta
-        </Button>,
-        mode === "update" && (
-          <Button key="delete" danger onClick={onDelete}>
-            Poista
-          </Button>
-        ),
-        <Button
-          key="submit"
-          type="primary"
-          className="bg-sblue"
-          onClick={mode === "create" ? onSave : onUpdate}
-        >
-          {mode === "create" ? "Tallenna" : "Päivitä"}
-        </Button>,
-      ]}
+      footer={
+        mode === "view"
+          ? [
+              <Button key="cancel" onClick={onCancel}>
+                Sulje
+              </Button>,
+            ]
+          : [
+              <Button key="cancel" onClick={onCancel}>
+                Peruuta
+              </Button>,
+              mode === "update" && (
+                <Button key="delete" danger onClick={onDelete}>
+                  Poista
+                </Button>
+              ),
+              <Button
+                key="submit"
+                type="primary"
+                className="bg-sblue"
+                onClick={mode === "create" ? onSave : onUpdate}
+              >
+                {mode === "create" ? "Tallenna" : "Päivitä"}
+              </Button>,
+            ]
+      }
     >
       <p>Lentokone: {booking.plane}</p>
       <div className="mb-4">
@@ -59,7 +97,7 @@ const BookingModal = ({
         <input
           type="datetime-local"
           value={
-            booking.start_time
+            inputValues.start_time || booking.start_time
               ? DateTime.fromISO(booking.start_time)
                   .startOf("hour")
                   .toFormat("yyyy-MM-dd'T'HH:mm")
@@ -68,6 +106,7 @@ const BookingModal = ({
           onChange={(e) => handleChange("start_time", e.target.value)}
           className="border p-2 w-full"
           step="3600" // 1 hour step
+          disabled={mode === "view" ? true : false}
         />
       </div>
       <div className="mb-4">
@@ -75,7 +114,7 @@ const BookingModal = ({
         <input
           type="datetime-local"
           value={
-            booking.end_time
+            inputValues.end_time || booking.end_time
               ? DateTime.fromISO(booking.end_time)
                   .startOf("hour")
                   .toFormat("yyyy-MM-dd'T'HH:mm")
@@ -84,6 +123,7 @@ const BookingModal = ({
           onChange={(e) => handleChange("end_time", e.target.value)}
           className="border p-2 w-full"
           step="3600" // 1 hour step
+          disabled={mode === "view" ? true : false}
         />
         <input
           type="hidden"
@@ -95,9 +135,10 @@ const BookingModal = ({
       <div className="mb-4">
         <label>Lennon tyyppi:</label>
         <select
-          value={booking.type || ""}
+          value={inputValues.type || booking.type || ""}
           onChange={(e) => handleChange("type", e.target.value)}
           className="border p-2 w-full"
+          disabled={mode === "view" ? true : false}
         >
           {FLIGHT_TYPES.map((flightType) => (
             <option key={flightType.type} value={flightType.type}>
@@ -111,9 +152,10 @@ const BookingModal = ({
         <input
           type="text"
           placeholder="Enter booking title"
-          value={booking.title || ""}
+          value={inputValues.title || booking.title || ""}
           onChange={(e) => handleChange("title", e.target.value)}
           className="border p-2 w-full"
+          disabled={mode === "view" ? true : false}
         />
       </div>
       <div className="mb-4">
@@ -121,9 +163,10 @@ const BookingModal = ({
         <input
           type="text"
           placeholder="Enter booking description"
-          value={booking.description || ""}
+          value={inputValues.description || booking.description || ""}
           onChange={(e) => handleChange("description", e.target.value)}
           className="border p-2 w-full mb-4"
+          disabled={mode === "view" ? true : false}
         />
       </div>
     </Modal>

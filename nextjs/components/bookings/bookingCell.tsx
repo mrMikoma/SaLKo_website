@@ -15,7 +15,7 @@ const BookingCell = ({
   onClick: () => void;
 }) => {
   const hourValue = parseInt(hour.split(":")[0]);
-  const span = calculateEventSpan(booking, hour, hourValue);
+  const span = calculateEventSpan(booking, hourValue);
   if (span === 0) return null;
 
   const heightPercentage = calculatebookingHeight(booking);
@@ -53,11 +53,7 @@ const BookingCell = ({
 
 export default BookingCell;
 
-const calculateEventSpan = (
-  booking: BookingType,
-  hour: string,
-  hourValue: number
-) => {
+const calculateEventSpan = (booking: BookingType, hourValue: number) => {
   const bookingStart = DateTime.fromISO(booking.start_time);
   const bookingEnd = DateTime.fromISO(booking.end_time);
   const cellStart = DateTime.fromISO(booking.start_time).set({
@@ -76,6 +72,27 @@ const calculateEventSpan = (
 
   return 0;
 };
+
+/*
+const calculateEventSpan = (booking: BookingType, hourValue: number) => {
+  const bookingStart = DateTime.fromISO(booking.start_time);
+  const bookingEnd = DateTime.fromISO(booking.end_time);
+  const cellStart = DateTime.fromISO(booking.start_time).set({
+    hour: hourValue,
+    minute: 0,
+    second: 0,
+    millisecond: 0,
+  });
+  const cellEnd = cellStart.plus({ hours: 1 });
+
+  if (bookingStart < cellEnd && bookingEnd > cellStart) {
+    const duration = bookingEnd.diff(cellStart, "hours").hours;
+    return Math.ceil(duration);
+  }
+
+  return 0;
+};
+*/
 
 const calculatebookingHeight = (booking: BookingType) => {
   const bookingStart = DateTime.fromISO(booking.start_time);

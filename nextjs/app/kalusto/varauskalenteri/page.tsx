@@ -8,7 +8,7 @@ export const metadata = {
 
 export default async function Page() {
   const payload = await verifySession();
-  const isLoggedIn = payload && payload.user ? true : false;
+  const isLoggedIn = payload ? true : false;
 
   return (
     <div>
