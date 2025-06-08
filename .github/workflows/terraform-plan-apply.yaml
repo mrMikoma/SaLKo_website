@@ -31,7 +31,10 @@ jobs:
           terraform_version: 1.12.1
 
       - name: Terraform Init
-        run: terraform -chdir=infra/terraform init -backend-config="AWS_ACCESS_KEY_ID=${{ secrets.HETZNER_BUCKET_ACCESS_KEY }}" -backend-config="AWS_SECRET_ACCESS_KEY=${{ secrets.HETZNER_BUCKET_SECRET_KEY }}"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.HETZNER_BUCKET_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.HETZNER_BUCKET_SECRET_KEY }}
+        run: terraform -chdir=infra/terraform init
 
       - name: Terraform Format
         run: terraform -chdir=infra/terraform fmt -check
