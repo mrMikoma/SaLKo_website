@@ -116,6 +116,9 @@ jobs:
         with:
           terraform_version: 1.12.1
 
+      - name: Terraform Init
+        run: terraform -chdir=infra/terraform init
+
       - name: Download Terraform Plan
         uses: actions/download-artifact@v4.3.0
         with:
