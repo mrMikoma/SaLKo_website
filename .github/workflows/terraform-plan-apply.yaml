@@ -34,7 +34,7 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.HETZNER_BUCKET_ACCESS_KEY }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.HETZNER_BUCKET_SECRET_KEY }}
-        run: terraform -chdir=infra/terraform init
+        run: terraform -chdir=infra/terraform init -reconfigure
 
       - name: Terraform Format
         run: terraform -chdir=infra/terraform fmt -check
@@ -71,13 +71,6 @@ jobs:
         with:
           name: tfplan
           path: infra/terraform/tfplan
-
-      - name: Upload .terraform.lock.hcl
-        uses: actions/upload-artifact@v4.6.2
-        with:
-          name: terraform-workspace
-          path: infra/terraform/.terraform.lock.hcl
-          include-hidden-files: true
 
       - name: Create String Output
         id: tf-plan-string
@@ -131,12 +124,6 @@ jobs:
         uses: actions/download-artifact@v4.3.0
         with:
           name: tfplan
-          path: infra/terraform
-
-      - name: Download Terraform Lock File
-        uses: actions/download-artifact@v4.3.0
-        with:
-          name: terraform-workspace
           path: infra/terraform
 
       - name: Terraform Apply
