@@ -32,7 +32,7 @@ jobs:
           terraform_version: 1.12.1
 
       - name: Terraform Init
-        run: terraform -chdir=infra/terraform init
+        run: terraform -chdir=infra/terraform init -backend-config="AWS_ACCESS_KEY_ID=${{ secrets.HETZNER_BUCKET_ACCESS_KEY }}" -backend-config="AWS_SECRET_ACCESS_KEY=${{ secrets.HETZNER_BUCKET_SECRET_KEY }}"
 
       - name: Terraform Format
         run: terraform -chdir=infra/terraform fmt -check
@@ -117,7 +117,7 @@ jobs:
           terraform_version: 1.12.1
 
       - name: Terraform Init
-        run: terraform -chdir=infra/terraform init
+        run: terraform -chdir=infra/terraform init -backend-config="AWS_ACCESS_KEY_ID=${{ secrets.HETZNER_BUCKET_ACCESS_KEY }}" -backend-config="AWS_SECRET_ACCESS_KEY=${{ secrets.HETZNER_BUCKET_SECRET_KEY }}"
 
       - name: Download Terraform Plan
         uses: actions/download-artifact@v4.3.0
