@@ -59,6 +59,8 @@ jobs:
           set -e
                   
           echo "exitcode=$exitcode" >> "$GITHUB_OUTPUT"
+
+          echo "Terraform Plan completed with exit code: $exitcode"
                   
           if [ "$exitcode" -eq 1 ]; then
             echo "❌ Terraform Plan failed."
