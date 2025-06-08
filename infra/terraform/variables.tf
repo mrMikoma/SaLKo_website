@@ -1,10 +1,5 @@
 // General
 
-variable "github_username" {
-  type        = string
-  description = "GitHub username"
-}
-
 // Hetzner Cloud
 
 variable "hetzner_api_token" {
