@@ -48,15 +48,11 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.HETZNER_BUCKET_ACCESS_KEY }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.HETZNER_BUCKET_SECRET_KEY }}
         run: |
-          set -e
-          
           echo "Running Terraform Plan..."
-          set +e
+          export exitcode=0
           terraform -chdir=infra/terraform plan -detailed-exitcode -no-color -out tfplan \
             -var="hetzner_api_token=${{ secrets.HETZNER_API_TOKEN }}" \
-            -var="vps_ssh_public_key=${{ secrets.VPS_PUBLIC_KEY }}"
-          || export exitcode=$?
-          set -e
+            -var="vps_ssh_public_key=${{ secrets.VPS_PUBLIC_KEY }}" || export exitcode=$?
                   
           echo "exitcode=$exitcode" >> "$GITHUB_OUTPUT"
 
