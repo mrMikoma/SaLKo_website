@@ -11,7 +11,7 @@ variable "hetzner_api_token" {
 variable "instances" {
   description = "Number of instances to create"
   type        = number
-  default     = 1
+  default     = 0
 }
 
 variable "location" {
