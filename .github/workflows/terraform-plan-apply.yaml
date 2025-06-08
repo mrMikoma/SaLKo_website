@@ -55,7 +55,7 @@ jobs:
           terraform -chdir=infra/terraform plan -detailed-exitcode -no-color -out tfplan \
             -var="hetzner_api_token=${{ secrets.HETZNER_API_TOKEN }}" \
             -var="vps_ssh_public_key=${{ secrets.VPS_PUBLIC_KEY }}"
-          exitcode=$?
+          || export exitcode=$?
           set -e
                   
           echo "exitcode=$exitcode" >> "$GITHUB_OUTPUT"
