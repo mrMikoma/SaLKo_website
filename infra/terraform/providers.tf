@@ -4,10 +4,6 @@ terraform {
       source  = "hetznercloud/hcloud"
       version = ">= 1.51.0"
     }
-    aws = {
-      source  = "hashicorp/aws"
-      version = ">= 6.0.0-beta3"
-    }
   }
 
   backend "s3" {
