@@ -44,6 +44,9 @@ jobs:
 
       - name: Terraform Plan
         id: tf-plan
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.HETZNER_BUCKET_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.HETZNER_BUCKET_SECRET_KEY }}
         run: |
           set -e
 
@@ -119,6 +122,9 @@ jobs:
           terraform_version: 1.12.1
 
       - name: Terraform Init
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.HETZNER_BUCKET_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.HETZNER_BUCKET_SECRET_KEY }}
         run: terraform -chdir=infra/terraform init -backend-config="AWS_ACCESS_KEY_ID=${{ secrets.HETZNER_BUCKET_ACCESS_KEY }}" -backend-config="AWS_SECRET_ACCESS_KEY=${{ secrets.HETZNER_BUCKET_SECRET_KEY }}"
 
       - name: Download Terraform Plan
@@ -134,4 +140,7 @@ jobs:
           path: infra/terraform
 
       - name: Terraform Apply
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.HETZNER_BUCKET_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.HETZNER_BUCKET_SECRET_KEY }}
         run: terraform -chdir=infra/terraform apply -auto-approve tfplan
