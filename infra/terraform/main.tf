@@ -14,7 +14,7 @@ module "salko" {
   instances          = var.instances
   server_type        = var.server_type
   os_type            = var.os_type
-  vps_ssh_public_key = var.vps_ssh_public_key
+  vps_ssh_public_key = var.TF_VAR_vps_ssh_public_key
 
   network_id            = hcloud_network.network.id
   private_subnet        = var.private_subnet
