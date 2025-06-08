@@ -47,7 +47,7 @@ jobs:
           set -e
 
           echo "Running Terraform Plan..."
-          terraform -chdir=infra/terraform plan -detailed-exitcode -no-color -out=tfplan || exitcode=$?
+          terraform -chdir=infra/terraform plan -detailed-exitcode -no-color -out=tfplan -var="hetzner_api_token=${{ secrets.HETZNER_API_TOKEN }}" -var="vps_public_key=${{ secrets.VPS_PUBLIC_KEY }}" || exitcode=$?
 
           exitcode=${exitcode:-0}  # Default to 0 if no error occurred
 
@@ -70,10 +70,8 @@ jobs:
 
       - name: Create String Output
         id: tf-plan-string
-        env:
-          TF_VAR_subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         run: |
-          TERRAFORM_PLAN=$(terraform -chdir=infra show -no-color tfplan)
+          TERRAFORM_PLAN=$(terraform -chdir=infra/terraform show -no-color tfplan)
 
           delimiter="$(openssl rand -hex 8)"
           echo "summary<<${delimiter}" >> $GITHUB_OUTPUT
