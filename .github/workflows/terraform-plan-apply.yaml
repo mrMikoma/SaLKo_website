@@ -12,7 +12,7 @@ jobs:
   terraform-plan:
     name: "Terraform Plan"
     runs-on: ubuntu-24.04
-    environment: production
+    environment: development
 
     permissions:
       id-token: write
@@ -119,7 +119,7 @@ jobs:
         uses: actions/download-artifact@v4.3.0
         with:
           name: tfplan
-          path: infra/terraform
+          path: infra/terraform/
 
       - name: Terraform Apply
-        run: terraform -chdir=infra/terraform apply -auto-approve tfplan -var="hetzner_api_token=${{ secrets.HETZNER_API_TOKEN }}" -var="vps_ssh_public_key=${{ secrets.VPS_PUBLIC_KEY }}"
+        run: terraform -chdir=infra/terraform apply -auto-approve tfplan
