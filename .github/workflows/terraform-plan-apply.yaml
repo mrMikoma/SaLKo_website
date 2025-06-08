@@ -63,11 +63,15 @@ jobs:
         with:
           name: tfplan
           path: infra/terraform/tfplan
+
+      - name: Copy .terraform.lock.hcl to workspace
+        run: cp infra/terraform/.terraform.lock.hcl /home/runner/work/SaLKo_website/SaLKo_website/.terraform.lock.hcl
+
       - name: Upload .terraform.lock.hcl
         uses: actions/upload-artifact@v4.6.2
         with:
           name: terraform-workspace
-          path: infra/terraform/.terraform.lock.hcl
+          path: /home/runner/work/SaLKo_website/SaLKo_website/.terraform.lock.hcl
           include-hidden-files: true
 
       - name: Create String Output
@@ -116,13 +120,13 @@ jobs:
         uses: actions/download-artifact@v4.3.0
         with:
           name: tfplan
-          path: infra/terraform/
+          path: infra/terraform
 
       - name: Download Terraform Lock File
         uses: actions/download-artifact@v4.3.0
         with:
           name: terraform-workspace
-          path: infra/terraform/
+          path: infra/terraform
 
       - name: Terraform Apply
         run: terraform -chdir=infra/terraform apply -auto-approve tfplan
