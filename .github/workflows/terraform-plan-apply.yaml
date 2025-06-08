@@ -121,5 +121,11 @@ jobs:
           name: tfplan
           path: infra/terraform/
 
+      - name: Download Terraform Lock File
+        uses: actions/download-artifact@v4.3.0
+        with:
+          name: terraform-workspace
+          path: infra/terraform/
+
       - name: Terraform Apply
         run: terraform -chdir=infra/terraform apply -auto-approve tfplan
