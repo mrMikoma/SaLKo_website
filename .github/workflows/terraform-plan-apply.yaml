@@ -34,7 +34,7 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.HETZNER_BUCKET_ACCESS_KEY }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.HETZNER_BUCKET_SECRET_KEY }}
-        run: terraform -chdir=infra/terraform init -reconfigure
+        run: terraform -chdir=infra/terraform init
 
       - name: Terraform Format
         run: terraform -chdir=infra/terraform fmt -check
@@ -48,40 +48,26 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.HETZNER_BUCKET_ACCESS_KEY }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.HETZNER_BUCKET_SECRET_KEY }}
         run: |
-          export exitcode=0
+          set -e
+          
+          echo "Running Terraform Plan..."
+          set +e
           terraform -chdir=infra/terraform plan -detailed-exitcode -no-color -out tfplan \
             -var="hetzner_api_token=${{ secrets.HETZNER_API_TOKEN }}" \
-            -var="vps_ssh_public_key=${{ secrets.VPS_PUBLIC_KEY }}" || export exitcode=$?
-
-          echo "exitcode=$exitcode" >> $GITHUB_OUTPUT
-
-          if [ $exitcode -eq 1 ]; then
-            echo Terraform Plan Failed!
+            -var="vps_ssh_public_key=${{ secrets.VPS_PUBLIC_KEY }}"
+          exitcode=$?
+          set -e
+                  
+          echo "exitcode=$exitcode" >> "$GITHUB_OUTPUT"
+                  
+          if [ "$exitcode" -eq 1 ]; then
+            echo "❌ Terraform Plan failed."
             exit 1
-          else 
-            exit 0
+          elif [ "$exitcode" -eq 2 ]; then
+            echo "✅ Terraform has pending changes."
+          else
+            echo "✅ Terraform is up to date. No changes."
           fi
-
-          # set -e
-          # 
-          # echo "Running Terraform Plan..."
-          # set +e
-          # terraform -chdir=infra/terraform plan -detailed-exitcode -no-color -out tfplan \
-          #   -var="hetzner_api_token=${{ secrets.HETZNER_API_TOKEN }}" \
-          #   -var="vps_ssh_public_key=${{ secrets.VPS_PUBLIC_KEY }}"
-          # exitcode=$?
-          # set -e
-          #         
-          # echo "exitcode=$exitcode" >> "$GITHUB_OUTPUT"
-          #         
-          # if [ "$exitcode" -eq 1 ]; then
-          #   echo "❌ Terraform Plan failed."
-          #   exit 1
-          # elif [ "$exitcode" -eq 2 ]; then
-          #   echo "✅ Terraform has pending changes."
-          # else
-          #   echo "✅ Terraform is up to date. No changes."
-          # fi
 
       - name: Publish Terraform Plan
         uses: actions/upload-artifact@v4.6.2
@@ -135,8 +121,7 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.HETZNER_BUCKET_ACCESS_KEY }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.HETZNER_BUCKET_SECRET_KEY }}
-        run: terraform -chdir=infra/terraform init -backend-config="AWS_ACCESS_KEY_ID=${{ secrets.HETZNER_BUCKET_ACCESS_KEY }}" -backend-config="AWS_SECRET_ACCESS_KEY=${{ secrets.HETZNER_BUCKET_SECRET_KEY }}"
-
+        run: terraform -chdir=infra/terraform init
       - name: Download Terraform Plan
         uses: actions/download-artifact@v4.3.0
         with:
