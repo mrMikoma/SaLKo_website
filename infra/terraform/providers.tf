@@ -8,5 +8,5 @@ terraform {
 }
 
 provider "hcloud" {
-  token = var.TF_VAR_hetzner_api_token
+  token = var.hetzner_api_token
 }

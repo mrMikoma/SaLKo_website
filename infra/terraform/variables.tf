@@ -2,7 +2,7 @@
 
 // Hetzner Cloud
 
-variable "TF_VAR_hetzner_api_token" {
+variable "hetzner_api_token" {
   description = "Hetzner Cloud API token for the salko"
   type        = string
   sensitive   = true
@@ -50,7 +50,7 @@ variable "private_subnet_prefix" {
   default     = "10.101.0."
 }
 
-variable "TF_VAR_vps_ssh_public_key" {
+variable "vps_ssh_public_key" {
   description = "SSH public key for the VPS"
   type        = string
 }

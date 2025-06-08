@@ -39,10 +39,6 @@ jobs:
 
       - name: Terraform Plan
         id: tf-plan
-        env:
-          TF_VAR_hetzner_api_token: ${{ secrets.HETZNER_API_TOKEN }}
-          # TF_VAR_cf_dns_api_token: ${{ secrets.CF_DNS_API_TOKEN }}
-          TF_VAR_vps_public_key: ${{ secrets.VPS_PUBLIC_KEY }}
         run: |
           set -e
 
