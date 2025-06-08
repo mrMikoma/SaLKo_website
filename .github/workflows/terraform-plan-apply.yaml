@@ -1,0 +1,141 @@
+name: Terraform Plan and Apply
+
+on:
+  push:
+    paths:
+      - "infra/terraform/**"
+      - ".github/workflows/terraform-plan-apply.yaml"
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  terraform-plan:
+    name: "Terraform Plan"
+    runs-on: ubuntu-24.04
+
+    outputs:
+      tfplanExitCode: ${{ steps.tf-plan.outputs.exitcode }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4.2.2
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3.1.2
+        with:
+          terraform_wrapper: false
+          terraform_version: 1.12.1
+
+      - name: Terraform Init
+        run: terraform -chdir=infra/terraform init
+
+      - name: Terraform Format
+        run: terraform -chdir=infra/terraform fmt -check
+
+      - name: Terraform Plan
+        id: tf-plan
+        env:
+          TF_VAR_heztner_api_token: ${{ secrets.HETZNER_API_TOKEN }}
+          # TF_VAR_cf_dns_api_token: ${{ secrets.CF_DNS_API_TOKEN }}
+          # TF_VAR_vps_public_key: ${{ secrets.VPS_PUBLIC_KEY }}
+        run: |
+          set -e
+
+          echo "Running Terraform Plan..."
+          terraform -chdir=infra/terraform plan -detailed-exitcode -no-color -out=tfplan || exitcode=$?
+
+          exitcode=${exitcode:-0}  # Default to 0 if no error occurred
+
+          echo "exitcode=$exitcode" >> "$GITHUB_OUTPUT"
+
+          if [ "$exitcode" -eq 1 ]; then
+            echo "❌ Terraform Plan failed."
+            exit 1
+          elif [ "$exitcode" -eq 2 ]; then
+            echo "✅ Terraform has pending changes."
+          else
+            echo "✅ Terraform is up to date. No changes."
+          fi
+
+      - name: Publish Terraform Plan
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: tfplan
+          path: infra/terraform/tfplan
+
+      - name: Create String Output
+        id: tf-plan-string
+        env:
+          TF_VAR_subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        run: |
+          TERRAFORM_PLAN=$(terraform -chdir=infra show -no-color tfplan)
+
+          delimiter="$(openssl rand -hex 8)"
+          echo "summary<<${delimiter}" >> $GITHUB_OUTPUT
+          echo "## Terraform Plan Output" >> $GITHUB_OUTPUT
+          echo "<details><summary>Click to expand</summary>" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo '```terraform' >> $GITHUB_OUTPUT
+          echo "$TERRAFORM_PLAN" >> $GITHUB_OUTPUT
+          echo '```' >> $GITHUB_OUTPUT
+          echo "</details>" >> $GITHUB_OUTPUT
+          echo "${delimiter}" >> $GITHUB_OUTPUT
+
+      - name: Publish Terraform Plan to Task Summary
+        env:
+          SUMMARY: ${{ steps.tf-plan-string.outputs.summary }}
+        run: |
+          echo "$SUMMARY" >> $GITHUB_STEP_SUMMARY
+
+  manual-approval:
+    name: "Manual Approval"
+    runs-on: ubuntu-24.04
+    needs: terraform-plan
+    if: github.ref == 'refs/heads/main' && needs.terraform-plan.outputs.tfplanExitCode == 2
+
+    steps:
+      - name: Await for manual approval
+        uses: trstringer/manual-approval@v1.10.0
+        with:
+          secret: ${{ github.TOKEN }}
+          approvers: mrMikoma
+          minimum-approvals: 1
+          issue-title: "Terraform Plan Approval"
+          issue-body: "Please review the Terraform plan and approve if it looks good."
+          exclude-workflow-initiator-as-approver: false
+          fail-on-denial: true
+
+  terraform-apply:
+    name: "Terraform Apply"
+    runs-on: ubuntu-24.04
+    needs: [manual-approval]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4.2.2
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3.1.2
+        with:
+          terraform_version: 1.12.1
+
+      - name: Terraform Init
+        run: terraform -chdir=infra init
+
+      - name: Download Terraform Plan
+        uses: actions/download-artifact@v4.3.0
+        with:
+          name: tfplan
+          path: infra/terraform
+
+      - name: Terraform Apply
+        env:
+          TF_VAR_heztner_api_token: ${{ secrets.HETZNER_API_TOKEN }}
+          # TF_VAR_cf_dns_api_token: ${{ secrets.CF_DNS_API_TOKEN }}
+          # TF_VAR_vps_public_key: ${{ secrets.VPS_PUBLIC_KEY }}
+        run: terraform -chdir=infra/terraform apply -auto-approve tfplan

@@ -1,0 +1,48 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to deploy"
+        required: true
+        default: "latest"
+        type: string
+      branch:
+        description: "Branch to deploy"
+        required: true
+        default: "dev"
+        type: string
+  repository_dispatch:
+    types: [deploy]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4.2.2
+
+      - name: Extract workflow dispatch inputs
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          echo "Extracting workflow dispatch inputs..."
+          echo "BRANCH_NAME=${{ github.event.inputs.branch }}" >> $GITHUB_ENV
+          echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
+
+      - name: Extract repository dispatch payload
+        if: ${{ github.event_name == 'repository_dispatch' }}
+        run: |
+          echo "Extracting payload..."
+          echo "BRANCH_NAME=${{ github.event.client_payload.branch_name }}" >> $GITHUB_ENV
+          echo "IMAGE_TAG_NAME=${{ github.event.client_payload.image_tag_name }}" >> $GITHUB_ENV
+          echo "VERSION=${{ github.event.client_payload.version }}" >> $GITHUB_ENV
+
+      - name: Deploy to production
+        run: |
+          echo "Deploying to production..."
+          # Add your deployment commands here
