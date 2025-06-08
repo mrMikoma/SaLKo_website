@@ -12,6 +12,7 @@ jobs:
   terraform-plan:
     name: "Terraform Plan"
     runs-on: ubuntu-24.04
+    environment: production
 
     permissions:
       id-token: write
@@ -62,6 +63,12 @@ jobs:
         with:
           name: tfplan
           path: infra/terraform/tfplan
+      - name: Upload .terraform.lock.hcl
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: terraform-workspace
+          path: infra/terraform/.terraform.lock.hcl
+          include-hidden-files: true
 
       - name: Create String Output
         id: tf-plan-string
@@ -85,31 +92,12 @@ jobs:
         run: |
           echo "$SUMMARY" >> $GITHUB_STEP_SUMMARY
 
-  manual-approval:
-    name: "Manual Approval"
-    runs-on: ubuntu-24.04
-    needs: terraform-plan
-    if: github.ref == 'refs/heads/main' && needs.terraform-plan.outputs.tfplanExitCode == 2
-
-    permissions:
-      issues: write
-
-    steps:
-      - name: Await for manual approval
-        uses: trstringer/manual-approval@v1.10.0
-        with:
-          secret: ${{ github.TOKEN }}
-          approvers: mrMikoma
-          minimum-approvals: 1
-          issue-title: "Terraform Plan Approval"
-          issue-body: "Please review the Terraform plan and approve if it looks good."
-          exclude-workflow-initiator-as-approver: false
-          fail-on-denial: true
-
   terraform-apply:
     name: "Terraform Apply"
     runs-on: ubuntu-24.04
-    needs: [manual-approval]
+    needs: [terraform-plan]
+    if: github.ref == 'refs/heads/main' && needs.terraform-plan.outputs.tfplanExitCode == 2
+    environment: production
 
     permissions:
       id-token: write
@@ -134,8 +122,4 @@ jobs:
           path: infra/terraform
 
       - name: Terraform Apply
-        env:
-          TF_VAR_hetzner_api_token: ${{ secrets.HETZNER_API_TOKEN }}
-          # TF_VAR_cf_dns_api_token: ${{ secrets.CF_DNS_API_TOKEN }}
-          TF_VAR_vps_public_key: ${{ secrets.VPS_PUBLIC_KEY }}
-        run: terraform -chdir=infra/terraform apply -auto-approve tfplan
+        run: terraform -chdir=infra/terraform apply -auto-approve tfplan -var="hetzner_api_token=${{ secrets.HETZNER_API_TOKEN }}" -var="vps_ssh_public_key=${{ secrets.VPS_PUBLIC_KEY }}"
