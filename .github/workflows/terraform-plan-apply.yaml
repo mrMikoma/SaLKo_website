@@ -37,6 +37,9 @@ jobs:
       - name: Terraform Format
         run: terraform -chdir=infra/terraform fmt -check
 
+      - name: Terraform Validate
+        run: terraform -chdir=infra/terraform validate
+
       - name: Terraform Plan
         id: tf-plan
         run: |
@@ -64,14 +67,11 @@ jobs:
           name: tfplan
           path: infra/terraform/tfplan
 
-      - name: Copy .terraform.lock.hcl to workspace
-        run: cp infra/terraform/.terraform.lock.hcl /home/runner/work/SaLKo_website/SaLKo_website/.terraform.lock.hcl
-
       - name: Upload .terraform.lock.hcl
         uses: actions/upload-artifact@v4.6.2
         with:
           name: terraform-workspace
-          path: /home/runner/work/SaLKo_website/SaLKo_website/.terraform.lock.hcl
+          path: infra/terraform/.terraform.lock.hcl
           include-hidden-files: true
 
       - name: Create String Output
