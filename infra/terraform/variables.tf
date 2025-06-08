@@ -63,10 +63,3 @@ variable "vps_ssh_public_key" {
 //   sensitive   = true
 // }
 
-// GitHub
-
-# variable "github_token" {
-#   description = "GitHub API token for the salko"
-#   type        = string
-#   sensitive   = true
-# }
