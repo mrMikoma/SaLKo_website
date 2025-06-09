@@ -39,7 +39,7 @@ jobs:
 
       - name: Validate SSH Private Key
         run: |
-          ssh-keygen -y -f ~/.ssh/id_ed25519 > /dev/null
+          ssh-keygen -y -f ~/.ssh/id_ed25519
 
       - name: Ping test server
         env:
