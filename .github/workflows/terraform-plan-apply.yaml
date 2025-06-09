@@ -49,38 +49,24 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.CF_BUCKET_ACCESS_KEY }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.CF_BUCKET_SECRET_KEY }}
         run: |
+          echo "Running Terraform Plan..."
           export exitcode=0
-          terraform -chdir=infra/terraform plan -detailed-exitcode -no-color -out tfplan -var="hetzner_api_token=${{ secrets.HETZNER_API_TOKEN }}" -var="vps_ssh_public_key=${{ secrets.VPS_PUBLIC_KEY }}" || export exitcode=$?
-
-          echo "exitcode=$exitcode" >> $GITHUB_OUTPUT
+          terraform -chdir=infra/terraform plan -detailed-exitcode -no-color -out tfplan \
+            -var="hetzner_api_token=${{ secrets.HETZNER_API_TOKEN }}" \
+            -var="vps_ssh_public_key=${{ secrets.VPS_PUBLIC_KEY }}" || export exitcode=$?
+                  
+          echo "exitcode=$exitcode" >> "$GITHUB_OUTPUT"
 
           echo "Terraform Plan completed with exit code: $exitcode"
-
-          if [ $exitcode -eq 1 ]; then
-            echo Terraform Plan Failed!
+                  
+          if [ "$exitcode" -eq 1 ]; then
+            echo "❌ Terraform Plan failed."
             exit 1
-          else 
-            exit 0
+          elif [ "$exitcode" -eq 2 ]; then
+            echo "✅ Terraform has pending changes."
+          else
+            echo "✅ Terraform is up to date. No changes."
           fi
-
-          # echo "Running Terraform Plan..."
-          # export exitcode=0
-          # terraform -chdir=infra/terraform plan -detailed-exitcode -no-color -out tfplan \
-          #   -var="hetzner_api_token=${{ secrets.HETZNER_API_TOKEN }}" \
-          #   -var="vps_ssh_public_key=${{ secrets.VPS_PUBLIC_KEY }}" || export exitcode=$?
-          #         
-          # echo "exitcode=$exitcode" >> "$GITHUB_OUTPUT"
-          # 
-          # echo "Terraform Plan completed with exit code: $exitcode"
-          #         
-          # if [ "$exitcode" -eq 1 ]; then
-          #   echo "❌ Terraform Plan failed."
-          #   exit 1
-          # elif [ "$exitcode" -eq 2 ]; then
-          #   echo "✅ Terraform has pending changes."
-          # else
-          #   echo "✅ Terraform is up to date. No changes."
-          # fi
 
       - name: Publish Terraform Plan
         uses: actions/upload-artifact@v4.6.2
