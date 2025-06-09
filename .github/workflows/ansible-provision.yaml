@@ -46,7 +46,7 @@ jobs:
       - name: Ping test server
         env:
           SERVER_IPS: ${{ vars.SERVER_IP }}
-        run: ansible -i infra/ansible/inventory.py -m ping
+        run: ansible -i infra/ansible/inventory.py -m ping all
 
       # - name: Ansible Playbook
       #   env:
