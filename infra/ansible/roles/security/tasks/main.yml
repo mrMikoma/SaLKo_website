@@ -5,7 +5,7 @@
       - ufw
       - fail2ban
     state: present
-    update_cache: yes
+    update_cache: true
 
 - name: Configure UFW
   ufw:
@@ -22,6 +22,7 @@
 - name: Configure fail2ban
   copy:
     dest: /etc/fail2ban/jail.local
+    mode: '0640'
     content: |
       [sshd]
       enabled = true

@@ -28,7 +28,14 @@ jobs:
           pip3 install ansible ansible-lint
 
       - name: Lint Ansible Playbook
-        run: ansible-lint infra/ansible/playbook.yml
+        run: |
+          ansible-lint infra/ansible/playbook.yml || exit_code=$?
+          if [ "$exit_code" -ne 0 ]; then
+            echo "❌ Linting failed with exit code $exit_code"
+            exit $exit_code
+          else
+            echo "✅ Linting succeeded"
+          fi
 
       - name: Setup SSH
         run: |
