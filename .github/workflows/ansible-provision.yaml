@@ -46,7 +46,11 @@ jobs:
           ANSIBLE_SSH_ARGS: "-o ControlMaster=auto -o ControlPersist=60s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
         run: |
           chmod +x infra/ansible/inventory.py
-          ansible -i infra/ansible/inventory.py -m ping all -vvvv
+              ansible -i infra/ansible/inventory.py -m ping all \
+                -u root \
+                --private-key ~/.ssh/id_ed25519 \
+                -e "ansible_ssh_common_args='-o ControlMaster=auto -o ControlPersist=60s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'" \
+                -vvvv
 
       # - name: Ansible Playbook
       #   env:
