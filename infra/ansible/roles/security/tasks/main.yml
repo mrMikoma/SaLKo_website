@@ -1,6 +1,6 @@
 ---
 - name: Install security packages
-  apt:
+  ansible.builtin.apt:
     name:
       - ufw
       - fail2ban
@@ -8,7 +8,7 @@
     update_cache: true
 
 - name: Configure UFW
-  ufw:
+  community.general.ufw:
     rule: allow
     port: "{{ item }}"
   with_items:
@@ -16,11 +16,11 @@
     - 443
 
 - name: Enable UFW
-  ufw:
+  community.general.ufw:
     state: enabled
 
 - name: Configure fail2ban
-  copy:
+  ansible.builtin.copy:
     dest: /etc/fail2ban/jail.local
     mode: '0640'
     content: |
@@ -33,7 +33,7 @@
       bantime = 86400
 
 - name: Enable and start fail2ban
-  systemd:
+  ansible.builtin.systemd:
     name: fail2ban
     enabled: true
     state: started

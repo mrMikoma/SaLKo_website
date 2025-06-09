@@ -1,19 +1,19 @@
 ---
 - name: Install Docker dependencies
-  apt:
+  ansible.builtin.apt:
     name:
       - ca-certificates
       - curl
     state: present
 
 - name: Add Docker GPG key
-  get_url:
+  ansible.builtin.get_url:
     url: https://download.docker.com/linux/ubuntu/gpg
     dest: /etc/apt/keyrings/docker.asc
     mode: '0644'
 
 - name: Add Docker repo
-  shell: |
+  ansible.builtin.shell: |
     set -o pipefail
     echo \
     "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] \
@@ -25,7 +25,7 @@
   changed_when: false
 
 - name: Install Docker
-  apt:
+  ansible.builtin.apt:
     name:
       - docker-ce
       - docker-ce-cli
