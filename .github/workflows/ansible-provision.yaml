@@ -37,10 +37,6 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H ${{ vars.SERVER_IP }} >> ~/.ssh/known_hosts
 
-      - name: Validate SSH Private Key
-        run: |
-          ssh-keygen -y -f ~/.ssh/id_ed25519
-
       - name: Ping test server
         env:
           SERVER_IPS: ${{ vars.SERVER_IP }}
@@ -50,8 +46,7 @@ jobs:
           ANSIBLE_SSH_ARGS: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
         run: |
           chmod +x infra/ansible/inventory.py
-          ansible -i infra/ansible/inventory.py all -m ping --private-key ~/.ssh/id_ed25519
-          ansible -i infra/ansible/inventory.py all -m ping
+          ansible -i infra/ansible/inventory.py all -m ping all
 
       # - name: Ansible Playbook
       #   env:
