@@ -24,6 +24,9 @@
   ansible.builtin.shell: |
     fail2ban-client status sshd
     fail2ban-client unban --all
+  args:
+    executable: /bin/bash
+  changed_when: false
 
 - name: Configure fail2ban
   ansible.builtin.copy:
