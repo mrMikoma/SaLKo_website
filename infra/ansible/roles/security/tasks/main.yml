@@ -32,6 +32,8 @@
       logpath = /var/log/fail2ban.log
       banaction = iptables-multiport
       bantime = 86400
+      maxretry = 10
+      findtime = 300
 
 - name: Enable and start fail2ban
   ansible.builtin.systemd:
