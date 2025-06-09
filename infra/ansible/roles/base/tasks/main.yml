@@ -10,6 +10,7 @@
     shell: /bin/bash
     create_home: true
     home: /home/salko
+    password: "{{ lookup('password', '/dev/null length=32 chars=ascii_letters') | password_hash('sha512') }}"
     groups: sudo
     append: true
     state: present
