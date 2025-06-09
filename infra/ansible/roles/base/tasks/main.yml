@@ -4,6 +4,18 @@
     update_cache: true
     upgrade: dist
 
+- name: Install required packages
+  ansible.builtin.apt:
+    name:
+      - git
+    state: present
+
+- name: Install Python packages
+  ansible.builtin.pip:
+    name:
+      - passlib
+    state: present
+
 - name: Create salko admin
   ansible.builtin.user:
     name: salko
