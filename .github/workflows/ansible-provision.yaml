@@ -51,24 +51,35 @@ jobs:
           ANSIBLE_HOST_KEY_CHECKING: False
         run: |
           chmod +x infra/ansible/inventory.py
-            ansible -i infra/ansible/inventory.py -m ping all \
-            -u root \
+          ansible -m ping all \
+            --inventory infra/ansible/inventory.py \
+            --user root \
             --private-key ~/.ssh/id_ed25519 \
-            -e "ansible_ssh_common_args='-o ControlMaster=auto -o ControlPersist=60s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'" || exit_code=$?
-
-            if [ "$exit_code" -ne 0 ]; then
-              echo "❌ Ping failed with exit code $exit_code"
-              exit $exit_code
-            else
-              echo "✅ Ping succeeded"
-            fi
+            --extra-vars "ansible_ssh_common_args='-o ControlMaster=auto -o ControlPersist=60s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'" || exit_code=$?
+          
+          if [ "$exit_code" -ne 0 ]; then
+            echo "❌ Ping failed with exit code $exit_code"
+            exit $exit_code
+          else
+            echo "✅ Ping succeeded"
+          fi
 
       - name: Ansible Playbook
         env:
           SERVER_IPS: ${{ vars.SERVER_IP }}
           ANSIBLE_HOST_KEY_CHECKING: False
-          ANSIBLE_INVENTORY: infra/ansible/inventory.py
-          ANSIBLE_USER: root
-          ANSIBLE_SSH_PRIVATE_KEY_FILE: ~/.ssh/id_ed25519
-          ANSIBLE_SSH_ARGS: "-o ControlMaster=auto -o ControlPersist=60s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
-        run: ansible-playbook infra/ansible/playbook.yml -vv
+        run: |
+          chmod +x infra/ansible/inventory.py 
+          ansible-playbook infra/ansible/playbook.yml \
+            --verbose \
+            --user root \
+            --private-key ~/.ssh/id_ed25519 \
+            --inventory infra/ansible/inventory.py \
+            --extra-vars "ansible_ssh_common_args='-o ControlMaster=auto -o ControlPersist=60s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'" || exit_code=$?
+          
+          if [ "$exit_code" -ne 0 ]; then
+            echo "❌ Ansible playbook execution failed with exit code $exit_code"
+            exit $exit_code
+          else
+            echo "✅ Ansible playbook executed successfully"
+          fi
