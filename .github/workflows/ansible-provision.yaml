@@ -41,7 +41,7 @@ jobs:
         env:
           SERVER_IPS: ${{ vars.SERVER_IP }}
           ANSIBLE_HOST_KEY_CHECKING: False
-          ANSIBLE_SSH_USER: root
+          ANSIBLE_USER: root
           ANSIBLE_SSH_PRIVATE_KEY_FILE: ~/.ssh/id_ed25519
           ANSIBLE_SSH_ARGS: "-o ControlMaster=auto -o ControlPersist=60s -o StrictHostKeyChecking=no -o UserKnownHostsFile=~/.ssh/known_hosts"
         run: |
