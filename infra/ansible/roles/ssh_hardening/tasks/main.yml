@@ -10,7 +10,7 @@
     - {regexp: '^PermitRootLogin', line: 'PermitRootLogin prohibit-password'}
     - {regexp: '^PasswordAuthentication', line: 'PasswordAuthentication no'}
     - {regexp: '^X11Forwarding', line: 'X11Forwarding no'}
-    - {regexp: '^#?MaxAuthTries', line: 'MaxAuthTries 2'}
+    - {regexp: '^#?MaxAuthTries', line: 'MaxAuthTries 6'}
     - {regexp: '^#?AllowTcpForwarding', line: 'AllowTcpForwarding no'}
     - {regexp: '^#?AllowAgentForwarding', line: 'AllowAgentForwarding no'}
     - {regexp: '^#?AuthorizedKeysFile', line: 'AuthorizedKeysFile .ssh/authorized_keys'}
@@ -21,22 +21,6 @@
     path: /root/.ssh
     state: directory
     mode: '0700'
-
-- name: Add GitHub public keys to root authorized keys
-  ansible.builtin.get_url:
-    url: "https://github.com/{{ github_username }}.keys"
-    dest: /root/.ssh/temp_authorized_keys
-    mode: '0600'
-
-- name: Append GitHub public keys to root authorized keys
-  ansible.builtin.shell:
-    cmd: "cat /root/.ssh/temp_authorized_keys >> /root/.ssh/authorized_keys"
-    creates: /root/.ssh/temp_authorized_keys
-
-- name: Remove temporary authorized keys file
-  ansible.builtin.file:
-    path: /root/.ssh/temp_authorized_keys
-    state: absent
 
 - name: Ensure root is allowed
   ansible.builtin.lineinfile:

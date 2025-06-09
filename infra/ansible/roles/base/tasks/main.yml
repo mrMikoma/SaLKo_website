@@ -3,3 +3,39 @@
   ansible.builtin.apt:
     update_cache: true
     upgrade: dist
+
+- name: Create salko admin
+  ansible.builtin.user:
+    name: salko
+    shell: /bin/bash
+    create_home: true
+    home: /home/salko
+    groups: sudo
+    append: true
+    state: present
+
+- name: Ensure .ssh directory exists for salko
+  ansible.builtin.file:
+    path: /home/salko/.ssh
+    state: directory
+    mode: '0700'
+    owner: salko
+    group: salko
+
+- name: Add GitHub public keys to salko authorized keys
+  ansible.builtin.get_url:
+    url: "https://github.com/{{ github_username }}.keys"
+    dest: /home/salko/.ssh/temp_authorized_keys
+    mode: '0600'
+    owner: salko
+    group: salko
+
+- name: Append GitHub public keys to salko authorized keys
+  ansible.builtin.shell:
+    cmd: "cat /home/salko/.ssh/temp_authorized_keys >> /home/salko/.ssh/authorized_keys"
+    creates: /home/salko/.ssh/authorized_keys
+
+- name: Remove temporary authorized keys file
+  ansible.builtin.file:
+    path: /home/salko/.ssh/temp_authorized_keys
+    state: absent
