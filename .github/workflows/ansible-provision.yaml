@@ -33,16 +33,20 @@ jobs:
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.VPS_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          echo "${{ secrets.VPS_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ vars.SERVER_IP }} >> ~/.ssh/known_hosts
 
       - name: Ping test server
         env:
           SERVER_IPS: ${{ vars.SERVER_IP }}
           ANSIBLE_HOST_KEY_CHECKING: False
-          ANSIBLE_SSH_ARGS: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+          ANSIBLE_SSH_USER: root
+          ANSIBLE_SSH_PRIVATE_KEY_FILE: ~/.ssh/id_ed25519
+          ANSIBLE_SSH_ARGS: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
         run: |
-          chmod +x infra/ansible/inventory.py 
+          chmod +x infra/ansible/inventory.py
+          ansible -i infra/ansible/inventory.py all -m ping --private-key ~/.ssh/id_ed25519
           ansible -i infra/ansible/inventory.py all -m ping
 
       # - name: Ansible Playbook
@@ -53,4 +57,3 @@ jobs:
       #     ANSIBLE_SSH_PRIVATE_KEY_FILE: ~/.ssh/id_ed25519
       #     ANSIBLE_SSH_ARGS: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
       #   run: ansible-playbook infra/ansible/playbook.yml -i infra/ansible/inventory.ini --tags "provision" --limit "testserver"
-
