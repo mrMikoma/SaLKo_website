@@ -25,8 +25,18 @@
 - name: Add GitHub public keys to root authorized keys
   ansible.builtin.get_url:
     url: "https://github.com/{{ github_username }}.keys"
-    dest: /root/.ssh/authorized_keys
+    dest: /root/.ssh/temp_authorized_keys
     mode: '0600'
+
+- name: Append GitHub public keys to root authorized keys
+  ansible.builtin.shell:
+    cmd: "cat /root/.ssh/temp_authorized_keys >> /root/.ssh/authorized_keys"
+    creates: /root/.ssh/temp_authorized_keys
+
+- name: Remove temporary authorized keys file
+  ansible.builtin.file:
+    path: /root/.ssh/temp_authorized_keys
+    state: absent
 
 - name: Ensure root is allowed
   ansible.builtin.lineinfile:
