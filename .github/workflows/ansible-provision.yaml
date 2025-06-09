@@ -27,8 +27,8 @@ jobs:
           python3 -m pip install --upgrade pip
           pip3 install ansible ansible-lint
 
-      # - name: Lint Ansible Playbook
-      #   run: ansible-lint infra/ansible/playbook.yml
+      - name: Lint Ansible Playbook
+        run: ansible-lint infra/ansible/playbook.yml
 
       - name: Setup SSH
         run: |
@@ -46,11 +46,17 @@ jobs:
           ANSIBLE_SSH_ARGS: "-o ControlMaster=auto -o ControlPersist=60s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
         run: |
           chmod +x infra/ansible/inventory.py
-              ansible -i infra/ansible/inventory.py -m ping all \
-                -u root \
-                --private-key ~/.ssh/id_ed25519 \
-                -e "ansible_ssh_common_args='-o ControlMaster=auto -o ControlPersist=60s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'" \
-                -vvvv
+            ansible -i infra/ansible/inventory.py -m ping all \
+            -u root \
+            --private-key ~/.ssh/id_ed25519 \
+            -e "ansible_ssh_common_args='-o ControlMaster=auto -o ControlPersist=60s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'" || exit_code=$?
+
+            if [ "$exit_code" -ne 0 ]; then
+              echo "❌ Ping failed with exit code $exit_code"
+              exit $exit_code
+            else
+              echo "✅ Ping succeeded"
+            fi
 
       # - name: Ansible Playbook
       #   env:

@@ -5,6 +5,6 @@
     github_username: "{{ lookup('env', 'GITHUB_USERNAME') }}"
   roles:
     - base
-    - security
-    - ssh_hardening
-    - docker
+    # - security
+    # - ssh_hardening
+    # - docker
