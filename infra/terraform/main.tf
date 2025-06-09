@@ -37,3 +37,9 @@ module "salko" {
 # GitHub
 #################################################################
 
+resource "github_actions_variable" "server_ip" {
+  repository    = "SaLKo_website"
+  variable_name = "server_ip"
+  value         = optional(output.module.salko.server_ips["salko-0"], "")
+  depends_on    = [module.salko]
+}

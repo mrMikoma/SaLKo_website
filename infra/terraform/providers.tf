@@ -4,6 +4,10 @@ terraform {
       source  = "hetznercloud/hcloud"
       version = ">= 1.51.0"
     }
+    github = {
+      source  = "integrations/github"
+      version = ">= 6.6.0"
+    }
   }
 
   backend "s3" {
@@ -26,4 +30,8 @@ terraform {
 
 provider "hcloud" {
   token = var.hetzner_api_token
+}
+
+provider "github" {
+  token = var.github_token
 }
