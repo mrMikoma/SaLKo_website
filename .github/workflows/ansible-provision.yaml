@@ -49,6 +49,7 @@ jobs:
         env:
           SERVER_IPS: ${{ vars.SERVER_IP }}
           ANSIBLE_HOST_KEY_CHECKING: False
+          ANSIBLE_FORCE_COLOR: True
         run: |
           chmod +x infra/ansible/inventory.py
           ansible -m ping all \
@@ -68,6 +69,7 @@ jobs:
         env:
           SERVER_IPS: ${{ vars.SERVER_IP }}
           ANSIBLE_HOST_KEY_CHECKING: False
+          ANSIBLE_FORCE_COLOR: True
         run: |
           chmod +x infra/ansible/inventory.py 
           ansible-playbook infra/ansible/playbook.yml \
