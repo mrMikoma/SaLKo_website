@@ -36,19 +36,12 @@ jobs:
           echo "${{ secrets.VPS_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
 
-      - name: DEBUG 
-        env:
-          SERVER_IPS: ${{ vars.SERVER_IP }}
-        run: |
-          echo "SERVER_IPS: $SERVER_IPS"
-          python3 infra/ansible/inventory.py
-
       - name: Ping test server
         env:
           SERVER_IPS: ${{ vars.SERVER_IP }}
         run: |
           chmod +x infra/ansible/inventory.py 
-          ansible -i infra/ansible/inventory.py -m ping all
+          ansible -i infra/ansible/inventory.py --extra-vars "host_key_checking=False" all -m ping
 
       # - name: Ansible Playbook
       #   env:
