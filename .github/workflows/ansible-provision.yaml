@@ -39,9 +39,10 @@ jobs:
       - name: Ping test server
         env:
           SERVER_IPS: ${{ vars.SERVER_IP }}
+          ANSIBLE_HOST_KEY_CHECKING: False
         run: |
           chmod +x infra/ansible/inventory.py 
-          ansible -i infra/ansible/inventory.py --extra-vars "host_key_checking=False" all -m ping
+          ansible -i infra/ansible/inventory.py all -m ping
 
       # - name: Ansible Playbook
       #   env:
