@@ -19,7 +19,7 @@ terraform {
     use_path_style              = true
 
     endpoints = {
-      s3 = "https://b60de3b655609a784e6dff508195806d.r2.cloudflarestorage.com/salko-website"
+      s3 = "https://b60de3b655609a784e6dff508195806d.r2.cloudflarestorage.com"
     }
   }
 }
