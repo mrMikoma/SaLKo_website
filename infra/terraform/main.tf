@@ -40,6 +40,6 @@ module "salko" {
 resource "github_actions_variable" "server_ip" {
   repository    = "SaLKo_website"
   variable_name = "server_ip"
-  value         = optional(module.salko.server_ips["salko-0"], "")
+  value         = try(module.salko.server_ips["salko-0"], "")
   depends_on    = [module.salko]
 }
