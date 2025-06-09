@@ -35,7 +35,7 @@ module "salko" {
 # GitHub
 #################################################################
 
-resource "github_actions_variable" "server_ip_salko_0" {
+resource "github_actions_variable" "server_ips" {
   for_each      = tomap(module.salko.server_ips)
   repository    = "SaLKo_website"
   variable_name = upper(format("server_ip_%s", each.key))
