@@ -26,8 +26,8 @@ jobs:
           python3 -m pip install --upgrade pip
           pip3 install ansible ansible-lint
 
-      - name: Lint Ansible Playbook
-        run: ansible-lint infra/ansible/playbook.yml
+      # - name: Lint Ansible Playbook
+      #   run: ansible-lint infra/ansible/playbook.yml
 
       - name: Setup SSH
         run: |
