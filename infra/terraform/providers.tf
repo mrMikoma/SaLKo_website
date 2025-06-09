@@ -32,6 +32,10 @@ provider "hcloud" {
   token = var.hetzner_api_token
 }
 
+provider "cloudflare" {
+  api_token = var.cloudflare_token
+}
+
 provider "github" {
   token = var.github_token
 }

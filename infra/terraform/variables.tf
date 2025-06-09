@@ -55,13 +55,13 @@ variable "vps_ssh_public_key" {
   type        = string
 }
 
-// // Cloudflare
-// 
-// variable "cloudflare_token" {
-//   description = "Cloudflare API token for the salko"
-//   type        = string
-//   sensitive   = true
-// }
+// Cloudflare
+
+variable "cloudflare_token" {
+  description = "Cloudflare API token for the salko"
+  type        = string
+  sensitive   = true
+}
 
 // GitHub
 
