@@ -37,14 +37,14 @@ jobs:
 
       - name: DEBUG 
         env:
-          SERVER_IPS: ${{ env.SERVER_IP }}
+          SERVER_IPS: ${{ vars.SERVER_IP }}
         run: |
           echo "SERVER_IPS: $SERVER_IPS"
           python3 infra/ansible/inventory.py
 
       - name: Ping test server
         env:
-          SERVER_IPS: ${{ env.SERVER_IP }}
+          SERVER_IPS: ${{ vars.SERVER_IP }}
         run: ansible -i infra/ansible/inventory.py -m ping
 
       # - name: Ansible Playbook
