@@ -21,7 +21,7 @@ resource "hcloud_network_subnet" "salko_subnet" {
 
 resource "hcloud_server" "salko" {
   count       = var.instances
-  name        = "salko-${count.index}"
+  name        = "salko_${count.index}"
   image       = var.os_type
   server_type = var.server_type
   location    = var.location
