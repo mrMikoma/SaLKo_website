@@ -8,6 +8,10 @@ terraform {
       source  = "integrations/github"
       version = ">= 6.6.0"
     }
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = ">= 5.5.0"
+    }
   }
 
   backend "s3" {
