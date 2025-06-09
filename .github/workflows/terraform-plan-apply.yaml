@@ -56,8 +56,6 @@ jobs:
             -var="vps_ssh_public_key=${{ secrets.VPS_PUBLIC_KEY }}" || export exitcode=$?
                   
           echo "exitcode=$exitcode" >> "$GITHUB_OUTPUT"
-
-          echo "Terraform Plan completed with exit code: $exitcode"
                   
           if [ "$exitcode" -eq 1 ]; then
             echo "❌ Terraform Plan failed."
