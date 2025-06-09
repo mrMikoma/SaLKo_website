@@ -35,6 +35,7 @@ jobs:
             exit $exit_code
           else
             echo "✅ Linting succeeded"
+            exit 0
           fi
 
       - name: Setup SSH
@@ -48,9 +49,6 @@ jobs:
         env:
           SERVER_IPS: ${{ vars.SERVER_IP }}
           ANSIBLE_HOST_KEY_CHECKING: False
-          ANSIBLE_USER: root
-          ANSIBLE_SSH_PRIVATE_KEY_FILE: ~/.ssh/id_ed25519
-          ANSIBLE_SSH_ARGS: "-o ControlMaster=auto -o ControlPersist=60s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
         run: |
           chmod +x infra/ansible/inventory.py
             ansible -i infra/ansible/inventory.py -m ping all \
@@ -65,11 +63,12 @@ jobs:
               echo "✅ Ping succeeded"
             fi
 
-      # - name: Ansible Playbook
-      #   env:
-      #     ANSIBLE_HOST_KEY_CHECKING: false
-      #     ANSIBLE_INVENTORY: infra/ansible/inventory.ini
-      #     ANSIBLE_SSH_USER: root
-      #     ANSIBLE_SSH_PRIVATE_KEY_FILE: ~/.ssh/id_ed25519
-      #     ANSIBLE_SSH_ARGS: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
-      #   run: ansible-playbook infra/ansible/playbook.yml -i infra/ansible/inventory.py -vv
+      - name: Ansible Playbook
+        env:
+          SERVER_IPS: ${{ vars.SERVER_IP }}
+          ANSIBLE_HOST_KEY_CHECKING: False
+          ANSIBLE_INVENTORY: infra/ansible/inventory.py
+          ANSIBLE_USER: root
+          ANSIBLE_SSH_PRIVATE_KEY_FILE: ~/.ssh/id_ed25519
+          ANSIBLE_SSH_ARGS: "-o ControlMaster=auto -o ControlPersist=60s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+        run: ansible-playbook infra/ansible/playbook.yml -vv
