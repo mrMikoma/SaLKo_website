@@ -36,9 +36,12 @@ module "salko" {
 #################################################################
 
 resource "github_actions_variable" "server_ip_salko_0" {
-  for_each     = tomap(module.salko.server_ips)
-  repository   = "SaLKo_website"
+  for_each      = tomap(module.salko.server_ips)
+  repository    = "SaLKo_website"
   variable_name = format("server_ip_%s", each.key)
   value         = each.value
-  depends_on    = [module.salko]
+
+  depends_on = [
+    module.salko
+  ]
 }
