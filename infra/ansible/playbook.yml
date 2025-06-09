@@ -1,0 +1,10 @@
+---
+- hosts: all
+  become: false
+  vars:
+    github_username: "{{ lookup('env', 'GITHUB_USERNAME') }}"
+  roles:
+    - base
+    - security
+    - ssh_hardening
+    - docker

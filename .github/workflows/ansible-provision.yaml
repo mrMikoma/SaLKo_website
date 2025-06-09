@@ -1,0 +1,57 @@
+name: Ansible Provision
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "infra/ansible/**"
+
+jobs:
+  ansible-provision:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4.2.2
+
+      - name: Setup Python
+        uses: actions/setup-python@v5.6.0
+        with:
+          python-version: "3.13"
+
+      - name: Install Ansible and dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          pip3 install ansible ansible-lint
+
+      - name: Lint Ansible Playbook
+        run: ansible-lint infra/ansible/playbook.yml
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+      - name: DEBUG 
+        env:
+          SERVER_IPS: ${{ env.SERVER_IP }}
+        run: |
+          echo "SERVER_IPS: $SERVER_IPS"
+          python3 infra/ansible/inventory.py
+
+      - name: Ping test server
+        env:
+          SERVER_IPS: ${{ env.SERVER_IP }}
+        run: ansible -i infra/ansible/inventory.py -m ping
+
+      # - name: Ansible Playbook
+      #   env:
+      #     ANSIBLE_HOST_KEY_CHECKING: false
+      #     ANSIBLE_INVENTORY: infra/ansible/inventory.ini
+      #     ANSIBLE_SSH_USER: root
+      #     ANSIBLE_SSH_PRIVATE_KEY_FILE: ~/.ssh/id_ed25519
+      #     ANSIBLE_SSH_ARGS: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+      #   run: ansible-playbook infra/ansible/playbook.yml -i infra/ansible/inventory.ini --tags "provision" --limit "testserver"
