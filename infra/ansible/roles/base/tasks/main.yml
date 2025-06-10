@@ -53,11 +53,11 @@
     group: salko
 
 - name: Append GitHub public keys to salko authorized keys
-  ansible.builtin.shell:
-    cmd: "cat /home/salko/.ssh/salko_authorized_keys >> /home/salko/.ssh/authorized_keys"
-    args:
-        executable: /bin/bash
-    when: lookup('file', '/home/salko/.ssh/salko_authorized_keys') is not none
+  ansible.builtin.shell: |
+    cat /home/salko/.ssh/salko_authorized_keys >> /home/salko/.ssh/authorized_keys
+  args:
+      executable: /bin/bash
+  when: lookup('file', '/home/salko/.ssh/salko_authorized_keys') is not none
 
 - name: Remove temporary authorized keys file
   ansible.builtin.file:
