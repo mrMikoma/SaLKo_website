@@ -15,6 +15,7 @@
     - {regexp: '^#?AllowAgentForwarding', line: 'AllowAgentForwarding no'}
     - {regexp: '^#?AuthorizedKeysFile', line: 'AuthorizedKeysFile .ssh/authorized_keys'}
     - {regexp: '^#?PublicKeyAuthentication', line: 'PublicKeyAuthentication yes'}
+    - {regexp: '^#?ChallengeResponseAuthentication', line: 'ChallengeResponseAuthentication no'}
 
 - name: Ensure root has SSH directory
   ansible.builtin.file:
@@ -22,10 +23,10 @@
     state: directory
     mode: '0700'
 
-- name: Ensure root is allowed
+- name: Ensure users are allowed
   ansible.builtin.lineinfile:
     path: /etc/ssh/sshd_config
-    line: "AllowUsers root"
+    line: "AllowUsers root salko"
     insertafter: EOF
 
 - name: Restart SSH
