@@ -76,3 +76,9 @@ variable "github_token" {
   type        = string
   sensitive   = true
 }
+
+variable "github_repository" {
+  description = "GitHub repository for the salko"
+  type        = string
+  default     = "SaLKo_website"
+}

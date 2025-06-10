@@ -29,11 +29,26 @@ module "salko" {
 # Cloudflare
 #################################################################
 
-# data "cloudflare_zones" "main" {
-#   filter {
-#     name   = var.cloudflare_zone_name
-#   }
-# }
+data "cloudflare_zones" "zones" {
+  filter {
+    name = var.cloudflare_zone_name
+  }
+}
+  
+
+resource "cloudflare_api_token" "traefik" {
+  name = "traefik-dns-api-token"
+
+  policy {
+    permission_groups = [
+      "Zone.DNS",       # Allows editing DNS records
+      "Zone.Zone"       # Allows reading zone info
+    ]
+    resources = {
+      "com.cloudflare.api.account.zone.${data.cloudflare_zones.zones.zones[0].id}" = "*"
+    }
+  }
+}
 
 ## TO-DO: Create and store the Cloudflare API token in a secure way
 
@@ -52,11 +67,21 @@ module "salko" {
 
 resource "github_actions_variable" "server_ips" {
   for_each      = tomap(module.salko.server_ips)
-  repository    = "SaLKo_website"
+  repository    = var.github_repository
   variable_name = upper(format("server_ip_%s", each.key))
   value         = each.value
 
   depends_on = [
     module.salko
+  ]
+}
+
+resource "github_actions_secret" "cf_dns_api_token" {
+  repository      = var.github_repository
+  secret_name     = "CF_DNS_API_TOKEN"
+  plaintext_value = cloudflare_api_token.traefik.value
+  
+  depends_on = [
+    cloudflare_api_token.traefik
   ]
 }
