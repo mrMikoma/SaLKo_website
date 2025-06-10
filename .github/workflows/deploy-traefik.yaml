@@ -20,7 +20,7 @@ jobs:
 
       - name: Transfer docker-compose.traefik.yaml to SERVER
         run: |
-          scp -i ~/.ssh/id_ed25519 ./traefik/docker-compose.traefik.yaml salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/traefik/docker-compose.traefik.yaml
+          scp -i ~/.ssh/id_ed25519 ./traefik/docker-compose.traefik.yaml salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/traefik/docker-compose.traefik.yaml -o StrictHostKeyChecking=no
 
       - name: Deploy to SERVER
         run: |
