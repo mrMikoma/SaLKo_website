@@ -34,15 +34,14 @@ data "cloudflare_zones" "zones" {
     name = var.cloudflare_zone_name
   }
 }
-  
 
 resource "cloudflare_api_token" "traefik" {
   name = "traefik-dns-api-token"
 
   policy {
     permission_groups = [
-      "Zone.DNS",       # Allows editing DNS records
-      "Zone.Zone"       # Allows reading zone info
+      "Zone.DNS", # Allows editing DNS records
+      "Zone.Zone" # Allows reading zone info
     ]
     resources = {
       "com.cloudflare.api.account.zone.${data.cloudflare_zones.zones.zones[0].id}" = "*"
@@ -80,7 +79,7 @@ resource "github_actions_secret" "cf_dns_api_token" {
   repository      = var.github_repository
   secret_name     = "CF_DNS_API_TOKEN"
   plaintext_value = cloudflare_api_token.traefik.value
-  
+
   depends_on = [
     cloudflare_api_token.traefik
   ]
