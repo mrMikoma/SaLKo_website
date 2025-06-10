@@ -42,7 +42,7 @@
     mode: '0600'
     owner: salko
     group: salko
-    backup: yes
+    backup: true
 
 - name: Add GitHub public keys to salko authorized keys
   ansible.builtin.get_url:
