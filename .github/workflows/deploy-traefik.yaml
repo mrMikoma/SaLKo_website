@@ -38,11 +38,11 @@ jobs:
 
             # Stop the current containers
             echo "Stopping the current containers..."
-            docker compose -f docker-compose.traefik.yaml down || true
+            docker compose --env-file .env.traefik -f docker-compose.traefik.yaml down || true
 
             # Start the containers using Docker Compose
             echo "Starting containers using Docker Compose..."
-            docker compose -f docker-compose.traefik.yaml up -d
+            docker compose --env-file .env.traefik -f docker-compose.traefik.yaml up -d
 
             echo "Cleaning up old images..."
             docker image prune -f

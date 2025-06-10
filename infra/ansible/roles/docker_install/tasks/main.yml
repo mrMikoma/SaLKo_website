@@ -44,8 +44,8 @@
     gid: 999
 
 - name: Add salko user to docker group
-  ansible.builtin.command:
-    cmd: usermod -aG docker salko
+  ansible.builtin.shell: |
+    usermod -aG docker salko
   args:
-    warn: false
+    executable: /bin/bash
   changed_when: false
