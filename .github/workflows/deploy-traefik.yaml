@@ -26,7 +26,7 @@ jobs:
       - name: Make sure the acme.json file exists with correct permissions on SERVER
         run: |
           ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} "touch /home/salko/traefik/acme.json"
-          ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} "sudo chown root:root /home/salko/traefik/acme.json"
+          ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} "chown root:root /home/salko/traefik/acme.json"
           ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} "chmod 600 /home/salko/traefik/acme.json"
 
       - name: Deploy to SERVER
