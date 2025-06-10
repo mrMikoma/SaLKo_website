@@ -35,20 +35,29 @@
     owner: salko
     group: salko
 
+- name: Copy repository secret key to authorized keys
+  ansible.builtin.copy:
+    dest: /home/salko/.ssh/authorized_keys
+    content: "{{ lookup('env', 'VPS_PUBLIC_KEY') }}"
+    mode: '0600'
+    owner: salko
+    group: salko
+    backup: yes
+
 - name: Add GitHub public keys to salko authorized keys
   ansible.builtin.get_url:
     url: "https://github.com/{{ github_username }}.keys"
-    dest: /home/salko/.ssh/temp_authorized_keys
+    dest: /home/salko/.ssh/salko_authorized_keys
     mode: '0600'
     owner: salko
     group: salko
 
 - name: Append GitHub public keys to salko authorized keys
   ansible.builtin.shell:
-    cmd: "cat /home/salko/.ssh/temp_authorized_keys >> /home/salko/.ssh/authorized_keys"
+    cmd: "cat /home/salko/.ssh/salko_authorized_keys >> /home/salko/.ssh/authorized_keys"
     creates: /home/salko/.ssh/authorized_keys
 
 - name: Remove temporary authorized keys file
   ansible.builtin.file:
-    path: /home/salko/.ssh/temp_authorized_keys
+    path: /home/salko/.ssh/salko_authorized_keys
     state: absent
