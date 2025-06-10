@@ -27,6 +27,14 @@
     - { path: /home/salko/postgres }
     - { path: /home/salko/nextjs }
 
+- name: Ensure acme.json file exists for Traefik
+  ansible.builtin.file:
+    path: /home/salko/traefik/acme.json
+    state: touch
+    mode: '0600'
+    owner: salko
+    group: salko
+
 - name: Ensure .ssh directory exists for salko
   ansible.builtin.file:
     path: /home/salko/.ssh
