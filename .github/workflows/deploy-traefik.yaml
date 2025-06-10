@@ -18,9 +18,15 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H ${{ vars.SERVER_IP_SALKO0 }} >> ~/.ssh/known_hosts
 
-      - name: Transfer docker-compose.traefik.yaml to SERVER
+      - name: Transfer Traefik configuration files to SERVER
         run: |
             scp -i ~/.ssh/id_ed25519 ./traefik/docker-compose.traefik.yaml salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/traefik/docker-compose.traefik.yaml
+            scp -i ~/.ssh/id_ed25519 ./traefik/traefik.yaml salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/traefik/traefik.yaml
+
+      - name: Make sure the acme.json file exists with correct permissions on SERVER
+        run: |
+          ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} "touch /home/salko/traefik/acme.json"
+          ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} "chmod 600 /home/salko/traefik/acme.json"
 
       - name: Deploy to SERVER
         run: |
