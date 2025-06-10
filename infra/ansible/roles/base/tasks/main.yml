@@ -10,7 +10,7 @@
     shell: /bin/bash
     create_home: true
     home: /home/salko
-    password: "{{ SALKO_USER_PW_512 }}"
+    password: "{{ lookup('env', 'SALKO_USER_PW_512') }}"
     groups: sudo
     append: true
     state: present
