@@ -32,3 +32,10 @@
   ansible.builtin.systemd:
     name: ssh
     state: restarted
+
+- name: DEBUG - Check SSH configuration
+  ansible.builtin.shell: |
+    sudo sshd -T
+  args:
+    executable: /bin/bash
+  changed_when: false
