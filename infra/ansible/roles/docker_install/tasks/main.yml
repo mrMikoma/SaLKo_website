@@ -36,15 +36,15 @@
     update_cache: true
     state: present
 
-- name: Create docker group
+- name: Ensure docker group exists
   ansible.builtin.group:
     name: docker
     state: present
     system: true
-    gid: 999
 
 - name: Add salko user to docker group
   ansible.builtin.shell: |
+    groupadd docker
     usermod -aG docker salko
   args:
     executable: /bin/bash
