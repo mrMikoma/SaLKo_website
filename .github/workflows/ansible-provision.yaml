@@ -69,7 +69,7 @@ jobs:
         env:
           SERVER_IPS: ${{ vars.SERVER_IP_SALKO0 }}
           VPS_PUBLIC_KEY: ${{ secrets.VPS_PUBLIC_KEY }}
-          SALKO_USER_PW: ${{ secrets.SALKO_USER_PW_512 }}
+          SALKO_USER_PW_512: ${{ secrets.SALKO_USER_PW_512 }}
           ANSIBLE_HOST_KEY_CHECKING: False
           ANSIBLE_FORCE_COLOR: True
         run: |
