@@ -29,7 +29,14 @@ module "salko" {
 # Cloudflare
 #################################################################
 
-
+# resource "cloudflare_record" "root" {
+#   zone_id = data.cloudflare_zones.main.zones[0].id
+#   name    = "@"
+#   type    = "A"
+#   value   = "YOUR_VPS_PUBLIC_IP"
+#   ttl     = 120
+#   proxied = true
+# }
 
 #################################################################
 # GitHub

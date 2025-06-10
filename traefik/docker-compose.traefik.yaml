@@ -1,6 +1,6 @@
 services:
   traefik:
-    image: traefik:latest
+    image: traefik:v3.4.1
     # Specifies the image to use for Traefik, using the latest version from the Docker Hub.
 
     container_name: traefik
@@ -25,7 +25,7 @@ services:
       # Maps the container's port 443 (HTTPS) to port 443 on the host machine.
 
     environment:
-      - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN}
+      - CF_DNS_API_TOKEN=${CF_API_TOKEN}
       # Sets the environment variable for the Cloudflare DNS API token, which is required for dynamic DNS and SSL management.
 
       # If you choose to use an API Key instead of a Token, specify your email as well
@@ -42,10 +42,10 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       # Mounts the Docker socket file to allow Traefik to interact with Docker and automatically detect running containers.
 
-      - /home/ubuntu/traefik/traefik.yaml:/traefik.yaml:ro
+      - /home/salko/traefik/traefik.yaml:/traefik.yaml:ro
       # Mounts the `traefik.yaml` file from the host machine into the container, which contains Traefik's configuration.
 
-      - /home/ubuntu/traefik/acme.json:/acme.json
+      - /home/salko/traefik/acme.json:/acme.json
       # Mounts the `acme.json` file (used for storing SSL certificates) into the container for certificate management.
 
     labels:

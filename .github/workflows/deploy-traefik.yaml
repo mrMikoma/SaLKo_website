@@ -18,14 +18,14 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H ${{ vars.SERVER_IP_SALKO0 }} >> ~/.ssh/known_hosts
 
-      - name: Transfer docker-compose.traefik.yml to SERVER
+      - name: Transfer docker-compose.traefik.yaml to SERVER
         run: |
-          scp -i ~/.ssh/id_ed25519 docker-compose.traefik.yml salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/deployment/docker-compose.traefik.yml
+          scp -i ~/.ssh/id_ed25519 ./traefik/docker-compose.traefik.yaml salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/traefik/docker-compose.traefik.yaml
 
       - name: Deploy to SERVER
         run: |
           ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} << 'EOF'
-            cd deployment/
+            cd traefik/
 
             # Create or clear the .env.traefik file
             > .env.traefik
@@ -38,11 +38,11 @@ jobs:
 
             # Stop the current containers
             echo "Stopping the current containers..."
-            docker compose -f docker-compose.traefik.yml down || true
+            docker compose -f docker-compose.traefik.yaml down || true
 
             # Start the containers using Docker Compose
             echo "Starting containers using Docker Compose..."
-            docker compose -f docker-compose.traefik.yml up -d
+            docker compose -f docker-compose.traefik.yaml up -d
 
             echo "Cleaning up old images..."
             docker image prune -f
