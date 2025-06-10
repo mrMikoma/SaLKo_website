@@ -15,6 +15,18 @@
     append: true
     state: present
 
+- name: Create deployment directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+    owner: salko
+    group: salko
+  loop:
+    - /home/salko/traefik
+    - /home/salko/postgres
+    - /home/salko/nextjs
+
 - name: Ensure .ssh directory exists for salko
   ansible.builtin.file:
     path: /home/salko/.ssh
