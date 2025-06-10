@@ -44,7 +44,6 @@
 
 - name: Add salko user to docker group
   ansible.builtin.shell: |
-    groupadd docker
     usermod -aG docker salko
   args:
     executable: /bin/bash
