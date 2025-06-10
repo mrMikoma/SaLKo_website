@@ -4,23 +4,6 @@
     update_cache: true
     upgrade: dist
 
-- name: Install essential packages
-  ansible.builtin.apt:
-    name:
-      - build-essential
-      - checkinstall
-      - zlib1g-dev
-      - openssl
-    state: present
-
-- name: Generate random password
-  ansible.builtin.shell: |
-    openssl rand -base64 32
-  register: random_password
-  args:
-    executable: /bin/bash
-  changed_when: false
-
 - name: Create salko admin
   ansible.builtin.user:
     name: salko
