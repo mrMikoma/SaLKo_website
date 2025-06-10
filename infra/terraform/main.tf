@@ -29,11 +29,11 @@ module "salko" {
 # Cloudflare
 #################################################################
 
-data "cloudflare_zones" "main" {
-  filter {
-    name   = var.cloudflare_zone_name
-  }
-}
+# data "cloudflare_zones" "main" {
+#   filter {
+#     name   = var.cloudflare_zone_name
+#   }
+# }
 
 ## TO-DO: Create and store the Cloudflare API token in a secure way
 

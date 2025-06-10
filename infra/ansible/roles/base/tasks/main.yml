@@ -17,15 +17,15 @@
 
 - name: Create deployment directories
   ansible.builtin.file:
-    path: "{{ item }}"
+    path: "{{ item.path }}"
     state: directory
-    mode: '0755'
-    owner: salko
-    group: salko
+    mode: "{{ item.mode | default('0755') }}"
+    owner: "{{ item.owner | default('salko') }}"
+    group: "{{ item.group | default('salko') }}"
   loop:
-    - /home/salko/traefik
-    - /home/salko/postgres
-    - /home/salko/nextjs
+    - { path: /home/salko/traefik }
+    - { path: /home/salko/postgres }
+    - { path: /home/salko/nextjs }
 
 - name: Ensure .ssh directory exists for salko
   ansible.builtin.file:
