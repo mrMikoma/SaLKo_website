@@ -57,7 +57,7 @@
     cat /home/salko/.ssh/salko_authorized_keys >> /home/salko/.ssh/authorized_keys
   args:
       executable: /bin/bash
-  when: lookup('file', '/home/salko/.ssh/salko_authorized_keys') is not none
+  changed_when: false
 
 - name: Remove temporary authorized keys file
   ansible.builtin.file:
