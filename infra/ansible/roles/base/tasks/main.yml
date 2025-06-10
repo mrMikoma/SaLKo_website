@@ -56,7 +56,7 @@
   ansible.builtin.shell: |
     cat /home/salko/.ssh/salko_authorized_keys >> /home/salko/.ssh/authorized_keys
   args:
-      executable: /bin/bash
+    executable: /bin/bash
   changed_when: false
 
 - name: Remove temporary authorized keys file
