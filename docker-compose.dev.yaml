@@ -65,6 +65,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.whoami.rule=Host(`${HOST_URL}`)"
       - "traefik.http.routers.whoami.entrypoints=https"
+      - "traefik.http.routers.whoami.tls.certresolver=cloudflare"
 
 networks:
   outgoing:
