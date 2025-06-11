@@ -59,10 +59,12 @@ services:
   whoami:
     image: "traefik/whoami"
     container_name: whoami
+    networks:
+      - outgoing
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.whoami.rule=Host(`${HOST_URL}`)"
-      - "traefik.http.routers.whoami.entrypoints=http"
+      - "traefik.http.routers.whoami.entrypoints=https"
 
 networks:
   outgoing:
