@@ -85,5 +85,6 @@ services:
 
 networks:
   outgoing:
-    driver: bridge
+    external: true
+    name: global_outgoing
     # Creates a user-defined bridge network called 'outgoing' to allow communication between containers.

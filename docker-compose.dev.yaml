@@ -69,7 +69,8 @@ services:
       - traefik.http.routers.whoami.tls.certresolver=cloudflare
 
 networks:
-  outgoing:
-    driver: bridge
   internal:
     driver: bridge
+  outgoing:
+    external: true
+    name: global_outgoing
