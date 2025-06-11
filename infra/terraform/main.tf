@@ -55,9 +55,9 @@ module "salko" {
 
 resource "cloudflare_dns_record" "dev" {
   zone_id = var.cloudflare_zone_id
-  comment = "Salko development environment"
+  comment = "Salko development 'kehitys' environment"
   content = module.salko.server_ips["salko0"]
-  name    = "dev"
+  name    = "kehitys"
   type    = "A"
   ttl     = 1
   proxied = true
