@@ -10,7 +10,7 @@
   ansible.builtin.get_url:
     url: https://download.docker.com/linux/ubuntu/gpg
     dest: /etc/apt/keyrings/docker.asc
-    mode: '0644'
+    mode: "0644"
 
 - name: Add Docker repo
   ansible.builtin.shell: |
@@ -48,3 +48,9 @@
   args:
     executable: /bin/bash
   changed_when: false
+
+- name: Create global Docker network
+  docker_network:
+    name: global_outgoing
+    driver: bridge
+    state: present
