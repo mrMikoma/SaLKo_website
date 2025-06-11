@@ -29,12 +29,6 @@ module "salko" {
 # Cloudflare
 #################################################################
 
-# data "cloudflare_zones" "main" {
-#   filter {
-#     name = var.cloudflare_zone_name
-#   }
-# }
-
 # TO-DO: Create a Cloudflare API token with permissions to manage DNS records for traefik
 
 # resource "cloudflare_record" "root" {
@@ -58,6 +52,16 @@ module "salko" {
 #     data.cloudflare_zones.main
 #   ]
 # }
+
+resource "cloudflare_dns_record" "dev" {
+  zone_id = var.cloudflare_zone_id
+  comment = "Salko development environment"
+  content = module.salko.server_ips["salko0"]
+  name    = "dev"
+  type    = "A"
+  ttl     = 1
+  proxied = true
+}
 
 #################################################################
 # GitHub

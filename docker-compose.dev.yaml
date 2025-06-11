@@ -1,38 +1,38 @@
 services:
-  postgres-dev:
-    image: "postgres:17.2"
-    container_name: ${NAME_PREFIX}-postgres-${DEV_SUFFIX}
-    networks:
-      - internal
-    environment:
-      - POSTGRES_USER=${DEV_POSTGRES_USER}
-      - POSTGRES_PASSWORD=${DEV_POSTGRES_PASSWORD}
-      - POSTGRES_DB=${DEV_POSTGRES_DB}
-    volumes:
-      - ./postgres-${DEV_SUFFIX}/postgres-data:/var/lib/postgresql/data
-      - ./postgres-${DEV_SUFFIX}/init/init.sql:/docker-entrypoint-initdb.d/init.sql
-    restart: always
-    healthcheck:
-      test: ["CMD", "pg_isready", "-U", "postgres"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
+  # postgres-dev:
+  #   image: "postgres:17.2"
+  #   container_name: ${NAME_PREFIX}-postgres-${BRANCH_SUFFIX}
+  #   networks:
+  #     - internal
+  #   environment:
+  #     - POSTGRES_USER=${DEV_POSTGRES_USER}
+  #     - POSTGRES_PASSWORD=${DEV_POSTGRES_PASSWORD}
+  #     - POSTGRES_DB=${DEV_POSTGRES_DB}
+  #   volumes:
+  #     - ./postgres-${BRANCH_SUFFIX}/postgres-data:/var/lib/postgresql/data
+  #     - ./postgres-${BRANCH_SUFFIX}/init/init.sql:/docker-entrypoint-initdb.d/init.sql
+  #   restart: always
+  #   healthcheck:
+  #     test: ["CMD", "pg_isready", "-U", "postgres"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 5
 
-  nextjs-dev:
+  nextjs:
     image: "ghcr.io/mrmikoma/salko_website-nextjs-dev:latest"
-    container_name: ${NAME_PREFIX}-nextjs-${DEV_SUFFIX}
+    container_name: ${NAME_PREFIX}-nextjs-${BRANCH_SUFFIX}
     networks:
       - internal
       - outgoing
-    env_file: .env
+    env_file: .env #.env.dev.nextjs
     environment:
       - PORT=${DEV_CONTAINER_PORT}
       - HOSTNAME=${DEV_HOSTNAME}
-      - DATABASE_CONNECTION_STRING=postgresql://${DEV_POSTGRES_USER}:${DEV_POSTGRES_PASSWORD}@postgres-${DEV_SUFFIX}:${DEV_POSTGRES_HOST_PORT}/${DEV_POSTGRES_DB}
-    depends_on:
-      postgres-dev:
-        condition: service_healthy
-    restart: always
+      - DATABASE_CONNECTION_STRING=postgresql://${DEV_POSTGRES_USER}:${DEV_POSTGRES_PASSWORD}@postgres-${BRANCH_SUFFIX}:${DEV_POSTGRES_HOST_PORT}/${DEV_POSTGRES_DB}
+    # depends_on:
+    #   postgres-dev:
+    #     condition: service_healthy
+    restart: unless-stopped
     # healthcheck:
     #   test: curl --fail http://localhost:3001/ || exit 1
     #   interval: 60s
@@ -40,18 +40,17 @@ services:
     #   retries: 3
     #   start_period: 30s
     labels:
-      - com.centurylinklabs.watchtower.enable=true
       - traefik.enable=true
-      - traefik.http.routers.nextjs-${DEV_SUFFIX}.rule=Host(`${DEV_HOST_URL}`)
-      - traefik.http.routers.nextjs-${DEV_SUFFIX}.entrypoints=websecure
-      - traefik.http.routers.nextjs-${DEV_SUFFIX}.tls.certresolver=myresolver
-      # - traefik.http.routers.nextjs-${DEV_SUFFIX}.middlewares=redirect-to-https
+      - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.rule=Host(`${DEV_HOST_URL}`)
+      - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.entrypoints=websecure
+      - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.tls.certresolver=myresolver
+      # - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.middlewares=redirect-to-https
       # - traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https
       # - traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true
-      - traefik.http.services.nextjs-${DEV_SUFFIX}.loadbalancer.server.port=${DEV_CONTAINER_PORT}
-      # - traefik.http.services.nextjs-${DEV_SUFFIX}.loadbalancer.healthcheck
-      # - traefik.http.services.nextjs-${DEV_SUFFIX}.rateLimit.burst=100
-      # - traefik.http.services.nextjs-${DEV_SUFFIX}.rateLimit.average=50
+      - traefik.http.services.nextjs-${BRANCH_SUFFIX}.loadbalancer.server.port=${DEV_CONTAINER_PORT}
+      # - traefik.http.services.nextjs-${BRANCH_SUFFIX}.loadbalancer.healthcheck
+      # - traefik.http.services.nextjs-${BRANCH_SUFFIX}.rateLimit.burst=100
+      # - traefik.http.services.nextjs-${BRANCH_SUFFIX}.rateLimit.average=50
 
 networks:
   outgoing:

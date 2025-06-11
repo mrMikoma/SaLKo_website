@@ -49,7 +49,23 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H ${{ vars.SERVER_IP_SALKO0 }} >> ~/.ssh/known_hosts
 
-      - name: Deploy to SERVER
+      - name: Deploy APP to SERVER
         run: |
           echo "Deploying to production..."
           # Add your deployment commands here
+
+      - name: Deploy DB to SERVER
+        run: |
+          echo "Deploying database to production..."
+          # Add your database deployment commands here
+
+      - name: Notify success
+        if: ${{ success() }}
+        run: |
+          echo "Deployment successful!"
+          # Add your notification commands here, e.g., sending a message to Slack or Discord
+      - name: Notify failure
+        if: ${{ failure() }}
+        run: |
+          echo "Deployment failed!"
+          # Add your failure notification commands here, e.g., sending a message to Slack or Discord

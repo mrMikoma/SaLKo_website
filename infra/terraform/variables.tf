@@ -63,6 +63,12 @@ variable "cloudflare_token" {
   sensitive   = true
 }
 
+variable "cloudflare_zone_id" {
+  description = "Cloudflare zone ID for the salko"
+  type        = string
+  sensitive   = true
+}
+
 variable "cloudflare_zone_name" {
   description = "Cloudflare zone name for the salko"
   type        = string
