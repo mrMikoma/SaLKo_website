@@ -64,7 +64,7 @@ services:
     env_file: .env.dev
     labels:
       - traefik.enable=true
-      - traefik.http.routers.whoami.rule=Host(`${HOST_URL}`)
+      - traefik.http.routers.whoami.rule=Host(`devkehitys.savonlinnanlentokerho.fi`)
       - traefik.http.routers.whoami.entrypoints=websecure
       - traefik.http.routers.whoami.tls.certresolver=cloudflare
       - traefik.http.services.whoami.loadbalancer.server.port=80
