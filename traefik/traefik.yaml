@@ -6,6 +6,9 @@ api:
   dashboard: false
   debug: false
 
+log:
+  level: "DEBUG"
+
 entryPoints:
   http:
     address: ":80"
