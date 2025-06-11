@@ -48,24 +48,62 @@ jobs:
           echo "${{ secrets.VPS_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H ${{ vars.SERVER_IP_SALKO0 }} >> ~/.ssh/known_hosts
+      - name: Transfer configuration files to SERVER
+        run: |
+          scp -i ~/.ssh/id_ed25519 ./docker-compose.dev.yaml salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/docker-compose.dev.yaml
 
       - name: Deploy APP to SERVER
+        env:
+          NAME_PREFIX: "salko"
+          BRANCH_SUFFIX: ${{ env.BRANCH_NAME || 'dev' }}
+          NODE_ENV: "production"
+          CONTAINER_PORT: "3010"
+          HOST_PORT: "3010"
+          HOSTNAME: "0.0.0.0"
+          HOST_URL: "kehitys.savonlinnanlentokerho.fi"
+          IMAGE_TAG_NAME: ${{ env.IMAGE_TAG_NAME || 'latest' }}
+          VERSION: ${{ inputs.version || env.VERSION || 'latest' }}
         run: |
           echo "Deploying to production..."
-          # Add your deployment commands here
+          ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} << "EOF"
+            # Create or clear the .env.dev file
+            > .env.dev
 
-      - name: Deploy DB to SERVER
-        run: |
-          echo "Deploying database to production..."
-          # Add your database deployment commands here
+            # Append environment variables one by one
+            echo "NAME_PREFIX=${{ env.NAME_PREFIX }}" > .env.dev
+            echo "BRANCH_SUFFIX=${{ env.BRANCH_SUFFIX }}" >> .env.dev
+            echo "NODE_ENV=${{ env.NODE_ENV }}" >> .env.dev
+            echo "CONTAINER_PORT=${{ env.CONTAINER_PORT }}" >> .env.dev
+            echo "HOST_PORT=${{ env.HOST_PORT }}" >> .env.dev
+            echo "HOSTNAME=${{ env.HOSTNAME }}" >> .env.dev
+            echo "HOST_URL=${{ env.HOST_URL }}" >> .env.dev
+            echo "IMAGE_TAG_NAME=${{ env.IMAGE_TAG_NAME }}" >> .env.dev
+            echo "VERSION=${{ env.VERSION }}" >> .env.dev
+
+            # Ensure the environment variables are written before proceeding
+            echo ".env.dev file created with environment variables."
+
+            # Stop the current containers
+            echo "Stopping the current containers..."
+            docker compose --env-file .env.dev -f docker-compose.dev.yaml down || true
+
+            # Start the containers using Docker Compose
+            echo "Starting containers using Docker Compose..."
+            docker compose --env-file .env.dev -f docker-compose.dev.yaml up -d
+
+            echo "Cleaning up old images..."
+            docker image prune -f
+
+            echo "Deployment complete."
+          EOF
 
       - name: Notify success
         if: ${{ success() }}
         run: |
-          echo "Deployment successful!"
-          # Add your notification commands here, e.g., sending a message to Slack or Discord
+          echo "✅ Deployment successful!"
+          echo "Site is available at: https://kehitys.savonlinnanlentokerho.fi"
+
       - name: Notify failure
         if: ${{ failure() }}
         run: |
-          echo "Deployment failed!"
-          # Add your failure notification commands here, e.g., sending a message to Slack or Discord
+          echo "❌ Deployment failed!"

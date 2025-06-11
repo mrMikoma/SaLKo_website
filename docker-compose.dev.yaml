@@ -5,9 +5,9 @@ services:
   #   networks:
   #     - internal
   #   environment:
-  #     - POSTGRES_USER=${DEV_POSTGRES_USER}
-  #     - POSTGRES_PASSWORD=${DEV_POSTGRES_PASSWORD}
-  #     - POSTGRES_DB=${DEV_POSTGRES_DB}
+  #     - POSTGRES_USER=${POSTGRES_USER}
+  #     - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+  #     - POSTGRES_DB=${POSTGRES_DB}
   #   volumes:
   #     - ./postgres-${BRANCH_SUFFIX}/postgres-data:/var/lib/postgresql/data
   #     - ./postgres-${BRANCH_SUFFIX}/init/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -19,16 +19,16 @@ services:
   #     retries: 5
 
   nextjs:
-    image: "ghcr.io/mrmikoma/salko_website-nextjs-dev:latest"
+    image: ghcr.io/mrmikoma/salko_website-nextjs-dev:latest
     container_name: ${NAME_PREFIX}-nextjs-${BRANCH_SUFFIX}
     networks:
       - internal
       - outgoing
-    env_file: .env #.env.dev.nextjs
+    env_file: .env.dev
     environment:
-      - PORT=${DEV_CONTAINER_PORT}
-      - HOSTNAME=${DEV_HOSTNAME}
-      - DATABASE_CONNECTION_STRING=postgresql://${DEV_POSTGRES_USER}:${DEV_POSTGRES_PASSWORD}@postgres-${BRANCH_SUFFIX}:${DEV_POSTGRES_HOST_PORT}/${DEV_POSTGRES_DB}
+      - PORT=${CONTAINER_PORT}
+      - HOSTNAME=${HOSTNAME}
+    #  - DATABASE_CONNECTION_STRING=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-${BRANCH_SUFFIX}:${POSTGRES_HOST_PORT}/${POSTGRES_DB}
     # depends_on:
     #   postgres-dev:
     #     condition: service_healthy
@@ -41,16 +41,20 @@ services:
     #   start_period: 30s
     labels:
       - traefik.enable=true
-      - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.rule=Host(`${DEV_HOST_URL}`)
+      - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.rule=Host(`${HOST_URL}`)
       - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.entrypoints=websecure
-      - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.tls.certresolver=myresolver
+      - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.tls.certresolver=cloudflare
       # - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.middlewares=redirect-to-https
       # - traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https
       # - traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true
-      - traefik.http.services.nextjs-${BRANCH_SUFFIX}.loadbalancer.server.port=${DEV_CONTAINER_PORT}
+      - traefik.http.services.nextjs-${BRANCH_SUFFIX}.loadbalancer.server.port=${CONTAINER_PORT}
       # - traefik.http.services.nextjs-${BRANCH_SUFFIX}.loadbalancer.healthcheck
       # - traefik.http.services.nextjs-${BRANCH_SUFFIX}.rateLimit.burst=100
       # - traefik.http.services.nextjs-${BRANCH_SUFFIX}.rateLimit.average=50
+
+#   - "traefik.http.routers.preview-${UUID}.middlewares=strip-prefix-${UUID}"
+# environment:
+#   - NEXT_PUBLIC_PREVIEW_SECRET=${SECRET}
 
 networks:
   outgoing:
