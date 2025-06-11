@@ -1,4 +1,4 @@
-name: Deploy
+name: Deploy "dev" branch
 
 on:
   workflow_dispatch:
@@ -42,7 +42,14 @@ jobs:
           echo "IMAGE_TAG_NAME=${{ github.event.client_payload.image_tag_name }}" >> $GITHUB_ENV
           echo "VERSION=${{ github.event.client_payload.version }}" >> $GITHUB_ENV
 
-      - name: Deploy to production
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ vars.SERVER_IP_SALKO0 }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to SERVER
         run: |
           echo "Deploying to production..."
           # Add your deployment commands here

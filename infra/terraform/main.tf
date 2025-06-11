@@ -29,27 +29,13 @@ module "salko" {
 # Cloudflare
 #################################################################
 
-data "cloudflare_zones" "zones" {
-  filter {
-    name = var.cloudflare_zone_name
-  }
-}
+# data "cloudflare_zones" "main" {
+#   filter {
+#     name = var.cloudflare_zone_name
+#   }
+# }
 
-resource "cloudflare_api_token" "traefik" {
-  name = "traefik-dns-api-token"
-
-  policy {
-    permission_groups = [
-      "Zone.DNS", # Allows editing DNS records
-      "Zone.Zone" # Allows reading zone info
-    ]
-    resources = {
-      "com.cloudflare.api.account.zone.${data.cloudflare_zones.zones.zones[0].id}" = "*"
-    }
-  }
-}
-
-## TO-DO: Create and store the Cloudflare API token in a secure way
+# TO-DO: Create a Cloudflare API token with permissions to manage DNS records for traefik
 
 # resource "cloudflare_record" "root" {
 #   zone_id = data.cloudflare_zones.main.zones[0].id
@@ -58,6 +44,19 @@ resource "cloudflare_api_token" "traefik" {
 #   value   = "YOUR_VPS_PUBLIC_IP"
 #   ttl     = 120
 #   proxied = true
+# }
+
+# resource "cloudflare_record" "www" {
+#   zone_id = data.cloudflare_zones.main.zones[0].id
+#   name    = "www"
+#   type    = "CNAME"
+#   value   = "@"
+#   ttl     = 120
+#   proxied = true
+# 
+#   depends_on = [
+#     data.cloudflare_zones.main
+#   ]
 # }
 
 #################################################################
