@@ -74,12 +74,12 @@ resource "github_actions_variable" "server_ips" {
   ]
 }
 
-resource "github_actions_secret" "cf_dns_api_token" {
-  repository      = var.github_repository
-  secret_name     = "CF_DNS_API_TOKEN"
-  plaintext_value = cloudflare_api_token.traefik.value
-
-  depends_on = [
-    cloudflare_api_token.traefik
-  ]
-}
+# resource "github_actions_secret" "cf_dns_api_token" {
+#   repository      = var.github_repository
+#   secret_name     = "CF_DNS_API_TOKEN"
+#   plaintext_value = cloudflare_api_token.traefik.value
+# 
+#   depends_on = [
+#     cloudflare_api_token.traefik
+#   ]
+# }
