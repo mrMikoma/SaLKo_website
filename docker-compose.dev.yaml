@@ -42,7 +42,7 @@ services:
     labels:
       - traefik.enable=true
       - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.rule=Host(`${HOST_URL}`)
-      - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.entrypoints=websecure
+      - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.entrypoints=https
       - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.tls.certresolver=cloudflare
       # - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.middlewares=redirect-to-https
       # - traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https
