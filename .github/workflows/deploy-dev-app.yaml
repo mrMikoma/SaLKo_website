@@ -1,4 +1,4 @@
-name: Deploy "dev" branch
+name: Deploy 'dev' branch
 
 on:
   workflow_dispatch:
