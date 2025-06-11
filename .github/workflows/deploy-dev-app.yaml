@@ -60,7 +60,7 @@ jobs:
           CONTAINER_PORT: "3010"
           HOST_PORT: "3010"
           HOSTNAME: "0.0.0.0"
-          HOST_URL: "kehitys.savonlinnanlentokerho.fi"
+          HOST_URL: "devkehitys.savonlinnanlentokerho.fi"
           IMAGE_TAG_NAME: ${{ env.IMAGE_TAG_NAME || 'latest' }}
           VERSION: ${{ inputs.version || env.VERSION || 'latest' }}
         run: |
@@ -101,7 +101,7 @@ jobs:
         if: ${{ success() }}
         run: |
           echo "✅ Deployment successful!"
-          echo "Site is available at: https://kehitys.savonlinnanlentokerho.fi"
+          echo "Site is available at: https://devkehitys.savonlinnanlentokerho.fi"
 
       - name: Notify failure
         if: ${{ failure() }}
