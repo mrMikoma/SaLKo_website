@@ -16,6 +16,11 @@ on:
   repository_dispatch:
     types: [deploy]
 
+env:
+  NAME_PREFIX: "salko"
+  DEV_SITE_SECRET: "kehitys"
+  HOST_URL: "devkehitys.savonlinnanlentokerho.fi"
+
 jobs:
   deploy:
     runs-on: ubuntu-24.04
@@ -54,13 +59,11 @@ jobs:
 
       - name: Deploy APP to SERVER
         env:
-          NAME_PREFIX: "salko"
           BRANCH_SUFFIX: ${{ env.BRANCH_NAME || 'dev' }}
           NODE_ENV: "production"
           CONTAINER_PORT: "3010"
           HOST_PORT: "3010"
           HOSTNAME: "0.0.0.0"
-          HOST_URL: "devkehitys.savonlinnanlentokerho.fi"
           IMAGE_TAG_NAME: ${{ env.IMAGE_TAG_NAME || 'latest' }}
           VERSION: ${{ inputs.version || env.VERSION || 'latest' }}
         run: |
@@ -71,6 +74,7 @@ jobs:
 
             # Append environment variables one by one
             echo "NAME_PREFIX=${{ env.NAME_PREFIX }}" > .env.dev
+            echo "DEV_SITE_SECRET=${{ env.DEV_SITE_SECRET }}" >> .env.dev
             echo "BRANCH_SUFFIX=${{ env.BRANCH_SUFFIX }}" >> .env.dev
             echo "NODE_ENV=${{ env.NODE_ENV }}" >> .env.dev
             echo "CONTAINER_PORT=${{ env.CONTAINER_PORT }}" >> .env.dev
@@ -107,7 +111,7 @@ jobs:
         if: ${{ success() }}
         run: |
           echo "✅ Deployment successful!"
-          echo "Site is available at: https://devkehitys.savonlinnanlentokerho.fi"
+          echo "Site is available at: https://devkehitys.savonlinnanlentokerho.fi/${{ env.BRANCH_SUFFIX }}/"
 
       - name: Notify failure
         if: ${{ failure() }}
