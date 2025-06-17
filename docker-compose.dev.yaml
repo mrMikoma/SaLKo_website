@@ -1,22 +1,22 @@
 services:
-  # postgres-dev:
-  #   image: "postgres:17.2"
-  #   container_name: ${NAME_PREFIX}-postgres-${BRANCH_SUFFIX}
-  #   networks:
-  #     - internal
-  #   environment:
-  #     - POSTGRES_USER=${POSTGRES_USER}
-  #     - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-  #     - POSTGRES_DB=${POSTGRES_DB}
-  #   volumes:
-  #     - ./postgres-${BRANCH_SUFFIX}/postgres-data:/var/lib/postgresql/data
-  #     - ./postgres-${BRANCH_SUFFIX}/init/init.sql:/docker-entrypoint-initdb.d/init.sql
-  #   restart: always
-  #   healthcheck:
-  #     test: ["CMD", "pg_isready", "-U", "postgres"]
-  #     interval: 30s
-  #     timeout: 10s
-  #     retries: 5
+  postgres:
+    image: postgres:17.5
+    container_name: ${NAME_PREFIX}-postgres-${BRANCH_SUFFIX}
+    networks:
+      - internal
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - ./postgres-${BRANCH_SUFFIX}/postgres-data:/var/lib/postgresql/data
+      - ./postgres-${BRANCH_SUFFIX}/init/init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   #   nextjs:
   #     image: ghcr.io/mrmikoma/salko_website-nextjs-dev:latest
@@ -57,7 +57,7 @@ services:
   #   - NEXT_PUBLIC_PREVIEW_SECRET=${SECRET}
 
   whoami:
-    image: "traefik/whoami"
+    image: traefik/whoami
     container_name: whoami
     networks:
       - outgoing

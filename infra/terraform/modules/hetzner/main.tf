@@ -29,6 +29,7 @@ resource "hcloud_server" "salko" {
   ssh_keys     = [hcloud_ssh_key.vps_ssh_key.id]
   firewall_ids = [hcloud_firewall.default.id]
 
+  backups            = false  # TO-DO: Enable backups when real data is added
   delete_protection  = true
   rebuild_protection = true
 
