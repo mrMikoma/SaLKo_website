@@ -119,14 +119,11 @@ jobs:
 
       - name: Post Task Summary
         run: |
-          delimiter="$(openssl rand -hex 8)"
-          echo "summary<<${delimiter}" >> $GITHUB_OUTPUT
-          echo "## Deployment Summary" >> $GITHUB_OUTPUT
-          echo "- **Branch:** \`${{ env.BRANCH_NAME || 'dev' }}\`" >> $GITHUB_OUTPUT
-          echo "- **Version:** \`${{ env.VERSION || 'latest' }}\`" >> $GITHUB_OUTPUT
-          echo "- **Image Tag:** \`${{ env.IMAGE_TAG_NAME || 'latest' }}\`" >> $GITHUB_OUTPUT
-          echo "- **Server:** \`${{ vars.SERVER_IP_SALKO0 }}\`" >> $GITHUB_OUTPUT
-          echo "- **Site URL:** [https://${{ env.SITE_PREFIX }}.${{ env.HOST_URL }}/${{ env.SITE_PREFIX }}](https://${{ env.SITE_PREFIX }}.${{ env.HOST_URL }}/${{ env.SITE_PREFIX }})" >> $GITHUB_OUTPUT
-          echo "${delimiter}" >> $GITHUB_OUTPUT
-        
-          echo "$SUMMARY" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## Deployment Summary"
+            echo "- **Branch:** \`${{ github.event.inputs.branch || github.event.client_payload.branch_name || 'dev' }}\`"
+            echo "- **Version:** \`${{ github.event.inputs.version || github.event.client_payload.version || 'latest' }}\`"
+            echo "- **Image Tag:** \`${{ github.event.client_payload.image_tag_name || 'latest' }}\`"
+            echo "- **Server:** \`${{ vars.SERVER_IP_SALKO0 }}\`"
+            echo "- **Site URL:** [https://${{ env.SITE_PREFIX }}.${{ env.HOST_URL }}/${{ env.SITE_PREFIX }}](https://${{ env.SITE_PREFIX }}.${{ env.HOST_URL }}/${{ env.SITE_PREFIX }})"
+          } >> $GITHUB_STEP_SUMMARY
