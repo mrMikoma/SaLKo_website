@@ -57,7 +57,7 @@ jobs:
       - name: Transfer configuration files to SERVER
         run: |
           scp -i ~/.ssh/id_ed25519 ./docker-compose.dev.yaml salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/docker-compose.dev.yaml
-          scp -i ~/.ssh/id_ed25519 ./postgres/init/init-dev.sql salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/postgres-${{ env.BRANCH_NAME || 'dev' }}/init/init.sql
+          scp -i ~/.ssh/id_ed25519 ./postgres/init/init-dev.sql salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/postgres-dev/init.sql
 
       - name: Deploy APP to SERVER
         env:

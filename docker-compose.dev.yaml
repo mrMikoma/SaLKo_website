@@ -9,8 +9,8 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
     volumes:
-      - ./postgres-${BRANCH_SUFFIX}/postgres-data:/var/lib/postgresql/data
-      - ./postgres-${BRANCH_SUFFIX}/init/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - /home/salko/postgres-dev/postgres-data:/var/lib/postgresql/data
+      - /home/salko/postgres-dev/init.sql:/docker-entrypoint-initdb.d/init.sql
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres"]
