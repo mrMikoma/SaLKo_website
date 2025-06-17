@@ -60,7 +60,7 @@ services:
     image: "traefik/whoami"
     container_name: whoami
     networks:
-      - global_outgoing
+      - outgoing
     env_file: .env.dev
     labels:
       - traefik.enable=true
