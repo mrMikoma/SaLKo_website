@@ -18,8 +18,8 @@ on:
 
 env:
   NAME_PREFIX: "salko"
-  DEV_SITE_SECRET: "kehitys"
-  HOST_URL: "devkehitys.savonlinnanlentokerho.fi"
+  SITE_PREFIX: "kehitys"
+  HOST_URL: "savonlinnanlentokerho.fi"
 
 jobs:
   deploy:
@@ -74,7 +74,7 @@ jobs:
 
             # Append environment variables one by one
             echo "NAME_PREFIX=${{ env.NAME_PREFIX }}" > .env.dev
-            echo "DEV_SITE_SECRET=${{ env.DEV_SITE_SECRET }}" >> .env.dev
+            echo "SITE_PREFIX=${{ env.SITE_PREFIX }}" >> .env.dev
             echo "BRANCH_SUFFIX=${{ env.BRANCH_SUFFIX }}" >> .env.dev
             echo "NODE_ENV=${{ env.NODE_ENV }}" >> .env.dev
             echo "CONTAINER_PORT=${{ env.CONTAINER_PORT }}" >> .env.dev

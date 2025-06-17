@@ -64,11 +64,11 @@ services:
     env_file: .env.dev
     labels:
       - traefik.enable=true
-      - traefik.http.routers.whoami.rule=Host(`devkehitys.savonlinnanlentokerho.fi`) && PathPrefix(`/${DEV_SITE_SECRET}`)
+      - traefik.http.routers.whoami.rule=Host(`devkehitys.savonlinnanlentokerho.fi`) && PathPrefix(`/${SITE_PREFIX}`)
       - traefik.http.routers.whoami.entrypoints=websecure
       - traefik.http.routers.whoami.tls.certresolver=cloudflare
       - traefik.http.routers.whoami.middlewares=strip-prefix
-      - traefik.http.middlewares.strip-prefix.stripPrefix.prefixes='/${DEV_SITE_SECRET}'
+      - traefik.http.middlewares.strip-prefix.stripPrefix.prefixes='/${SITE_PREFIX}'
 networks:
   internal:
     driver: bridge
