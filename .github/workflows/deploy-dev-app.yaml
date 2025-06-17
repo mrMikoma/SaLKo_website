@@ -97,6 +97,12 @@ jobs:
             echo "Deployment complete."
           EOF
 
+      # - name: Edit robots.txt to prevent SEO indexing
+      #   run: |
+      #     echo "User-agent: *" > robots.txt
+      #     echo "Disallow: /" >> robots.txt
+      #     scp -i ~/.ssh/id_ed25519 robots.txt salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/nextjs/public/robots.txt
+
       - name: Notify success
         if: ${{ success() }}
         run: |

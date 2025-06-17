@@ -49,7 +49,7 @@
     executable: /bin/bash
   changed_when: false
 
-- name: Create 'global_outgoing' Dockernetwork
+- name: Create 'global_outgoing' Docker network
   ansible.builtin.shell: |
     docker network create --driver bridge global_outgoing || true
   args:
