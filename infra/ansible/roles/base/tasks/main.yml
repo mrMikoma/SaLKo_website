@@ -25,6 +25,7 @@
   loop:
     - { path: /home/salko/traefik }
     - { path: /home/salko/postgres }
+    - { path: /home/salko/postgres-dev }
     - { path: /home/salko/nextjs }
 
 - name: Ensure acme.json file exists for Traefik
