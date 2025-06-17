@@ -122,15 +122,11 @@ jobs:
           delimiter="$(openssl rand -hex 8)"
           echo "summary<<${delimiter}" >> $GITHUB_OUTPUT
           echo "## Deployment Summary" >> $GITHUB_OUTPUT
-          echo "<details><summary>Click to expand</summary>" >> $GITHUB_OUTPUT
-          echo "" >> $GITHUB_OUTPUT
-          echo "### Deployment Details" >> $GITHUB_OUTPUT
           echo "- **Branch:** \`${{ env.BRANCH_NAME || 'dev' }}\`" >> $GITHUB_OUTPUT
           echo "- **Version:** \`${{ env.VERSION || 'latest' }}\`" >> $GITHUB_OUTPUT
           echo "- **Image Tag:** \`${{ env.IMAGE_TAG_NAME || 'latest' }}\`" >> $GITHUB_OUTPUT
           echo "- **Server:** \`${{ vars.SERVER_IP_SALKO0 }}\`" >> $GITHUB_OUTPUT
           echo "- **Site URL:** [https://${{ env.SITE_PREFIX }}.${{ env.HOST_URL }}/${{ env.SITE_PREFIX }}](https://${{ env.SITE_PREFIX }}.${{ env.HOST_URL }}/${{ env.SITE_PREFIX }})" >> $GITHUB_OUTPUT
-          echo "</details>" >> $GITHUB_OUTPUT
           echo "${delimiter}" >> $GITHUB_OUTPUT
         
           echo "$SUMMARY" >> $GITHUB_STEP_SUMMARY
