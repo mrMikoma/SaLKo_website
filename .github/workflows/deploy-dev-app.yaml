@@ -73,7 +73,7 @@ jobs:
         env:
           BRANCH_SUFFIX: ${{ env.BRANCH_NAME || 'dev' }}
           NODE_ENV: "production"
-          CONTAINER_PORT: "3010"
+          CONTAINER_PORT: "3000"
           HOST_PORT: "3010"
           HOSTNAME: "0.0.0.0"
           IMAGE_TAG_NAME: ${{ env.IMAGE_TAG_NAME || 'latest' }}
