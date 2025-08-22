@@ -102,7 +102,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5.0.0
         with:
-          images: ${{ steps.image-name.outputs.image_name }}
+          images: ${{ github.env.image_name }}
           tags: |
             ${{ github.env.new_version }}
             latest
