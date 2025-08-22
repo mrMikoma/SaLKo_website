@@ -19,57 +19,53 @@ services:
       timeout: 10s
       retries: 5
 
-  #   nextjs:
-  #     image: ghcr.io/mrmikoma/salko_website-nextjs-dev:latest
-  #     container_name: ${NAME_PREFIX}-nextjs-${BRANCH_SUFFIX}
-  #     networks:
-  #       - internal
-  #       - outgoing
-  #     env_file: .env.dev
-  #     environment:
-  #       - PORT=${CONTAINER_PORT}
-  #       - HOSTNAME=${HOSTNAME}
-  #     #  - DATABASE_CONNECTION_STRING=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-${BRANCH_SUFFIX}:${POSTGRES_HOST_PORT}/${POSTGRES_DB}
-  #     # depends_on:
-  #     #   postgres:
-  #     #     condition: service_healthy
-  #     restart: unless-stopped
-  #     # healthcheck:
-  #     #   test: curl --fail http://localhost:3001/ || exit 1
-  #     #   interval: 60s
-  #     #   timeout: 30s
-  #     #   retries: 3
-  #     #   start_period: 30s
-  #     labels:
-  #       - traefik.enable=true
-  #       - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.rule=Host(`${HOST_URL}`)
-  #       - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.entrypoints=https
-  #       - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.tls.certresolver=cloudflare
-  #       # - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.middlewares=redirect-to-https
-  #       # - traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https
-  #       # - traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true
-  #       - traefik.http.services.nextjs-${BRANCH_SUFFIX}.loadbalancer.server.port=${CONTAINER_PORT}
-  #       # - traefik.http.services.nextjs-${BRANCH_SUFFIX}.loadbalancer.healthcheck
-  #       # - traefik.http.services.nextjs-${BRANCH_SUFFIX}.rateLimit.burst=100
-  #       # - traefik.http.services.nextjs-${BRANCH_SUFFIX}.rateLimit.average=50
-
-  #   - "traefik.http.routers.preview-${UUID}.middlewares=strip-prefix-${UUID}"
-  # environment:
-  #   - NEXT_PUBLIC_PREVIEW_SECRET=${SECRET}
-
-  whoami:
-    image: traefik/whoami
-    container_name: whoami
+  nextjs:
+    image: ghcr.io/mrmikoma/salko_website-nextjs-dev:${VERSION}
+    container_name: ${NAME_PREFIX}-nextjs-${BRANCH_SUFFIX}
     networks:
+      - internal
       - outgoing
     env_file: .env.dev
+    environment:
+      - PORT=${CONTAINER_PORT}
+      - HOSTNAME=${HOSTNAME}
+    #  - DATABASE_CONNECTION_STRING=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-${BRANCH_SUFFIX}:${POSTGRES_HOST_PORT}/${POSTGRES_DB}
+    # depends_on:
+    #   postgres:
+    #     condition: service_healthy
+    restart: unless-stopped
+    # healthcheck:
+    #   test: curl --fail http://localhost:3001/ || exit 1
+    #   interval: 60s
+    #   timeout: 30s
+    #   retries: 3
+    #   start_period: 30s
     labels:
       - traefik.enable=true
-      - traefik.http.routers.whoami.rule=Host(`${SITE_PREFIX}.${HOST_URL}`) && PathPrefix(`/${SITE_PREFIX}`)
-      - traefik.http.routers.whoami.entrypoints=websecure
-      - traefik.http.routers.whoami.tls.certresolver=cloudflare
-      - traefik.http.routers.whoami.middlewares=strip-prefix
+      - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.rule=Host(`${SITE_PREFIX}.${HOST_URL}`) && PathPrefix(`/${SITE_PREFIX}`)
+      - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.entrypoints=websecure
+      - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.tls.certresolver=cloudflare
+      - traefik.http.services.nextjs-${BRANCH_SUFFIX}.loadbalancer.server.port=${CONTAINER_PORT}
+      - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.middlewares=strip-prefix
       - traefik.http.middlewares.strip-prefix.stripPrefix.prefixes='/${SITE_PREFIX}'
+      # - traefik.http.services.nextjs-${BRANCH_SUFFIX}.loadbalancer.healthcheck
+      # - traefik.http.services.nextjs-${BRANCH_SUFFIX}.rateLimit.burst=100
+      # - traefik.http.services.nextjs-${BRANCH_SUFFIX}.rateLimit.average=50
+
+#   whoami:
+#     image: traefik/whoami
+#     container_name: whoami
+#     networks:
+#       - outgoing
+#     env_file: .env.dev
+#     labels:
+#       - traefik.enable=true
+#       - traefik.http.routers.whoami.rule=Host(`${SITE_PREFIX}.${HOST_URL}`) && PathPrefix(`/${SITE_PREFIX}`)
+#       - traefik.http.routers.whoami.entrypoints=websecure
+#       - traefik.http.routers.whoami.tls.certresolver=cloudflare
+#       - traefik.http.routers.whoami.middlewares=strip-prefix
+#       - traefik.http.middlewares.strip-prefix.stripPrefix.prefixes='/${SITE_PREFIX}'
+
 networks:
   internal:
     driver: bridge
