@@ -102,7 +102,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5.0.0
         with:
-          images: ${{ github.env.image_name }}
+          images: ${{ steps.image-name.outputs.image_name }}
           tags: |
             ${{ github.env.new_version }}
             latest
@@ -143,7 +143,7 @@ jobs:
             {
               "branch_name": "${{ github.ref_name }}",
               "image_tag_name": "${{ github.env.image_name }}",
-              "version": "${{ github.env.new_version }}"
+              "version": "${{ github.env.new_version }}",
             }
               
       - name: Notify deployment
