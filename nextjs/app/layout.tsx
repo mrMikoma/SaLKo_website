@@ -19,12 +19,12 @@ export const metadata = {
   keywords: [
     "Savonlinna",
     "lentokerho",
+    "ilmailukerho",
     "lentäminen",
     "ilmailu",
     "Cessna",
     "172",
     "lentokoulutus",
-    "ilmailukerho",
     "ilmailuopetus",
     "lennonopetus",
   ],
