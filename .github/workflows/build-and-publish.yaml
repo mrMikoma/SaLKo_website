@@ -96,10 +96,12 @@ jobs:
       - name: Determine image name
         id: image-name
         run: |
+          # Convert repository name to lowercase for Docker compatibility
+          repo_lowercase=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
           if [[ "${{ github.ref_name }}" == "main" ]]; then
-            image_name="${{ env.REGISTRY }}/${{ github.repository }}-nextjs"
+            image_name="${{ env.REGISTRY }}/${repo_lowercase}-nextjs"
           else
-            image_name="${{ env.REGISTRY }}/${{ github.repository }}-nextjs-${{ github.ref_name }}"
+            image_name="${{ env.REGISTRY }}/${repo_lowercase}-nextjs-${{ github.ref_name }}"
           fi
           echo "image_name=$image_name" >> $GITHUB_OUTPUT
           echo "image_name=$image_name" >> $GITHUB_ENV
@@ -110,8 +112,8 @@ jobs:
         with:
           images: ${{ steps.image-name.outputs.image_name }}
           tags: |
-            ${{ steps.version.outputs.new_version }}
-            latest
+            type=raw,value=${{ steps.version.outputs.new_version }}
+            type=raw,value=latest,enable={{is_default_branch}}
           labels: |
             org.opencontainers.image.source=${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
