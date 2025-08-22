@@ -20,7 +20,7 @@ services:
       retries: 5
 
   nextjs:
-    image: ghcr.io/mrmikoma/salko_website-nextjs-dev:${VERSION}
+    image: ${IMAGE_TAG_NAME}:${VERSION}
     container_name: ${NAME_PREFIX}-nextjs-${BRANCH_SUFFIX}
     networks:
       - internal

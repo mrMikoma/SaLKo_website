@@ -36,6 +36,12 @@ jobs:
           echo "Extracting workflow dispatch inputs..."
           echo "BRANCH_NAME=${{ github.event.inputs.branch }}" >> $GITHUB_ENV
           echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
+          # Set IMAGE_TAG_NAME for workflow_dispatch
+          if [[ "${{ github.event.inputs.branch }}" == "main" ]]; then
+            echo "IMAGE_TAG_NAME=ghcr.io/${{ github.repository }}-nextjs" >> $GITHUB_ENV
+          else
+            echo "IMAGE_TAG_NAME=ghcr.io/${{ github.repository }}-nextjs-${{ github.event.inputs.branch }}" >> $GITHUB_ENV
+          fi
 
       - name: Extract repository dispatch payload
         if: ${{ github.event_name == 'repository_dispatch' }}
@@ -80,8 +86,8 @@ jobs:
           CONTAINER_PORT: "3000"
           HOST_PORT: "3010"
           HOSTNAME: "0.0.0.0"
-          IMAGE_TAG_NAME: ${{ env.IMAGE_TAG_NAME || 'latest' }}
-          VERSION: ${{ inputs.version || env.VERSION || 'latest' }}
+          IMAGE_TAG_NAME: ${{ env.IMAGE_TAG_NAME }}
+          VERSION: ${{ github.event.inputs.version || env.VERSION || 'latest' }}
           POSTGRES_USER: "salko_admin"
           POSTGRES_DB: "salko"
         run: |
