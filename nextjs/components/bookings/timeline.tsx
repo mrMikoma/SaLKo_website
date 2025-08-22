@@ -4,18 +4,9 @@ import type React from "react";
 import { useEffect, useState } from "react";
 import TrashIcon from "../icons/trash";
 import XCrossIcon from "../icons/xCross";
-import { arrangeBookingsColumns } from "@/utilities/bookings";
+import { arrangeBookingsColumns, BookingType } from "@/utilities/bookings";
 
-interface Booking {
-  id: string;
-  user_id: string;
-  title: string;
-  start_time: number;
-  end_time: number;
-  type: string;
-  plane: string;
-  description: string;
-}
+type Booking = BookingType;
 
 interface FlightType {
   value: string;

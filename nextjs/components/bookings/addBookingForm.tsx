@@ -57,10 +57,10 @@ const AddBookingForm = ({
 
     // Add the booking to the database
     const result = await addBooking({
-      userId,
+      user_id: userId,
       plane,
-      startTime: start,
-      endTime: end,
+      start_time: start,
+      end_time: end,
       type,
       title,
       description,
