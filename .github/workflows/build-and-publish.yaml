@@ -31,6 +31,9 @@ jobs:
     permissions:
       contents: write
       packages: write
+    outputs:
+      image_name: ${{ steps.image-name.outputs.image_name }}
+      new_version: ${{ steps.version.outputs.new_version }}
 
     steps:
       - name: Checkout repository
@@ -73,10 +76,11 @@ jobs:
           # Increment patch version
           new_version="v$major.$minor.$((patch + 1))"
           echo "New version: $new_version"
+          echo "new_version=$new_version" >> $GITHUB_OUTPUT
           echo "new_version=$new_version" >> $GITHUB_ENV
 
       - name: Create Git Tag
-        if: github.event_name == 'push' && github.ref_name == 'main'
+        if: github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'dev')
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -93,18 +97,20 @@ jobs:
         id: image-name
         run: |
           if [[ "${{ github.ref_name }}" == "main" ]]; then
-            echo "image_name=${{ env.REGISTRY }}/${{ github.repository }}-nextjs" >> $GITHUB_ENV
+            image_name="${{ env.REGISTRY }}/${{ github.repository }}-nextjs"
           else
-            echo "image_name=${{ env.REGISTRY }}/${{ github.repository }}-nextjs-${{ github.ref_name }}" >> $GITHUB_ENV
+            image_name="${{ env.REGISTRY }}/${{ github.repository }}-nextjs-${{ github.ref_name }}"
           fi
+          echo "image_name=$image_name" >> $GITHUB_OUTPUT
+          echo "image_name=$image_name" >> $GITHUB_ENV
 
       - name: Extract Docker metadata
         id: meta
         uses: docker/metadata-action@v5.8.0
         with:
-          images: ${{ github.env.image_name }}
+          images: ${{ steps.image-name.outputs.image_name }}
           tags: |
-            ${{ github.env.new_version }}
+            ${{ steps.version.outputs.new_version }}
             latest
           labels: |
             org.opencontainers.image.source=${{ github.repository }}
@@ -118,7 +124,7 @@ jobs:
           rm -f nextjs/public/robots.txt
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5.0.0
+        uses: docker/build-push-action@v6.18.0
         with:
           context: ./nextjs
           push: ${{ github.event_name != 'pull_request' }}
@@ -128,7 +134,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   trigger-deploy-workflow:
-    if: github.ref == 'refs/heads/dev'
+    if: github.ref_name == 'dev'
     needs: build-and-publish
     runs-on: ubuntu-24.04
     permissions:
@@ -142,12 +148,12 @@ jobs:
           client-payload: |
             {
               "branch_name": "${{ github.ref_name }}",
-              "image_tag_name": "${{ github.env.image_name }}",
-              "version": "${{ github.env.new_version }}",
+              "image_tag_name": "${{ needs.build-and-publish.outputs.image_name }}",
+              "version": "${{ needs.build-and-publish.outputs.new_version }}"
             }
               
       - name: Notify deployment
         run: |
-          echo "Deployment triggered for version ${{ github.env.new_version }} in branch ${{ github.ref_name }}."
+          echo "Deployment triggered for version ${{ needs.build-and-publish.outputs.new_version }} in branch ${{ github.ref_name }}."
           # TODO: Add notification logic here
           # e.g., send a message to Discord, email etc.
