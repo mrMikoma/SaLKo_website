@@ -1,0 +1,5 @@
+User-agent: *
+Disallow: /
+
+# Development/staging environment - no indexing allowed
+# This prevents search engines from crawling and indexing this site

@@ -35,6 +35,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4.2.2
+        with:
+          ref: ${{ github.ref_name }}
+          sparse-checkout: |
+            nextjs
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3.0.0
@@ -106,6 +110,12 @@ jobs:
             org.opencontainers.image.source=${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.created=${{ steps.meta.outputs.created }}
+
+      - name: Remove robots.txt if production preventing SEO
+        if: github.ref_name != 'main'
+        run: |
+          echo "Removing robots.txt for non-production environment..."
+          rm -f nextjs/public/robots.txt
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5.0.0
