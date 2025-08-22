@@ -23,6 +23,10 @@ export const metadata = {
     "ilmailu",
     "Cessna",
     "172",
+    "lentokoulutus",
+    "ilmailukerho",
+    "ilmailuopetus",
+    "lennonopetus",
   ],
   icons: {
     icon: "/favicon.ico",
