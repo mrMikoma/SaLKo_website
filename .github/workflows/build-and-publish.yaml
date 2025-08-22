@@ -92,7 +92,7 @@ jobs:
       - name: Determine image name
         id: image-name
         run: |
-          if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
+          if [[ "${{ github.ref_name }}" == "main" ]]; then
             echo "image_name=${{ env.REGISTRY }}/${{ github.repository }}-nextjs" >> $GITHUB_ENV
           else
             echo "image_name=${{ env.REGISTRY }}/${{ github.repository }}-nextjs-${{ github.ref_name }}" >> $GITHUB_ENV
