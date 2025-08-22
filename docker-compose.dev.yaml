@@ -31,7 +31,7 @@ services:
   #       - HOSTNAME=${HOSTNAME}
   #     #  - DATABASE_CONNECTION_STRING=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-${BRANCH_SUFFIX}:${POSTGRES_HOST_PORT}/${POSTGRES_DB}
   #     # depends_on:
-  #     #   postgres-dev:
+  #     #   postgres:
   #     #     condition: service_healthy
   #     restart: unless-stopped
   #     # healthcheck:

@@ -135,6 +135,7 @@ jobs:
               "image_tag_name": "${{ env.image_name }}",
               "version": "${{ env.new_version }}"
             }
+              
       - name: Notify deployment
         run: |
           echo "Deployment triggered for version ${{ env.new_version }} in branch ${{ github.ref_name }}."

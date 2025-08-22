@@ -13,6 +13,7 @@ on:
         required: true
         default: "dev"
         type: string
+        
   repository_dispatch:
     types: [deploy]
 
@@ -119,6 +120,7 @@ jobs:
         run: |
           echo "✅ Deployment successful!"
           echo "Site is available at: https://${{ env.SITE_PREFIX }}.${{ env.HOST_URL }}/${{ env.SITE_PREFIX }}"
+
       - name: Notify failure
         if: ${{ failure() }}
         run: |
