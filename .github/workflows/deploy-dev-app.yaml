@@ -30,9 +30,6 @@ jobs:
       packages: write
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4.2.2
-
       - name: Extract workflow dispatch inputs
         if: ${{ github.event_name == 'workflow_dispatch' }}
         run: |
@@ -48,6 +45,13 @@ jobs:
           echo "IMAGE_TAG_NAME=${{ github.event.client_payload.image_tag_name }}" >> $GITHUB_ENV
           echo "VERSION=${{ github.event.client_payload.version }}" >> $GITHUB_ENV
 
+      - name: Checkout repository
+        uses: actions/checkout@v4.2.2
+        with:
+          ref: ${{ github.event.inputs.branch || github.event.client_payload.branch_name || 'dev' }}
+          sparse-checkout: |
+            postgres/init/init-dev.sql
+
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
@@ -58,20 +62,20 @@ jobs:
       - name: Transfer configuration files to SERVER
         run: |
           echo "Transferring docker-compose.dev.yaml..."
-          scp -v -i ~/.ssh/id_ed25519 ./docker-compose.dev.yaml salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/docker-compose.dev.yaml
+          scp -i ~/.ssh/id_ed25519 ./docker-compose.dev.yaml salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/docker-compose.dev.yaml
           
           echo "Creating postgres-dev directory if it doesn't exist..."
           ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} "mkdir -p /home/salko/postgres-dev"
           
           echo "Transferring postgres init script..."
-          scp -v -i ~/.ssh/id_ed25519 ./postgres/init/init-dev.sql salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/postgres-dev/init.sql
+          scp -i ~/.ssh/id_ed25519 ./postgres/init/init-dev.sql salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/postgres-dev/init.sql
           
           echo "Verifying file transfers..."
           ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} "ls -la /home/salko/docker-compose.dev.yaml /home/salko/postgres-dev/init.sql"
 
       - name: Deploy APP to SERVER
         env:
-          BRANCH_SUFFIX: ${{ env.BRANCH_NAME || 'dev' }}
+          BRANCH_SUFFIX: ${{ github.event.inputs.branch || github.event.client_payload.branch_name || 'dev' }}
           NODE_ENV: "production"
           CONTAINER_PORT: "3000"
           HOST_PORT: "3010"
@@ -81,7 +85,7 @@ jobs:
           POSTGRES_USER: "salko_admin"
           POSTGRES_DB: "salko"
         run: |
-          echo "Deploying to production..."
+          echo "Deploying to environment..."
           ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} << "EOF"
             # Create or clear the .env.dev file
             > .env.dev
@@ -117,12 +121,6 @@ jobs:
 
             echo "Deployment complete."
           EOF
-
-      # - name: Edit robots.txt to prevent SEO indexing
-      #   run: |
-      #     echo "User-agent: *" > robots.txt
-      #     echo "Disallow: /" >> robots.txt
-      #     scp -i ~/.ssh/id_ed25519 robots.txt salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/nextjs/public/robots.txt
 
       - name: Notify success
         if: ${{ success() }}
