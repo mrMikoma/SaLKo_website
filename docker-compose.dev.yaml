@@ -42,20 +42,12 @@ services:
     #   start_period: 30s
     labels:
       - traefik.enable=true
-      # Route for static assets (no path prefix stripping needed)
-      - traefik.http.routers.nextjs-static-${BRANCH_SUFFIX}.rule=Host(`${SITE_PREFIX}.${HOST_URL}`) && PathPrefix(`/_next/`)
-      - traefik.http.routers.nextjs-static-${BRANCH_SUFFIX}.entrypoints=websecure
-      - traefik.http.routers.nextjs-static-${BRANCH_SUFFIX}.tls.certresolver=cloudflare
-      - traefik.http.routers.nextjs-static-${BRANCH_SUFFIX}.priority=100
-      # Route for application pages (with path prefix)
-      - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.rule=Host(`${SITE_PREFIX}.${HOST_URL}`) && PathPrefix(`/${SITE_PREFIX}`)
+      - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.rule=Host(`${SITE_PREFIX}.${HOST_URL}`)
       - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.entrypoints=websecure
       - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.tls.certresolver=cloudflare
-      - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.middlewares=strip-prefix-${BRANCH_SUFFIX}
-      - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.priority=50
-      # Service and middleware definitions
+      - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.middlewares=noindex-${BRANCH_SUFFIX}
+      - traefik.http.middlewares.noindex-${BRANCH_SUFFIX}.headers.customResponseHeaders.X-Robots-Tag=noindex,nofollow,noarchive,nosnippet # SEO prevention middleware for non-production
       - traefik.http.services.nextjs-${BRANCH_SUFFIX}.loadbalancer.server.port=${CONTAINER_PORT}
-      - traefik.http.middlewares.strip-prefix-${BRANCH_SUFFIX}.stripPrefix.prefixes='/${SITE_PREFIX}'
       # - traefik.http.services.nextjs-${BRANCH_SUFFIX}.loadbalancer.healthcheck
       # - traefik.http.services.nextjs-${BRANCH_SUFFIX}.rateLimit.burst=100
       # - traefik.http.services.nextjs-${BRANCH_SUFFIX}.rateLimit.average=50
