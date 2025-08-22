@@ -1,3 +1,23 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --font-finlandica: var(--font-finlandica);
+  --font-sans: "Inter var";
+  
+  --color-transparent: transparent;
+  --color-white: #ffffff;
+  --color-black: #000000;
+  --color-swhite: #f6f4f3;
+  --color-sblack: #0c1821;
+  --color-sblued: #162752;
+  --color-sblue: #0047AA;
+  --color-sbluel: #53a2be;
+  --color-sred: #e84855;
+  --color-sgrey: #e6e6e6;
+  
+  --background-image-efsa-one: url('/images/efsa-one_1.jpg');
+  --background-image-ohcon-one: url('/images/oh-con_1.jpg');
+  --background-image-olavinlinna-one: url('/images/olavinlinna_1.jpg');
+  --background-image-punkaharju-one: url('/images/punkaharju_1.jpg');
+  --background-image-savonlinna-one: url('/images/savonlinna_1.jpg');
+}
