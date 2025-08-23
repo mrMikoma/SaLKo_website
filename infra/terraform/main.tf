@@ -72,13 +72,24 @@ module "github" {
 
   github_repository    = var.github_repository
   github_main_username = var.github_main_username
-  server_ips           = module.salko.server_ips
 
   depends_on = [
     module.salko
   ]
 }
 
+resource "github_actions_variable" "server_ips" {
+  for_each      = tomap(module.salko.server_ips)
+  repository    = var.github_repository
+  variable_name = upper(format("server_ip_%s", each.key))
+  value         = each.value
+
+  depends_on = [
+    module.salko
+  ]
+}
+
+# Cannot create api token with terraform, needs to be done manually
 # resource "github_actions_secret" "cf_dns_api_token" {
 #   repository      = var.github_repository
 #   secret_name     = "CF_DNS_API_TOKEN"

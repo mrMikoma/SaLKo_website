@@ -91,12 +91,6 @@ resource "github_repository_environment" "production" {
 # Global Variables
 #################################################################
 
-resource "github_actions_variable" "server_ips" {
-  for_each      = var.server_ips
-  repository    = var.github_repository
-  variable_name = upper(format("server_ip_%s", each.key))
-  value         = each.value
-}
 
 #################################################################
 # Development Variables and Secrets
