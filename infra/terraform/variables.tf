@@ -88,3 +88,9 @@ variable "github_repository" {
   type        = string
   default     = "SaLKo_website"
 }
+
+variable "github_main_username" {
+  description = "GitHub main user for the salko"
+  type        = string
+  default     = "mrMikoma"
+}

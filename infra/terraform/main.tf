@@ -67,11 +67,12 @@ resource "cloudflare_dns_record" "dev" {
 # GitHub
 #################################################################
 
-resource "github_actions_variable" "server_ips" {
-  for_each      = tomap(module.salko.server_ips)
-  repository    = var.github_repository
-  variable_name = upper(format("server_ip_%s", each.key))
-  value         = each.value
+module "github" {
+  source = "./modules/github"
+
+  github_repository = var.github_repository
+  github_main_username = var.github_main_username
+  server_ips        = module.salko.server_ips
 
   depends_on = [
     module.salko
