@@ -70,9 +70,9 @@ resource "cloudflare_dns_record" "dev" {
 module "github" {
   source = "./modules/github"
 
-  github_repository = var.github_repository
+  github_repository    = var.github_repository
   github_main_username = var.github_main_username
-  server_ips        = module.salko.server_ips
+  server_ips           = module.salko.server_ips
 
   depends_on = [
     module.salko
