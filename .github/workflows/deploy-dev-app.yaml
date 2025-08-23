@@ -3,7 +3,7 @@ name: Deploy non-production branch
 on:
   workflow_dispatch:
     inputs:
-      version:
+      image_version:
         description: "Version to deploy"
         required: true
         default: "latest"
@@ -15,7 +15,7 @@ on:
         type: string
         
   repository_dispatch:
-    types: [deploy]
+    types: [deploy-dev]
 
 env:
   NAME_PREFIX: "salko"
@@ -36,7 +36,8 @@ jobs:
         run: |
           echo "Extracting workflow dispatch inputs..."
           echo "BRANCH_NAME=${{ github.event.inputs.branch }}" >> $GITHUB_ENV
-          echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
+          echo "VERSION=${{ github.event.inputs.image_version }}" >> $GITHUB_ENV
+
           # Set IMAGE_TAG_NAME for workflow_dispatch
           repo_lowercase=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
           if [[ "${{ github.event.inputs.branch }}" == "main" ]]; then
@@ -44,14 +45,22 @@ jobs:
           else
             echo "IMAGE_TAG_NAME=ghcr.io/${repo_lowercase}-nextjs-${{ github.event.inputs.branch }}" >> $GITHUB_ENV
           fi
+          echo "Inputs extracted successfully."
 
       - name: Extract repository dispatch payload
         if: ${{ github.event_name == 'repository_dispatch' }}
         run: |
-          echo "Extracting payload..."
+          echo "Verifying repository dispatch payload..."
+          if [ -z "${{ github.event.client_payload.branch_name }}" ] || [ -z "${{ github.event.client_payload.image_tag_name }}" ] || [ -z "${{ github.event.client_payload.image_version }}" ]; then
+            echo "❌ Missing required payload fields. Ensure 'branch_name', 'image_tag_name', and 'version' are provided."
+            exit 1
+          fi
+
+          echo "Extracting repository dispatch payload..."
           echo "BRANCH_NAME=${{ github.event.client_payload.branch_name }}" >> $GITHUB_ENV
           echo "IMAGE_TAG_NAME=${{ github.event.client_payload.image_tag_name }}" >> $GITHUB_ENV
-          echo "VERSION=${{ github.event.client_payload.version }}" >> $GITHUB_ENV
+          echo "VERSION=${{ github.event.client_payload.image_version }}" >> $GITHUB_ENV
+          echo "Payload extracted successfully."
 
       - name: Checkout repository
         uses: actions/checkout@v4.2.2
@@ -127,9 +136,12 @@ jobs:
             # Verify the deployment
             echo "Verifying the deployment..."
             if docker ps | grep -q "${{ env.IMAGE_TAG_NAME }}"; then
-              echo "Deployment successful: ${IMAGE_TAG_NAME} is running."
+              echo "Deployment successful: ${{ env.IMAGE_TAG_NAME }} is running."
+            elif [ "$(docker ps -q)" == "" ]; then
+              echo "Deployment failed: No containers are running."
+              exit 1
             else
-              echo "Deployment failed: ${IMAGE_TAG_NAME} is not running."
+              echo "Deployment failed: $IMAGE_TAG_NAME is not running."
               exit 1
             fi
 

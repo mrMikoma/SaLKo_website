@@ -33,7 +33,7 @@ jobs:
       packages: write
     outputs:
       image_name: ${{ steps.image-name.outputs.image_name }}
-      new_version: ${{ steps.version.outputs.new_version }}
+      new_version: ${{ steps.image-version.outputs.new_version }}
 
     steps:
       - name: Checkout repository
@@ -149,12 +149,12 @@ jobs:
         uses: peter-evans/repository-dispatch@v3.0.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          event-type: deploy
+          event-type: deploy-dev
           client-payload: |
             {
               "branch_name": "${{ github.ref_name }}",
               "image_tag_name": "${{ needs.build-and-publish.outputs.image_name }}",
-              "version": "${{ needs.build-and-publish.outputs.new_version }}"
+              "image_version": "${{ needs.build-and-publish.outputs.new_version }}"
             }
               
       - name: Notify deployment
