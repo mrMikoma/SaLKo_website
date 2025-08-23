@@ -19,10 +19,13 @@ export const metadata = {
   keywords: [
     "Savonlinna",
     "lentokerho",
+    "ilmailukerho",
     "lentäminen",
     "ilmailu",
-    "Cessna",
-    "172",
+    "Cessna 172",
+    "lentokoulutus",
+    "ilmailuopetus",
+    "lennonopetus",
   ],
   icons: {
     icon: "/favicon.ico",

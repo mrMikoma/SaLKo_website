@@ -1,4 +1,4 @@
-name: Deploy 'dev' branch
+name: Deploy non-production branch
 
 on:
   workflow_dispatch:
@@ -25,6 +25,7 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-24.04
+    environment: development
     permissions:
       contents: write
       packages: write
@@ -122,6 +123,15 @@ jobs:
             # Start the containers using Docker Compose
             echo "Starting containers using Docker Compose..."
             docker compose --env-file .env.dev -f docker-compose.dev.yaml up -d
+
+            # Verify the deployment
+            echo "Verifying the deployment..."
+            if docker ps | grep -q "${{ env.IMAGE_TAG_NAME }}"; then
+              echo "Deployment successful: ${IMAGE_TAG_NAME} is running."
+            else
+              echo "Deployment failed: ${IMAGE_TAG_NAME} is not running."
+              exit 1
+            fi
 
             echo "Cleaning up old images..."
             docker image prune -f
