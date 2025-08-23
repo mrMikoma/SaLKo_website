@@ -18,6 +18,8 @@ export const metadata = {
   description: "SaLKo - Savonlinnan Lentokerho ry",
   keywords: [
     "Savonlinna",
+    "SaLKo",
+    "EFSA",
     "lentokerho",
     "ilmailukerho",
     "lentäminen",
