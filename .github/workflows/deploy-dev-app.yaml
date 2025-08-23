@@ -38,10 +38,11 @@ jobs:
           echo "BRANCH_NAME=${{ github.event.inputs.branch }}" >> $GITHUB_ENV
           echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
           # Set IMAGE_TAG_NAME for workflow_dispatch
+          repo_lowercase=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
           if [[ "${{ github.event.inputs.branch }}" == "main" ]]; then
-            echo "IMAGE_TAG_NAME=ghcr.io/${{ github.repository }}-nextjs" >> $GITHUB_ENV
+            echo "IMAGE_TAG_NAME=ghcr.io/${repo_lowercase}-nextjs" >> $GITHUB_ENV
           else
-            echo "IMAGE_TAG_NAME=ghcr.io/${{ github.repository }}-nextjs-${{ github.event.inputs.branch }}" >> $GITHUB_ENV
+            echo "IMAGE_TAG_NAME=ghcr.io/${repo_lowercase}-nextjs-${{ github.event.inputs.branch }}" >> $GITHUB_ENV
           fi
 
       - name: Extract repository dispatch payload
@@ -87,8 +88,8 @@ jobs:
           CONTAINER_PORT: "3000"
           HOST_PORT: "3010"
           HOSTNAME: "0.0.0.0"
-          IMAGE_TAG_NAME: ${{ env.IMAGE_TAG_NAME }}
-          VERSION: ${{ github.event.inputs.version || env.VERSION || 'latest' }}
+          IMAGE_TAG_NAME: ${{ github.env.IMAGE_TAG_NAME }}
+          VERSION: ${{ github.env.VERSION }}
           POSTGRES_USER: "salko_admin"
           POSTGRES_DB: "salko"
         run: |
@@ -142,7 +143,7 @@ jobs:
         if: ${{ success() }}
         run: |
           echo "✅ Deployment successful!"
-          echo "Site is available at: https://${{ env.SITE_PREFIX }}.${{ env.HOST_URL }}/${{ env.SITE_PREFIX }}"
+          echo "Site is available at: https://${{ env.SITE_PREFIX }}.${{ env.HOST_URL }}"
 
       - name: Notify failure
         if: ${{ failure() }}
@@ -154,7 +155,8 @@ jobs:
           {
             echo "## Deployment Summary"
             echo "- **Branch:** \`${{ github.event.inputs.branch || github.event.client_payload.branch_name || 'dev' }}\`"
-            echo "- **Version:** \`${{ github.event.inputs.version || github.event.client_payload.version || 'latest' }}\`"
-            echo "- **Image Tag:** \`${{ github.event.client_payload.image_tag_name || 'latest' }}\`"
-            echo "- **Site URL:** [https://${{ env.SITE_PREFIX }}.${{ env.HOST_URL }}/${{ env.SITE_PREFIX }}](https://${{ env.SITE_PREFIX }}.${{ env.HOST_URL }}/${{ env.SITE_PREFIX }})"
+            echo "- **Version:** \`${{ github.env.VERSION }}\`"
+            echo "- **Image Tag:** \`${{ github.env.IMAGE_TAG_NAME }}\`"
+            echo "- **Site URL:** [https://${{ env.SITE_PREFIX }}.${{ env.HOST_URL }}](https://${{ env.SITE_PREFIX }}.${{ env.HOST_URL }})"
+            echo "- **Deployment Status:** \`${{ job.status }}\`"
           } >> $GITHUB_STEP_SUMMARY
