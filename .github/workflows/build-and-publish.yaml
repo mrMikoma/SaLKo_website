@@ -8,23 +8,23 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
-#  test:
-#    runs-on: ubuntu-24.04
-#    steps:
-#      - name: Checkout repository
-#        uses: actions/checkout@v4.2.2
-#
-#      - name: Set up Node.js
-#        uses: actions/setup-node@v4.4.0
-#        with:
-#          node-version: '22'
-#
-#      - name: Run tests
-#        run: |
-#          cd nextjs
-#          npm ci
-#          npm run lint
-#          npm test
+  #  test:
+  #    runs-on: ubuntu-24.04
+  #    steps:
+  #      - name: Checkout repository
+  #        uses: actions/checkout@v4.2.2
+  #
+  #      - name: Set up Node.js
+  #        uses: actions/setup-node@v4.4.0
+  #        with:
+  #          node-version: '22'
+  #
+  #      - name: Run tests
+  #        run: |
+  #          cd nextjs
+  #          npm ci
+  #          npm run lint
+  #          npm test
 
   build-and-publish:
     runs-on: ubuntu-24.04
@@ -63,23 +63,25 @@ jobs:
           fi
           echo "image_name=$image_name" >> $GITHUB_OUTPUT
           echo "image_name=$image_name" >> $GITHUB_ENV
-          
+
       - name: Determine latest image version
         id: image-version
         run: |
-          # Fetch all tags
-          git fetch --tags
-
-          # List all tags for this image and sort them
-          latest_tag=$(git tag --list "${{ steps.image-name.outputs.image_name }}*" | sort -V | tail -n 1)
+          # Fetch package versions from GitHub Container Registry
+          latest_version=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/user/packages/container/mrmikoma/${{ github.env.image_name }}/versions" | \
+            jq -r '.[].metadata.container.tags[]?' | \
+            grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | \
+            sort -V | tail -n 1)
               
-          if [ -z "$latest_tag" ]; then
-            latest_tag="v0.0.0"  # Default to v0.0.0 if no tags exist
+          # Handle case where no versions exist
+          if [ -z "$latest_version" ] || [ "$latest_version" = "null" ]; then
+            latest_version="v0.0.0"  # Default to v0.0.0 if no versions exist
           fi
-          echo "Latest tag: $latest_tag"
+          echo "Latest version from registry: $latest_version"
               
           # Extract major, minor, and patch
-          IFS='.' read -ra ver <<< "${latest_tag#v}"
+          IFS='.' read -ra ver <<< "${latest_version#v}"
           major=${ver[0]}
           minor=${ver[1]}
           patch=${ver[2]}
@@ -95,15 +97,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-            # Check if the tag already exists
-            if git rev-parse "refs/tags/${{ github.env.new_version }}" >/dev/null 2>&1; then
-              echo "Tag ${{ github.env.new_version }} already exists. Skipping tag creation."
-            else
+          # Check if the tag already exists
+          if git rev-parse "refs/tags/${{ github.env.new_version }}" >/dev/null 2>&1; then
+            echo "Tag ${{ github.env.new_version }} already exists. Skipping tag creation."
+          else
 
-            # Create and push the new tag
-              git tag ${{ github.env.new_version }}
-              git push origin ${{ github.env.new_version }}
-            fi
+          # Create and push the new tag
+            git tag ${{ github.env.new_version }}
+            git push origin ${{ github.env.new_version }}
+          fi
 
       - name: Extract Docker metadata
         id: meta
@@ -140,6 +142,7 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+      actions: write
     steps:
       - name: Trigger deployment via repository dispatch
         uses: peter-evans/repository-dispatch@v3.0.0
@@ -152,7 +155,7 @@ jobs:
               "image_tag_name": "${{ needs.build-and-publish.outputs.image_name }}",
               "image_version": "${{ needs.build-and-publish.outputs.new_version }}"
             }
-              
+
       - name: Notify deployment
         run: |
           echo "Deployment triggered for version ${{ needs.build-and-publish.outputs.new_version }} in branch ${{ github.ref_name }}."

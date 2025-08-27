@@ -20,7 +20,7 @@ services:
       retries: 5
 
   nextjs:
-    image: ${IMAGE_TAG_NAME}:${VERSION}
+    image: ${IMAGE_TAG_NAME}:${IMAGE_VERSION}
     container_name: ${NAME_PREFIX}-nextjs-${BRANCH_SUFFIX}
     networks:
       - internal
