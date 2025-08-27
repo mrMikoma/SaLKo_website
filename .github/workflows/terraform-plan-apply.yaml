@@ -10,9 +10,8 @@ on:
 
 jobs:
   terraform-plan:
-    name: "Terraform Plan"
+    name: Terraform Plan
     runs-on: ubuntu-24.04
-    # environment: production
 
     permissions:
       id-token: write
@@ -23,13 +22,13 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v5.0.0
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3.1.2
         with:
           terraform_wrapper: false
-          terraform_version: 1.12.1
+          terraform_version: 1.13.1
 
       - name: Terraform Init
         env:
@@ -100,7 +99,7 @@ jobs:
           echo "$SUMMARY" >> $GITHUB_STEP_SUMMARY
 
   terraform-apply:
-    name: "Terraform Apply"
+    name: Terraform Apply
     runs-on: ubuntu-24.04
     needs: [terraform-plan]
     if: github.ref == 'refs/heads/main' && needs.terraform-plan.outputs.tfplanExitCode == 2
@@ -112,23 +111,19 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v5.0.0
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3.1.2
         with:
-          terraform_version: 1.12.1
-
-      - name: Setup GitHub App Private Key  
-        run: |
-          echo "${{ secrets.GITHUB_APP_PRIVATE_KEY }}" > /tmp/github-app-key.pem
-          chmod 600 /tmp/github-app-key.pem
+          terraform_version: 1.13.1
 
       - name: Terraform Init
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.CF_BUCKET_ACCESS_KEY }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.CF_BUCKET_SECRET_KEY }}
         run: terraform -chdir=infra/terraform init
+
       - name: Download Terraform Plan
         uses: actions/download-artifact@v4.3.0
         with:
