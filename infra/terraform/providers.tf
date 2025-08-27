@@ -41,5 +41,10 @@ provider "cloudflare" {
 }
 
 provider "github" {
-  token = var.github_token
+  owner = var.github_main_username
+  app_auth {
+    id              = var.github_app_id
+    installation_id = var.github_app_installation_id
+    pem_file        = base64decode(var.github_app_private_key_pem)
+  }
 }

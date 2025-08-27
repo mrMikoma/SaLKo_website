@@ -8,12 +8,12 @@ on:
         required: true
         default: "latest"
         type: string
-      branch:
+      branch_name:
         description: "Branch to deploy"
         required: true
         default: "dev"
         type: string
-        
+
   repository_dispatch:
     types: [deploy-dev]
 
@@ -35,15 +35,15 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' }}
         run: |
           echo "Extracting workflow dispatch inputs..."
-          echo "BRANCH_NAME=${{ github.event.inputs.branch }}" >> $GITHUB_ENV
-          echo "VERSION=${{ github.event.inputs.image_version }}" >> $GITHUB_ENV
+          echo "BRANCH_NAME=${{ github.event.inputs.branch_name }}" >> $GITHUB_ENV
+          echo "IMAGE_VERSION=${{ github.event.inputs.image_version }}" >> $GITHUB_ENV
 
           # Set IMAGE_TAG_NAME for workflow_dispatch
           repo_lowercase=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          if [[ "${{ github.event.inputs.branch }}" == "main" ]]; then
+          if [[ "${{ github.event.inputs.branch_name }}" == "main" ]]; then
             echo "IMAGE_TAG_NAME=ghcr.io/${repo_lowercase}-nextjs" >> $GITHUB_ENV
           else
-            echo "IMAGE_TAG_NAME=ghcr.io/${repo_lowercase}-nextjs-${{ github.event.inputs.branch }}" >> $GITHUB_ENV
+            echo "IMAGE_TAG_NAME=ghcr.io/${repo_lowercase}-nextjs-${{ github.event.inputs.branch_name }}" >> $GITHUB_ENV
           fi
           echo "Inputs extracted successfully."
 
@@ -52,20 +52,20 @@ jobs:
         run: |
           echo "Verifying repository dispatch payload..."
           if [ -z "${{ github.event.client_payload.branch_name }}" ] || [ -z "${{ github.event.client_payload.image_tag_name }}" ] || [ -z "${{ github.event.client_payload.image_version }}" ]; then
-            echo "❌ Missing required payload fields. Ensure 'branch_name', 'image_tag_name', and 'version' are provided."
+            echo "❌ Missing required payload fields. Ensure 'branch_name', 'image_tag_name', and 'image_version' are provided."
             exit 1
           fi
 
           echo "Extracting repository dispatch payload..."
           echo "BRANCH_NAME=${{ github.event.client_payload.branch_name }}" >> $GITHUB_ENV
           echo "IMAGE_TAG_NAME=${{ github.event.client_payload.image_tag_name }}" >> $GITHUB_ENV
-          echo "VERSION=${{ github.event.client_payload.image_version }}" >> $GITHUB_ENV
+          echo "IMAGE_VERSION=${{ github.event.client_payload.image_version }}" >> $GITHUB_ENV
           echo "Payload extracted successfully."
 
       - name: Checkout repository
         uses: actions/checkout@v4.2.2
         with:
-          ref: ${{ github.event.inputs.branch || github.event.client_payload.branch_name || 'dev' }}
+          ref: ${{ github.event.inputs.branch_name || github.event.client_payload.branch_name || 'dev' }}
           sparse-checkout: |
             postgres/init/init-dev.sql
 
@@ -75,30 +75,28 @@ jobs:
           echo "${{ secrets.VPS_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H ${{ vars.SERVER_IP_SALKO0 }} >> ~/.ssh/known_hosts
-      
+
       - name: Transfer configuration files to SERVER
         run: |
           echo "Transferring docker-compose.dev.yaml..."
           scp -i ~/.ssh/id_ed25519 ./docker-compose.dev.yaml salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/docker-compose.dev.yaml
-          
+
           echo "Creating postgres-dev directory if it doesn't exist..."
           ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} "mkdir -p /home/salko/postgres-dev"
-          
+
           echo "Transferring postgres init script..."
           scp -i ~/.ssh/id_ed25519 ./postgres/init/init-dev.sql salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/postgres-dev/init.sql
-          
+
           echo "Verifying file transfers..."
           ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} "ls -la /home/salko/docker-compose.dev.yaml /home/salko/postgres-dev/init.sql"
 
       - name: Deploy APP to SERVER
         env:
-          BRANCH_SUFFIX: ${{ github.event.inputs.branch || github.event.client_payload.branch_name || 'dev' }}
+          BRANCH_SUFFIX: ${{ github.event.inputs.branch_name || github.event.client_payload.branch_name || 'dev' }}
           NODE_ENV: "production"
           CONTAINER_PORT: "3000"
           HOST_PORT: "3010"
           HOSTNAME: "0.0.0.0"
-          IMAGE_TAG_NAME: ${{ github.env.IMAGE_TAG_NAME }}
-          VERSION: ${{ github.env.VERSION }}
           POSTGRES_USER: "salko_admin"
           POSTGRES_DB: "salko"
         run: |
@@ -116,10 +114,10 @@ jobs:
             echo "HOST_PORT=${{ env.HOST_PORT }}" >> .env.dev
             echo "HOSTNAME=${{ env.HOSTNAME }}" >> .env.dev
             echo "HOST_URL=${{ env.HOST_URL }}" >> .env.dev
-            echo "IMAGE_TAG_NAME=${{ env.IMAGE_TAG_NAME }}" >> .env.dev
-            echo "VERSION=${{ env.VERSION }}" >> .env.dev
+            echo "IMAGE_TAG_NAME=${{ github.env.IMAGE_TAG_NAME }}" >> .env.dev
+            echo "IMAGE_VERSION=${{ github.env.IMAGE_VERSION }}" >> .env.dev
             echo "POSTGRES_USER=${{ env.POSTGRES_USER }}" >> .env.dev
-            echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_DEV_PASSWORD }}" >> .env.dev
+            echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env.dev
             echo "POSTGRES_DB=${{ env.POSTGRES_DB }}" >> .env.dev
 
             # Ensure the environment variables are written before proceeding
@@ -135,8 +133,8 @@ jobs:
 
             # Verify the deployment
             echo "Verifying the deployment..."
-            if docker ps | grep -q "${{ env.IMAGE_TAG_NAME }}"; then
-              echo "Deployment successful: ${{ env.IMAGE_TAG_NAME }} is running."
+            if docker ps | grep -q "${{ github.env.IMAGE_TAG_NAME }}"; then
+              echo "Deployment successful: ${{ github.env.IMAGE_TAG_NAME }} is running."
             elif [ "$(docker ps -q)" == "" ]; then
               echo "Deployment failed: No containers are running."
               exit 1
@@ -166,8 +164,8 @@ jobs:
         run: |
           {
             echo "## Deployment Summary"
-            echo "- **Branch:** \`${{ github.event.inputs.branch || github.event.client_payload.branch_name || 'dev' }}\`"
-            echo "- **Version:** \`${{ github.env.VERSION }}\`"
+            echo "- **Branch:** \`${{ github.event.inputs.branch_name || github.event.client_payload.branch_name || 'dev' }}\`"
+            echo "- **Image Version:** \`${{ github.env.IMAGE_VERSION }}\`"
             echo "- **Image Tag:** \`${{ github.env.IMAGE_TAG_NAME }}\`"
             echo "- **Site URL:** [https://${{ env.SITE_PREFIX }}.${{ env.HOST_URL }}](https://${{ env.SITE_PREFIX }}.${{ env.HOST_URL }})"
             echo "- **Deployment Status:** \`${{ job.status }}\`"

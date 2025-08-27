@@ -12,6 +12,8 @@ resource "hcloud_ssh_key" "vps_ssh_key" {
   public_key = var.vps_ssh_public_key
 }
 
+# TO-DO: Add ssh_key automation to GitHub module
+
 resource "hcloud_network_subnet" "salko_subnet" {
   type         = "cloud"
   network_id   = var.network_id
