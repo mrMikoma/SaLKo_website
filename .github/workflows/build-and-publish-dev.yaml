@@ -45,8 +45,9 @@ jobs:
         id: image-version
         run: |
           # Fetch package versions from GitHub Container Registry
+          package_name=${{ github.env.IMAGE_NAME }}
           latest_version=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/user/packages/container/${{ github.env.IMAGE_NAME }}/versions" | \
+            "https://api.github.com/user/packages/container/${package_name}/versions" | \
             jq -r '.[].metadata.container.tags[]?' | \
             grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | \
             sort -V | tail -n 1)
