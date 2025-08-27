@@ -58,8 +58,7 @@ jobs:
             -var="cloudflare_zone_id=${{ secrets.CF_ZONE_ID }}" \
             -var="github_app_id=${{ secrets.GH_APP_ID }}" \
             -var="github_app_installation_id=${{ secrets.GH_APP_INSTALLATION_ID }}" \
-            -var="github_app_private_key_pem=${{ secrets.GH_APP_PRIVATE_KEY_PEM }}" \
-            -var="state_bucket_endpoint=${{ vars.CF_BUCKET_ENDPOINT }}" || exitcode=$?
+            -var="github_app_private_key_pem=${{ secrets.GH_APP_PRIVATE_KEY_PEM }}" || exitcode=$?
                   
           echo "exitcode=$exitcode" >> "$GITHUB_OUTPUT"
                   

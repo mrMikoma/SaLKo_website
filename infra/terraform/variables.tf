@@ -57,11 +57,6 @@ variable "vps_ssh_public_key" {
 
 // Cloudflare
 
-variable "state_bucket_endpoint" {
-  description = "S3-compatible state bucket endpoint"
-  type        = string
-}
-
 variable "cloudflare_token" {
   description = "Cloudflare API token for the salko"
   type        = string
