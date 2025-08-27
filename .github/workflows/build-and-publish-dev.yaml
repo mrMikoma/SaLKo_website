@@ -11,6 +11,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
+  IMAGE_NAME: salko_website-nextjs-${{ github.ref_name }}
 
 jobs:
   build-and-publish:
@@ -19,7 +20,7 @@ jobs:
       contents: write
       packages: write
     outputs:
-      image_name: ${{ steps.image-name.outputs.image_name }}
+      image_name: ${{ github.env.IMAGE_NAME }}
       new_version: ${{ steps.image-version.outputs.new_version }}
 
     steps:
@@ -40,19 +41,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Determine image name
-        id: image-name
-        run: |
-          image_name="salko_website-nextjs-${{ github.ref_name }}"
-          echo "image_name=${image_name}" >> $GITHUB_OUTPUT
-          echo "image_name=${image_name}" >> $GITHUB_ENV
-
       - name: Determine latest image version
         id: image-version
         run: |
           # Fetch package versions from GitHub Container Registry
           latest_version=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/user/packages/container/${{ github.env.image_name }}/versions" | \
+            "https://api.github.com/user/packages/container/${{ github.env.IMAGE_NAME }}/versions" | \
             jq -r '.[].metadata.container.tags[]?' | \
             grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | \
             sort -V | tail -n 1)
@@ -79,7 +73,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5.8.0
         with:
-          images: ${{ steps.image-name.outputs.image_name }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             ${{ steps.image-version.outputs.new_version }}
             latest
