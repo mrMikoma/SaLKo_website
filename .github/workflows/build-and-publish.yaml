@@ -69,9 +69,16 @@ jobs:
       - name: Determine latest image version
         id: image-version
         run: |
+          # Extract just the package name from the image name
+          if [[ "${{ github.ref_name }}" == "main" ]]; then
+            package_name="salko_website-nextjs"
+          else
+            package_name="salko_website-nextjs-${{ github.ref_name }}"
+          fi
+          
           # Fetch package versions from GitHub Container Registry
           latest_version=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/user/packages/container/mrmikoma/${{ github.env.image_name }}/versions" | \
+            "https://api.github.com/user/packages/container/${package_name}/versions" | \
             jq -r '.[].metadata.container.tags[]?' | \
             grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | \
             sort -V | tail -n 1)
