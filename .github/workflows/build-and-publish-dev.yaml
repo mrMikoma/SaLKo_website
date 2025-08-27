@@ -20,7 +20,7 @@ jobs:
       contents: write
       packages: write
     outputs:
-      image_name: ${{ github.env.IMAGE_NAME }}
+      image_name: ${{ env.IMAGE_NAME }}
       new_version: ${{ steps.image-version.outputs.new_version }}
 
     steps:
@@ -75,7 +75,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5.8.0
         with:
-          images: ${{ env.REGISTRY }}/${{ github.env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             ${{ steps.image-version.outputs.new_version }}
             latest
