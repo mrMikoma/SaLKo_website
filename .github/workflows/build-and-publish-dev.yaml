@@ -11,7 +11,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: salko_website-nextjs-${{ github.ref_name }}
+  IMAGE_NAME: ${{ github.repository }}-nextjs-${{ github.ref_name }}
 
 jobs:
   build-and-publish:
@@ -75,7 +75,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5.8.0
         with:
-          images: ${{ github.repository }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ github.env.IMAGE_NAME }}
           tags: |
             ${{ steps.image-version.outputs.new_version }}
             latest
