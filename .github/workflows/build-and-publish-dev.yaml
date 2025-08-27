@@ -41,8 +41,8 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Determine latest image versionsdsa
-        id: image-versions
+      - name: Determine next image version
+        id: image-version
         run: |
           package_name="salko_website-nextjs-${{ github.ref_name }}"
           
@@ -65,31 +65,6 @@ jobs:
           minor=${ver[1]}
           patch=${ver[2]}
 
-          echo "new_version=$new_version" >> $GITHUB_ENV
-
-      - name: Determine latest image version
-        id: image-version
-        run: |
-          # Fetch package versions from GitHub Container Registry
-          package_name=${{ github.env.IMAGE_NAME }}
-          latest_version=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/user/packages/container/${package_name}/versions" | \
-            jq -r '.[].metadata.container.tags[]?' | \
-            grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | \
-            sort -V | tail -n 1)
-              
-          # Handle case where no versions exist
-          if [ -z "$latest_version" ] || [ "$latest_version" = "null" ]; then
-            latest_version="v0.0.0"  # Default to v0.0.0 if no versions exist
-          fi
-          echo "Latest version from registry: $latest_version"
-              
-          # Extract major, minor, and patch
-          IFS='.' read -ra ver <<< "${latest_version#v}"
-          major=${ver[0]}
-          minor=${ver[1]}
-          patch=${ver[2]}
-              
           # Increment patch version
           new_version="v$major.$minor.$((patch + 1))"
           echo "New version: $new_version"
