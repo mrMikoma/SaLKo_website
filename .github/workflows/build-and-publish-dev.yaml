@@ -2,7 +2,11 @@ name: Build and Publish Development
 
 on:
   push:
-    branches: ["dev"]
+    paths:
+      - "nextjs/**"
+      - ".github/workflows/build-and-publish-dev.yaml"
+    branches:
+      - dev
   workflow_dispatch: {}
 
 env:
@@ -40,8 +44,8 @@ jobs:
         id: image-name
         run: |
           image_name="salko_website-nextjs-${{ github.ref_name }}"
-          echo "image_name=$image_name" >> $GITHUB_OUTPUT
-          echo "image_name=$image_name" >> $GITHUB_ENV
+          echo "image_name=${image_name}" >> $GITHUB_OUTPUT
+          echo "image_name=${image_name}" >> $GITHUB_ENV
 
       - name: Determine latest image version
         id: image-version
