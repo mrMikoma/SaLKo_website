@@ -27,7 +27,7 @@ terraform {
     use_path_style              = true
 
     endpoints = {
-      s3 = "https://b60de3b655609a784e6dff508195806d.r2.cloudflarestorage.com"
+      s3 = var.state_bucket_endpoint
     }
   }
 }
@@ -41,5 +41,9 @@ provider "cloudflare" {
 }
 
 provider "github" {
-  token = var.github_token
+  app_auth {
+    id              = var.github_app_id
+    installation_id = var.github_app_installation_id
+    pem_file        = var.github_app_private_key_pem
+  }
 }

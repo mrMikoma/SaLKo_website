@@ -57,6 +57,11 @@ variable "vps_ssh_public_key" {
 
 // Cloudflare
 
+variable "state_bucket_endpoint" {
+  description = "S3-compatible state bucket endpoint"
+  type        = string
+}
+
 variable "cloudflare_token" {
   description = "Cloudflare API token for the salko"
   type        = string
@@ -77,10 +82,19 @@ variable "cloudflare_zone_name" {
 
 // GitHub
 
-variable "github_token" {
-  description = "GitHub API token for the salko"
+variable "github_app_id" {
+  description = "GitHub App ID for Terraform authentication"
   type        = string
-  sensitive   = true
+}
+
+variable "github_app_installation_id" {
+  description = "GitHub App Installation ID"
+  type        = string
+}
+
+variable "github_app_private_key_pem" {
+  description = "Path to GitHub App private key file"
+  type        = string
 }
 
 variable "github_repository" {
