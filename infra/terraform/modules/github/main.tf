@@ -19,12 +19,6 @@ resource "github_branch_protection" "main" {
     dismiss_stale_reviews           = true
     required_approving_review_count = 1
   }
-
-  restrict_pushes {
-    push_allowances = [
-      data.github_user.main_user.node_id
-    ]
-  }
 }
 
 # Development branch protection
@@ -39,12 +33,6 @@ resource "github_branch_protection" "dev" {
     require_code_owner_reviews      = true
     dismiss_stale_reviews           = true
     required_approving_review_count = 1
-  }
-
-  restrict_pushes {
-    push_allowances = [
-      data.github_user.main_user.node_id
-    ]
   }
 }
 
