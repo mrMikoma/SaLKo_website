@@ -1,33 +1,14 @@
-name: Build and Publish
+name: Build and Publish Development
 
 on:
   push:
-    branches: ["dev"] #["main", "dev"]
-
+    branches: ["dev"]
   workflow_dispatch: {}
 
 env:
   REGISTRY: ghcr.io
 
 jobs:
-  #  test:
-  #    runs-on: ubuntu-24.04
-  #    steps:
-  #      - name: Checkout repository
-  #        uses: actions/checkout@v4.2.2
-  #
-  #      - name: Set up Node.js
-  #        uses: actions/setup-node@v4.4.0
-  #        with:
-  #          node-version: '22'
-  #
-  #      - name: Run tests
-  #        run: |
-  #          cd nextjs
-  #          npm ci
-  #          npm run lint
-  #          npm test
-
   build-and-publish:
     runs-on: ubuntu-24.04
     permissions:
@@ -58,27 +39,16 @@ jobs:
       - name: Determine image name
         id: image-name
         run: |
-          if [[ "${{ github.ref_name }}" == "main" ]]; then
-            image_name="${{ env.REGISTRY }}/${{ github.repository }}-nextjs"
-          else
-            image_name="${{ env.REGISTRY }}/${{ github.repository }}-nextjs-${{ github.ref_name }}"
-          fi
+          image_name="salko_website-nextjs-${{ github.ref_name }}"
           echo "image_name=$image_name" >> $GITHUB_OUTPUT
           echo "image_name=$image_name" >> $GITHUB_ENV
 
       - name: Determine latest image version
         id: image-version
         run: |
-          # Extract just the package name from the image name
-          if [[ "${{ github.ref_name }}" == "main" ]]; then
-            package_name="salko_website-nextjs"
-          else
-            package_name="salko_website-nextjs-${{ github.ref_name }}"
-          fi
-          
           # Fetch package versions from GitHub Container Registry
           latest_version=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/user/packages/container/${package_name}/versions" | \
+            "https://api.github.com/user/packages/container/${{ github.env.image_name }}/versions" | \
             jq -r '.[].metadata.container.tags[]?' | \
             grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | \
             sort -V | tail -n 1)
@@ -101,21 +71,6 @@ jobs:
           echo "new_version=$new_version" >> $GITHUB_OUTPUT
           echo "new_version=$new_version" >> $GITHUB_ENV
 
-      - name: Create Git Tag
-        if: github.event_name == 'push' && github.ref_name == 'main'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Check if the tag already exists
-          if git rev-parse "refs/tags/${{ github.env.new_version }}" >/dev/null 2>&1; then
-            echo "Tag ${{ github.env.new_version }} already exists. Skipping tag creation."
-          else
-
-          # Create and push the new tag
-            git tag ${{ github.env.new_version }}
-            git push origin ${{ github.env.new_version }}
-          fi
-
       - name: Extract Docker metadata
         id: meta
         uses: docker/metadata-action@v5.8.0
@@ -129,8 +84,7 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
 
-      - name: Remove robots.txt if non-production preventing SEO
-        if: github.ref_name != 'main'
+      - name: Remove robots.txt for non-production preventing SEO
         run: |
           echo "Removing robots.txt for non-production environment..."
           rm -f nextjs/public/robots.txt
@@ -146,7 +100,6 @@ jobs:
           cache-to: type=gha,mode=max
 
   trigger-deploy-workflow-development:
-    if: github.ref_name != 'main'
     needs: build-and-publish
     runs-on: ubuntu-24.04
     permissions:
@@ -161,7 +114,7 @@ jobs:
           client-payload: |
             {
               "branch_name": "${{ github.ref_name }}",
-              "image_tag_name": "${{ needs.build-and-publish.outputs.image_name }}",
+              "image_tag_name": "${{ env.REGISTRY }}/${{ needs.build-and-publish.outputs.image_name }}",
               "image_version": "${{ needs.build-and-publish.outputs.new_version }}"
             }
 
