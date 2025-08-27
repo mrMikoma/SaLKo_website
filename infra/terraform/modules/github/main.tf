@@ -11,7 +11,7 @@ resource "github_branch_protection" "main" {
   repository_id = var.github_repository
 
   pattern          = "main"
-  enforce_admins   = true
+  enforce_admins   = false
   allows_deletions = false
 
   required_pull_request_reviews {
@@ -26,7 +26,7 @@ resource "github_branch_protection" "dev" {
   repository_id = var.github_repository
 
   pattern          = "dev"
-  enforce_admins   = true
+  enforce_admins   = false
   allows_deletions = false
 
   required_pull_request_reviews {
