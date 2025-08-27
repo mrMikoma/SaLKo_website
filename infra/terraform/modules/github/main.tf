@@ -1,12 +1,3 @@
-terraform {
-  required_providers {
-    github = {
-      source  = "integrations/github"
-      version = ">= 6.6.0"
-    }
-  }
-}
-
 data "github_user" "main_user" {
   username = var.github_main_username
 }
