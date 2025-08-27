@@ -56,8 +56,12 @@ resource "github_repository_environment" "production" {
   environment         = "production"
   repository          = var.github_repository
   wait_timer          = 0
-  can_admins_bypass   = true
+  can_admins_bypass   = false
   prevent_self_review = false
+
+  reviewers {
+    users = [data.github_user.main_user.id]
+  }
 
   deployment_branch_policy {
     protected_branches     = true
