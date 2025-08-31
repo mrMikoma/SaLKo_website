@@ -1,7 +1,7 @@
 name: Build and Publish Development
 
 on:
-  push:
+  pull_request:
     paths:
       - "nextjs/**"
       - ".github/workflows/build-and-publish-dev.yaml"
@@ -93,7 +93,7 @@ jobs:
         uses: docker/build-push-action@v6.18.0
         with:
           context: ./nextjs
-          push: ${{ github.event_name == 'push' }}
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha

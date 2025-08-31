@@ -130,10 +130,10 @@ jobs:
             # Delete existing development database volume to ensure a fresh start
             echo "Removing existing PostgreSQL data volume..."
             echo "Removing existing PostgreSQL database using psql client..."
-            ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} << "EOF_PSQL"
-              PGPASSWORD="${{ secrets.POSTGRES_PASSWORD }}" psql -U ${{ env.POSTGRES_USER }} -d ${{ env.POSTGRES_DB }} -c "DROP DATABASE IF EXISTS ${{ env.POSTGRES_DB }};"
-              PGPASSWORD="${{ secrets.POSTGRES_PASSWORD }}" psql -U ${{ env.POSTGRES_USER }} -c "CREATE DATABASE ${{ env.POSTGRES_DB }};"
-            EOF_PSQL
+            # ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} << "EOF_PSQL"
+            #   PGPASSWORD="${{ secrets.POSTGRES_PASSWORD }}" psql -U ${{ env.POSTGRES_USER }} -d ${{ env.POSTGRES_DB }} -c "DROP DATABASE IF EXISTS ${{ env.POSTGRES_DB }};"
+            #   PGPASSWORD="${{ secrets.POSTGRES_PASSWORD }}" psql -U ${{ env.POSTGRES_USER }} -c "CREATE DATABASE ${{ env.POSTGRES_DB }};"
+            # EOF_PSQL
 
             # Start the containers using Docker Compose
             echo "Starting containers using Docker Compose..."
