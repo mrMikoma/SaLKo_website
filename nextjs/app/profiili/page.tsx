@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import UserInfo from "@/components/profile/userInfo";
 import { getUserData } from "@/utilities/user";
 
