@@ -7,7 +7,9 @@
 - name: Install essential packages
   ansible.builtin.apt:
     name:
-      - postgresql-client-common
+      - postgresql-17
+      - postgresql-common
+      - postgresql-client-17
     state: present
     update_cache: true
 
