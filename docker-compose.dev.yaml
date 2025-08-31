@@ -14,10 +14,11 @@ services:
       - /home/salko/postgres-dev/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER}", -h "localhost", "-p", "5432"]
-      interval: 30s
-      timeout: 10s
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
       retries: 5
+      start_period: 10s
 
   nextjs:
     image: ${IMAGE_TAG_NAME}:${IMAGE_VERSION}
