@@ -45,7 +45,7 @@ jobs:
         id: image-version
         run: |
           package_name="salko_website-nextjs-${{ github.ref_name }}"
-          
+
           # Fetch package versions from GitHub Container Registry
           latest_version=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             "https://api.github.com/user/packages/container/${package_name}/versions" | \
