@@ -5,14 +5,14 @@ on:
     paths:
       - "nextjs/**"
       - "docker-compose.dev.yaml"
-      - "postgres/init/init-dev.sql"
+      - "postgres/init/**"
       - ".github/workflows/build-and-publish-dev.yaml"
       - ".github/workflows/deploy-app-dev.yaml"
   workflow_dispatch: {}
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: mrmikoma/salko_website-nextjs-${{ github.head_ref }}
+  IMAGE_NAME: mrmikoma/salko_website-nextjs-${{ github.head_ref || github.ref_name }}
 
 jobs:
   build-and-publish:
@@ -29,7 +29,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5.0.0
         with:
-          ref: ${{ github.head_ref }}
+          ref: ${{ github.head_ref || github.ref_name }}
           sparse-checkout: |
             nextjs
 
@@ -46,7 +46,7 @@ jobs:
       - name: Determine next image version
         id: image-version
         run: |
-          package_name="salko_website-nextjs-${{ github.head_ref }}"
+          package_name="salko_website-nextjs-${{ github.head_ref || github.ref_name }}"
 
           # Fetch package versions from GitHub Container Registry
           latest_version=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
@@ -115,13 +115,13 @@ jobs:
           event-type: deploy-dev
           client-payload: |
             {
-              "branch_name": "${{ github.head_ref }}",
+              "branch_name": "${{ github.head_ref || github.ref_name }}",
               "image_tag_name": "${{ env.REGISTRY }}/${{ needs.build-and-publish.outputs.image_name }}",
               "image_version": "${{ needs.build-and-publish.outputs.new_version }}"
             }
 
       - name: Notify deployment
         run: |
-          echo "Deployment triggered for version ${{ needs.build-and-publish.outputs.new_version }} in branch ${{ github.head_ref }}."
+          echo "Deployment triggered for version ${{ needs.build-and-publish.outputs.new_version }} in branch ${{ github.head_ref || github.ref_name }}."
           # TODO: Add notification logic here
           # e.g., send a message to Discord, email etc.

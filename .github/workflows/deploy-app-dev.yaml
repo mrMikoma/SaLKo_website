@@ -144,10 +144,14 @@ jobs:
 
             # Ensure the environment variables are written before proceeding
             echo ".env.dev file created with environment variables."
+            
+            # Secure the .env.dev file permissions (readable only by owner)
+            chmod 600 .env.dev
+            echo "Secured .env.dev file permissions to 600."
 
-            # Stop the current containers
-            echo "Stopping the current containers..."
-            docker compose --env-file .env.dev -f docker-compose.dev.yaml down || true
+            # Stop the current containers and remove volumes (fresh start for dev)
+            echo "Stopping containers and removing volumes for fresh dev environment..."
+            docker compose --env-file .env.dev -f docker-compose.dev.yaml down -v
 
             # Start the containers using Docker Compose
             echo "Starting containers using Docker Compose..."
