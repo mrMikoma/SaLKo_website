@@ -98,7 +98,7 @@ jobs:
           fi
 
           echo "Adjusting permissions on transferred files..."
-          if ! ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} "chmod 644 /home/salko/postgres-dev/init/*.sql"; then
+          if ! ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} "chmod -R 777 /home/salko/postgres-dev/init/*.sql"; then
             echo "Failed to adjust file permissions"
             exit 1
           fi
