@@ -119,6 +119,7 @@ jobs:
             echo "POSTGRES_USER=${{ env.POSTGRES_USER }}" >> .env.dev
             echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env.dev
             echo "POSTGRES_DB=${{ env.POSTGRES_DB }}" >> .env.dev
+            echo "PGTZ=UTC" >> .env.dev
 
             # Ensure the environment variables are written before proceeding
             echo ".env.dev file created with environment variables."

@@ -8,8 +8,6 @@ on:
       - "postgres/init/init-dev.sql"
       - ".github/workflows/build-and-publish-dev.yaml"
       - ".github/workflows/deploy-app-dev.yaml"
-    branches:
-      - dev
   workflow_dispatch: {}
 
 env:
@@ -18,6 +16,7 @@ env:
 
 jobs:
   build-and-publish:
+    if: github.head_ref == 'dev' && github.base_ref == 'main'
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -104,6 +103,7 @@ jobs:
 
   trigger-deploy-workflow-development:
     needs: build-and-publish
+    if: github.head_ref == 'dev' && github.base_ref == 'main'
     runs-on: ubuntu-24.04
     permissions:
       contents: write
