@@ -5,7 +5,7 @@ on:
     paths:
       - "nextjs/**"
       - "docker-compose.dev.yaml"
-      - "postgres/init/init-dev.sql"
+      - "postgres/init/**"
       - ".github/workflows/build-and-publish-dev.yaml"
       - ".github/workflows/deploy-app-dev.yaml"
   workflow_dispatch: {}
