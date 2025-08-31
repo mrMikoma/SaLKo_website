@@ -93,7 +93,7 @@ jobs:
         uses: docker/build-push-action@v6.18.0
         with:
           context: ./nextjs
-          push: true
+          push: ${{ github.event_name == 'push' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
