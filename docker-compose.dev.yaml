@@ -29,10 +29,10 @@ services:
     environment:
       - PORT=${CONTAINER_PORT}
       - HOSTNAME=${HOSTNAME}
-    #  - DATABASE_CONNECTION_STRING=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-${BRANCH_SUFFIX}:${POSTGRES_HOST_PORT}/${POSTGRES_DB}
-    # depends_on:
-    #   postgres:
-    #     condition: service_healthy
+      - DATABASE_CONNECTION_STRING=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-${BRANCH_SUFFIX}:${POSTGRES_HOST_PORT}/${POSTGRES_DB}
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
     # healthcheck:
     #   test: curl --fail http://localhost:3001/ || exit 1
