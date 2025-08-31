@@ -6,11 +6,11 @@ services:
       - internal
     env_file: .env.dev
     volumes:
+      - /home/salko/postgres-dev/init:/docker-entrypoint-initdb.d:ro
       # - /home/salko/postgres-dev/postgres-data:/var/lib/postgresql/data data persistence disabled for dev
-      - /home/salko/postgres-dev/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -d ${POSTGRES_DB} -U ${POSTGRES_USER}"]
       interval: 30s
       timeout: 60s
       retries: 5
@@ -26,7 +26,7 @@ services:
     environment:
       - PORT=${CONTAINER_PORT}
       - HOSTNAME=${HOSTNAME}
-      - DATABASE_CONNECTION_STRING=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-${BRANCH_SUFFIX}:${POSTGRES_HOST_PORT}/${POSTGRES_DB}
+      - DATABASE_CONNECTION_STRING=postgresql://${APP_DB_USER}:${APP_DB_PASSWORD}@${NAME_PREFIX}-postgres-${BRANCH_SUFFIX}:${PGPORT}/${POSTGRES_DB}
     depends_on:
       postgres:
         condition: service_healthy
@@ -36,7 +36,7 @@ services:
     #   interval: 60s
     #   timeout: 30s
     #   retries: 3
-    #   start_period: 30s
+    #   start_period: 30
     labels:
       - traefik.enable=true
       - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.rule=Host(`${SITE_PREFIX}.${HOST_URL}`)

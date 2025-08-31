@@ -84,8 +84,8 @@ jobs:
           echo "Creating postgres-dev directory if it doesn't exist..."
           ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} "mkdir -p /home/salko/postgres-dev"
 
-          echo "Transferring postgres init script..."
-          scp -i ~/.ssh/id_ed25519 ./postgres/init/init-dev.sql salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/postgres-dev/init.sql
+          echo "Transferring postgres init scripts..."
+          scp -i ~/.ssh/id_ed25519 ./postgres/init/* salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/postgres-dev/init/
 
           echo "Verifying file transfers..."
           ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} "ls -la /home/salko/docker-compose.dev.yaml /home/salko/postgres-dev/init.sql"
@@ -97,8 +97,10 @@ jobs:
           CONTAINER_PORT: "3000"
           HOST_PORT: "3010"
           HOSTNAME: "0.0.0.0"
+          PGPORT: "5432"
           POSTGRES_USER: "salko_admin"
           POSTGRES_DB: "salko"
+          APP_DB_USER: "salko_app"
         run: |
           echo "Deploying to environment..."
           ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} << "EOF"
@@ -116,9 +118,12 @@ jobs:
             echo "HOST_URL=${{ env.HOST_URL }}" >> .env.dev
             echo "IMAGE_TAG_NAME=${{ env.IMAGE_TAG_NAME }}" >> .env.dev
             echo "IMAGE_VERSION=${{ env.IMAGE_VERSION }}" >> .env.dev
+            echo "PGPORT=${{ env.PGPORT }}" >> .env.dev
             echo "POSTGRES_USER=${{ env.POSTGRES_USER }}" >> .env.dev
             echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env.dev
             echo "POSTGRES_DB=${{ env.POSTGRES_DB }}" >> .env.dev
+            echo "APP_DB_USER=${{ env.APP_DB_USER }}" >> .env.dev
+            echo "APP_DB_PASSWORD=${{ secrets.APP_DB_PASSWORD }}" >> .env.dev
             echo "PGTZ=UTC" >> .env.dev
 
             # Ensure the environment variables are written before proceeding
