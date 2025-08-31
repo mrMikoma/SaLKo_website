@@ -1,0 +1,111 @@
+name: Build and Publish Production
+
+on:
+  push:
+    branches: ["main"]
+
+  workflow_dispatch: {}
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      packages: write
+    outputs:
+      image_name: ${{ steps.image-name.outputs.image_name }}
+      new_version: ${{ steps.image-version.outputs.new_version }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5.0.0
+        with:
+          ref: ${{ github.ref_name }}
+          sparse-checkout: |
+            nextjs
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3.0.0
+
+      - name: Log into registry
+        uses: docker/login-action@v3.0.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine image name
+        id: image-name
+        run: |
+          image_name="${{ env.REGISTRY }}/${{ github.repository }}-nextjs"
+          echo "image_name=$image_name" >> $GITHUB_OUTPUT
+          echo "image_name=$image_name" >> $GITHUB_ENV
+
+      - name: Determine latest image version
+        id: image-version
+        run: |
+          package_name="salko_website-nextjs"
+          
+          # Fetch package versions from GitHub Container Registry
+          latest_version=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/user/packages/container/${package_name}/versions" | \
+            jq -r '.[].metadata.container.tags[]?' | \
+            grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | \
+            sort -V | tail -n 1)
+              
+          # Handle case where no versions exist
+          if [ -z "$latest_version" ] || [ "$latest_version" = "null" ]; then
+            latest_version="v0.0.0"  # Default to v0.0.0 if no versions exist
+          fi
+          echo "Latest version from registry: $latest_version"
+              
+          # Extract major, minor, and patch
+          IFS='.' read -ra ver <<< "${latest_version#v}"
+          major=${ver[0]}
+          minor=${ver[1]}
+          patch=${ver[2]}
+              
+          # Increment patch version
+          new_version="v$major.$minor.$((patch + 1))"
+          echo "New version: $new_version"
+          echo "new_version=$new_version" >> $GITHUB_OUTPUT
+          echo "new_version=$new_version" >> $GITHUB_ENV
+
+      - name: Create Git Tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Check if the tag already exists
+          if git rev-parse "refs/tags/${{ github.env.new_version }}" >/dev/null 2>&1; then
+            echo "Tag ${{ github.env.new_version }} already exists. Skipping tag creation."
+          else
+          # Create and push the new tag
+            git tag ${{ github.env.new_version }}
+            git push origin ${{ github.env.new_version }}
+          fi
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5.8.0
+        with:
+          images: ${{ steps.image-name.outputs.image_name }}
+          tags: |
+            ${{ steps.image-version.outputs.new_version }}
+            latest
+          labels: |
+            org.opencontainers.image.source=${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6.18.0
+        with:
+          context: ./nextjs
+          push: ${{ github.event_name == 'push' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

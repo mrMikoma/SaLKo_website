@@ -114,8 +114,8 @@ jobs:
             echo "HOST_PORT=${{ env.HOST_PORT }}" >> .env.dev
             echo "HOSTNAME=${{ env.HOSTNAME }}" >> .env.dev
             echo "HOST_URL=${{ env.HOST_URL }}" >> .env.dev
-            echo "IMAGE_TAG_NAME=${{ github.env.IMAGE_TAG_NAME }}" >> .env.dev
-            echo "IMAGE_VERSION=${{ github.env.IMAGE_VERSION }}" >> .env.dev
+            echo "IMAGE_TAG_NAME=${{ env.IMAGE_TAG_NAME }}" >> .env.dev
+            echo "IMAGE_VERSION=${{ env.IMAGE_VERSION }}" >> .env.dev
             echo "POSTGRES_USER=${{ env.POSTGRES_USER }}" >> .env.dev
             echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env.dev
             echo "POSTGRES_DB=${{ env.POSTGRES_DB }}" >> .env.dev
@@ -133,8 +133,8 @@ jobs:
 
             # Verify the deployment
             echo "Verifying the deployment..."
-            if docker ps | grep -q "${{ github.env.IMAGE_TAG_NAME }}"; then
-              echo "Deployment successful: ${{ github.env.IMAGE_TAG_NAME }} is running."
+            if docker ps | grep -q "${{ env.IMAGE_TAG_NAME }}"; then
+              echo "Deployment successful: ${{ env.IMAGE_TAG_NAME }} is running."
             elif [ "$(docker ps -q)" == "" ]; then
               echo "Deployment failed: No containers are running."
               exit 1
