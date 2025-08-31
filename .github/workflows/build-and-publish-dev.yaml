@@ -4,7 +4,10 @@ on:
   pull_request:
     paths:
       - "nextjs/**"
+      - "docker-compose.dev.yaml"
+      - "postgres/init/init-dev.sql"
       - ".github/workflows/build-and-publish-dev.yaml"
+      - ".github/workflows/deploy-app-dev.yaml"
     branches:
       - dev
   workflow_dispatch: {}
