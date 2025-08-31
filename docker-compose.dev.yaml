@@ -4,21 +4,17 @@ services:
     container_name: ${NAME_PREFIX}-postgres-${BRANCH_SUFFIX}
     networks:
       - internal
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-      - PGTZ=UTC
+    env_file: .env.dev
     volumes:
       - /home/salko/postgres-dev/postgres-data:/var/lib/postgresql/data
       - /home/salko/postgres-dev/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 10s
-      timeout: 5s
+      test: ["CMD-SHELL", "pg_isready -d ${POSTGRES_DB}"]
+      interval: 30s
+      timeout: 60s
       retries: 5
-      start_period: 10s
+      start_period: 80s
 
   nextjs:
     image: ${IMAGE_TAG_NAME}:${IMAGE_VERSION}
