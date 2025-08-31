@@ -1,7 +1,7 @@
 name: Build and Publish Development
 
 on:
-  push:
+  pull_request:
     paths:
       - "nextjs/**"
       - ".github/workflows/build-and-publish-dev.yaml"
@@ -11,7 +11,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}-nextjs-${{ github.ref_name }}
+  IMAGE_NAME: mrmikoma/salko_website-nextjs-${{ github.ref_name }}
 
 jobs:
   build-and-publish:
@@ -45,7 +45,7 @@ jobs:
         id: image-version
         run: |
           package_name="salko_website-nextjs-${{ github.ref_name }}"
-          
+
           # Fetch package versions from GitHub Container Registry
           latest_version=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             "https://api.github.com/user/packages/container/${package_name}/versions" | \
@@ -93,7 +93,7 @@ jobs:
         uses: docker/build-push-action@v6.18.0
         with:
           context: ./nextjs
-          push: ${{ github.event_name == 'push' }}
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
