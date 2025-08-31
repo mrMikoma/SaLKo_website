@@ -6,7 +6,7 @@ services:
       - internal
     env_file: .env.dev
     volumes:
-      - /home/salko/postgres-dev/postgres-data:/var/lib/postgresql/data
+      # - /home/salko/postgres-dev/postgres-data:/var/lib/postgresql/data data persistence disabled for dev
       - /home/salko/postgres-dev/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     restart: unless-stopped
     healthcheck:
