@@ -4,14 +4,12 @@
     update_cache: true
     upgrade: dist
 
-- name: Install essential packages
-  ansible.builtin.apt:
-    name:
-      - postgresql-17
-      - postgresql-common
-      - postgresql-client-17
-    state: present
-    update_cache: true
+# - name: Install essential packages
+#   ansible.builtin.apt:
+#     name:
+#       - postgresql-client
+#     state: present
+#     update_cache: true
 
 - name: Create salko admin
   ansible.builtin.user:
