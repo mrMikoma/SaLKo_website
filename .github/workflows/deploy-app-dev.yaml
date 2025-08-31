@@ -123,18 +123,22 @@ jobs:
             # Ensure the environment variables are written before proceeding
             echo ".env.dev file created with environment variables."
 
+            # Delete existing development database volume to ensure a fresh start
+            echo "Removing existing PostgreSQL database using Docker..."
+            if docker ps | grep -q "${{ env.NAME_PREFIX }}-postgres-${{ env.BRANCH_SUFFIX }}"; then
+              if docker exec -it ${{ env.NAME_PREFIX }}-postgres-${{ env.BRANCH_SUFFIX }} psql -U ${{ env.POSTGRES_USER }} -d ${{ env.POSTGRES_DB }} -c "DROP DATABASE IF EXISTS ${{ env.POSTGRES_DB }};"; then
+                echo "Database dropped successfully."
+              else
+                echo "Error: Failed to drop the database. Ensure the PostgreSQL container is running and accessible."
+                exit 1
+              fi
+            else
+              echo "PostgreSQL container is not running. Skipping database drop."
+            fi
+
             # Stop the current containers
             echo "Stopping the current containers..."
             docker compose --env-file .env.dev -f docker-compose.dev.yaml down || true
-
-            # Delete existing development database volume to ensure a fresh start
-            echo "Removing existing PostgreSQL database using Docker..."
-            if docker exec -it ${{ env.NAME_PREFIX }}-postgres-${{ env.BRANCH_SUFFIX }} psql -U ${{ env.POSTGRES_USER }} -d ${{ env.POSTGRES_DB }} -c "DROP DATABASE IF EXISTS ${{ env.POSTGRES_DB }};"; then
-              echo "Database dropped successfully."
-            else
-              echo "Error: Failed to drop the database. Ensure the PostgreSQL container is running and accessible."
-              exit 1
-            fi
 
             # Start the containers using Docker Compose
             echo "Starting containers using Docker Compose..."
