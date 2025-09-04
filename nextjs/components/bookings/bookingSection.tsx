@@ -236,39 +236,76 @@ const BookingSection = ({ isLoggedIn }: BookingSectionProps) => {
   // 6. If there are multiple bookings, it sorts them by priority and returns the one with the highest priority.
   // 7. If there are no overlapping bookings, it returns the first booking that matches the hour criteria.
   // 8. If there are multiple overlapping bookings, it sorts them by priority and returns the one with the highest priority.
-  const getVisibleBookingForHour = (
+  const getVisibleBookingsForHour = (
     plane: string,
     hourValue: number,
     allBookings: BookingType[]
-  ): BookingType | null => {
-    const bookings = allBookings
-      .filter((booking) => booking.plane === plane)
-      .filter(
-        (booking) =>
-          DateTime.fromISO(booking.start_time).hour <= hourValue &&
-          DateTime.fromISO(booking.end_time).hour > hourValue &&
-          DateTime.fromISO(booking.start_time).hasSame(dateParam, "day")
-      );
-
-    if (bookings.length === 0) return null;
-
-    // Check for overlapping bookings at this hour
-    const overlapping = bookings.filter(
-      (b) =>
-        DateTime.fromISO(b.start_time).hour < hourValue &&
-        DateTime.fromISO(b.end_time).hour > hourValue
-    );
-
-    if (overlapping.length <= 1) return overlapping[0] ?? bookings[0];
-
-    // Sort by priority
-    const sorted = overlapping.sort((a, b) => {
-      const pa = FLIGHT_TYPES.find((t) => t.type === a.type)?.priority ?? 0;
-      const pb = FLIGHT_TYPES.find((t) => t.type === b.type)?.priority ?? 0;
-      return pb - pa;
+  ): BookingType[] => {
+    const selectedDate = dateParam ? DateTime.fromISO(dateParam) : DateTime.now();
+    
+    // Filter bookings for this specific plane only
+    const planeBookings = allBookings.filter((booking) => booking.plane === plane);
+    
+    // Debug logging (reduced)
+    if (hourValue === 6) { // Only log for first hour to avoid spam
+      console.log(`Checking ${plane} for hour ${hourValue}: ${planeBookings.length} bookings`);
+    }
+    
+    // Find bookings that cover this specific hour
+    const activeBookings = planeBookings.filter((booking) => {
+      // Convert UTC times to local time
+      const startTime = DateTime.fromISO(booking.start_time).toLocal();
+      const endTime = DateTime.fromISO(booking.end_time).toLocal();
+      
+      // Skip bookings with invalid time ranges (end before start)
+      if (endTime <= startTime) {
+        console.log(`Skipping invalid booking ID:${booking.id} - end time before start time`);
+        return false;
+      }
+      
+      // Check if booking is on the selected date
+      if (!startTime.hasSame(selectedDate, "day")) {
+        return false;
+      }
+      
+      // Check if the booking covers this hour
+      // A booking covers an hour if it starts at or before the hour and ends after the hour starts
+      const bookingCoversHour = startTime.hour <= hourValue && endTime.hour > hourValue;
+      
+      // Simplified debug logging
+      if (bookingCoversHour && hourValue === 6) {
+        console.log(`Booking ID:${booking.id} covers hour ${hourValue} for ${plane}`);
+      }
+      
+      return bookingCoversHour;
     });
 
-    return sorted[0];
+    if (activeBookings.length === 0) {
+      return [];
+    }
+
+    // Sort all active bookings by priority (highest first)
+    const sortedByPriority = activeBookings.sort((a, b) => {
+      const priorityA = FLIGHT_TYPES.find((t) => t.type === a.type)?.priority ?? 0;
+      const priorityB = FLIGHT_TYPES.find((t) => t.type === b.type)?.priority ?? 0;
+      return priorityB - priorityA; // Higher priority first
+    });
+
+    return sortedByPriority;
+  };
+
+  // Helper functions for rendering
+  const getFlightTypeColor = (type: string): string => {
+    const flightType = FLIGHT_TYPES.find((flight) => flight.type === type);
+    return flightType ? flightType.color : "#4A90E2";
+  };
+
+  const getShortenedName = (name: string): string => {
+    const parts = name.split(" ");
+    if (parts.length > 1) {
+      return `${parts[0]} ${parts[1]?.charAt(0) || ""}.`;
+    }
+    return name;
   };
 
   return (
@@ -284,14 +321,14 @@ const BookingSection = ({ isLoggedIn }: BookingSectionProps) => {
         <table className="w-full border-collapse bg-gray-50 table-fixed">
           <thead>
             <tr>
-              <th className="border border-gray-300 p-2 bg-gray-100 overflow-hidden">
+              <th className="border border-gray-300 p-2 bg-gray-100 overflow-hidden" style={{ width: "80px" }}>
                 ALKAVA TUNTI
               </th>
               {PLANES.map((plane) => (
                 <th
                   key={plane}
                   className="border border-gray-300 p-2 bg-gray-100"
-                  style={{ height: "50px" }}
+                  style={{ height: "50px", width: "120px" }}
                 >
                   {plane}
                 </th>
@@ -304,41 +341,77 @@ const BookingSection = ({ isLoggedIn }: BookingSectionProps) => {
               <tr key={hour}>
                 <th
                   className="border border-gray-300 p-2 bg-gray-100"
-                  style={{ height: "50px" }}
+                  style={{ height: "50px", width: "80px" }}
                 >
                   {hour}
                 </th>
                 {PLANES.map((plane) => {
                   const hourValue = parseInt(hour.split(":")[0]);
-                  const topBooking = getVisibleBookingForHour(
+                  const visibleBookings = getVisibleBookingsForHour(
                     plane,
                     hourValue,
                     bookingData
                   );
 
-                  if (!topBooking) {
+                  if (visibleBookings.length === 0) {
                     return (
                       <td
                         key={`${plane}-${hour}`}
                         onClick={() => handleCellClick(plane, hour)}
                         className="cursor-pointer border border-gray-300 p-2"
-                        style={{ height: "50px" }}
+                        style={{ height: "50px", width: "120px" }}
                       >
                         <div></div>
                       </td>
                     );
                   }
 
-                  // console.log("TOP BOOKING:", topBooking);
-
+                  // Render multiple bookings side by side (Google Calendar style)
+                  const maxBookings = Math.min(visibleBookings.length, 3); // Limit to 3 visible bookings
+                  const bookingWidth = 100 / maxBookings; // Divide cell width evenly
+                  
                   return (
-                    <BookingCell
-                      key={`${plane}-${hour}-${topBooking.id}`}
-                      booking={topBooking}
-                      hour={hour}
-                      plane={plane}
-                      onClick={() => handlebookingClick(topBooking)}
-                    />
+                    <td
+                      key={`${plane}-${hour}`}
+                      className="border border-gray-300 relative p-0"
+                      style={{ height: "50px", width: "120px" }}
+                    >
+                      {visibleBookings.slice(0, maxBookings).map((booking, index) => (
+                        <div
+                          key={`${plane}-${hour}-${booking.id}`}
+                          onClick={() => handlebookingClick(booking)}
+                          className="absolute cursor-pointer text-white px-1 overflow-hidden flex flex-col justify-center"
+                          style={{
+                            left: `${index * bookingWidth}%`,
+                            width: `${bookingWidth}%`,
+                            top: '0px',
+                            bottom: '0px',
+                            backgroundColor: getFlightTypeColor(booking.type),
+                            borderRight: index < maxBookings - 1 ? '1px solid rgba(255,255,255,0.5)' : 'none',
+                            fontSize: maxBookings > 2 ? '10px' : '12px' // Smaller text when more bookings
+                          }}
+                          title={`${booking.title} - ${booking.full_name} (${booking.type})`} // Tooltip for more info
+                        >
+                          <p className="font-bold text-center text-ellipsis whitespace-nowrap overflow-hidden leading-tight">
+                            {maxBookings > 2 ? booking.title.substring(0, 6) + '...' : booking.title}
+                          </p>
+                          {maxBookings <= 2 && (
+                            <p className="font-medium text-center text-ellipsis whitespace-nowrap overflow-hidden leading-tight">
+                              {getShortenedName(booking.full_name)}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                      {visibleBookings.length > 3 && (
+                        <div
+                          className="absolute top-0 right-0 bg-gray-600 text-white text-xs px-1 rounded-bl"
+                          style={{ fontSize: '10px', lineHeight: '12px' }}
+                          title={`+${visibleBookings.length - 3} more bookings`}
+                        >
+                          +{visibleBookings.length - 3}
+                        </div>
+                      )}
+                    </td>
                   );
                 })}
               </tr>
