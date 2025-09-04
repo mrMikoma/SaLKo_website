@@ -11,6 +11,7 @@ const DatePicker = ({
   onChange: (date: DateTime | null) => void;
 }) => {
   const dateParamDate = useSearchParams().get("paiva");
+  const currentDate = dateParamDate ? DateTime.fromISO(dateParamDate) : DateTime.now();
   console.log("DatePicker dateParamDate:", dateParamDate);
   return (
     <div className="flex flex-col w-full min-h-[100px] mx-auto">
@@ -20,7 +21,7 @@ const DatePicker = ({
           type="button"
           className="p-2 transform rotate-180 w-16"
           onClick={() => {
-            const prevDate = DateTime.fromISO(dateParamDate).minus({ days: 1 });
+            const prevDate = currentDate.minus({ days: 1 });
             onChange(prevDate);
           }}
         >
@@ -30,11 +31,11 @@ const DatePicker = ({
         {/* Date input */}
         <input
           type="date"
-          value={dateParamDate.toString()}
+          value={currentDate.toFormat("yyyy-MM-dd")}
           onChange={(e) => {
             const newDate = DateTime.fromISO(e.target.value);
             if (newDate.isValid) {
-              onChange(onChange(newDate));
+              onChange(newDate);
             }
           }}
           className="w-48 p-2 border rounded text-sred font-semibold text-center text-lg mx-4"
@@ -44,7 +45,7 @@ const DatePicker = ({
           type="button"
           className="p-2 w-16"
           onClick={() => {
-            const nextDate = DateTime.fromISO(dateParamDate).plus({ days: 1 });
+            const nextDate = currentDate.plus({ days: 1 });
             onChange(nextDate);
           }}
         >
@@ -54,10 +55,10 @@ const DatePicker = ({
       <div className="text-center text-xl mt-2" suppressHydrationWarning>
         <span className="font-semibold">Valittu päivä: </span>
         <span>
-          {DateTime.fromISO(dateParamDate).setLocale("fi").toFormat("cccc")}{" "}
+          {currentDate.setLocale("fi").toFormat("cccc")}{" "}
         </span>
         <span>
-          {DateTime.fromISO(dateParamDate).setLocale("fi").toFormat("DDD")}
+          {currentDate.setLocale("fi").toFormat("DDD")}
         </span>
       </div>
     </div>
