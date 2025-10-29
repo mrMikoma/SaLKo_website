@@ -1,26 +1,28 @@
+import { memo } from "react";
 import { DateTime } from "luxon";
 import { BookingType } from "@/utilities/bookings";
-import { FlightTypes } from "./bookingSection";
+import { FlightTypeConfig } from "@/types/bookings";
+import { formatTime } from "@/utils/bookingHelpers";
 
 interface BookingsMobileViewProps {
   bookings: BookingType[];
   onBookingClick: (booking: BookingType) => void;
-  flightTypes: FlightTypes[];
+  flightTypes: readonly FlightTypeConfig[];
   getFlightTypeColor: (type: string) => string;
 }
+
+const PLANES = ["OH-CON", "OH-386", "OH-816", "OH-829", "OH-475", "OH-PDX"];
 
 /**
  * Mobile-optimized view for bookings
  * Displays bookings as a list grouped by plane
  */
-export const BookingsMobileView = ({
+export const BookingsMobileView = memo(({
   bookings,
   onBookingClick,
   flightTypes,
   getFlightTypeColor,
 }: BookingsMobileViewProps) => {
-  const PLANES = ["OH-CON", "OH-386", "OH-816", "OH-829", "OH-475", "OH-PDX"];
-
   const groupedBookings = PLANES.map((plane) => ({
     plane,
     bookings: bookings
@@ -30,10 +32,6 @@ export const BookingsMobileView = ({
         DateTime.fromISO(b.start_time).toMillis()
       ),
   }));
-
-  const formatTime = (isoTime: string) => {
-    return DateTime.fromISO(isoTime).toFormat("HH:mm");
-  };
 
   const getFlightTypeLabel = (type: string) => {
     return flightTypes.find((ft) => ft.type === type)?.label || type;
@@ -99,4 +97,6 @@ export const BookingsMobileView = ({
       ))}
     </div>
   );
-};
+});
+
+BookingsMobileView.displayName = "BookingsMobileView";

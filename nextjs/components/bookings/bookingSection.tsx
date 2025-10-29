@@ -1,8 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, lazy, Suspense } from "react";
 import DatePicker from "@/components/bookings/datePicker";
-import BookingUpdateModal from "@/components/bookings/bookingModal";
 import { BookingType } from "@/utilities/bookings";
 import { useBookings } from "@/hooks/useBookings";
 import { useDateFromUrl } from "@/hooks/useDateFromUrl";
@@ -12,26 +11,18 @@ import { BookingsSkeleton } from "./BookingsSkeleton";
 import { BookingsError } from "./BookingsError";
 import { BookingsMobileView } from "./BookingsMobileView";
 import { BookingsDesktopView } from "./BookingsDesktopView";
+import { FLIGHT_TYPE_CONFIGS, FlightTypeConfig } from "@/types/bookings";
+
+// Lazy load modal for better code splitting
+const BookingUpdateModal = lazy(() => import("@/components/bookings/bookingModal"));
 
 /*
  * Types and Constants
  */
 
-export interface FlightTypes {
-  type: string;
-  label: string;
-  color: string;
-  priority: number;
-}
-
-export const FLIGHT_TYPES: FlightTypes[] = [
-  { type: "local", label: "Paikallislento", color: "#90EE90", priority: 3 }, // Light Green
-  { type: "trip", label: "Matkalento", color: "#87CEEB", priority: 3 }, // Sky Blue
-  { type: "training", label: "Koululento", color: "#ADD8E6", priority: 2 }, // Light Blue
-  { type: "maintenance", label: "Huolto", color: "#FFB6C1", priority: 1 }, // Light Red
-  { type: "fire", label: "Palolento", color: "#FFA500", priority: 1 }, // Orange
-  { type: "other", label: "Muu lento", color: "#D3D3D3", priority: 2 }, // Light Grey
-];
+// Re-export for backward compatibility with existing components
+export type FlightTypes = FlightTypeConfig;
+export const FLIGHT_TYPES = FLIGHT_TYPE_CONFIGS as unknown as FlightTypes[];
 
 interface BookingSectionProps {
   isLoggedIn: boolean;
@@ -205,15 +196,17 @@ const BookingSection = ({ isLoggedIn }: BookingSectionProps) => {
 
       {/* Booking Modal */}
       {modalMode && (
-        <BookingUpdateModal
-          mode={modalMode}
-          booking={selectedBooking}
-          onSave={handleSaveBooking}
-          onUpdate={handleUpdateBooking}
-          onDelete={handleDeleteBooking}
-          onCancel={closeModal}
-          onChange={setSelectedBooking}
-        />
+        <Suspense fallback={<div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div></div>}>
+          <BookingUpdateModal
+            mode={modalMode}
+            booking={selectedBooking}
+            onSave={handleSaveBooking}
+            onUpdate={handleUpdateBooking}
+            onDelete={handleDeleteBooking}
+            onCancel={closeModal}
+            onChange={setSelectedBooking}
+          />
+        </Suspense>
       )}
     </div>
   );
