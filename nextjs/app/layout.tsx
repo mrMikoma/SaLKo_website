@@ -6,6 +6,7 @@ import Footer from "@/components/footer";
 import { Finlandica } from "next/font/google";
 import { verifySession } from "@/utilities/sessions";
 import { SessionPayload } from "@/utilities/definitions";
+import { QueryProvider } from "@/providers/QueryProvider";
 
 const finlandica = Finlandica({
   subsets: ["latin"],
@@ -40,13 +41,15 @@ const RootLayout = async ({ children }: React.PropsWithChildren) => {
   return (
     <html lang="fi" className={`${finlandica.variable}`}>
       <body>
-        <main className="max-w-screen min-h-screen flex flex-col overflow-x-hidden relative bg-background bg-sblued text-white font-finlandica">
-          <AntdRegistry>
-            <Navbar payload={session} />
-            {children}
-            <Footer />
-          </AntdRegistry>
-        </main>
+        <QueryProvider>
+          <main className="max-w-screen min-h-screen flex flex-col overflow-x-hidden relative bg-background bg-sblued text-white font-finlandica">
+            <AntdRegistry>
+              <Navbar payload={session} />
+              {children}
+              <Footer />
+            </AntdRegistry>
+          </main>
+        </QueryProvider>
       </body>
     </html>
   );
