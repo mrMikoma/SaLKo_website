@@ -4,6 +4,7 @@ import { DateTime } from "luxon";
 import {
   fetchDayBookings,
   addBooking,
+  updateBooking,
   removeBooking,
   BookingType,
 } from "@/utilities/bookings";
@@ -11,7 +12,8 @@ import {
 const PLANES = ["OH-CON", "OH-386", "OH-816", "OH-829", "OH-475", "OH-PDX"];
 
 interface UseBookingsOptions {
-  date: string;
+  date?: string;
+  dates?: string[];
   enabled?: boolean;
 }
 
@@ -40,6 +42,15 @@ const fetchBookingsForDate = async (date: string): Promise<BookingType[]> => {
 };
 
 /**
+ * Fetches bookings for multiple dates
+ */
+const fetchBookingsForDates = async (dates: string[]): Promise<BookingType[]> => {
+  const promises = dates.map((date) => fetchBookingsForDate(date));
+  const results = await Promise.all(promises);
+  return results.flat();
+};
+
+/**
  * Custom hook for managing bookings data with React Query
  * Features:
  * - Automatic caching and revalidation
@@ -47,10 +58,14 @@ const fetchBookingsForDate = async (date: string): Promise<BookingType[]> => {
  * - Prefetching for adjacent dates
  * - Loading and error states
  */
-export const useBookings = ({ date, enabled = true }: UseBookingsOptions) => {
+export const useBookings = ({ date, dates, enabled = true }: UseBookingsOptions) => {
   const queryClient = useQueryClient();
 
-  // Fetch bookings for all planes on a specific date
+  // Determine which mode we're in
+  const dateList = dates || (date ? [date] : []);
+  const queryKey = dates ? ["bookings", "multiple", dates.join(",")] : ["bookings", date];
+
+  // Fetch bookings for all planes on a specific date or dates
   const {
     data: bookings = [],
     isLoading,
@@ -58,18 +73,18 @@ export const useBookings = ({ date, enabled = true }: UseBookingsOptions) => {
     error,
     refetch,
   } = useQuery({
-    queryKey: ["bookings", date],
-    queryFn: () => fetchBookingsForDate(date),
-    enabled: enabled && DateTime.fromISO(date).isValid,
+    queryKey,
+    queryFn: () => dates ? fetchBookingsForDates(dates) : fetchBookingsForDate(date!),
+    enabled: enabled && dateList.length > 0 && dateList.every(d => DateTime.fromISO(d).isValid),
     staleTime: 1000 * 60 * 5, // 5 minutes
     gcTime: 1000 * 60 * 30, // 30 minutes
     retry: 2,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
-  // Prefetch adjacent dates for smoother navigation
+  // Prefetch adjacent dates for smoother navigation (only for single date mode)
   useEffect(() => {
-    if (!date || !DateTime.fromISO(date).isValid) return;
+    if (dates || !date || !DateTime.fromISO(date).isValid) return;
 
     const currentDate = DateTime.fromISO(date);
     const previousDate = currentDate.minus({ days: 1 }).toISODate();
@@ -92,7 +107,7 @@ export const useBookings = ({ date, enabled = true }: UseBookingsOptions) => {
         staleTime: 1000 * 60 * 5,
       });
     }
-  }, [date, queryClient]);
+  }, [date, dates, queryClient]);
 
   // Add booking mutation with optimistic update
   const addBookingMutation = useMutation({
@@ -117,16 +132,13 @@ export const useBookings = ({ date, enabled = true }: UseBookingsOptions) => {
     },
     onMutate: async (newBooking) => {
       // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ["bookings", date] });
+      await queryClient.cancelQueries({ queryKey });
 
       // Snapshot previous value
-      const previousBookings = queryClient.getQueryData<BookingType[]>([
-        "bookings",
-        date,
-      ]);
+      const previousBookings = queryClient.getQueryData<BookingType[]>(queryKey);
 
       // Optimistically update
-      queryClient.setQueryData<BookingType[]>(["bookings", date], (old = []) => [
+      queryClient.setQueryData<BookingType[]>(queryKey, (old = []) => [
         ...old,
         newBooking,
       ]);
@@ -136,13 +148,13 @@ export const useBookings = ({ date, enabled = true }: UseBookingsOptions) => {
     onError: (err, _newBooking, context) => {
       // Rollback on error
       if (context?.previousBookings) {
-        queryClient.setQueryData(["bookings", date], context.previousBookings);
+        queryClient.setQueryData(queryKey, context.previousBookings);
       }
       console.error("Failed to add booking:", err);
     },
     onSuccess: () => {
       // Refetch to ensure data consistency
-      queryClient.invalidateQueries({ queryKey: ["bookings", date] });
+      queryClient.invalidateQueries({ queryKey: ["bookings"] });
     },
   });
 
@@ -160,15 +172,12 @@ export const useBookings = ({ date, enabled = true }: UseBookingsOptions) => {
       return bookingId;
     },
     onMutate: async (bookingId) => {
-      await queryClient.cancelQueries({ queryKey: ["bookings", date] });
+      await queryClient.cancelQueries({ queryKey });
 
-      const previousBookings = queryClient.getQueryData<BookingType[]>([
-        "bookings",
-        date,
-      ]);
+      const previousBookings = queryClient.getQueryData<BookingType[]>(queryKey);
 
       // Optimistically remove booking
-      queryClient.setQueryData<BookingType[]>(["bookings", date], (old = []) =>
+      queryClient.setQueryData<BookingType[]>(queryKey, (old = []) =>
         old.filter((booking) => booking.id !== bookingId)
       );
 
@@ -176,31 +185,43 @@ export const useBookings = ({ date, enabled = true }: UseBookingsOptions) => {
     },
     onError: (err, _bookingId, context) => {
       if (context?.previousBookings) {
-        queryClient.setQueryData(["bookings", date], context.previousBookings);
+        queryClient.setQueryData(queryKey, context.previousBookings);
       }
       console.error("Failed to remove booking:", err);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["bookings", date] });
+      queryClient.invalidateQueries({ queryKey: ["bookings"] });
     },
   });
 
   // Update booking mutation
   const updateBookingMutation = useMutation({
     mutationFn: async (updatedBooking: BookingType) => {
-      // Note: You'll need to implement updateBooking in utilities/bookings
-      // For now, this is a placeholder that should be implemented
-      throw new Error("Update booking API not yet implemented");
+      const response = await updateBooking({
+        id: updatedBooking.id,
+        user_id: updatedBooking.user_id,
+        plane: updatedBooking.plane,
+        start_time: updatedBooking.start_time,
+        end_time: updatedBooking.end_time,
+        type: updatedBooking.type,
+        title: updatedBooking.title,
+        description: updatedBooking.description,
+      });
+      if (response.status !== "success") {
+        throw new Error(
+          response.data instanceof Error
+            ? response.data.message
+            : "Failed to update booking"
+        );
+      }
+      return response.data as BookingType;
     },
     onMutate: async (updatedBooking) => {
-      await queryClient.cancelQueries({ queryKey: ["bookings", date] });
+      await queryClient.cancelQueries({ queryKey });
 
-      const previousBookings = queryClient.getQueryData<BookingType[]>([
-        "bookings",
-        date,
-      ]);
+      const previousBookings = queryClient.getQueryData<BookingType[]>(queryKey);
 
-      queryClient.setQueryData<BookingType[]>(["bookings", date], (old = []) =>
+      queryClient.setQueryData<BookingType[]>(queryKey, (old = []) =>
         old.map((booking) =>
           booking.id === updatedBooking.id ? updatedBooking : booking
         )
@@ -210,12 +231,12 @@ export const useBookings = ({ date, enabled = true }: UseBookingsOptions) => {
     },
     onError: (err, _updatedBooking, context) => {
       if (context?.previousBookings) {
-        queryClient.setQueryData(["bookings", date], context.previousBookings);
+        queryClient.setQueryData(queryKey, context.previousBookings);
       }
       console.error("Failed to update booking:", err);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["bookings", date] });
+      queryClient.invalidateQueries({ queryKey: ["bookings"] });
     },
   });
 

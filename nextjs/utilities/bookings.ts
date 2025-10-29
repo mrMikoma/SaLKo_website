@@ -49,6 +49,17 @@ interface AddBookingParams {
   description: string;
 }
 
+interface UpdateBookingParams {
+  id: number;
+  user_id: string;
+  plane: string;
+  start_time: number | string;
+  end_time: number | string;
+  type: string;
+  title: string;
+  description: string;
+}
+
 /*
  * Functions
  */
@@ -173,6 +184,94 @@ export async function addBooking({
       status: "success",
       data: null,
     };
+  } catch (error) {
+    console.error("Error occurred:", error);
+    throw error;
+  }
+}
+
+export async function updateBooking({
+  id,
+  user_id,
+  plane,
+  start_time,
+  end_time,
+  type,
+  title,
+  description,
+}: UpdateBookingParams): Promise<{ status: string; data: BookingType | Error }> {
+  try {
+    // Validation
+    if (typeof id !== "number" || id < 0) {
+      throw new Error("Invalid booking ID");
+    }
+
+    if (!allowedPlaneTypes.includes(plane)) {
+      throw new Error("Invalid plane type");
+    }
+
+    if (!allowedFlightTypes.includes(type)) {
+      throw new Error("Invalid flight type");
+    }
+
+    if (typeof start_time !== "number" || typeof end_time !== "number") {
+      const start = new Date(start_time).getTime() / 1000;
+      const end = new Date(end_time).getTime() / 1000;
+
+      if (start >= end) {
+        throw new Error("Invalid time range");
+      }
+    } else {
+      throw new Error("Invalid time format");
+    }
+
+    if (typeof user_id !== "string") {
+      throw new Error("Invalid user ID");
+    }
+
+    try {
+      // Update booking in database
+      const response = await connectionPool.query(
+        `UPDATE bookings
+         SET plane = $1, start_time = $2, end_time = $3, type = $4, title = $5, description = $6
+         WHERE id = $7 AND user_id = $8
+         RETURNING id, user_id, plane, start_time, end_time, type, title, description`,
+        [plane, start_time, end_time, type, title, description, id, user_id]
+      );
+
+      if (response.rowCount === 0) {
+        return {
+          status: "error",
+          data: new Error("Booking not found or unauthorized"),
+        };
+      }
+
+      // Format timestamps to ISO string
+      const updatedBooking = response.rows[0];
+      updatedBooking.start_time = new Date(updatedBooking.start_time).toISOString();
+      updatedBooking.end_time = new Date(updatedBooking.end_time).toISOString();
+
+      // Fetch full_name from users table
+      const userResponse = await connectionPool.query(
+        "SELECT full_name FROM users WHERE id = $1",
+        [user_id]
+      );
+
+      if (userResponse.rowCount > 0) {
+        updatedBooking.full_name = userResponse.rows[0].full_name;
+      }
+
+      return {
+        status: "success",
+        data: updatedBooking,
+      };
+    } catch (error) {
+      console.error("Error updating data:", error);
+      return {
+        status: "error",
+        data: error,
+      };
+    }
   } catch (error) {
     console.error("Error occurred:", error);
     throw error;
