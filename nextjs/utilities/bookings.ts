@@ -412,3 +412,9 @@ export async function removeBooking(
     throw error;
   }
 }
+
+export async function arrangeBookingsColumns(bookings: BookingType[]): Promise<BookingType[][]> {
+  // Simple column arrangement - just return bookings in a single column for now
+  // This can be enhanced later to handle overlapping bookings in multiple columns
+  return [bookings];
+}
