@@ -99,6 +99,7 @@ jobs:
           HOSTNAME: "0.0.0.0"
           POSTGRES_USER: "salko_admin"
           POSTGRES_DB: "salko"
+          NEXTAUTH_URL: "https://savonlinnanlentokerho.fi"
         run: |
           echo "Deploying to environment..."
           ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} << "EOF"
@@ -119,6 +120,14 @@ jobs:
             echo "POSTGRES_USER=${{ env.POSTGRES_USER }}" >> .env.dev
             echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env.dev
             echo "POSTGRES_DB=${{ env.POSTGRES_DB }}" >> .env.dev
+
+            # NextAuth configuration
+            echo "NEXTAUTH_URL=${{ env.NEXTAUTH_URL }}" >> .env.dev
+            echo "NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET_PROD }}" >> .env.dev
+
+            # Google OAuth configuration
+            echo "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID_PROD }}" >> .env.dev
+            echo "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET_PROD }}" >> .env.dev
 
             # Ensure the environment variables are written before proceeding
             echo ".env.dev file created with environment variables."

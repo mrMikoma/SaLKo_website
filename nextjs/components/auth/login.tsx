@@ -1,14 +1,15 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useActionState, use } from "react";
-import { login } from "@/utilities/auth";
+import { useEffect, useActionState } from "react";
+import { loginWithCredentials, loginWithGoogle } from "@/app/auth/actions";
+import { FcGoogle } from "react-icons/fc";
 
 // References:
 // - https://nextjs.org/docs/app/building-your-application/authentication
 
 const Login = ({ onHandleLogin }: { onHandleLogin: () => void }) => {
-  const [state, action, pending] = useActionState(login, undefined);
+  const [state, action, pending] = useActionState(loginWithCredentials, undefined);
   const router = useRouter();
 
   useEffect(() => {
@@ -16,7 +17,7 @@ const Login = ({ onHandleLogin }: { onHandleLogin: () => void }) => {
       router.push("/");
       onHandleLogin();
     }
-  }, [state, router]);
+  }, [state, router, onHandleLogin]);
 
   return (
     <div className="flex min-h-full flex-1 flex-col justify-center px-6 py-12 lg:px-8 font-finlandica">
@@ -111,6 +112,30 @@ const Login = ({ onHandleLogin }: { onHandleLogin: () => void }) => {
             </div>
           )}
         </form>
+
+        {/* Google OAuth Login */}
+        <div className="mt-6">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-sgrey/30"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="bg-white px-2 text-sgrey font-semibold">Tai</span>
+            </div>
+          </div>
+
+          <div className="mt-6">
+            <form action={loginWithGoogle}>
+              <button
+                type="submit"
+                className="flex w-full items-center justify-center gap-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-sblued shadow-md ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+              >
+                <FcGoogle className="h-5 w-5" />
+                <span>Kirjaudu Google Workspacella</span>
+              </button>
+            </form>
+          </div>
+        </div>
 
         <div className="mt-8 text-center">
           <p className=" text-sm/6 text-sgrey font-semibold">
