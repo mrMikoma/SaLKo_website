@@ -17,7 +17,7 @@ export interface LoginState {
  * Server action for credentials login
  */
 export async function loginWithCredentials(
-  prevState: LoginState | undefined,
+  _prevState: LoginState | undefined,
   formData: FormData
 ): Promise<LoginState> {
   // Validate form data
@@ -28,7 +28,10 @@ export async function loginWithCredentials(
 
   if (!validatedFields.success) {
     return {
-      errors: validatedFields.error.flatten().fieldErrors,
+      errors: validatedFields.error.flatten().fieldErrors as {
+        email?: string[];
+        password?: string[];
+      },
       status: "error",
     };
   }
@@ -36,14 +39,27 @@ export async function loginWithCredentials(
   const { email, password } = validatedFields.data;
 
   try {
+    // Use signIn with redirectTo to handle the authentication
+    // NextAuth will throw NEXT_REDIRECT on success, which is expected
     await signIn("credentials", {
       email,
       password,
-      redirect: false,
+      redirectTo: "/",
     });
 
+    // This line should not be reached if login is successful
+    // (NextAuth redirects by throwing NEXT_REDIRECT)
     return { status: "success" };
   } catch (error) {
+    // Check if it's a redirect (which means successful login)
+    if (error && typeof error === "object" && "digest" in error) {
+      const digest = (error as any).digest;
+      if (typeof digest === "string" && digest.includes("NEXT_REDIRECT")) {
+        // This is a successful redirect, re-throw it
+        throw error;
+      }
+    }
+
     if (error instanceof AuthError) {
       switch (error.type) {
         case "CredentialsSignin":
@@ -62,6 +78,7 @@ export async function loginWithCredentials(
           };
       }
     }
+    // Re-throw unknown errors
     throw error;
   }
 }
