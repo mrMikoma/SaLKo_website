@@ -142,12 +142,8 @@ jobs:
             echo "APP_DB_USER=${{ env.APP_DB_USER }}" >> .env.dev
             echo "APP_DB_PASSWORD=${{ secrets.APP_DB_PASSWORD }}" >> .env.dev
             echo "PGTZ=UTC" >> .env.dev
-
-            # NextAuth configuration
             echo "NEXTAUTH_URL=${{ env.NEXTAUTH_URL }}" >> .env.dev
             echo "NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET }}" >> .env.dev
-
-            # Google OAuth configuration
             echo "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}" >> .env.dev
             echo "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" >> .env.dev
 
