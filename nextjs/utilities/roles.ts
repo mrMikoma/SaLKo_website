@@ -17,31 +17,31 @@ export type Role = (typeof ROLES)[keyof typeof ROLES];
  */
 export const PERMISSIONS = {
   // Bookings
-  CREATE_OWN_BOOKING: ["admin", "user", "guest"],
-  VIEW_OWN_BOOKING: ["admin", "user", "guest"],
-  EDIT_OWN_BOOKING: ["admin", "user"],
-  DELETE_OWN_BOOKING: ["admin", "user"],
-  VIEW_ALL_BOOKINGS: ["admin"],
-  DELETE_ANY_BOOKING: ["admin"],
-  VIEW_BOOKING_CONTACT_INFO: ["admin"], // For guest bookings
+  CREATE_OWN_BOOKING: ["admin", "user", "guest"] as Role[],
+  VIEW_OWN_BOOKING: ["admin", "user", "guest"] as Role[],
+  EDIT_OWN_BOOKING: ["admin", "user"] as Role[],
+  DELETE_OWN_BOOKING: ["admin", "user"] as Role[],
+  VIEW_ALL_BOOKINGS: ["admin"] as Role[],
+  DELETE_ANY_BOOKING: ["admin"] as Role[],
+  VIEW_BOOKING_CONTACT_INFO: ["admin"] as Role[], // For guest bookings
 
   // Users
-  VIEW_USER_LIST: ["admin"],
-  CREATE_USER: ["admin"],
-  EDIT_USER: ["admin"],
-  DELETE_USER: ["admin"],
-  INVITE_USER: ["admin"],
-  CHANGE_USER_ROLE: ["admin"],
+  VIEW_USER_LIST: ["admin"] as Role[],
+  CREATE_USER: ["admin"] as Role[],
+  EDIT_USER: ["admin"] as Role[],
+  DELETE_USER: ["admin"] as Role[],
+  INVITE_USER: ["admin"] as Role[],
+  CHANGE_USER_ROLE: ["admin"] as Role[],
 
   // Profile
-  VIEW_OWN_PROFILE: ["admin", "user"],
-  EDIT_OWN_PROFILE: ["admin", "user"],
+  VIEW_OWN_PROFILE: ["admin", "user"] as Role[],
+  EDIT_OWN_PROFILE: ["admin", "user"] as Role[],
 
   // Admin site
-  ACCESS_ADMIN_SITE: ["admin"],
-  VIEW_ANALYTICS: ["admin"],
-  MANAGE_SETTINGS: ["admin"],
-} as const;
+  ACCESS_ADMIN_SITE: ["admin"] as Role[],
+  VIEW_ANALYTICS: ["admin"] as Role[],
+  MANAGE_SETTINGS: ["admin"] as Role[],
+};
 
 /**
  * Check if a user role has a specific permission

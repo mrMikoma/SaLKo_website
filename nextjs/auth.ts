@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
-import bcrypt from "bcrypt";
+import * as bcrypt from "bcrypt";
 import pool from "./utilities/db";
 import { LoginFormSchema } from "./utilities/definitions";
 
@@ -131,8 +131,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       // Add custom fields to token on initial sign in
       if (user) {
         token.id = user.id;
-        token.role = user.role;
-        token.fullName = user.fullName;
+        token.role = (user as any).role;
+        token.fullName = (user as any).fullName;
       }
 
       // Add Google tokens if available
