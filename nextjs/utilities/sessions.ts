@@ -69,7 +69,6 @@ export async function deleteSession() {
   // TO-DO: Force redirect to home page
 }
 
-// TODO: Add cache for preventing multiple calls to the database
 export async function verifySession() {
   const session = (await cookies()).get("session")?.value;
   const payload = await decrypt(session);

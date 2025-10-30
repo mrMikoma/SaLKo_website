@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, lazy, Suspense } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import DatePicker from "@/components/bookings/datePicker";
 import ViewSelector, { ViewMode } from "@/components/bookings/viewSelector";
-import { DndProvider } from "@/components/bookings/DndProvider";
 import { BookingType } from "@/utilities/bookings";
 import { useBookings } from "@/hooks/useBookings";
 import { useDateFromUrl } from "@/hooks/useDateFromUrl";
@@ -32,15 +32,17 @@ export const FLIGHT_TYPES = FLIGHT_TYPE_CONFIGS as unknown as FlightTypes[];
 
 interface BookingSectionProps {
   isLoggedIn: boolean;
+  userId?: string;
+  userRole?: string;
 }
 
 /*
  * BookingSection Component
- * Modernized with custom hooks, React Query, and responsive design
  */
 
-const BookingSection = ({ isLoggedIn }: BookingSectionProps) => {
+const BookingSection = ({ isLoggedIn, userId, userRole }: BookingSectionProps) => {
   // Custom hooks for state management
+  const queryClient = useQueryClient();
   const { date, dateString, setDate } = useDateFromUrl();
   const { viewMode, setViewMode } = useViewMode();
 
@@ -80,7 +82,7 @@ const BookingSection = ({ isLoggedIn }: BookingSectionProps) => {
     isAddingBooking,
     isRemovingBooking,
     isUpdatingBooking,
-  } = useBookings({ dates: dateRange });
+  } = useBookings({ dates: dateRange, userId, userRole });
 
   const {
     modalMode,
@@ -88,6 +90,7 @@ const BookingSection = ({ isLoggedIn }: BookingSectionProps) => {
     isOpen,
     openCreateModal,
     openUpdateModal,
+    openViewModal,
     closeModal,
     setSelectedBooking,
   } = useBookingModal();
@@ -105,26 +108,17 @@ const BookingSection = ({ isLoggedIn }: BookingSectionProps) => {
 
   // Event handlers
   const handleCellClick = (plane: string, hour: string, cellDate?: string) => {
-    const targetDate = cellDate || dateString;
-    if (!isLoggedIn) {
-      openUpdateModal({
-        id: -1,
-        user_id: "",
-        title: "",
-        start_time: `${targetDate}T${parseInt(hour.split(":")[0])}:00`,
-        end_time: `${targetDate}T${parseInt(hour.split(":")[0]) + 1}:00`,
-        full_name: "",
-        type: "local",
-        plane,
-        description: "",
-      });
+    if (!isLoggedIn || !userId) {
+      // Not logged in - cannot create bookings
       return;
     }
 
+    const targetDate = cellDate || dateString;
     openCreateModal({
       plane,
       start_time: `${targetDate}T${parseInt(hour.split(":")[0])}:00`,
       end_time: `${targetDate}T${parseInt(hour.split(":")[0]) + 1}:00`,
+      user_id: userId,
     });
   };
 
@@ -136,44 +130,65 @@ const BookingSection = ({ isLoggedIn }: BookingSectionProps) => {
     }
   };
 
+  const handleMobileCreateBooking = (plane: string) => {
+    if (!isLoggedIn || !userId) {
+      return;
+    }
+
+    // Create booking starting at 9:00 by default
+    openCreateModal({
+      plane,
+      start_time: `${dateString}T09:00`,
+      end_time: `${dateString}T10:00`,
+      user_id: userId,
+    });
+  };
+
   const handleBookingClick = (booking: BookingType) => {
-    if (isLoggedIn) {
+    if (!isLoggedIn) {
+      // Not logged in - view only
+      openViewModal(booking);
+    } else if (userRole === "admin") {
+      // Admin can edit all bookings
+      openUpdateModal(booking);
+    } else if (userId === booking.user_id) {
+      // User can edit their own bookings
       openUpdateModal(booking);
     } else {
-      openUpdateModal(booking); // In production, use openViewModal for non-logged users
+      // Logged in but not owner - view only
+      openViewModal(booking);
     }
   };
 
-  const handleBookingDrop = (
-    booking: BookingType,
-    newPlane: string,
-    newStartTime: string
-  ) => {
-    if (!isLoggedIn) return;
+  const handleSaveBooking = async (repeatEndDate?: string) => {
+    if (repeatEndDate) {
+      // Handle repeating bookings
+      const { addRepeatingBookings } = await import("@/utilities/bookings");
+      try {
+        const response = await addRepeatingBookings({
+          user_id: selectedBooking.user_id,
+          plane: selectedBooking.plane,
+          start_time: selectedBooking.start_time,
+          end_time: selectedBooking.end_time,
+          type: selectedBooking.type,
+          title: selectedBooking.title,
+          description: selectedBooking.description,
+          repeat_end_date: repeatEndDate,
+        });
 
-    // Calculate duration of original booking
-    const originalStart = DateTime.fromISO(booking.start_time);
-    const originalEnd = DateTime.fromISO(booking.end_time);
-    const duration = originalEnd.diff(originalStart);
-
-    // Calculate new end time
-    const newStart = DateTime.fromISO(newStartTime);
-    const newEnd = newStart.plus(duration);
-
-    // Update booking with new plane and times
-    const updatedBooking: BookingType = {
-      ...booking,
-      plane: newPlane,
-      start_time: newStart.toISO() || booking.start_time,
-      end_time: newEnd.toISO() || booking.end_time,
-    };
-
-    updateBooking(updatedBooking);
-  };
-
-  const handleSaveBooking = () => {
-    addBooking(selectedBooking);
-    closeModal();
+        if (response.status === "success") {
+          closeModal();
+          // Invalidate ALL bookings cache to refresh all views (day, week, month)
+          queryClient.invalidateQueries({ queryKey: ["bookings"] });
+        }
+      } catch (error) {
+        console.error("Error creating repeating bookings:", error);
+      }
+    } else {
+      // Single booking
+      addBooking(selectedBooking);
+      closeModal();
+    }
   };
 
   const handleUpdateBooking = () => {
@@ -189,105 +204,107 @@ const BookingSection = ({ isLoggedIn }: BookingSectionProps) => {
   };
 
   return (
-    <DndProvider>
-      <div className="p-4 text-black" role="main" aria-label="Varauskalenteri">
-        {/* Date Picker */}
-        <div className="flex justify-center items-center mb-4 text-swhite">
-          <DatePicker />
+    <div className="p-4 text-black" role="main" aria-label="Varauskalenteri">
+      {/* Date Picker and View Selector - side by side on desktop */}
+      <div className="flex flex-col lg:flex-row gap-4 items-center justify-between mb-6">
+        <div className="w-full lg:flex-1">
+          <DatePicker viewMode={viewMode} />
         </div>
-
-        {/* Loading State */}
-        {isLoading && <BookingsSkeleton />}
-
-        {/* Error State */}
-        {isError && !isLoading && (
-          <BookingsError error={error} onRetry={() => refetch()} />
-        )}
-
-        {/* Content - only show when not loading or error */}
-        {!isLoading && !isError && (
-          <>
-            {/* View Selector - only show on desktop */}
-            {!isMobile && (
-              <ViewSelector currentView={viewMode} onViewChange={setViewMode} />
-            )}
-
-            {/* Responsive Booking View */}
-            {isMobile ? (
-          <BookingsMobileView
-            bookings={bookings}
-            onBookingClick={handleBookingClick}
-            flightTypes={FLIGHT_TYPES}
-            getFlightTypeColor={getFlightTypeColor}
-          />
-        ) : viewMode === "week" ? (
-          <BookingsWeekView
-            bookings={bookings}
-            selectedDate={date}
-            onCellClick={handleCellClick}
-            onBookingClick={handleBookingClick}
-            flightTypes={FLIGHT_TYPES}
-            getFlightTypeColor={getFlightTypeColor}
-          />
-        ) : viewMode === "month" ? (
-          <BookingsMonthView
-            bookings={bookings}
-            selectedDate={date}
-            onDayClick={handleDayClick}
-            flightTypes={FLIGHT_TYPES}
-            getFlightTypeColor={getFlightTypeColor}
-          />
-        ) : (
-          <BookingsDesktopView
-            bookings={bookings}
-            selectedDate={date}
-            onCellClick={handleCellClick}
-            onBookingClick={handleBookingClick}
-            onBookingDrop={handleBookingDrop}
-            flightTypes={FLIGHT_TYPES}
-            getFlightTypeColor={getFlightTypeColor}
-            isLoggedIn={isLoggedIn}
-          />
-        )}
-          </>
-        )}
-
-        {/* Loading overlay for mutations */}
-        {(isAddingBooking || isRemovingBooking || isUpdatingBooking) && (
-          <div
-            className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50"
-            role="status"
-            aria-live="polite"
-          >
-            <div className="bg-white rounded-lg p-6 shadow-xl">
-              <div className="flex items-center gap-3">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-                <p className="text-gray-900 font-medium">
-                  {isAddingBooking && "Lisätään varausta..."}
-                  {isRemovingBooking && "Poistetaan varausta..."}
-                  {isUpdatingBooking && "Päivitetään varausta..."}
-                </p>
-              </div>
-            </div>
+        {!isMobile && (
+          <div className="flex-shrink-0">
+            <ViewSelector currentView={viewMode} onViewChange={setViewMode} />
           </div>
         )}
-
-        {/* Booking Modal */}
-        {modalMode && (
-          <Suspense fallback={<div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div></div>}>
-            <BookingUpdateModal
-              mode={modalMode}
-              booking={selectedBooking}
-              onSave={handleSaveBooking}
-              onUpdate={handleUpdateBooking}
-              onDelete={handleDeleteBooking}
-              onCancel={closeModal}
-              onChange={setSelectedBooking}
-            />
-          </Suspense>
-        )}
       </div>
-    </DndProvider>
+
+      {/* Loading State */}
+      {isLoading && <BookingsSkeleton />}
+
+      {/* Error State */}
+      {isError && !isLoading && (
+        <BookingsError error={error} onRetry={() => refetch()} />
+      )}
+
+      {/* Content - only show when not loading or error */}
+      {!isLoading && !isError && (
+        <>
+
+          {/* Responsive Booking View */}
+          {isMobile ? (
+            <BookingsMobileView
+              bookings={bookings}
+              onBookingClick={handleBookingClick}
+              onCreateBooking={handleMobileCreateBooking}
+              flightTypes={FLIGHT_TYPES}
+              getFlightTypeColor={getFlightTypeColor}
+              isLoggedIn={isLoggedIn}
+            />
+          ) : viewMode === "week" ? (
+            <BookingsWeekView
+              bookings={bookings}
+              selectedDate={date}
+              onCellClick={handleCellClick}
+              onBookingClick={handleBookingClick}
+              flightTypes={FLIGHT_TYPES}
+              getFlightTypeColor={getFlightTypeColor}
+            />
+          ) : viewMode === "month" ? (
+            <BookingsMonthView
+              bookings={bookings}
+              selectedDate={date}
+              onDayClick={handleDayClick}
+              flightTypes={FLIGHT_TYPES}
+              getFlightTypeColor={getFlightTypeColor}
+            />
+          ) : (
+            <BookingsDesktopView
+              bookings={bookings}
+              selectedDate={date}
+              onCellClick={handleCellClick}
+              onBookingClick={handleBookingClick}
+              flightTypes={FLIGHT_TYPES}
+              getFlightTypeColor={getFlightTypeColor}
+            />
+          )}
+        </>
+      )}
+
+      {/* Loading overlay for mutations */}
+      {(isAddingBooking || isRemovingBooking || isUpdatingBooking) && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="bg-white rounded-lg p-6 shadow-xl">
+            <div className="flex items-center gap-3">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+              <p className="text-gray-900 font-medium">
+                {isAddingBooking && "Lisätään varausta..."}
+                {isRemovingBooking && "Poistetaan varausta..."}
+                {isUpdatingBooking && "Päivitetään varausta..."}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Booking Modal */}
+      {modalMode && (
+        <Suspense fallback={<div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div></div>}>
+          <BookingUpdateModal
+            mode={modalMode}
+            booking={selectedBooking}
+            onSave={handleSaveBooking}
+            onUpdate={handleUpdateBooking}
+            onDelete={handleDeleteBooking}
+            onCancel={closeModal}
+            onChange={setSelectedBooking}
+            isLoggedIn={isLoggedIn}
+          />
+        </Suspense>
+      )}
+    </div>
   );
 };
 

@@ -7,8 +7,10 @@ import { formatTime } from "@/utils/bookingHelpers";
 interface BookingsMobileViewProps {
   bookings: BookingType[];
   onBookingClick: (booking: BookingType) => void;
+  onCreateBooking?: (plane: string) => void;
   flightTypes: readonly FlightTypeConfig[];
   getFlightTypeColor: (type: string) => string;
+  isLoggedIn?: boolean;
 }
 
 const PLANES = ["OH-CON", "OH-386", "OH-816", "OH-829", "OH-475", "OH-PDX"];
@@ -20,8 +22,10 @@ const PLANES = ["OH-CON", "OH-386", "OH-816", "OH-829", "OH-475", "OH-PDX"];
 export const BookingsMobileView = memo(({
   bookings,
   onBookingClick,
+  onCreateBooking,
   flightTypes,
   getFlightTypeColor,
+  isLoggedIn = false,
 }: BookingsMobileViewProps) => {
   const groupedBookings = PLANES.map((plane) => ({
     plane,
@@ -46,6 +50,29 @@ export const BookingsMobileView = memo(({
           </div>
 
           <div className="divide-y divide-gray-200">
+            {/* Create booking button - always shown, disabled when not logged in */}
+            {onCreateBooking && (
+              <div>
+                <button
+                  onClick={() => isLoggedIn && onCreateBooking(plane)}
+                  disabled={!isLoggedIn}
+                  className={`w-full p-4 font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-sbluel ${
+                    isLoggedIn
+                      ? "bg-sblue hover:bg-sblued text-swhite"
+                      : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  }`}
+                  aria-label={isLoggedIn ? "Luo uusi varaus" : "Kirjaudu sisään luodaksesi varauksen"}
+                >
+                  + Luo uusi varaus
+                </button>
+                {!isLoggedIn && (
+                  <div className="p-3 bg-gray-50 text-center text-sm text-gray-600 italic">
+                    Kirjaudu sisään luodaksesi varauksen
+                  </div>
+                )}
+              </div>
+            )}
+
             {planeBookings.length === 0 ? (
               <div className="p-4 text-gray-500 text-center italic">
                 Ei varauksia

@@ -37,17 +37,37 @@ export const BookingsWeekView = ({
     []
   );
 
-  // Group bookings by date
+  // Helper function to get all dates a booking spans
+  const getBookingDates = (booking: BookingType): string[] => {
+    const start = DateTime.fromISO(booking.start_time).startOf("day");
+    const end = DateTime.fromISO(booking.end_time).startOf("day");
+    const dates: string[] = [];
+
+    let current = start;
+    while (current <= end) {
+      const dateStr = current.toISODate();
+      if (dateStr) dates.push(dateStr);
+      current = current.plus({ days: 1 });
+    }
+
+    return dates;
+  };
+
+  // Group bookings by date (including multiday bookings)
   const bookingsByDate = useMemo(() => {
-    return bookings.reduce((acc, booking) => {
-      const date = DateTime.fromISO(booking.start_time).toISODate();
-      if (!date) return acc;
-      if (!acc[date]) {
-        acc[date] = [];
-      }
-      acc[date].push(booking);
-      return acc;
-    }, {} as Record<string, BookingType[]>);
+    const result: Record<string, BookingType[]> = {};
+
+    bookings.forEach((booking) => {
+      const dates = getBookingDates(booking);
+      dates.forEach((date) => {
+        if (!result[date]) {
+          result[date] = [];
+        }
+        result[date].push(booking);
+      });
+    });
+
+    return result;
   }, [bookings]);
 
   // Get bookings for a specific day and plane
@@ -122,13 +142,20 @@ export const BookingsWeekView = ({
                         const hasBooking = hourBookings.length > 0;
                         const booking = hourBookings[0];
 
+                        // Check if this is a multiday booking
+                        const isMultiday = booking && DateTime.fromISO(booking.start_time).toISODate() !== DateTime.fromISO(booking.end_time).toISODate();
+                        const bookingStartDate = booking ? DateTime.fromISO(booking.start_time).toISODate() : null;
+                        const bookingEndDate = booking ? DateTime.fromISO(booking.end_time).toISODate() : null;
+                        const isStartDay = bookingStartDate === dateString;
+                        const isEndDay = bookingEndDate === dateString;
+
                         return (
                           <div
                             key={hour}
                             className={`
-                              relative min-h-[24px] rounded cursor-pointer
-                              transition-all hover:ring-2 hover:ring-blue-400
-                              ${hasBooking ? "" : "border border-dashed border-gray-300 hover:border-blue-400"}
+                              relative h-[56px] rounded cursor-pointer flex items-center
+                              transition-all hover:ring-2 hover:ring-sbluel
+                              ${hasBooking ? "" : "border border-dashed border-gray-300 hover:border-sblue"}
                             `}
                             onClick={() => {
                               if (hasBooking && booking) {
@@ -139,22 +166,27 @@ export const BookingsWeekView = ({
                             }}
                             title={
                               hasBooking && booking
-                                ? `${booking.title} - ${booking.full_name}\n${DateTime.fromISO(booking.start_time).toFormat("HH:mm")} - ${DateTime.fromISO(booking.end_time).toFormat("HH:mm")}`
+                                ? `${booking.title} - ${booking.full_name}\n${DateTime.fromISO(booking.start_time).toFormat("dd.MM HH:mm")} - ${DateTime.fromISO(booking.end_time).toFormat("dd.MM HH:mm")}${isMultiday ? " (Monipäiväinen)" : ""}`
                                 : `Luo varaus klo ${hour}:00`
                             }
                           >
                             {hasBooking && booking ? (
                               <div
-                                className="p-1 rounded text-white text-xs overflow-hidden"
+                                className="w-full p-2 rounded text-white text-xs overflow-hidden"
                                 style={{
                                   backgroundColor: getFlightTypeColor(booking.type),
                                 }}
                               >
-                                <div className="font-semibold truncate">
+                                <div className="font-semibold truncate flex items-center gap-1">
+                                  {isMultiday && (
+                                    <span className="text-[10px] opacity-75">
+                                      {isStartDay ? "▶" : isEndDay ? "◀" : "◆"}
+                                    </span>
+                                  )}
                                   {booking.title}
                                 </div>
                                 <div className="text-xs opacity-90 truncate">
-                                  {DateTime.fromISO(booking.start_time).toFormat("HH:mm")} - {DateTime.fromISO(booking.end_time).toFormat("HH:mm")}
+                                  {isStartDay || !isMultiday ? DateTime.fromISO(booking.start_time).toFormat("HH:mm") : "..."} - {isEndDay || !isMultiday ? DateTime.fromISO(booking.end_time).toFormat("HH:mm") : "..."}
                                 </div>
                               </div>
                             ) : (

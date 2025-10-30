@@ -15,6 +15,8 @@ interface UseBookingsOptions {
   date?: string;
   dates?: string[];
   enabled?: boolean;
+  userId?: string;
+  userRole?: string;
 }
 
 interface FetchBookingsResponse {
@@ -58,7 +60,7 @@ const fetchBookingsForDates = async (dates: string[]): Promise<BookingType[]> =>
  * - Prefetching for adjacent dates
  * - Loading and error states
  */
-export const useBookings = ({ date, dates, enabled = true }: UseBookingsOptions) => {
+export const useBookings = ({ date, dates, enabled = true, userId, userRole }: UseBookingsOptions) => {
   const queryClient = useQueryClient();
 
   // Determine which mode we're in
@@ -161,7 +163,10 @@ export const useBookings = ({ date, dates, enabled = true }: UseBookingsOptions)
   // Remove booking mutation with optimistic update
   const removeBookingMutation = useMutation({
     mutationFn: async (bookingId: number) => {
-      const response = await removeBooking(bookingId);
+      if (!userId) {
+        throw new Error("User ID is required to delete booking");
+      }
+      const response = await removeBooking(bookingId, userId, userRole);
       if (response.status !== "success") {
         throw new Error(
           response.result instanceof Error

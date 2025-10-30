@@ -12,11 +12,12 @@ import { bookingSchema, BookingFormValues } from "@/schemas/bookingSchema";
 interface BookingModalProps {
   mode: "create" | "update" | "view";
   booking: BookingType;
-  onSave: () => void;
+  onSave: (repeatEndDate?: string) => void;
   onUpdate: () => void;
   onDelete: () => void;
   onCancel: () => void;
   onChange: (updatedBooking: BookingType) => void;
+  isLoggedIn?: boolean;
 }
 
 const BookingModal = ({
@@ -27,9 +28,12 @@ const BookingModal = ({
   onDelete,
   onCancel,
   onChange,
+  isLoggedIn = false,
 }: BookingModalProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isRepeating, setIsRepeating] = useState(false);
+  const [repeatEndDate, setRepeatEndDate] = useState("");
   const isReadOnly = mode === "view";
 
   const {
@@ -99,7 +103,8 @@ const BookingModal = ({
     setIsSubmitting(true);
     try {
       if (mode === "create") {
-        onSave();
+        // Pass repeat end date if repeating is enabled
+        onSave(isRepeating ? repeatEndDate : undefined);
       } else if (mode === "update") {
         onUpdate();
       }
@@ -334,13 +339,99 @@ const BookingModal = ({
             )}
           </div>
 
-          {/* Full Name (read-only for update mode) */}
-          {mode === "update" && booking.full_name && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Varaaja
-              </label>
-              <p className="text-gray-900">{booking.full_name}</p>
+          {/* Repeating Bookings (only in create mode) */}
+          {mode === "create" && (
+            <div className="space-y-3 pt-3 border-t border-gray-200">
+              <div className="flex items-center gap-2">
+                <input
+                  id="is_repeating"
+                  type="checkbox"
+                  checked={isRepeating}
+                  onChange={(e) => setIsRepeating(e.target.checked)}
+                  className="w-4 h-4 text-sblue border-gray-300 rounded focus:ring-sblue"
+                />
+                <label
+                  htmlFor="is_repeating"
+                  className="text-sm font-medium text-gray-700"
+                >
+                  Toistuva varaus (sama aika joka päivä)
+                </label>
+              </div>
+
+              {isRepeating && (
+                <div>
+                  <label
+                    htmlFor="repeat_end_date"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Toiston lopetuspäivä *
+                  </label>
+                  <input
+                    id="repeat_end_date"
+                    type="date"
+                    value={repeatEndDate}
+                    onChange={(e) => setRepeatEndDate(e.target.value)}
+                    min={
+                      booking.start_time
+                        ? DateTime.fromISO(booking.start_time)
+                            .plus({ days: 1 })
+                            .toFormat("yyyy-MM-dd")
+                        : undefined
+                    }
+                    className="w-full border border-gray-300 rounded p-2 focus:ring-sblue focus:border-sblue"
+                    required={isRepeating}
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Varaus toistetaan samalla kellonajalla jokaiselle päivälle valitusta
+                    aloituspäivästä lopetuspäivään asti.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Booker information (read-only, shown in update and view modes) */}
+          {(mode === "update" || mode === "view") && booking.full_name && (
+            <div className="space-y-3 pt-2 border-t border-gray-200 mt-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Varaaja
+                </label>
+                <p className="text-gray-900">{booking.full_name}</p>
+              </div>
+
+              {/* Only show contact info to logged in users */}
+              {isLoggedIn && (
+                <>
+                  {booking.email && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Sähköposti
+                      </label>
+                      <a
+                        href={`mailto:${booking.email}`}
+                        className="text-sblue hover:text-sblued underline"
+                      >
+                        {booking.email}
+                      </a>
+                    </div>
+                  )}
+
+                  {booking.phone && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Puhelinnumero
+                      </label>
+                      <a
+                        href={`tel:${booking.phone}`}
+                        className="text-sblue hover:text-sblued underline"
+                      >
+                        {booking.phone}
+                      </a>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           )}
         </form>

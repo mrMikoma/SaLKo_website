@@ -51,14 +51,18 @@ export const isValidTimeRange = (
 };
 
 /**
- * Checks if a booking is on a specific date
+ * Checks if a booking is on a specific date (including multiday bookings)
  */
 export const isBookingOnDate = (
   booking: BookingType,
   date: DateTime
 ): boolean => {
-  const startTime = DateTime.fromISO(booking.start_time).toLocal();
-  return startTime.hasSame(date, "day");
+  const startTime = DateTime.fromISO(booking.start_time).toLocal().startOf("day");
+  const endTime = DateTime.fromISO(booking.end_time).toLocal().startOf("day");
+  const checkDate = date.startOf("day");
+
+  // Check if the date falls within the booking's date range
+  return checkDate >= startTime && checkDate <= endTime;
 };
 
 /**

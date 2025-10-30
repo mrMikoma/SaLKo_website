@@ -34,6 +34,8 @@ export interface BookingType {
   start_time: string;
   end_time: string;
   full_name: string;
+  email?: string; // Populated from users table when fetched
+  phone?: string; // Populated from users table when fetched
   type: string;
   plane: string;
   description: string;
@@ -96,7 +98,7 @@ export async function fetchDayBookings(
         selectedDate
       ); // debug
       const response = await connectionPool.query(
-        `SELECT b.id, b.plane, b.start_time, b.end_time, u.full_name, b.type, b.title, b.description
+        `SELECT b.id, b.plane, b.start_time, b.end_time, b.user_id, u.full_name, u.email, u.phone, b.type, b.title, b.description
          FROM bookings b
          JOIN users u ON b.user_id = u.id
          WHERE b.plane = $1 AND b.start_time::date = $2`,
@@ -127,6 +129,90 @@ export async function fetchDayBookings(
       return {
         status: "error",
         result: error,
+      };
+    }
+  } catch (error) {
+    console.error("Error occurred:", error);
+    throw error;
+  }
+}
+
+export async function addRepeatingBookings({
+  user_id,
+  plane,
+  start_time,
+  end_time,
+  type,
+  title,
+  description,
+  repeat_end_date,
+}: AddBookingParams & { repeat_end_date: string }): Promise<{ status: string; data: null | Error; count?: number }> {
+  try {
+    if (!allowedPlaneTypes.includes(plane)) {
+      throw new Error("Invalid plane type");
+    }
+
+    if (!allowedFlightTypes.includes(type)) {
+      throw new Error("Invalid flight type");
+    }
+
+    if (typeof user_id !== "string") {
+      throw new Error("Invalid user ID");
+    }
+
+    // Parse dates
+    const startDate = new Date(start_time);
+    const endDate = new Date(end_time);
+    const repeatEndDate = new Date(repeat_end_date);
+
+    if (startDate >= endDate) {
+      throw new Error("Invalid time range");
+    }
+
+    if (repeatEndDate <= startDate) {
+      throw new Error("Repeat end date must be after start date");
+    }
+
+    // Get the time of day for the booking
+    const bookingStartHour = startDate.getHours();
+    const bookingStartMinute = startDate.getMinutes();
+    const bookingDurationMs = endDate.getTime() - startDate.getTime();
+
+    let currentDate = new Date(startDate);
+    currentDate.setHours(0, 0, 0, 0); // Normalize to start of day for comparison
+
+    const normalizedEndDate = new Date(repeatEndDate);
+    normalizedEndDate.setHours(23, 59, 59, 999); // Set to end of day to include the full last day
+
+    let bookingsCreated = 0;
+
+    try {
+      // Create a booking for each day (inclusive of end date)
+      while (currentDate <= normalizedEndDate) {
+        const dayStart = new Date(currentDate);
+        dayStart.setHours(bookingStartHour, bookingStartMinute, 0, 0);
+
+        const dayEnd = new Date(dayStart.getTime() + bookingDurationMs);
+
+        await connectionPool.query(
+          "INSERT INTO bookings (user_id, plane, start_time, end_time, type, title, description) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+          [user_id, plane, dayStart.toISOString(), dayEnd.toISOString(), type, title, description]
+        );
+
+        bookingsCreated++;
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+
+      return {
+        status: "success",
+        data: null,
+        count: bookingsCreated,
+      };
+    } catch (error) {
+      console.error("Error inserting repeating bookings:", error);
+      return {
+        status: "error",
+        data: error,
       };
     }
   } catch (error) {
@@ -251,14 +337,16 @@ export async function updateBooking({
       updatedBooking.start_time = new Date(updatedBooking.start_time).toISOString();
       updatedBooking.end_time = new Date(updatedBooking.end_time).toISOString();
 
-      // Fetch full_name from users table
+      // Fetch user details from users table
       const userResponse = await connectionPool.query(
-        "SELECT full_name FROM users WHERE id = $1",
+        "SELECT full_name, email, phone FROM users WHERE id = $1",
         [user_id]
       );
 
       if (userResponse.rowCount > 0) {
         updatedBooking.full_name = userResponse.rows[0].full_name;
+        updatedBooking.email = userResponse.rows[0].email;
+        updatedBooking.phone = userResponse.rows[0].phone;
       }
 
       return {
@@ -279,17 +367,35 @@ export async function updateBooking({
 }
 
 export async function removeBooking(
-  bookingId: number
+  bookingId: number,
+  userId: string,
+  userRole?: string
 ): Promise<{ status: string; result: null | Error }> {
   try {
     if (typeof bookingId !== "number") {
       throw new Error("Invalid booking ID");
     }
 
+    if (typeof userId !== "string") {
+      throw new Error("Invalid user ID");
+    }
+
     try {
-      await connectionPool.query("DELETE FROM bookings WHERE id = $1", [
-        bookingId,
-      ]);
+      // Admin can delete any booking, regular users can only delete their own
+      const query = userRole === "admin"
+        ? "DELETE FROM bookings WHERE id = $1"
+        : "DELETE FROM bookings WHERE id = $1 AND user_id = $2";
+
+      const params = userRole === "admin" ? [bookingId] : [bookingId, userId];
+
+      const result = await connectionPool.query(query, params);
+
+      if (result.rowCount === 0) {
+        return {
+          status: "error",
+          result: new Error("Booking not found or unauthorized to delete"),
+        };
+      }
     } catch (error) {
       console.error("Error removing data:", error);
       return {
@@ -305,10 +411,4 @@ export async function removeBooking(
     console.error("Error occurred:", error);
     throw error;
   }
-}
-
-export async function arrangeBookingsColumns(bookings: BookingType[]): Promise<BookingType[][]> {
-  // Simple column arrangement - just return bookings in a single column for now
-  // This can be enhanced later to handle overlapping bookings in multiple columns
-  return [bookings];
 }
