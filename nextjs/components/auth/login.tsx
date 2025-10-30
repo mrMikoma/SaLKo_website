@@ -1,23 +1,18 @@
 "use client";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useActionState } from "react";
+import { useActionState } from "react";
 import { loginWithCredentials, loginWithGoogle } from "@/app/auth/actions";
 import { FcGoogle } from "react-icons/fc";
 
 // References:
 // - https://nextjs.org/docs/app/building-your-application/authentication
 
-const Login = ({ onHandleLogin }: { onHandleLogin: () => void }) => {
+const Login = () => {
   const [state, action, pending] = useActionState(loginWithCredentials, undefined);
-  const router = useRouter();
 
-  useEffect(() => {
-    if (state?.status === "success") {
-      router.push("/");
-      onHandleLogin();
-    }
-  }, [state, router, onHandleLogin]);
+  // Note: On successful login, NextAuth handles the redirect server-side
+  // The page will redirect before this component receives a response
+  // Only errors will be shown in the state
 
   return (
     <div className="flex min-h-full flex-1 flex-col justify-center px-6 py-12 lg:px-8 font-finlandica">

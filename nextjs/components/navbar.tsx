@@ -17,30 +17,22 @@ import XCrossIcon from "./icons/xCross";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Logout from "./auth/logout";
+import type { Session } from "next-auth";
 
-export interface SessionPayload {
-  userId: string;
-  userName: string;
-  expiresAt: Date;
-}
-
-const Navbar = ({ payload }: { payload: SessionPayload | null }) => {
+const Navbar = ({ session }: { session: Session | null }) => {
   const [authenticated, setAuthenticated] = useState(false);
   const [userName, setUserName] = useState("");
   const router = useRouter();
 
   useEffect(() => {
-    if (payload) {
+    if (session?.user) {
       setAuthenticated(true);
-      setUserName(payload.userName);
+      setUserName(session.user.name || "");
+    } else {
+      setAuthenticated(false);
+      setUserName("");
     }
-  }, [payload]);
-
-  const handleLogin = () => {
-    router.refresh();
-    setAuthenticated(true);
-    setUserName(payload?.userName);
-  };
+  }, [session]);
 
   const handleLogout = async () => {
     router.refresh();
@@ -267,7 +259,7 @@ const Navbar = ({ payload }: { payload: SessionPayload | null }) => {
                   >
                     <XCrossIcon size={40} />
                   </button>
-                  <Login onHandleLogin={handleLogin} />
+                  <Login />
                 </div>
               )}
             </PopoverPanel>

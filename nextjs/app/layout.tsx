@@ -4,8 +4,7 @@ import { AntdRegistry } from "@ant-design/nextjs-registry";
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
 import { Finlandica } from "next/font/google";
-import { verifySession } from "@/utilities/sessions";
-import { SessionPayload } from "@/utilities/definitions";
+import { auth } from "@/auth";
 import { QueryProvider } from "@/providers/QueryProvider";
 
 const finlandica = Finlandica({
@@ -36,7 +35,7 @@ export const metadata = {
 };
 
 const RootLayout = async ({ children }: React.PropsWithChildren) => {
-  const session = (await verifySession()) as SessionPayload | null;
+  const session = await auth();
 
   return (
     <html lang="fi" className={`${finlandica.variable}`}>
@@ -44,7 +43,7 @@ const RootLayout = async ({ children }: React.PropsWithChildren) => {
         <QueryProvider>
           <main className="max-w-screen min-h-screen flex flex-col overflow-x-hidden relative bg-background bg-sblued text-white font-finlandica">
             <AntdRegistry>
-              <Navbar payload={session} />
+              <Navbar session={session} />
               {children}
               <Footer />
             </AntdRegistry>
