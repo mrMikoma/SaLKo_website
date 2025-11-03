@@ -22,15 +22,18 @@ import type { Session } from "next-auth";
 const Navbar = ({ session }: { session: Session | null }) => {
   const [authenticated, setAuthenticated] = useState(false);
   const [userName, setUserName] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     if (session?.user) {
       setAuthenticated(true);
       setUserName(session.user.name || "");
+      setIsAdmin(session.user.role === "admin");
     } else {
       setAuthenticated(false);
       setUserName("");
+      setIsAdmin(false);
     }
   }, [session]);
 
@@ -224,11 +227,21 @@ const Navbar = ({ session }: { session: Session | null }) => {
                   <MenuItem>
                     <Link
                       href="/profiili"
-                      className="block px-4 py-2 text-black rounded-t-md hover:bg-sbluel"
+                      className={`block px-4 py-2 text-black ${isAdmin ? "" : "rounded-t-md"} hover:bg-sbluel`}
                     >
                       Omat tiedot
                     </Link>
                   </MenuItem>
+                  {isAdmin && (
+                    <MenuItem>
+                      <Link
+                        href="/admin"
+                        className="block px-4 py-2 text-black rounded-t-md hover:bg-sbluel"
+                      >
+                        Admin
+                      </Link>
+                    </MenuItem>
+                  )}
                   <MenuItem>
                     <div className="block px-4 py-2 text-black rounded-b-md hover:bg-sbluel">
                       <Logout onHandleLogout={handleLogout} />
