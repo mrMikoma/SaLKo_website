@@ -23,6 +23,38 @@ const allowedPlaneTypes: string[] = [
   "OH-386",
 ];
 
+/**
+ * Validates booking times to ensure they are on hour boundaries and at least 1 hour apart
+ */
+function validateBookingTimes(start_time: string | number, end_time: string | number): void {
+  if (typeof start_time === "number" || typeof end_time === "number") {
+    throw new Error("Invalid time format");
+  }
+
+  const startDate = new Date(start_time);
+  const endDate = new Date(end_time);
+  const start = startDate.getTime() / 1000;
+  const end = endDate.getTime() / 1000;
+
+  if (start >= end) {
+    throw new Error("Invalid time range");
+  }
+
+  // Enforce hour boundaries (minutes and seconds must be 0)
+  if (startDate.getMinutes() !== 0 || startDate.getSeconds() !== 0) {
+    throw new Error("Start time must be on the hour (e.g., 10:00)");
+  }
+  if (endDate.getMinutes() !== 0 || endDate.getSeconds() !== 0) {
+    throw new Error("End time must be on the hour (e.g., 11:00)");
+  }
+
+  // Enforce minimum 1 hour duration
+  const durationHours = (end - start) / 3600;
+  if (durationHours < 1) {
+    throw new Error("Booking must be at least 1 hour long");
+  }
+}
+
 /*
  * Types
  */
@@ -183,14 +215,13 @@ export async function addRepeatingBookings({
       throw new Error("Invalid user ID");
     }
 
+    // Validate time format, range, hour boundaries, and minimum duration
+    validateBookingTimes(start_time, end_time);
+
     // Parse dates
     const startDate = new Date(start_time);
     const endDate = new Date(end_time);
     const repeatEndDate = new Date(repeat_end_date);
-
-    if (startDate >= endDate) {
-      throw new Error("Invalid time range");
-    }
 
     if (repeatEndDate <= startDate) {
       throw new Error("Repeat end date must be after start date");
@@ -267,16 +298,8 @@ export async function addGuestBooking({
       throw new Error("Invalid flight type");
     }
 
-    if (typeof start_time !== "number" || typeof end_time !== "number") {
-      const start = new Date(start_time).getTime() / 1000;
-      const end = new Date(end_time).getTime() / 1000;
-
-      if (start >= end) {
-        throw new Error("Invalid time range");
-      }
-    } else {
-      throw new Error("Invalid time format");
-    }
+    // Validate time format, range, hour boundaries, and minimum duration
+    validateBookingTimes(start_time, end_time);
 
     // Validate contact info
     if (!contactInfo.contactName || !contactInfo.contactEmail || !contactInfo.contactPhone) {
@@ -352,16 +375,8 @@ export async function addBooking({
       throw new Error("Invalid flight type");
     }
 
-    if (typeof start_time !== "number" || typeof end_time !== "number") {
-      const start = new Date(start_time).getTime() / 1000;
-      const end = new Date(end_time).getTime() / 1000;
-
-      if (start >= end) {
-        throw new Error("Invalid time range");
-      }
-    } else {
-      throw new Error("Invalid time format");
-    }
+    // Validate time format, range, hour boundaries, and minimum duration
+    validateBookingTimes(start_time, end_time);
 
     if (typeof user_id !== "string") {
       throw new Error("Invalid user ID");
@@ -413,16 +428,8 @@ export async function updateBooking({
       throw new Error("Invalid flight type");
     }
 
-    if (typeof start_time !== "number" || typeof end_time !== "number") {
-      const start = new Date(start_time).getTime() / 1000;
-      const end = new Date(end_time).getTime() / 1000;
-
-      if (start >= end) {
-        throw new Error("Invalid time range");
-      }
-    } else {
-      throw new Error("Invalid time format");
-    }
+    // Validate time format, range, hour boundaries, and minimum duration
+    validateBookingTimes(start_time, end_time);
 
     if (typeof user_id !== "string") {
       throw new Error("Invalid user ID");

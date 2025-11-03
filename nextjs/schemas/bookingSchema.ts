@@ -28,6 +28,12 @@ export const bookingSchema = z.object({
       return !isNaN(date.getTime());
     },
     { message: "Virheellinen aloitusaika" }
+  ).refine(
+    (val) => {
+      const date = new Date(val);
+      return date.getMinutes() === 0 && date.getSeconds() === 0;
+    },
+    { message: "Aloitusajan tulee olla tasatunti (esim. 10:00)" }
   ),
   end_time: z.string().refine(
     (val) => {
@@ -35,6 +41,12 @@ export const bookingSchema = z.object({
       return !isNaN(date.getTime());
     },
     { message: "Virheellinen lopetusaika" }
+  ).refine(
+    (val) => {
+      const date = new Date(val);
+      return date.getMinutes() === 0 && date.getSeconds() === 0;
+    },
+    { message: "Lopetusajan tulee olla tasatunti (esim. 11:00)" }
   ),
   full_name: z.string().optional(),
 }).refine(
@@ -45,6 +57,17 @@ export const bookingSchema = z.object({
   },
   {
     message: "Lopetusajan tulee olla aloitusaikaa myöhemmin",
+    path: ["end_time"],
+  }
+).refine(
+  (data) => {
+    const start = new Date(data.start_time);
+    const end = new Date(data.end_time);
+    const durationHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+    return durationHours >= 1;
+  },
+  {
+    message: "Varauksen tulee olla vähintään 1 tunti",
     path: ["end_time"],
   }
 );
@@ -96,6 +119,12 @@ export const guestBookingSchema = z.object({
       return !isNaN(date.getTime());
     },
     { message: "Virheellinen aloitusaika" }
+  ).refine(
+    (val) => {
+      const date = new Date(val);
+      return date.getMinutes() === 0 && date.getSeconds() === 0;
+    },
+    { message: "Aloitusajan tulee olla tasatunti (esim. 10:00)" }
   ),
   end_time: z.string().refine(
     (val) => {
@@ -103,6 +132,12 @@ export const guestBookingSchema = z.object({
       return !isNaN(date.getTime());
     },
     { message: "Virheellinen lopetusaika" }
+  ).refine(
+    (val) => {
+      const date = new Date(val);
+      return date.getMinutes() === 0 && date.getSeconds() === 0;
+    },
+    { message: "Lopetusajan tulee olla tasatunti (esim. 11:00)" }
   ),
   contactName: z
     .string()
@@ -124,6 +159,17 @@ export const guestBookingSchema = z.object({
   },
   {
     message: "Lopetusajan tulee olla aloitusaikaa myöhemmin",
+    path: ["end_time"],
+  }
+).refine(
+  (data) => {
+    const start = new Date(data.start_time);
+    const end = new Date(data.end_time);
+    const durationHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+    return durationHours >= 1;
+  },
+  {
+    message: "Varauksen tulee olla vähintään 1 tunti",
     path: ["end_time"],
   }
 );

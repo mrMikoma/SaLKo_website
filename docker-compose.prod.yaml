@@ -46,6 +46,9 @@ services:
       - POSTGRES_USER=${DEV_POSTGRES_USER}
       - POSTGRES_PASSWORD=${DEV_POSTGRES_PASSWORD}
       - POSTGRES_DB=${DEV_POSTGRES_DB}
+      - TZ=UTC
+      - PGTZ=UTC
+    command: postgres -c timezone=UTC
     volumes:
       - ./postgres-${DEV_SUFFIX}/postgres-data:/var/lib/postgresql/data
       - ./postgres-${DEV_SUFFIX}/init/init.sql:/docker-entrypoint-initdb.d/init.sql

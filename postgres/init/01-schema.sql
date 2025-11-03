@@ -15,8 +15,8 @@ CREATE TABLE
     google_id TEXT UNIQUE,
     avatar_url TEXT,
     email_verified BOOLEAN DEFAULT FALSE,
-    last_login TIMESTAMP,
-    created_at TIMESTAMP DEFAULT NOW()
+    last_login TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW()
   );
 
 -- Create bullets table
@@ -27,7 +27,7 @@ CREATE TABLE
     date BIGINT NOT NULL,
     title TEXT NOT NULL,
     content TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
     FOREIGN KEY (user_id) REFERENCES users (id)
   );
 
@@ -37,13 +37,13 @@ CREATE TABLE
     id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     user_id TEXT NOT NULL,
     plane TEXT NOT NULL,
-    start_time TIMESTAMP NOT NULL,
-    end_time TIMESTAMP NOT NULL,
+    start_time TIMESTAMPTZ NOT NULL,
+    end_time TIMESTAMPTZ NOT NULL,
     type TEXT NOT NULL,
     title TEXT NOT NULL,
     description TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
     FOREIGN KEY (user_id) REFERENCES users (id)
   );
 
@@ -54,7 +54,7 @@ CREATE TABLE
     contact_name TEXT NOT NULL,
     contact_email TEXT NOT NULL,
     contact_phone TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
     FOREIGN KEY (booking_id) REFERENCES bookings (id) ON DELETE CASCADE
   );
 
@@ -65,7 +65,7 @@ CREATE INDEX idx_guest_bookings_email ON guest_bookings(contact_email);
 CREATE TABLE verification_tokens (
   identifier TEXT NOT NULL,
   token TEXT NOT NULL UNIQUE,
-  expires TIMESTAMP NOT NULL,
+  expires TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (identifier, token)
 );
 
@@ -89,7 +89,7 @@ CREATE TABLE sessions (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
   session_token TEXT NOT NULL UNIQUE,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  expires TIMESTAMP NOT NULL
+  expires TIMESTAMPTZ NOT NULL
 );
 
 -- Create indexes for NextAuth tables

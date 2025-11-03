@@ -160,7 +160,6 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
   };
 
   const handleSaveBooking = async (booking: BookingType, repeatEndDate?: string) => {
-    console.log("handleSaveBooking called with booking:", booking);
     if (repeatEndDate) {
       // Handle repeating bookings
       const { addRepeatingBookings } = await import("@/utilities/bookings");
@@ -192,7 +191,6 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
   };
 
   const handleUpdateBooking = (booking: BookingType) => {
-    console.log("handleUpdateBooking called with booking:", booking);
     updateBooking(booking);
     closeModal();
   };

@@ -130,21 +130,16 @@ const BookingModal = ({
     try {
       // Get current form values
       const formValues = getValues();
-      console.log("Form values from getValues():", formValues);
 
-      // Convert datetime-local strings back to ISO format
-      // The datetime-local input gives us a string like "2024-01-15T14:00"
-      // We need to convert this to an ISO string while preserving the local timezone
+      // Convert datetime-local strings to UTC ISO format
+      // The datetime-local input gives us a string like "2024-01-15T14:00" (local time)
+      // Backend expects UTC, so we interpret the input as local time and convert to UTC
       const startTimeISO = formValues.start_time
-        ? DateTime.fromISO(formValues.start_time, { zone: "local" }).toISO()
+        ? DateTime.fromISO(formValues.start_time, { zone: "local" }).toUTC().toISO()
         : booking.start_time;
       const endTimeISO = formValues.end_time
-        ? DateTime.fromISO(formValues.end_time, { zone: "local" }).toISO()
+        ? DateTime.fromISO(formValues.end_time, { zone: "local" }).toUTC().toISO()
         : booking.end_time;
-
-      console.log("Original booking:", booking);
-      console.log("Start time ISO:", startTimeISO);
-      console.log("End time ISO:", endTimeISO);
 
       // Build updated booking object with form values
       const updatedBooking: BookingType = {
@@ -162,8 +157,6 @@ const BookingModal = ({
           guest_contact_phone: (formValues as any).contactPhone,
         }),
       };
-
-      console.log("Updated booking being sent to parent:", updatedBooking);
 
       // Sync the updated values to parent (for display purposes)
       onChange(updatedBooking);
