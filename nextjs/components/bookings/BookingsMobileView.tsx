@@ -50,24 +50,25 @@ export const BookingsMobileView = memo(({
           </div>
 
           <div className="divide-y divide-gray-200">
-            {/* Create booking button - always shown, disabled when not logged in */}
+            {/* Create booking button - always enabled for guests and logged-in users */}
             {onCreateBooking && (
               <div>
                 <button
-                  onClick={() => isLoggedIn && onCreateBooking(plane)}
-                  disabled={!isLoggedIn}
-                  className={`w-full p-4 font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-sbluel ${
-                    isLoggedIn
-                      ? "bg-sblue hover:bg-sblued text-swhite"
-                      : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                  }`}
-                  aria-label={isLoggedIn ? "Luo uusi varaus" : "Kirjaudu sisään luodaksesi varauksen"}
+                  onClick={() => onCreateBooking(plane)}
+                  className="w-full p-4 bg-sblue hover:bg-sblued text-swhite font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-sbluel"
+                  aria-label="Luo uusi varaus"
                 >
                   + Luo uusi varaus
                 </button>
                 {!isLoggedIn && (
-                  <div className="p-3 bg-gray-50 text-center text-sm text-gray-600 italic">
-                    Kirjaudu sisään luodaksesi varauksen
+                  <div className="p-3 bg-blue-50 border-b border-blue-100 text-center text-sm text-gray-700">
+                    <p className="font-medium">Voit varata myös ilman kirjautumista.</p>
+                    <p className="text-gray-600 mt-1">
+                      <a href="/auth/login" className="text-sblue hover:underline">
+                        Kirjaudu sisään
+                      </a>
+                      {" "}jos sinulla on käyttäjätunnus.
+                    </p>
                   </div>
                 )}
               </div>

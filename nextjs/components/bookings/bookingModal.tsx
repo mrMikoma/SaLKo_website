@@ -13,8 +13,8 @@ import { downloadICalEvent } from "@/utilities/calendarExport";
 interface BookingModalProps {
   mode: "create" | "update" | "view";
   booking: BookingType;
-  onSave: (repeatEndDate?: string) => void;
-  onUpdate: () => void;
+  onSave: (booking: BookingType, repeatEndDate?: string) => void;
+  onUpdate: (booking: BookingType) => void;
   onDelete: () => void;
   onCancel: () => void;
   onChange: (updatedBooking: BookingType) => void;
@@ -45,8 +45,8 @@ const BookingModal = ({
     register,
     handleSubmit,
     formState: { errors, isDirty },
-    watch,
     reset,
+    getValues,
   } = useForm<BookingFormValues | GuestBookingFormValues>({
     resolver: zodResolver(isGuestMode ? guestBookingSchema : bookingSchema),
     defaultValues: isGuestMode
@@ -82,35 +82,11 @@ const BookingModal = ({
         },
   });
 
-  // Watch form values and sync with parent
-  useEffect(() => {
-    const subscription = watch((values) => {
-      if (isDirty) {
-        const updatedBooking: any = {
-          ...booking,
-          ...values,
-          start_time: values.start_time || booking.start_time,
-          end_time: values.end_time || booking.end_time,
-          type: values.type || booking.type,
-          plane: values.plane || booking.plane,
-          title: values.title || booking.title,
-          description: values.description || booking.description || "",
-        };
+  // We don't need to sync form values to parent on every keystroke
+  // The parent only needs the final values when saving
+  // Remove the watch effect that was causing the circular update issues
 
-        // Include guest contact fields if in guest mode
-        if (isGuestMode && 'contactName' in values) {
-          updatedBooking.contactName = values.contactName;
-          updatedBooking.contactEmail = values.contactEmail;
-          updatedBooking.contactPhone = values.contactPhone;
-        }
-
-        onChange(updatedBooking as BookingType);
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, [watch, onChange, booking, isDirty, isGuestMode]);
-
-  // Reset form when booking changes
+  // Reset form when booking ID changes (initial load only, not on every booking state change)
   useEffect(() => {
     if (isGuestMode) {
       reset({
@@ -145,16 +121,59 @@ const BookingModal = ({
           : "",
       });
     }
-  }, [booking, reset, isGuestMode]);
+    // Only reset when booking.id changes (when opening a new/different booking modal)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [booking.id, reset, isGuestMode]);
 
   const onSubmitHandler = () => {
     setIsSubmitting(true);
     try {
+      // Get current form values
+      const formValues = getValues();
+      console.log("Form values from getValues():", formValues);
+
+      // Convert datetime-local strings back to ISO format
+      // The datetime-local input gives us a string like "2024-01-15T14:00"
+      // We need to convert this to an ISO string while preserving the local timezone
+      const startTimeISO = formValues.start_time
+        ? DateTime.fromISO(formValues.start_time, { zone: "local" }).toISO()
+        : booking.start_time;
+      const endTimeISO = formValues.end_time
+        ? DateTime.fromISO(formValues.end_time, { zone: "local" }).toISO()
+        : booking.end_time;
+
+      console.log("Original booking:", booking);
+      console.log("Start time ISO:", startTimeISO);
+      console.log("End time ISO:", endTimeISO);
+
+      // Build updated booking object with form values
+      const updatedBooking: BookingType = {
+        ...booking,
+        plane: formValues.plane,
+        type: formValues.type,
+        title: formValues.title,
+        description: formValues.description || "",
+        start_time: startTimeISO || "",
+        end_time: endTimeISO || "",
+        // For guest bookings, add guest contact info
+        ...(isGuestMode && {
+          guest_contact_name: (formValues as any).contactName,
+          guest_contact_email: (formValues as any).contactEmail,
+          guest_contact_phone: (formValues as any).contactPhone,
+        }),
+      };
+
+      console.log("Updated booking being sent to parent:", updatedBooking);
+
+      // Sync the updated values to parent (for display purposes)
+      onChange(updatedBooking);
+
       if (mode === "create") {
-        // Pass repeat end date if repeating is enabled
-        onSave(isRepeating ? repeatEndDate : undefined);
+        // Pass the booking data and repeat end date if repeating is enabled
+        onSave(updatedBooking, isRepeating ? repeatEndDate : undefined);
       } else if (mode === "update") {
-        onUpdate();
+        // Pass the updated booking data directly
+        onUpdate(updatedBooking);
       }
     } finally {
       setIsSubmitting(false);

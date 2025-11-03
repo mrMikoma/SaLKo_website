@@ -159,19 +159,20 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
     }
   };
 
-  const handleSaveBooking = async (repeatEndDate?: string) => {
+  const handleSaveBooking = async (booking: BookingType, repeatEndDate?: string) => {
+    console.log("handleSaveBooking called with booking:", booking);
     if (repeatEndDate) {
       // Handle repeating bookings
       const { addRepeatingBookings } = await import("@/utilities/bookings");
       try {
         const response = await addRepeatingBookings({
-          user_id: selectedBooking.user_id,
-          plane: selectedBooking.plane,
-          start_time: selectedBooking.start_time,
-          end_time: selectedBooking.end_time,
-          type: selectedBooking.type,
-          title: selectedBooking.title,
-          description: selectedBooking.description,
+          user_id: booking.user_id,
+          plane: booking.plane,
+          start_time: booking.start_time,
+          end_time: booking.end_time,
+          type: booking.type,
+          title: booking.title,
+          description: booking.description,
           repeat_end_date: repeatEndDate,
         });
 
@@ -184,14 +185,15 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
         console.error("Error creating repeating bookings:", error);
       }
     } else {
-      // Single booking
-      addBooking(selectedBooking);
+      // Single booking - use the booking passed from modal
+      addBooking(booking);
       closeModal();
     }
   };
 
-  const handleUpdateBooking = () => {
-    updateBooking(selectedBooking);
+  const handleUpdateBooking = (booking: BookingType) => {
+    console.log("handleUpdateBooking called with booking:", booking);
+    updateBooking(booking);
     closeModal();
   };
 
@@ -215,6 +217,20 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
           </div>
         )}
       </div>
+
+      {/* Guest Booking Info Banner */}
+      {!isLoggedIn && (
+        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-center text-gray-700">
+            <span className="font-medium">Voit varata myös ilman kirjautumista.</span>
+            {" "}
+            <a href="/auth/login" className="text-sblue hover:underline font-medium">
+              Kirjaudu sisään
+            </a>
+            {" "}jos sinulla on käyttäjätunnus.
+          </p>
+        </div>
+      )}
 
       {/* Loading State */}
       {isLoading && <BookingsSkeleton />}

@@ -232,6 +232,17 @@ export const useBookings = ({ date, dates, enabled = true, userId, userRole }: U
   // Update booking mutation
   const updateBookingMutation = useMutation({
     mutationFn: async (updatedBooking: BookingType) => {
+      console.log("updateBookingMutation called with:", updatedBooking);
+      console.log("Sending to API:", {
+        id: updatedBooking.id,
+        user_id: updatedBooking.user_id,
+        plane: updatedBooking.plane,
+        start_time: updatedBooking.start_time,
+        end_time: updatedBooking.end_time,
+        type: updatedBooking.type,
+        title: updatedBooking.title,
+        description: updatedBooking.description,
+      });
       const response = await updateBooking({
         id: updatedBooking.id,
         user_id: updatedBooking.user_id,
@@ -242,6 +253,7 @@ export const useBookings = ({ date, dates, enabled = true, userId, userRole }: U
         title: updatedBooking.title,
         description: updatedBooking.description,
       });
+      console.log("API response:", response);
       if (response.status !== "success") {
         throw new Error(
           response.data instanceof Error
