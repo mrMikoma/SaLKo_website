@@ -114,6 +114,13 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
 
   // Event handlers
   const handleCellClick = (plane: string, hour: string, cellDate?: string) => {
+    // For logged-in users, userId must be present
+    if (isLoggedIn && !userId) {
+      console.error("Cannot create booking: logged-in user has no userId");
+      alert("Istunto on vanhentunut. Ole hyvä ja kirjaudu uudelleen.");
+      return;
+    }
+
     const targetDate = cellDate || dateString;
 
     // Allow both logged in users and guests to create bookings
@@ -134,6 +141,13 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
   };
 
   const handleMobileCreateBooking = (plane: string) => {
+    // For logged-in users, userId must be present
+    if (isLoggedIn && !userId) {
+      console.error("Cannot create booking: logged-in user has no userId");
+      alert("Istunto on vanhentunut. Ole hyvä ja kirjaudu uudelleen.");
+      return;
+    }
+
     // Allow both logged in users and guests to create bookings
     openCreateModal({
       plane,
