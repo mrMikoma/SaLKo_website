@@ -7,7 +7,8 @@ import { DateTime } from "luxon";
 import { Modal, Button } from "antd";
 import { BookingType } from "@/utilities/bookings";
 import { FLIGHT_TYPE_CONFIGS } from "@/types/bookings";
-import { bookingSchema, BookingFormValues } from "@/schemas/bookingSchema";
+import { bookingSchema, BookingFormValues, guestBookingSchema, GuestBookingFormValues } from "@/schemas/bookingSchema";
+import { downloadICalEvent } from "@/utilities/calendarExport";
 
 interface BookingModalProps {
   mode: "create" | "update" | "view";
@@ -18,6 +19,7 @@ interface BookingModalProps {
   onCancel: () => void;
   onChange: (updatedBooking: BookingType) => void;
   isLoggedIn?: boolean;
+  userRole?: string;
 }
 
 const BookingModal = ({
@@ -29,43 +31,62 @@ const BookingModal = ({
   onCancel,
   onChange,
   isLoggedIn = false,
+  userRole = "guest",
 }: BookingModalProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isRepeating, setIsRepeating] = useState(false);
   const [repeatEndDate, setRepeatEndDate] = useState("");
   const isReadOnly = mode === "view";
+  const isGuestMode = !isLoggedIn && mode === "create";
 
+  // Use different schema and form type based on login status
   const {
     register,
     handleSubmit,
     formState: { errors, isDirty },
     watch,
     reset,
-  } = useForm<BookingFormValues>({
-    resolver: zodResolver(bookingSchema),
-    defaultValues: {
-      id: booking.id,
-      user_id: booking.user_id,
-      plane: booking.plane as any,
-      type: booking.type as any,
-      title: booking.title,
-      description: booking.description || "",
-      full_name: booking.full_name,
-      start_time: booking.start_time
-        ? DateTime.fromISO(booking.start_time).toFormat("yyyy-MM-dd'T'HH:mm")
-        : "",
-      end_time: booking.end_time
-        ? DateTime.fromISO(booking.end_time).toFormat("yyyy-MM-dd'T'HH:mm")
-        : "",
-    },
+  } = useForm<BookingFormValues | GuestBookingFormValues>({
+    resolver: zodResolver(isGuestMode ? guestBookingSchema : bookingSchema),
+    defaultValues: isGuestMode
+      ? {
+          plane: booking.plane as any,
+          type: booking.type as any,
+          title: booking.title,
+          description: booking.description || "",
+          start_time: booking.start_time
+            ? DateTime.fromISO(booking.start_time).toFormat("yyyy-MM-dd'T'HH:mm")
+            : "",
+          end_time: booking.end_time
+            ? DateTime.fromISO(booking.end_time).toFormat("yyyy-MM-dd'T'HH:mm")
+            : "",
+          contactName: "",
+          contactEmail: "",
+          contactPhone: "",
+        }
+      : {
+          id: booking.id,
+          user_id: booking.user_id,
+          plane: booking.plane as any,
+          type: booking.type as any,
+          title: booking.title,
+          description: booking.description || "",
+          full_name: booking.full_name,
+          start_time: booking.start_time
+            ? DateTime.fromISO(booking.start_time).toFormat("yyyy-MM-dd'T'HH:mm")
+            : "",
+          end_time: booking.end_time
+            ? DateTime.fromISO(booking.end_time).toFormat("yyyy-MM-dd'T'HH:mm")
+            : "",
+        },
   });
 
   // Watch form values and sync with parent
   useEffect(() => {
     const subscription = watch((values) => {
       if (isDirty) {
-        onChange({
+        const updatedBooking: any = {
           ...booking,
           ...values,
           start_time: values.start_time || booking.start_time,
@@ -74,30 +95,57 @@ const BookingModal = ({
           plane: values.plane || booking.plane,
           title: values.title || booking.title,
           description: values.description || booking.description || "",
-        } as BookingType);
+        };
+
+        // Include guest contact fields if in guest mode
+        if (isGuestMode && 'contactName' in values) {
+          updatedBooking.contactName = values.contactName;
+          updatedBooking.contactEmail = values.contactEmail;
+          updatedBooking.contactPhone = values.contactPhone;
+        }
+
+        onChange(updatedBooking as BookingType);
       }
     });
     return () => subscription.unsubscribe();
-  }, [watch, onChange, booking, isDirty]);
+  }, [watch, onChange, booking, isDirty, isGuestMode]);
 
   // Reset form when booking changes
   useEffect(() => {
-    reset({
-      id: booking.id,
-      user_id: booking.user_id,
-      plane: booking.plane as any,
-      type: booking.type as any,
-      title: booking.title,
-      description: booking.description || "",
-      full_name: booking.full_name,
-      start_time: booking.start_time
-        ? DateTime.fromISO(booking.start_time).toFormat("yyyy-MM-dd'T'HH:mm")
-        : "",
-      end_time: booking.end_time
-        ? DateTime.fromISO(booking.end_time).toFormat("yyyy-MM-dd'T'HH:mm")
-        : "",
-    });
-  }, [booking, reset]);
+    if (isGuestMode) {
+      reset({
+        plane: booking.plane as any,
+        type: booking.type as any,
+        title: booking.title,
+        description: booking.description || "",
+        start_time: booking.start_time
+          ? DateTime.fromISO(booking.start_time).toFormat("yyyy-MM-dd'T'HH:mm")
+          : "",
+        end_time: booking.end_time
+          ? DateTime.fromISO(booking.end_time).toFormat("yyyy-MM-dd'T'HH:mm")
+          : "",
+        contactName: "",
+        contactEmail: "",
+        contactPhone: "",
+      });
+    } else {
+      reset({
+        id: booking.id,
+        user_id: booking.user_id,
+        plane: booking.plane as any,
+        type: booking.type as any,
+        title: booking.title,
+        description: booking.description || "",
+        full_name: booking.full_name,
+        start_time: booking.start_time
+          ? DateTime.fromISO(booking.start_time).toFormat("yyyy-MM-dd'T'HH:mm")
+          : "",
+        end_time: booking.end_time
+          ? DateTime.fromISO(booking.end_time).toFormat("yyyy-MM-dd'T'HH:mm")
+          : "",
+      });
+    }
+  }, [booking, reset, isGuestMode]);
 
   const onSubmitHandler = () => {
     setIsSubmitting(true);
@@ -127,6 +175,17 @@ const BookingModal = ({
     }
   };
 
+  const handleExportToCalendar = () => {
+    try {
+      if (booking.id >= 0 && booking.start_time && booking.end_time) {
+        downloadICalEvent(booking);
+      }
+    } catch (error) {
+      console.error("Error exporting to calendar:", error);
+      // You could show a toast/notification here if needed
+    }
+  };
+
   return (
     <>
       <Modal
@@ -142,6 +201,13 @@ const BookingModal = ({
         footer={
           mode === "view"
             ? [
+                <Button
+                  key="calendar"
+                  onClick={handleExportToCalendar}
+                  disabled={booking.id < 0 || !booking.start_time || !booking.end_time}
+                >
+                  Lisää kalenteriin
+                </Button>,
                 <Button key="cancel" onClick={onCancel}>
                   Sulje
                 </Button>,
@@ -150,6 +216,15 @@ const BookingModal = ({
                 <Button key="cancel" onClick={onCancel} disabled={isSubmitting}>
                   Peruuta
                 </Button>,
+                mode === "update" && booking.id >= 0 && (
+                  <Button
+                    key="calendar"
+                    onClick={handleExportToCalendar}
+                    disabled={!booking.start_time || !booking.end_time}
+                  >
+                    Lisää kalenteriin
+                  </Button>
+                ),
                 mode === "update" && (
                   <Button
                     key="delete"
@@ -339,6 +414,114 @@ const BookingModal = ({
             )}
           </div>
 
+          {/* Guest Contact Information (only for non-logged-in users in create mode) */}
+          {isGuestMode && (
+            <div className="space-y-4 pt-3 border-t border-gray-200">
+              <h3 className="text-sm font-medium text-gray-900">
+                Yhteystiedot *
+              </h3>
+              <p className="text-xs text-gray-600">
+                Vierasvaraukseen tarvitaan yhteystietosi, jotta voimme tarvittaessa ottaa yhteyttä.
+              </p>
+
+              {/* Contact Name */}
+              <div>
+                <label
+                  htmlFor="contactName"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Nimi *
+                </label>
+                <input
+                  id="contactName"
+                  type="text"
+                  placeholder="Koko nimesi"
+                  {...register("contactName" as any)}
+                  className={`w-full border rounded p-2 ${
+                    (errors as any).contactName
+                      ? "border-red-500 focus:ring-red-500"
+                      : "border-gray-300 focus:ring-blue-500"
+                  }`}
+                  aria-invalid={(errors as any).contactName ? "true" : "false"}
+                  aria-describedby={(errors as any).contactName ? "contactName-error" : undefined}
+                />
+                {(errors as any).contactName && (
+                  <p
+                    id="contactName-error"
+                    className="mt-1 text-sm text-red-600"
+                    role="alert"
+                  >
+                    {(errors as any).contactName.message}
+                  </p>
+                )}
+              </div>
+
+              {/* Contact Email */}
+              <div>
+                <label
+                  htmlFor="contactEmail"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Sähköposti *
+                </label>
+                <input
+                  id="contactEmail"
+                  type="email"
+                  placeholder="esimerkki@email.com"
+                  {...register("contactEmail" as any)}
+                  className={`w-full border rounded p-2 ${
+                    (errors as any).contactEmail
+                      ? "border-red-500 focus:ring-red-500"
+                      : "border-gray-300 focus:ring-blue-500"
+                  }`}
+                  aria-invalid={(errors as any).contactEmail ? "true" : "false"}
+                  aria-describedby={(errors as any).contactEmail ? "contactEmail-error" : undefined}
+                />
+                {(errors as any).contactEmail && (
+                  <p
+                    id="contactEmail-error"
+                    className="mt-1 text-sm text-red-600"
+                    role="alert"
+                  >
+                    {(errors as any).contactEmail.message}
+                  </p>
+                )}
+              </div>
+
+              {/* Contact Phone */}
+              <div>
+                <label
+                  htmlFor="contactPhone"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Puhelinnumero *
+                </label>
+                <input
+                  id="contactPhone"
+                  type="tel"
+                  placeholder="+358 40 123 4567"
+                  {...register("contactPhone" as any)}
+                  className={`w-full border rounded p-2 ${
+                    (errors as any).contactPhone
+                      ? "border-red-500 focus:ring-red-500"
+                      : "border-gray-300 focus:ring-blue-500"
+                  }`}
+                  aria-invalid={(errors as any).contactPhone ? "true" : "false"}
+                  aria-describedby={(errors as any).contactPhone ? "contactPhone-error" : undefined}
+                />
+                {(errors as any).contactPhone && (
+                  <p
+                    id="contactPhone-error"
+                    className="mt-1 text-sm text-red-600"
+                    role="alert"
+                  >
+                    {(errors as any).contactPhone.message}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Repeating Bookings (only in create mode) */}
           {mode === "create" && (
             <div className="space-y-3 pt-3 border-t border-gray-200">
@@ -398,10 +581,55 @@ const BookingModal = ({
                   Varaaja
                 </label>
                 <p className="text-gray-900">{booking.full_name}</p>
+                {booking.is_guest && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    (Vierasvaraus)
+                  </p>
+                )}
               </div>
 
-              {/* Only show contact info to logged in users */}
-              {isLoggedIn && (
+              {/* Show guest contact info if this is a guest booking and user is admin */}
+              {booking.is_guest && userRole === "admin" && (
+                <>
+                  {booking.guest_contact_name && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Vieraan nimi
+                      </label>
+                      <p className="text-gray-900">{booking.guest_contact_name}</p>
+                    </div>
+                  )}
+                  {booking.guest_contact_email && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Vieraan sähköposti
+                      </label>
+                      <a
+                        href={`mailto:${booking.guest_contact_email}`}
+                        className="text-sblue hover:text-sblued underline"
+                      >
+                        {booking.guest_contact_email}
+                      </a>
+                    </div>
+                  )}
+                  {booking.guest_contact_phone && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Vieraan puhelinnumero
+                      </label>
+                      <a
+                        href={`tel:${booking.guest_contact_phone}`}
+                        className="text-sblue hover:text-sblued underline"
+                      >
+                        {booking.guest_contact_phone}
+                      </a>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Only show regular contact info to logged in users (non-guest bookings) */}
+              {!booking.is_guest && isLoggedIn && (
                 <>
                   {booking.email && (
                     <div>

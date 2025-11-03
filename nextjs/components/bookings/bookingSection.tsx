@@ -31,16 +31,22 @@ export type FlightTypes = FlightTypeConfig;
 export const FLIGHT_TYPES = FLIGHT_TYPE_CONFIGS as unknown as FlightTypes[];
 
 interface BookingSectionProps {
-  isLoggedIn: boolean;
-  userId?: string;
-  userRole?: string;
+  userContext: {
+    isLoggedIn: boolean;
+    userId: string | null;
+    userName: string | null;
+    userRole: string;
+    userEmail: string | null;
+  };
 }
 
 /*
  * BookingSection Component
  */
 
-const BookingSection = ({ isLoggedIn, userId, userRole }: BookingSectionProps) => {
+const BookingSection = ({ userContext }: BookingSectionProps) => {
+  const { isLoggedIn, userId, userRole } = userContext;
+
   // Custom hooks for state management
   const queryClient = useQueryClient();
   const { date, dateString, setDate } = useDateFromUrl();
@@ -108,17 +114,14 @@ const BookingSection = ({ isLoggedIn, userId, userRole }: BookingSectionProps) =
 
   // Event handlers
   const handleCellClick = (plane: string, hour: string, cellDate?: string) => {
-    if (!isLoggedIn || !userId) {
-      // Not logged in - cannot create bookings
-      return;
-    }
-
     const targetDate = cellDate || dateString;
+
+    // Allow both logged in users and guests to create bookings
     openCreateModal({
       plane,
       start_time: `${targetDate}T${parseInt(hour.split(":")[0])}:00`,
       end_time: `${targetDate}T${parseInt(hour.split(":")[0]) + 1}:00`,
-      user_id: userId,
+      user_id: userId || "", // Empty string for guests
     });
   };
 
@@ -131,16 +134,12 @@ const BookingSection = ({ isLoggedIn, userId, userRole }: BookingSectionProps) =
   };
 
   const handleMobileCreateBooking = (plane: string) => {
-    if (!isLoggedIn || !userId) {
-      return;
-    }
-
-    // Create booking starting at 9:00 by default
+    // Allow both logged in users and guests to create bookings
     openCreateModal({
       plane,
       start_time: `${dateString}T09:00`,
       end_time: `${dateString}T10:00`,
-      user_id: userId,
+      user_id: userId || "", // Empty string for guests
     });
   };
 
@@ -301,6 +300,7 @@ const BookingSection = ({ isLoggedIn, userId, userRole }: BookingSectionProps) =
             onCancel={closeModal}
             onChange={setSelectedBooking}
             isLoggedIn={isLoggedIn}
+            userRole={userRole}
           />
         </Suspense>
       )}

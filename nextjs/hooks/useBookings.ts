@@ -4,6 +4,7 @@ import { DateTime } from "luxon";
 import {
   fetchDayBookings,
   addBooking,
+  addGuestBooking,
   updateBooking,
   removeBooking,
   BookingType,
@@ -111,26 +112,55 @@ export const useBookings = ({ date, dates, enabled = true, userId, userRole }: U
     }
   }, [date, dates, queryClient]);
 
-  // Add booking mutation with optimistic update
+  // Add booking mutation with optimistic update (supports both regular and guest bookings)
   const addBookingMutation = useMutation({
-    mutationFn: async (newBooking: BookingType) => {
-      const response = await addBooking({
-        user_id: newBooking.user_id,
-        plane: newBooking.plane,
-        start_time: newBooking.start_time,
-        end_time: newBooking.end_time,
-        type: newBooking.type,
-        title: newBooking.title,
-        description: newBooking.description,
-      });
-      if (response.status !== "success") {
-        throw new Error(
-          response.data instanceof Error
-            ? response.data.message
-            : "Failed to add booking"
-        );
+    mutationFn: async (newBooking: BookingType & { contactName?: string; contactEmail?: string; contactPhone?: string }) => {
+      // Check if this is a guest booking (no user_id or has guest contact info)
+      const isGuestBooking = !newBooking.user_id || (newBooking.contactName && newBooking.contactEmail && newBooking.contactPhone);
+
+      if (isGuestBooking && newBooking.contactName && newBooking.contactEmail && newBooking.contactPhone) {
+        // Guest booking
+        const response = await addGuestBooking({
+          plane: newBooking.plane,
+          start_time: newBooking.start_time,
+          end_time: newBooking.end_time,
+          type: newBooking.type,
+          title: newBooking.title,
+          description: newBooking.description,
+          contactInfo: {
+            contactName: newBooking.contactName,
+            contactEmail: newBooking.contactEmail,
+            contactPhone: newBooking.contactPhone,
+          },
+        });
+        if (response.status !== "success") {
+          throw new Error(
+            response.data instanceof Error
+              ? response.data.message
+              : "Failed to add guest booking"
+          );
+        }
+        return { ...newBooking, id: response.bookingId || -1 };
+      } else {
+        // Regular authenticated booking
+        const response = await addBooking({
+          user_id: newBooking.user_id,
+          plane: newBooking.plane,
+          start_time: newBooking.start_time,
+          end_time: newBooking.end_time,
+          type: newBooking.type,
+          title: newBooking.title,
+          description: newBooking.description,
+        });
+        if (response.status !== "success") {
+          throw new Error(
+            response.data instanceof Error
+              ? response.data.message
+              : "Failed to add booking"
+          );
+        }
+        return newBooking;
       }
-      return newBooking;
     },
     onMutate: async (newBooking) => {
       // Cancel outgoing refetches
