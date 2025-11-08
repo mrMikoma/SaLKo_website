@@ -143,6 +143,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // For Google OAuth, we need to fetch the user ID from database
         // since the user object doesn't contain it on initial sign in
         if (!token.id && user?.email) {
+          console.log("[JWT] Google OAuth - Fetching user ID for email:", user.email);
           try {
             const result = await pool.query(
               "SELECT id, role, full_name FROM users WHERE email = $1",
@@ -152,37 +153,71 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               token.id = result.rows[0].id;
               token.role = result.rows[0].role;
               token.fullName = result.rows[0].full_name;
+              console.log("[JWT] Google OAuth - User found, ID:", token.id);
+            } else {
+              console.error("[JWT] Google OAuth - No user found in database for email:", user.email);
             }
           } catch (error) {
-            console.error("Error fetching user ID for Google OAuth:", error);
+            console.error("[JWT] Error fetching user ID for Google OAuth:", error);
           }
         }
       }
 
+      console.log("[JWT] Final token - ID:", token.id, "Email:", token.email);
       return token;
     },
 
     async session({ session, token }) {
-      try {
-        // Fetch fresh user data from database to ensure we have latest role/info
-        const result = await pool.query(
-          "SELECT id, email, name, full_name, role, avatar_url FROM users WHERE id = $1",
-          [token.id]
-        );
+      console.log("[SESSION] Token ID:", token.id, "Token email:", token.email);
 
-        if (result.rows.length > 0) {
-          const user = result.rows[0];
-          session.user.id = user.id;
-          session.user.role = user.role;
-          session.user.name = user.name;
-          session.user.fullName = user.full_name;
-          session.user.email = user.email;
-          session.user.image = user.avatar_url;
+      try {
+        // If token doesn't have ID, try to fetch by email as fallback
+        if (!token.id && token.email) {
+          console.log("[SESSION] No token.id, trying to fetch by email:", token.email);
+          const result = await pool.query(
+            "SELECT id, email, name, full_name, role, avatar_url FROM users WHERE email = $1",
+            [token.email]
+          );
+
+          if (result.rows.length > 0) {
+            const user = result.rows[0];
+            session.user.id = user.id;
+            session.user.role = user.role;
+            session.user.name = user.name;
+            session.user.fullName = user.full_name;
+            session.user.email = user.email;
+            session.user.image = user.avatar_url;
+            console.log("[SESSION] User found by email, ID:", user.id);
+          } else {
+            console.error("[SESSION] No user found for email:", token.email);
+          }
+        } else if (token.id) {
+          // Fetch fresh user data from database to ensure we have latest role/info
+          const result = await pool.query(
+            "SELECT id, email, name, full_name, role, avatar_url FROM users WHERE id = $1",
+            [token.id]
+          );
+
+          if (result.rows.length > 0) {
+            const user = result.rows[0];
+            session.user.id = user.id;
+            session.user.role = user.role;
+            session.user.name = user.name;
+            session.user.fullName = user.full_name;
+            session.user.email = user.email;
+            session.user.image = user.avatar_url;
+            console.log("[SESSION] User found by ID:", user.id);
+          } else {
+            console.error("[SESSION] No user found for ID:", token.id);
+          }
+        } else {
+          console.error("[SESSION] No token.id or token.email available");
         }
       } catch (error) {
-        console.error("Session callback error:", error);
+        console.error("[SESSION] Error in session callback:", error);
       }
 
+      console.log("[SESSION] Final session.user.id:", session.user?.id);
       return session;
     },
   },
