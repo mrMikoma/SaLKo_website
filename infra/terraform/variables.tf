@@ -23,7 +23,7 @@ variable "location" {
 variable "server_type" {
   description = "Server type to deploy"
   type        = string
-  default     = "cx22"
+  default     = "cx23"
 }
 
 variable "os_type" {
