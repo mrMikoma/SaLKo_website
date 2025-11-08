@@ -177,14 +177,10 @@ export default async function AdminDashboard() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Link href="/admin/users" className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Hallinnoi käyttäjiä</h3>
           <p className="text-gray-600 text-sm">Tarkastele, muokkaa ja hallitse käyttäjätilejä</p>
-        </Link>
-        <Link href="/admin/bookings" className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Hallinnoi varauksia</h3>
-          <p className="text-gray-600 text-sm">Tarkastele ja hallitse kaikkia varauksia</p>
         </Link>
         <Link href="/admin/settings" className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Järjestelmän asetukset</h3>
