@@ -128,39 +128,35 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
 
     async jwt({ token, user, account }) {
-      // Add custom fields to token on initial sign in
-      if (user) {
-        token.id = user.id;
-        token.role = (user as any).role;
-        token.fullName = (user as any).fullName;
-      }
-
-      // Add Google tokens if available
-      if (account?.provider === "google") {
+      // For Google OAuth, always fetch user data from database
+      // The user object from Google doesn't contain our database ID
+      if (account?.provider === "google" && user?.email) {
         token.accessToken = account.access_token;
         token.idToken = account.id_token;
 
-        // For Google OAuth, we need to fetch the user ID from database
-        // since the user object doesn't contain it on initial sign in
-        if (!token.id && user?.email) {
-          console.log("[JWT] Google OAuth - Fetching user ID for email:", user.email);
-          try {
-            const result = await pool.query(
-              "SELECT id, role, full_name FROM users WHERE email = $1",
-              [user.email]
-            );
-            if (result.rows.length > 0) {
-              token.id = result.rows[0].id;
-              token.role = result.rows[0].role;
-              token.fullName = result.rows[0].full_name;
-              console.log("[JWT] Google OAuth - User found, ID:", token.id);
-            } else {
-              console.error("[JWT] Google OAuth - No user found in database for email:", user.email);
-            }
-          } catch (error) {
-            console.error("[JWT] Error fetching user ID for Google OAuth:", error);
+        console.log("[JWT] Google OAuth - Fetching user data for email:", user.email);
+        try {
+          const result = await pool.query(
+            "SELECT id, role, full_name FROM users WHERE email = $1",
+            [user.email]
+          );
+          if (result.rows.length > 0) {
+            token.id = result.rows[0].id;
+            token.role = result.rows[0].role;
+            token.fullName = result.rows[0].full_name;
+            console.log("[JWT] Google OAuth - User found, ID:", token.id);
+          } else {
+            console.error("[JWT] Google OAuth - No user found in database for email:", user.email);
           }
+        } catch (error) {
+          console.error("[JWT] Error fetching user data for Google OAuth:", error);
         }
+      }
+      // For credentials provider, user object contains our database fields
+      else if (user && account?.provider === "credentials") {
+        token.id = user.id;
+        token.role = (user as any).role;
+        token.fullName = (user as any).fullName;
       }
 
       console.log("[JWT] Final token - ID:", token.id, "Email:", token.email);
@@ -171,27 +167,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       console.log("[SESSION] Token ID:", token.id, "Token email:", token.email);
 
       try {
-        // If token doesn't have ID, try to fetch by email as fallback
-        if (!token.id && token.email) {
-          console.log("[SESSION] No token.id, trying to fetch by email:", token.email);
-          const result = await pool.query(
-            "SELECT id, email, name, full_name, role, avatar_url FROM users WHERE email = $1",
-            [token.email]
-          );
-
-          if (result.rows.length > 0) {
-            const user = result.rows[0];
-            session.user.id = user.id;
-            session.user.role = user.role;
-            session.user.name = user.name;
-            session.user.fullName = user.full_name;
-            session.user.email = user.email;
-            session.user.image = user.avatar_url;
-            console.log("[SESSION] User found by email, ID:", user.id);
-          } else {
-            console.error("[SESSION] No user found for email:", token.email);
-          }
-        } else if (token.id) {
+        if (token.id) {
           // Fetch fresh user data from database to ensure we have latest role/info
           const result = await pool.query(
             "SELECT id, email, name, full_name, role, avatar_url FROM users WHERE id = $1",
@@ -209,9 +185,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             console.log("[SESSION] User found by ID:", user.id);
           } else {
             console.error("[SESSION] No user found for ID:", token.id);
+            // This should not happen if JWT callback works correctly
+            console.error("[SESSION] Token has invalid ID - user may have been deleted");
           }
         } else {
-          console.error("[SESSION] No token.id or token.email available");
+          console.error("[SESSION] Token missing user ID");
         }
       } catch (error) {
         console.error("[SESSION] Error in session callback:", error);
