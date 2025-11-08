@@ -104,12 +104,9 @@ export async function loginWithGoogle() {
  * Server action for logout
  */
 export async function logout() {
-  try {
-    await signOut({
-      redirectTo: "/",
-    });
-  } catch (error) {
-    console.error("Logout error:", error);
-    throw error;
-  }
+  // Note: signOut() throws NEXT_REDIRECT which is Next.js's way of handling redirects
+  // We should not catch this as an error - just let it propagate
+  await signOut({
+    redirectTo: "/",
+  });
 }

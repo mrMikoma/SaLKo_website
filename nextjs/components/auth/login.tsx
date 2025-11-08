@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useActionState } from "react";
-import { loginWithCredentials, loginWithGoogle } from "@/app/auth/actions";
+import { loginWithCredentials, loginWithGoogle } from "@/utilities/authActions";
 import { FcGoogle } from "react-icons/fc";
 
 // References:

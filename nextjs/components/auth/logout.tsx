@@ -1,6 +1,6 @@
 "use client";
 import { useActionState, startTransition } from "react";
-import { logout } from "@/app/auth/actions";
+import { logout } from "@/utilities/authActions";
 
 const Logout = ({ onHandleLogout }: { onHandleLogout: () => void }) => {
   const [, action, pending] = useActionState(logout, undefined);

@@ -139,6 +139,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (account?.provider === "google") {
         token.accessToken = account.access_token;
         token.idToken = account.id_token;
+
+        // For Google OAuth, we need to fetch the user ID from database
+        // since the user object doesn't contain it on initial sign in
+        if (!token.id && user?.email) {
+          try {
+            const result = await pool.query(
+              "SELECT id, role, full_name FROM users WHERE email = $1",
+              [user.email]
+            );
+            if (result.rows.length > 0) {
+              token.id = result.rows[0].id;
+              token.role = result.rows[0].role;
+              token.fullName = result.rows[0].full_name;
+            }
+          } catch (error) {
+            console.error("Error fetching user ID for Google OAuth:", error);
+          }
+        }
       }
 
       return token;

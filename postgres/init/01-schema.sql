@@ -5,10 +5,10 @@ CREATE TABLE
     role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'user', 'guest')), -- 'admin', 'user', or 'guest'
     name TEXT NOT NULL,
     full_name TEXT NOT NULL,
-    phone TEXT NOT NULL,
-    address TEXT NOT NULL,
-    city TEXT NOT NULL,
-    postal_code TEXT NOT NULL,
+    phone TEXT, -- Optional for OAuth users
+    address TEXT, -- Optional for OAuth users
+    city TEXT, -- Optional for OAuth users
+    postal_code TEXT, -- Optional for OAuth users
     email TEXT NOT NULL UNIQUE,
     password TEXT, -- Optional for OAuth users
     auth_provider TEXT DEFAULT 'credentials', -- 'credentials', 'google', or 'system'
