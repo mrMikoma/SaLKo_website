@@ -20,9 +20,9 @@ module "salko" {
   private_subnet        = var.private_subnet
   private_subnet_prefix = var.private_subnet_prefix
 
-#  depends_on = [
-#    hcloud_network.network
-#  ]
+  #  depends_on = [
+  #    hcloud_network.network
+  #  ]
 }
 
 #################################################################
