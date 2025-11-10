@@ -25,10 +25,10 @@ jobs:
           github_token: ${{ secrets.HETZNER_GHA_RUNNER_PAT }}
           hcloud_token: ${{ secrets.HETZNER_API_TOKEN }}
           network: ${{ secrets.HETZNER_NETWORK_ID }}
+          ssh_key: ${{ secrets.HETZNER_GHA_RUNNER_SSH_KEY_ID }}
           server_type: cx23
           location: hel1
           image: ubuntu-24.04
-          ssh_key: github-runner-key
 
   ansible-provision:
     needs: create-runner
