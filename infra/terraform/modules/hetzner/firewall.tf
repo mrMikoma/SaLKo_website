@@ -9,7 +9,8 @@ resource "hcloud_firewall" "default" {
     port            = "22"
     protocol        = "tcp"
     source_ips = [
-      var.network_cidr
+      "0.0.0.0/0", # temp
+      #var.network_cidr
     ]
   }
 
