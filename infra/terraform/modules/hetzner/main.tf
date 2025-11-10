@@ -39,7 +39,7 @@ resource "hcloud_server" "salko" {
   }
 
   # Cloud-init to configure network with /16 netmask and pfSense VIP as gateway
-  user_data = templatefile("${path.module}/cloud-init.yaml", {
+  user_data = templatefile("${path.module}/configure-network.sh", {
     private_ip = format("%s%d", var.private_subnet_prefix, count.index + 2)
   })
 
