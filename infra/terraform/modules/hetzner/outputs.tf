@@ -1,4 +1,4 @@
 output "server_ips" {
   description = "List of server names and their IPs"
-  value       = { for instance in hcloud_server.salko : instance.name => instance.network.ip }
+  value       = { for instance in hcloud_server.salko : instance.name => instance.network[0].ip }
 }
