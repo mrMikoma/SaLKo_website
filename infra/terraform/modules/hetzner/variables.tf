@@ -42,3 +42,8 @@ variable "vps_ssh_public_key" {
   description = "SSH public key for the VPS"
   type        = string
 }
+
+variable "private_gateway_ip" {
+  description = "Private gateway IP address for routing private network traffic (NOT default gateway 10.1.0.1)"
+  type        = string
+}

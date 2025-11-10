@@ -38,13 +38,14 @@ resource "hcloud_server" "salko" {
     ip         = format("%s%d", var.private_subnet_prefix, count.index + 2)
   }
 
-  # Cloud-init to configure network with /16 netmask and pfSense VIP as gateway
-  # user_data = templatefile("${path.module}/configure-network.sh", {
-  #   private_ip = format("%s%d", var.private_subnet_prefix, count.index + 2)
-  # })
+  user_data = templatefile("${path.module}/configure-network.sh", {
+    private_ip      = format("%s%d", var.private_subnet_prefix, count.index + 2)
+    private_gateway = var.private_gateway_ip
+    network_cidr    = var.network_cidr
+  })
 
   lifecycle {
-    ignore_changes = [ssh_keys]
+    ignore_changes = [ssh_keys, user_data]
   }
 
   #depends_on = [

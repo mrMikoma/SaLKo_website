@@ -20,6 +20,7 @@ module "salko" {
   network_cidr          = var.network_cidr
   private_subnet        = var.private_subnet
   private_subnet_prefix = var.private_subnet_prefix
+  private_gateway_ip    = var.private_gateway_ip
 
   #  depends_on = [
   #    hcloud_network.network
