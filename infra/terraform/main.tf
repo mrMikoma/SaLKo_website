@@ -72,10 +72,6 @@ module "github" {
 
   github_repository    = var.github_repository
   github_main_username = var.github_main_username
-
-  depends_on = [
-    module.salko
-  ]
 }
 
 resource "github_actions_variable" "server_ips" {
