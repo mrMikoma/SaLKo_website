@@ -36,7 +36,7 @@ network:
         - $PRIVATE_IP/16
       routes:
         - to: default
-          via: 10.1.2.1
+          via: 10.1.0.2
           metric: 100
       nameservers:
         addresses:
