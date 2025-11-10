@@ -1,0 +1,25 @@
+#cloud-config
+# This cloud-init configuration fixes the private network interface
+# to use the correct netmask (/24) and gateway (10.1.2.1)
+
+write_files:
+  - path: /etc/netplan/60-hetzner-private-network.yaml
+    content: |
+      network:
+        version: 2
+        ethernets:
+          ens10:
+            addresses:
+              - ${private_ip}/24
+            routes:
+              - to: 10.1.2.0/24
+                via: 10.1.2.1
+                metric: 100
+    permissions: '0644'
+    owner: root:root
+
+runcmd:
+  # Apply the netplan configuration
+  - netplan apply
+  # Ensure the configuration persists across reboots
+  - systemctl restart systemd-networkd
