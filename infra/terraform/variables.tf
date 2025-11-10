@@ -66,6 +66,11 @@ variable "vps_ssh_public_key" {
   type        = string
 }
 
+variable "hetzner_gha_runner_ssh_key_id" {
+  description = "SSH key ID for GitHub Actions runner access"
+  type        = number
+}
+
 // Cloudflare
 
 variable "cloudflare_token" {

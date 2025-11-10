@@ -10,9 +10,29 @@ on:
       - ".github/workflows/ansible-provision.yaml"
 
 jobs:
-  ansible-provision:
+  create-runner:
+    name: Create Hetzner Cloud runner
     runs-on: ubuntu-24.04
+    outputs:
+      label: ${{ steps.create-hcloud-runner.outputs.label }}
+      server_id: ${{ steps.create-hcloud-runner.outputs.server_id }}
+    steps:
+      - name: Create runner
+        id: create-hcloud-runner
+        uses: Cyclenerd/hcloud-github-runner@v1.3.0
+        with:
+          mode: create
+          github_token: ${{ secrets.HETZNER_GHA_RUNNER_PAT }}
+          hcloud_token: ${{ secrets.HETZNER_API_TOKEN }}
+          network: ${{ secrets.HETZNER_NETWORK_ID }}
+          server_type: cx23
+          location: hel1
+          image: ubuntu-24.04
+          ssh_key: github-runner-key
 
+  ansible-provision:
+    needs: create-runner
+    runs-on: ${{ needs.create-runner.outputs.label }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4.2.2
@@ -87,3 +107,20 @@ jobs:
           else
             echo "✅ Ansible playbook executed successfully"
           fi
+
+  delete-runner:
+    name: Delete Hetzner Cloud runner
+    needs:
+      - create-runner
+      - ansible-provision
+    runs-on: ubuntu-24.04
+    if: ${{ always() }}
+    steps:
+      - name: Delete runner
+        uses: Cyclenerd/hcloud-github-runner@v1.3.0
+        with:
+          mode: delete
+          github_token: ${{ secrets.HETZNER_GHA_RUNNER_PAT }}
+          hcloud_token: ${{ secrets.HETZNER_API_TOKEN }}
+          name: ${{ needs.create-runner.outputs.label }}
+          server_id: ${{ needs.create-runner.outputs.server_id }}

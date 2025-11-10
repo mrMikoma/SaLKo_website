@@ -47,3 +47,8 @@ variable "private_gateway_ip" {
   description = "Private gateway IP address for routing private network traffic (NOT default gateway 10.1.0.1)"
   type        = string
 }
+
+variable "hetzner_gha_runner_ssh_key_id" {
+  description = "SSH key ID for GitHub Actions runner access"
+  type        = number
+}

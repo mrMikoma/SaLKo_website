@@ -20,7 +20,7 @@ resource "hcloud_server" "salko" {
   server_type = var.server_type
   location    = var.location
 
-  ssh_keys     = [hcloud_ssh_key.vps_ssh_key.id]
+  ssh_keys     = [hcloud_ssh_key.vps_ssh_key.id, var.hetzner_gha_runner_ssh_key_id]
   firewall_ids = [hcloud_firewall.default.id]
 
   backups = false

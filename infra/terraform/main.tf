@@ -10,11 +10,12 @@
 module "salko" {
   source = "./modules/hetzner"
 
-  location           = var.location
-  instances          = var.instances
-  server_type        = var.server_type
-  os_type            = var.os_type
-  vps_ssh_public_key = var.vps_ssh_public_key
+  location                      = var.location
+  instances                     = var.instances
+  server_type                   = var.server_type
+  os_type                       = var.os_type
+  vps_ssh_public_key            = var.vps_ssh_public_key
+  hetzner_gha_runner_ssh_key_id = var.hetzner_gha_runner_ssh_key_id
 
   network_id            = var.hetzner_network_id
   network_cidr          = var.network_cidr
