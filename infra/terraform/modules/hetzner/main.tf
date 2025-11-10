@@ -46,6 +46,10 @@ resource "hcloud_server" "salko" {
     ip         = format("%s%d", var.private_subnet_prefix, count.index + 2)
   }
 
+  user_data = templatefile("${path.module}/cloud-init.yaml", {
+    private_ip = format("%s%d", var.private_subnet_prefix, count.index + 2)
+  })
+
   lifecycle {
     ignore_changes = [ssh_keys]
   }
