@@ -7,19 +7,11 @@ terraform {
   }
 }
 
+# TO-DO: Add ssh_key automation to GitHub module
 resource "hcloud_ssh_key" "vps_ssh_key" {
   name       = "salko_key"
   public_key = var.vps_ssh_public_key
 }
-
-# TO-DO: Add ssh_key automation to GitHub module
-
-#resource "hcloud_network_subnet" "salko_subnet" {
-#  type         = "cloud"
-#  network_id   = var.network_id
-#  network_zone = "eu-central"
-#  ip_range     = var.private_subnet
-#}
 
 resource "hcloud_server" "salko" {
   count       = var.instances
@@ -45,6 +37,11 @@ resource "hcloud_server" "salko" {
     network_id = var.network_id
     ip         = format("%s%d", var.private_subnet_prefix, count.index + 2)
   }
+
+  # Cloud-init to configure network with /16 netmask and pfSense VIP as gateway
+  user_data = templatefile("${path.module}/cloud-init.yaml", {
+    private_ip = format("%s%d", var.private_subnet_prefix, count.index + 2)
+  })
 
   lifecycle {
     ignore_changes = [ssh_keys]

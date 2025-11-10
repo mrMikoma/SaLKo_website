@@ -1,0 +1,43 @@
+#cloud-config
+# Configure Salko server network:
+# - IP: ${private_ip}/16 (netmask /16 so all 10.1.x.x are reachable)
+# - Gateway: 10.1.2.1 (pfSense Virtual IP for Salko subnet)
+# - DNS: pfSense for internal resolution, Cloudflare as backup
+
+# Disable cloud-init network configuration
+write_files:
+  - path: /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg
+    content: |
+      network: {config: disabled}
+
+runcmd:
+  - sleep 5
+  - |
+    PRIVATE_IP="${private_ip}"
+    PRIVATE_IFACE=$(ip -o addr show | grep "$PRIVATE_IP" | awk '{print $2}')
+    if [ -n "$PRIVATE_IFACE" ]; then
+      rm -f /etc/netplan/50-cloud-init.yaml
+      cat > /etc/netplan/01-netcfg.yaml <<EOF
+    network:
+      version: 2
+      renderer: networkd
+      ethernets:
+        $PRIVATE_IFACE:
+          dhcp4: false
+          dhcp6: false
+          accept-ra: false
+          addresses:
+            - $PRIVATE_IP/16
+          routes:
+            - to: default
+              via: 10.1.2.1
+              metric: 100
+          nameservers:
+            addresses:
+              - 10.1.2.1
+              - 1.1.1.1
+    EOF
+      chmod 600 /etc/netplan/01-netcfg.yaml
+      netplan apply
+      systemctl restart systemd-networkd
+    fi
