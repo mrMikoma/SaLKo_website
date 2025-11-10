@@ -2,10 +2,10 @@
 # Hetzner Cloud
 #################################################################
 
-resource "hcloud_network" "network" {
-  name     = "salko-network"
-  ip_range = var.network_cidr
-}
+# resource "hcloud_network" "network" {
+#   name     = "salko-network"
+#   ip_range = var.network_cidr
+# }
 
 module "salko" {
   source = "./modules/hetzner"
@@ -16,13 +16,13 @@ module "salko" {
   os_type            = var.os_type
   vps_ssh_public_key = var.vps_ssh_public_key
 
-  network_id            = hcloud_network.network.id
+  network_id            = var.hetzner_network_id
   private_subnet        = var.private_subnet
   private_subnet_prefix = var.private_subnet_prefix
 
-  depends_on = [
-    hcloud_network.network
-  ]
+#  depends_on = [
+#    hcloud_network.network
+#  ]
 }
 
 #################################################################
@@ -53,41 +53,41 @@ module "salko" {
 #   ]
 # }
 
-resource "cloudflare_dns_record" "dev" {
-  zone_id = var.cloudflare_zone_id
-  comment = "Salko development 'kehitys' environment"
-  content = module.salko.server_ips["salko0"]
-  name    = "kehitys"
-  type    = "A"
-  ttl     = 1
-  proxied = true
-}
+##resource "cloudflare_dns_record" "dev" {
+##  zone_id = var.cloudflare_zone_id
+##  comment = "Salko development 'kehitys' environment"
+##  content = module.salko.server_ips["salko0"]
+##  name    = "kehitys"
+##  type    = "A"
+##  ttl     = 1
+##  proxied = true
+##}
 
 #################################################################
 # GitHub
 #################################################################
 
-module "github" {
-  source = "./modules/github"
-
-  github_repository    = var.github_repository
-  github_main_username = var.github_main_username
-
-  depends_on = [
-    module.salko
-  ]
-}
-
-resource "github_actions_variable" "server_ips" {
-  for_each      = tomap(module.salko.server_ips)
-  repository    = var.github_repository
-  variable_name = upper(format("server_ip_%s", each.key))
-  value         = each.value
-
-  depends_on = [
-    module.salko
-  ]
-}
+##module "github" {
+##  source = "./modules/github"
+##
+##  github_repository    = var.github_repository
+##  github_main_username = var.github_main_username
+##
+##  depends_on = [
+##    module.salko
+##  ]
+##}
+##
+##resource "github_actions_variable" "server_ips" {
+##  for_each      = tomap(module.salko.server_ips)
+##  repository    = var.github_repository
+##  variable_name = upper(format("server_ip_%s", each.key))
+##  value         = each.value
+##
+##  depends_on = [
+##    module.salko
+##  ]
+##}
 
 # Cannot create api token with terraform, needs to be done manually
 # resource "github_actions_secret" "cf_dns_api_token" {

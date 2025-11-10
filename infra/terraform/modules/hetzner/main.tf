@@ -14,12 +14,12 @@ resource "hcloud_ssh_key" "vps_ssh_key" {
 
 # TO-DO: Add ssh_key automation to GitHub module
 
-resource "hcloud_network_subnet" "salko_subnet" {
-  type         = "cloud"
-  network_id   = var.network_id
-  network_zone = "eu-central"
-  ip_range     = var.private_subnet
-}
+#resource "hcloud_network_subnet" "salko_subnet" {
+#  type         = "cloud"
+#  network_id   = var.network_id
+#  network_zone = "eu-central"
+#  ip_range     = var.private_subnet
+#}
 
 resource "hcloud_server" "salko" {
   count       = var.instances
@@ -50,9 +50,9 @@ resource "hcloud_server" "salko" {
     ignore_changes = [ssh_keys]
   }
 
-  depends_on = [
-    hcloud_network_subnet.salko_subnet
-  ]
+  #depends_on = [
+  #  hcloud_network_subnet.salko_subnet
+  #]
 
   labels = {
     type = "salko"

@@ -8,6 +8,11 @@ variable "hetzner_api_token" {
   sensitive   = true
 }
 
+variable "hetzner_network_id" {
+  description = "Hetzner Cloud Network ID for the salko"
+  type        = number
+}
+
 variable "instances" {
   description = "Number of instances to create"
   type        = number
@@ -41,13 +46,13 @@ variable "network_cidr" {
 variable "private_subnet" {
   description = "Private subnet for the salko"
   type        = string
-  default     = "10.101.0.0/24"
+  default     = "10.1.1.0/24"
 }
 
 variable "private_subnet_prefix" {
   description = "Private subnet prefix for the salko"
   type        = string
-  default     = "10.101.0."
+  default     = "10.1.1."
 }
 
 variable "vps_ssh_public_key" {

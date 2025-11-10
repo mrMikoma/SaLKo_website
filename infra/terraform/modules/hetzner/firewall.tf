@@ -1,17 +1,17 @@
 resource "hcloud_firewall" "default" {
+  name   = "salko_firewall"
   labels = {}
-  name   = "firewall-1"
 
-  rule {
-    description     = "SSH"
-    destination_ips = []
-    direction       = "in"
-    port            = "22"
-    protocol        = "tcp"
-    source_ips = [
-      "0.0.0.0/0",
-    ]
-  }
+  # rule {
+  #   description     = "SSH"
+  #   destination_ips = []
+  #   direction       = "in"
+  #   port            = "22"
+  #   protocol        = "tcp"
+  #   source_ips = [
+  #     "0.0.0.0/0",
+  #   ]
+  # }
 
   rule {
     description     = "proxy"
