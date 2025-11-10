@@ -40,7 +40,7 @@ variable "os_type" {
 variable "network_cidr" {
   description = "Network CIDR for the salko"
   type        = string
-  default     = "10.101.0.0/16"
+  default     = "10.1.0.0/16"
 }
 
 variable "private_subnet" {

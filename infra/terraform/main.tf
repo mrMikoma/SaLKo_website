@@ -17,6 +17,7 @@ module "salko" {
   vps_ssh_public_key = var.vps_ssh_public_key
 
   network_id            = var.hetzner_network_id
+  network_cidr          = var.network_cidr
   private_subnet        = var.private_subnet
   private_subnet_prefix = var.private_subnet_prefix
 

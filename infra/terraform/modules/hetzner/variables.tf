@@ -20,6 +20,11 @@ variable "os_type" {
 
 variable "network_id" {
   description = "Network ID"
+  type        = number
+}
+
+variable "network_cidr" {
+  description = "Network CIDR"
   type        = string
 }
 
