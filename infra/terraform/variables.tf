@@ -46,13 +46,13 @@ variable "network_cidr" {
 variable "private_subnet" {
   description = "Private subnet for the salko"
   type        = string
-  default     = "10.1.1.0/24"
+  default     = "10.1.2.0/24"
 }
 
 variable "private_subnet_prefix" {
   description = "Private subnet prefix for the salko"
   type        = string
-  default     = "10.1.1."
+  default     = "10.1.2."
 }
 
 variable "vps_ssh_public_key" {
