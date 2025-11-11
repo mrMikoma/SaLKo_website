@@ -7,8 +7,66 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
-  build-and-publish:
+  create-runner:
+    name: Create Hetzner Cloud runner
     runs-on: ubuntu-24.04
+    outputs:
+      label: ${{ steps.create-hcloud-runner.outputs.label }}
+      server_id: ${{ steps.create-hcloud-runner.outputs.server_id }}
+    steps:
+      - name: Create runner
+        id: create-hcloud-runner
+        uses: Cyclenerd/hcloud-github-runner@v1.3.0
+        with:
+          mode: create
+          github_token: ${{ secrets.HETZNER_GHA_RUNNER_PAT }}
+          hcloud_token: ${{ secrets.HETZNER_API_TOKEN }}
+          network: ${{ secrets.HETZNER_NETWORK_ID }}
+          ssh_key: ${{ secrets.HETZNER_GHA_RUNNER_SSH_KEY_ID }}
+          server_type: cx23
+          location: hel1
+          image: ubuntu-24.04
+          pre_runner_script: |
+            set -ex
+            echo "Configuring private network routing..."
+            sleep 10
+            PRIVATE_IFACE=$(ip -o addr show | grep "10.1.1." | awk '{print $2}' | head -n1)
+            if [ -z "$PRIVATE_IFACE" ]; then
+              echo "No private interface found in 10.1.1.0/24 subnet, skipping network configuration"
+              exit 0
+            fi
+            PRIVATE_IP=$(ip -o -4 addr show $PRIVATE_IFACE | awk '{print $4}' | cut -d/ -f1)
+            echo "Found interface $PRIVATE_IFACE with IP $PRIVATE_IP"
+            cat > /etc/netplan/60-private-network.yaml <<'NETPLAN_EOF'
+            network:
+              version: 2
+              renderer: networkd
+              ethernets:
+                PLACEHOLDER_IFACE:
+                  dhcp4: false
+                  dhcp6: false
+                  accept-ra: false
+                  addresses:
+                    - PLACEHOLDER_IP/32
+                  routes:
+                    - to: 10.1.0.0/16
+                      via: 10.1.0.1
+                      on-link: true
+                      metric: 100
+                  nameservers:
+                    addresses:
+                      - 1.1.1.1
+                      - 1.0.0.1
+            NETPLAN_EOF
+            sed -i "s/PLACEHOLDER_IFACE/$PRIVATE_IFACE/g" /etc/netplan/60-private-network.yaml
+            sed -i "s|PLACEHOLDER_IP|$PRIVATE_IP|g" /etc/netplan/60-private-network.yaml
+            netplan apply
+            echo "Network configuration applied successfully"
+            ip route show
+
+  build-and-publish:
+    needs: create-runner
+    runs-on: ${{ needs.create-runner.outputs.label }}
     permissions:
       contents: write
       packages: write
@@ -106,3 +164,20 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  delete-runner:
+    name: Delete Hetzner Cloud runner
+    needs:
+      - create-runner
+      - build-and-publish
+    runs-on: ubuntu-24.04
+    if: ${{ always() }}
+    steps:
+      - name: Delete runner
+        uses: Cyclenerd/hcloud-github-runner@v1.3.0
+        with:
+          mode: delete
+          github_token: ${{ secrets.HETZNER_GHA_RUNNER_PAT }}
+          hcloud_token: ${{ secrets.HETZNER_API_TOKEN }}
+          name: ${{ needs.create-runner.outputs.label }}
+          server_id: ${{ needs.create-runner.outputs.server_id }}

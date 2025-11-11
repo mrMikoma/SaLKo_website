@@ -7,18 +7,10 @@ terraform {
   }
 }
 
+# TO-DO: Add ssh_key automation to GitHub module
 resource "hcloud_ssh_key" "vps_ssh_key" {
   name       = "salko_key"
   public_key = var.vps_ssh_public_key
-}
-
-# TO-DO: Add ssh_key automation to GitHub module
-
-resource "hcloud_network_subnet" "salko_subnet" {
-  type         = "cloud"
-  network_id   = var.network_id
-  network_zone = "eu-central"
-  ip_range     = var.private_subnet
 }
 
 resource "hcloud_server" "salko" {
@@ -28,7 +20,7 @@ resource "hcloud_server" "salko" {
   server_type = var.server_type
   location    = var.location
 
-  ssh_keys     = [hcloud_ssh_key.vps_ssh_key.id]
+  ssh_keys     = [hcloud_ssh_key.vps_ssh_key.id, var.hetzner_gha_runner_ssh_key_id]
   firewall_ids = [hcloud_firewall.default.id]
 
   backups = false
@@ -46,13 +38,19 @@ resource "hcloud_server" "salko" {
     ip         = format("%s%d", var.private_subnet_prefix, count.index + 2)
   }
 
+  user_data = templatefile("${path.module}/configure-network.sh", {
+    private_ip      = format("%s%d", var.private_subnet_prefix, count.index + 2)
+    private_gateway = var.private_gateway_ip
+    network_cidr    = var.network_cidr
+  })
+
   lifecycle {
-    ignore_changes = [ssh_keys]
+    ignore_changes = [ssh_keys, user_data]
   }
 
-  depends_on = [
-    hcloud_network_subnet.salko_subnet
-  ]
+  #depends_on = [
+  #  hcloud_network_subnet.salko_subnet
+  #]
 
   labels = {
     type = "salko"

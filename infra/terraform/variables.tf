@@ -8,6 +8,11 @@ variable "hetzner_api_token" {
   sensitive   = true
 }
 
+variable "hetzner_network_id" {
+  description = "Hetzner Cloud Network ID for the salko"
+  type        = number
+}
+
 variable "instances" {
   description = "Number of instances to create"
   type        = number
@@ -23,7 +28,7 @@ variable "location" {
 variable "server_type" {
   description = "Server type to deploy"
   type        = string
-  default     = "cx22"
+  default     = "cx23"
 }
 
 variable "os_type" {
@@ -35,24 +40,35 @@ variable "os_type" {
 variable "network_cidr" {
   description = "Network CIDR for the salko"
   type        = string
-  default     = "10.101.0.0/16"
+  default     = "10.1.0.0/16"
 }
 
 variable "private_subnet" {
   description = "Private subnet for the salko"
   type        = string
-  default     = "10.101.0.0/24"
+  default     = "10.1.2.0/24"
 }
 
 variable "private_subnet_prefix" {
   description = "Private subnet prefix for the salko"
   type        = string
-  default     = "10.101.0."
+  default     = "10.1.2."
+}
+
+variable "private_gateway_ip" {
+  description = "Private gateway IP address for routing private network traffic (NOT default gateway 10.1.0.1)"
+  type        = string
+  default     = "10.1.0.2"
 }
 
 variable "vps_ssh_public_key" {
   description = "SSH public key for the VPS"
   type        = string
+}
+
+variable "hetzner_gha_runner_ssh_key_id" {
+  description = "SSH key ID for GitHub Actions runner access"
+  type        = number
 }
 
 // Cloudflare

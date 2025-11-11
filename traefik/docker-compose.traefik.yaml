@@ -1,7 +1,8 @@
 services:
   traefik:
-    image: traefik:v3.4.1
-    # Specifies the image to use for Traefik, using the latest version from the Docker Hub.
+    image: traefik:v3.6.0
+    # Specifies the image to use for Traefik. Using v3.6 tag ensures we get
+    # the latest v3.6.x patch release which includes the Docker API 1.44 compatibility fix.
 
     container_name: traefik
     # Names the container 'traefik' for easier identification.
@@ -29,15 +30,15 @@ services:
       # Loads environment variables from the `.env.traefik` file, which contains sensitive information like API tokens.
 
     # environment:
-      # - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN}
-      # Sets the environment variable for the Cloudflare DNS API token, which is required for dynamic DNS and SSL management.
+    # - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN}
+    # Sets the environment variable for the Cloudflare DNS API token, which is required for dynamic DNS and SSL management.
 
-      # If you choose to use an API Key instead of a Token, specify your email as well
-      # - CF_API_EMAIL=user@example.com
-      # Optionally, you can use Cloudflare's API key and provide your email address for authentication.
+    # If you choose to use an API Key instead of a Token, specify your email as well
+    # - CF_API_EMAIL=user@example.com
+    # Optionally, you can use Cloudflare's API key and provide your email address for authentication.
 
-      # - CF_API_KEY=YOUR_API_KEY
-      # Optionally, you can use the Cloudflare API key instead of a token for authentication.
+    # - CF_API_KEY=YOUR_API_KEY
+    # Optionally, you can use the Cloudflare API key instead of a token for authentication.
 
     volumes:
       - /etc/localtime:/etc/localtime:ro

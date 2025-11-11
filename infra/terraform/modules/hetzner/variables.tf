@@ -20,6 +20,11 @@ variable "os_type" {
 
 variable "network_id" {
   description = "Network ID"
+  type        = number
+}
+
+variable "network_cidr" {
+  description = "Network CIDR"
   type        = string
 }
 
@@ -36,4 +41,14 @@ variable "private_subnet_prefix" {
 variable "vps_ssh_public_key" {
   description = "SSH public key for the VPS"
   type        = string
+}
+
+variable "private_gateway_ip" {
+  description = "Private gateway IP address for routing private network traffic (NOT default gateway 10.1.0.1)"
+  type        = string
+}
+
+variable "hetzner_gha_runner_ssh_key_id" {
+  description = "SSH key ID for GitHub Actions runner access"
+  type        = number
 }

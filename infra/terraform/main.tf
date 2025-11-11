@@ -2,27 +2,30 @@
 # Hetzner Cloud
 #################################################################
 
-resource "hcloud_network" "network" {
-  name     = "salko-network"
-  ip_range = var.network_cidr
-}
+# resource "hcloud_network" "network" {
+#   name     = "salko-network"
+#   ip_range = var.network_cidr
+# }
 
 module "salko" {
   source = "./modules/hetzner"
 
-  location           = var.location
-  instances          = var.instances
-  server_type        = var.server_type
-  os_type            = var.os_type
-  vps_ssh_public_key = var.vps_ssh_public_key
+  location                      = var.location
+  instances                     = var.instances
+  server_type                   = var.server_type
+  os_type                       = var.os_type
+  vps_ssh_public_key            = var.vps_ssh_public_key
+  hetzner_gha_runner_ssh_key_id = var.hetzner_gha_runner_ssh_key_id
 
-  network_id            = hcloud_network.network.id
+  network_id            = var.hetzner_network_id
+  network_cidr          = var.network_cidr
   private_subnet        = var.private_subnet
   private_subnet_prefix = var.private_subnet_prefix
+  private_gateway_ip    = var.private_gateway_ip
 
-  depends_on = [
-    hcloud_network.network
-  ]
+  #  depends_on = [
+  #    hcloud_network.network
+  #  ]
 }
 
 #################################################################
@@ -56,7 +59,7 @@ module "salko" {
 resource "cloudflare_dns_record" "dev" {
   zone_id = var.cloudflare_zone_id
   comment = "Salko development 'kehitys' environment"
-  content = module.salko.server_ips["salko0"]
+  content = module.salko.server_public_ips["salko0"]
   name    = "kehitys"
   type    = "A"
   ttl     = 1
@@ -72,14 +75,10 @@ module "github" {
 
   github_repository    = var.github_repository
   github_main_username = var.github_main_username
-
-  depends_on = [
-    module.salko
-  ]
 }
 
 resource "github_actions_variable" "server_ips" {
-  for_each      = tomap(module.salko.server_ips)
+  for_each      = tomap(module.salko.server_private_ips)
   repository    = var.github_repository
   variable_name = upper(format("server_ip_%s", each.key))
   value         = each.value
