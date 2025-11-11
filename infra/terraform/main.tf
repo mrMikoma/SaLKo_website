@@ -56,15 +56,15 @@ module "salko" {
 #   ]
 # }
 
-##resource "cloudflare_dns_record" "dev" {
-##  zone_id = var.cloudflare_zone_id
-##  comment = "Salko development 'kehitys' environment"
-##  content = module.salko.server_ips["salko0"]
-##  name    = "kehitys"
-##  type    = "A"
-##  ttl     = 1
-##  proxied = true
-##}
+resource "cloudflare_dns_record" "dev" {
+  zone_id = var.cloudflare_zone_id
+  comment = "Salko development 'kehitys' environment"
+  content = module.salko.server_public_ips["salko0"]
+  name    = "kehitys"
+  type    = "A"
+  ttl     = 1
+  proxied = true
+}
 
 #################################################################
 # GitHub
@@ -78,7 +78,7 @@ module "github" {
 }
 
 resource "github_actions_variable" "server_ips" {
-  for_each      = tomap(module.salko.server_ips)
+  for_each      = tomap(module.salko.server_private_ips)
   repository    = var.github_repository
   variable_name = upper(format("server_ip_%s", each.key))
   value         = each.value
