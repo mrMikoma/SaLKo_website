@@ -2,6 +2,17 @@ name: Build and Publish Development
 
 on:
   pull_request:
+    branches:
+      - main
+    paths:
+      - "nextjs/**"
+      - "docker-compose.dev.yaml"
+      - "postgres/init/**"
+      - ".github/workflows/build-and-publish-dev.yaml"
+      - ".github/workflows/deploy-app-dev.yaml"
+  push:
+    branches:
+      - dev
     paths:
       - "nextjs/**"
       - "docker-compose.dev.yaml"
@@ -17,6 +28,7 @@ env:
 jobs:
   create-runner:
     name: Create Hetzner Cloud runner
+    if: (github.event_name == 'pull_request' && github.head_ref == 'dev' && github.base_ref == 'main') || (github.event_name == 'push' && github.ref == 'refs/heads/dev') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     outputs:
       label: ${{ steps.create-hcloud-runner.outputs.label }}
@@ -73,7 +85,7 @@ jobs:
             ip route show
 
   build-and-publish:
-    if: github.head_ref == 'dev' && github.base_ref == 'main' || github.event_name == 'workflow_dispatch'
+    if: (github.event_name == 'pull_request' && github.head_ref == 'dev' && github.base_ref == 'main') || (github.event_name == 'push' && github.ref == 'refs/heads/dev') || github.event_name == 'workflow_dispatch'
     needs: create-runner
     runs-on: ${{ needs.create-runner.outputs.label }}
     permissions:
@@ -160,6 +172,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   trigger-deploy-workflow-development:
+    if: (github.event_name == 'pull_request' && github.head_ref == 'dev' && github.base_ref == 'main') || (github.event_name == 'push' && github.ref == 'refs/heads/dev') || github.event_name == 'workflow_dispatch'
     needs: build-and-publish
     runs-on: ubuntu-24.04
     permissions:
