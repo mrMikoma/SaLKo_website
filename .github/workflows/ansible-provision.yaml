@@ -29,6 +29,43 @@ jobs:
           server_type: cx23
           location: hel1
           image: ubuntu-24.04
+          pre_runner_script: |
+            set -ex
+            echo "Configuring private network routing..."
+            sleep 10
+            PRIVATE_IFACE=$(ip -o addr show | grep "10.1.1." | awk '{print $2}' | head -n1)
+            if [ -z "$PRIVATE_IFACE" ]; then
+              echo "No private interface found in 10.1.1.0/24 subnet, skipping network configuration"
+              exit 0
+            fi
+            PRIVATE_IP=$(ip -o -4 addr show $PRIVATE_IFACE | awk '{print $4}' | cut -d/ -f1)
+            echo "Found interface $PRIVATE_IFACE with IP $PRIVATE_IP"
+            cat > /etc/netplan/60-private-network.yaml <<'NETPLAN_EOF'
+            network:
+              version: 2
+              renderer: networkd
+              ethernets:
+                PLACEHOLDER_IFACE:
+                  dhcp4: false
+                  dhcp6: false
+                  accept-ra: false
+                  addresses:
+                    - PLACEHOLDER_IP/32
+                  routes:
+                    - to: 10.1.0.0/16
+                      via: 10.1.0.1
+                      on-link: true
+                      metric: 100
+                  nameservers:
+                    addresses:
+                      - 1.1.1.1
+                      - 1.0.0.1
+            NETPLAN_EOF
+            sed -i "s/PLACEHOLDER_IFACE/$PRIVATE_IFACE/g" /etc/netplan/60-private-network.yaml
+            sed -i "s|PLACEHOLDER_IP|$PRIVATE_IP|g" /etc/netplan/60-private-network.yaml
+            netplan apply
+            echo "Network configuration applied successfully"
+            ip route show
 
   ansible-provision:
     needs: create-runner
@@ -77,13 +114,33 @@ jobs:
             --user root \
             --private-key ~/.ssh/id_ed25519 \
             --extra-vars "ansible_ssh_common_args='-o ControlMaster=auto -o ControlPersist=60s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'" || exit_code=$?
-          
+
           if [ "$exit_code" -ne 0 ]; then
             echo "❌ Ping failed with exit code $exit_code"
             exit $exit_code
           else
             echo "✅ Ping succeeded"
           fi
+
+      - name: Debug network connectivity
+        env:
+          SERVER_IPS: ${{ vars.SERVER_IP_SALKO0 }}
+          ANSIBLE_HOST_KEY_CHECKING: False
+          ANSIBLE_FORCE_COLOR: True
+        run: |
+          echo "=== Checking runner connectivity ==="
+          echo "Runner can reach internet:"
+          curl -s -o /dev/null -w "%{http_code}" https://archive.ubuntu.com || echo "Failed"
+          echo ""
+
+          echo "=== Checking target server connectivity ==="
+          ansible all \
+            --inventory infra/ansible/inventory.py \
+            --user root \
+            --private-key ~/.ssh/id_ed25519 \
+            --extra-vars "ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'" \
+            -m shell \
+            -a "ip route show; echo '---'; ping -c 2 1.1.1.1; echo '---'; curl -s -o /dev/null -w '%{http_code}' https://archive.ubuntu.com" || echo "Debug failed"
 
       - name: Ansible Playbook
         env:
