@@ -1,46 +1,61 @@
 #!/bin/bash
 set -ex
 
+# Template variables
 PRIVATE_IP="${private_ip}"
 PRIVATE_GATEWAY="${private_gateway}"
 NETWORK_CIDR="${network_cidr}"
+LOG_FILE="/var/log/configure-network.log"
 
-echo "Starting network configuration for IP: $PRIVATE_IP" | tee -a /var/log/configure-network.log
-echo "Private Gateway: $PRIVATE_GATEWAY" | tee -a /var/log/configure-network.log
-echo "Network CIDR: $NETWORK_CIDR" | tee -a /var/log/configure-network.log
+log() {
+  echo "$1" | tee -a "$LOG_FILE"
+}
 
-# Wait for network to be up
-sleep 10
+log "=== Starting network configuration ==="
+log "Private IP: $PRIVATE_IP"
+log "Network CIDR: $NETWORK_CIDR"
+log "Gateway: $PRIVATE_GATEWAY"
 
-# Find the private interface
+# Wait for cloud-init to configure the public interface
+log "Waiting for cloud-init to configure public interface..."
+sleep 15
+
+if [ ! -f /etc/netplan/50-cloud-init.yaml ]; then
+  log "WARNING: cloud-init config missing, waiting..."
+  cloud-init status --wait 2>&1 | tee -a "$LOG_FILE"
+fi
+
+# Verify internet connectivity before proceeding
+log "Verifying internet access..."
+if ! ping -c 2 1.1.1.1 >> "$LOG_FILE" 2>&1; then
+  log "WARNING: Internet not reachable, applying cloud-init config..."
+  netplan apply 2>&1 | tee -a "$LOG_FILE"
+  sleep 5
+fi
+
+# Find the private network interface
 PRIVATE_IFACE=$(ip -o addr show | grep "$PRIVATE_IP" | awk '{print $2}')
 
 if [ -z "$PRIVATE_IFACE" ]; then
-  echo "ERROR: Could not find interface with IP $PRIVATE_IP" | tee -a /var/log/configure-network.log
-  ip -o addr show | tee -a /var/log/configure-network.log
+  log "ERROR: Could not find interface with IP $PRIVATE_IP"
+  ip -o addr show | tee -a "$LOG_FILE"
   exit 1
 fi
 
-echo "Found interface: $PRIVATE_IFACE with IP: $PRIVATE_IP" | tee -a /var/log/configure-network.log
+log "Found private interface: $PRIVATE_IFACE"
 
-# Disable Hetzner's hc-utils auto-configuration for private interface
-# This prevents conflicts between DHCP and our static configuration
-echo "Disabling hc-utils auto-configuration for $PRIVATE_IFACE..." | tee -a /var/log/configure-network.log
+# Disable hc-utils for private interface to prevent DHCP conflicts
 if systemctl is-active --quiet "hc-net-ifup@$PRIVATE_IFACE.service"; then
-  systemctl stop "hc-net-ifup@$PRIVATE_IFACE.service" 2>&1 | tee -a /var/log/configure-network.log
-  systemctl mask "hc-net-ifup@$PRIVATE_IFACE.service" 2>&1 | tee -a /var/log/configure-network.log
-  echo "hc-utils service disabled for $PRIVATE_IFACE" | tee -a /var/log/configure-network.log
+  log "Disabling hc-utils for $PRIVATE_IFACE..."
+  systemctl stop "hc-net-ifup@$PRIVATE_IFACE.service" 2>&1 | tee -a "$LOG_FILE"
+  systemctl mask "hc-net-ifup@$PRIVATE_IFACE.service" 2>&1 | tee -a "$LOG_FILE"
 else
-  echo "hc-utils service not active for $PRIVATE_IFACE" | tee -a /var/log/configure-network.log
+  log "hc-utils not active for $PRIVATE_IFACE"
 fi
 
-# Remove cloud-init netplan config
-rm -f /etc/netplan/50-cloud-init.yaml
-
-# Create new netplan configuration using Hetzner's default gateway
-# Using /32 addressing with on-link routing (Hetzner Cloud standard)
-# Internet traffic stays on public interface (eth0)
-# Private network traffic uses Hetzner's gateway (10.1.0.1)
+# Create netplan config for private interface
+# NOTE: Do NOT remove /etc/netplan/50-cloud-init.yaml - it manages the public interface
+log "Creating netplan configuration..."
 cat > /etc/netplan/60-private-network.yaml <<NETPLAN_EOF
 network:
   version: 2
@@ -53,8 +68,6 @@ network:
       addresses:
         - $PRIVATE_IP/32
       routes:
-        # Route private network traffic through Hetzner's gateway
-        # This allows communication with all subnets in 10.1.0.0/16
         - to: $NETWORK_CIDR
           via: 10.1.0.1
           on-link: true
@@ -65,42 +78,46 @@ network:
           - 1.0.0.1
 NETPLAN_EOF
 
-# Set permissions
 chmod 600 /etc/netplan/60-private-network.yaml
-
-echo "Netplan configuration created:" | tee -a /var/log/configure-network.log
-cat /etc/netplan/60-private-network.yaml | tee -a /var/log/configure-network.log
+cat /etc/netplan/60-private-network.yaml | tee -a "$LOG_FILE"
 
 # Apply configuration
-netplan apply 2>&1 | tee -a /var/log/configure-network.log
+log "Applying netplan configuration..."
+netplan apply 2>&1 | tee -a "$LOG_FILE"
+sleep 3
 
-# Restart networkd for clean state
-systemctl restart systemd-networkd 2>&1 | tee -a /var/log/configure-network.log
+systemctl restart systemd-networkd 2>&1 | tee -a "$LOG_FILE"
+sleep 3
 
-echo "Network configuration applied successfully" | tee -a /var/log/configure-network.log
-echo "New network state:" | tee -a /var/log/configure-network.log
-ip addr show $PRIVATE_IFACE | tee -a /var/log/configure-network.log
-ip route show | tee -a /var/log/configure-network.log
+# Show final network state
+log "=== Network configuration complete ==="
+ip addr show "$PRIVATE_IFACE" | tee -a "$LOG_FILE"
+ip route show | tee -a "$LOG_FILE"
 
-# Disable cloud-init network management for future boots
-echo 'network: {config: disabled}' > /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg
+# Test connectivity
+log "=== Testing connectivity ==="
 
-# Test connectivity within private network
-echo "Testing connectivity to Hetzner gateway..." | tee -a /var/log/configure-network.log
-if ping -c 3 10.1.0.1 >> /var/log/configure-network.log 2>&1; then
-  echo "SUCCESS: Hetzner gateway 10.1.0.1 is reachable!" | tee -a /var/log/configure-network.log
+# Test internet
+if ping -c 2 1.1.1.1 >> "$LOG_FILE" 2>&1; then
+  log "✓ Internet reachable"
 else
-  echo "WARNING: Cannot reach Hetzner gateway 10.1.0.1" | tee -a /var/log/configure-network.log
+  log "✗ WARNING: Internet not reachable"
 fi
 
-# Test connectivity to pfSense (if specified)
+# Test private network gateway
+if ping -c 2 10.1.0.1 >> "$LOG_FILE" 2>&1; then
+  log "✓ Hetzner gateway (10.1.0.1) reachable"
+else
+  log "✗ WARNING: Hetzner gateway not reachable"
+fi
+
+# Test pfSense if configured
 if [ -n "$PRIVATE_GATEWAY" ] && [ "$PRIVATE_GATEWAY" != "10.1.0.1" ]; then
-  echo "Testing connectivity to pfSense at $PRIVATE_GATEWAY..." | tee -a /var/log/configure-network.log
-  if ping -c 3 $PRIVATE_GATEWAY >> /var/log/configure-network.log 2>&1; then
-    echo "SUCCESS: pfSense $PRIVATE_GATEWAY is reachable!" | tee -a /var/log/configure-network.log
+  if ping -c 2 "$PRIVATE_GATEWAY" >> "$LOG_FILE" 2>&1; then
+    log "✓ pfSense ($PRIVATE_GATEWAY) reachable"
   else
-    echo "INFO: pfSense $PRIVATE_GATEWAY not reachable (expected if using Hetzner routing)" | tee -a /var/log/configure-network.log
+    log "ℹ pfSense ($PRIVATE_GATEWAY) not reachable (may be expected)"
   fi
 fi
 
-echo "Configuration complete!" | tee -a /var/log/configure-network.log
+log "=== Configuration complete ==="
