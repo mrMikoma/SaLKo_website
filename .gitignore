@@ -2,7 +2,13 @@
 .env.*
 !.env.template
 lentokerho.sql
+SaLKo nettisivut sisältö 12-2024.pdf
 
 /letsencrypt
 /postgres/postgres-data
 /postgres/pgadmin-data
+/node_modules
+
+# Cronjobs
+/cronjobs/update-metar/node_modules
+/cronjobs/update-metar/package-lock.json

@@ -1,0 +1,18 @@
+services:
+  # METAR Update Cronjob
+  cronjob-update-metar:
+    build:
+      context: ..
+      dockerfile: cronjobs/update-metar/Dockerfile
+    container_name: ${NAME_PREFIX:-salko}-cronjob-update-metar-${BRANCH_SUFFIX:-prod}
+    networks:
+      - internal_prod
+    env_file: .env.prod
+    environment:
+      - DATABASE_CONNECTION_STRING=postgresql://${APP_DB_USER}:${APP_DB_PASSWORD}@${NAME_PREFIX}-postgres-${BRANCH_SUFFIX}:${PGPORT}/${POSTGRES_DB}
+    restart: "no"
+
+networks:
+  internal_prod:
+    external: true
+    name: salko_prod_internal
