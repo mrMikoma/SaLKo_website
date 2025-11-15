@@ -8,3 +8,7 @@ SaLKo nettisivut sisältö 12-2024.pdf
 /postgres/postgres-data
 /postgres/pgadmin-data
 /node_modules
+
+# Cronjobs
+/cronjobs/updateMetar/node_modules
+/cronjobs/updateMetar/package-lock.json

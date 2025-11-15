@@ -62,8 +62,13 @@ jobs:
               echo "jobs=$ALL_JOBS" >> $GITHUB_OUTPUT
               echo "deploy_all=true" >> $GITHUB_OUTPUT
             else
-              # Extract changed job directories
-              CHANGED_JOBS=$(echo "$CHANGED_FILES" | cut -d'/' -f2 | sort -u | jq -R -s -c 'split("\n") | map(select(length > 0))')
+              # Extract changed job directories (only actual directories with Dockerfiles)
+              CHANGED_DIRS=$(echo "$CHANGED_FILES" | cut -d'/' -f2 | sort -u)
+              CHANGED_JOBS=$(echo "$CHANGED_DIRS" | while read -r dir; do
+                if [ -n "$dir" ] && [ -d "cronjobs/$dir" ] && [ -f "cronjobs/$dir/Dockerfile" ]; then
+                  echo "$dir"
+                fi
+              done | jq -R -s -c 'split("\n") | map(select(length > 0))')
               echo "jobs=$CHANGED_JOBS" >> $GITHUB_OUTPUT
               echo "deploy_all=false" >> $GITHUB_OUTPUT
             fi
