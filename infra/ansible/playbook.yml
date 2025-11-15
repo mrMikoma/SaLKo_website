@@ -9,3 +9,4 @@
     - security
     - ssh_hardening
     - docker_install
+    - cronjobs

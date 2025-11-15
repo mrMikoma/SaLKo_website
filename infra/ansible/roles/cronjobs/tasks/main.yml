@@ -1,0 +1,69 @@
+---
+- name: Create cronjobs directory
+  ansible.builtin.file:
+    path: /home/salko/cronjobs
+    state: directory
+    mode: "0755"
+    owner: salko
+    group: salko
+
+- name: Create systemd staging directory for cronjobs
+  ansible.builtin.file:
+    path: /home/salko/systemd
+    state: directory
+    mode: "0755"
+    owner: salko
+    group: salko
+
+- name: Create log directory for cronjobs
+  ansible.builtin.file:
+    path: /var/log/salko/cronjobs
+    state: directory
+    mode: "0755"
+    owner: salko
+    group: salko
+
+- name: Find all cronjob systemd service files
+  ansible.builtin.find:
+    paths: /home/salko/systemd
+    patterns: "salko-cronjob-*.service"
+  register: cronjob_services
+
+- name: Find all cronjob systemd timer files
+  ansible.builtin.find:
+    paths: /home/salko/systemd
+    patterns: "salko-cronjob-*.timer"
+  register: cronjob_timers
+
+- name: Copy cronjob systemd service files to system directory
+  ansible.builtin.copy:
+    src: "{{ item.path }}"
+    dest: "/etc/systemd/system/{{ item.path | basename }}"
+    mode: "0644"
+    owner: root
+    group: root
+    remote_src: true
+  loop: "{{ cronjob_services.files }}"
+  when: cronjob_services.matched > 0
+  notify: Reload systemd
+
+- name: Copy cronjob systemd timer files to system directory
+  ansible.builtin.copy:
+    src: "{{ item.path }}"
+    dest: "/etc/systemd/system/{{ item.path | basename }}"
+    mode: "0644"
+    owner: root
+    group: root
+    remote_src: true
+  loop: "{{ cronjob_timers.files }}"
+  when: cronjob_timers.matched > 0
+  notify: Reload systemd
+
+- name: Enable and start cronjob timers
+  ansible.builtin.systemd:
+    name: "{{ item.path | basename }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  loop: "{{ cronjob_timers.files }}"
+  when: cronjob_timers.matched > 0
