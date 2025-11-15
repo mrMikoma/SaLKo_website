@@ -10,7 +10,7 @@ on:
         type: choice
         options:
           - production
-          - dev
+          - development
       specific_job:
         description: 'Specific cronjob to deploy (leave empty for all)'
         required: false
@@ -25,7 +25,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_PREFIX: ghcr.io/${{ github.repository }}/cronjob
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/salko_website/cronjob
 
 jobs:
   detect-changes:
@@ -49,14 +49,11 @@ jobs:
             echo "deploy_all=false" >> $GITHUB_OUTPUT
             exit 0
           fi
-
           # Detect all available cronjobs (those with Dockerfiles)
           ALL_JOBS=$(find cronjobs -mindepth 1 -maxdepth 1 -type d -exec test -f {}/Dockerfile \; -exec basename {} \; | jq -R -s -c 'split("\n") | map(select(length > 0))')
-
           # On push, detect changed jobs
           if [ "${{ github.event_name }}" = "push" ]; then
             CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep '^cronjobs/' || true)
-
             if [ -z "$CHANGED_FILES" ]; then
               # No cronjob changes, but workflow file changed - deploy all
               echo "jobs=$ALL_JOBS" >> $GITHUB_OUTPUT
@@ -77,7 +74,6 @@ jobs:
             echo "jobs=$ALL_JOBS" >> $GITHUB_OUTPUT
             echo "deploy_all=true" >> $GITHUB_OUTPUT
           fi
-
   build-and-push:
     name: Build ${{ matrix.job }}
     needs: [detect-changes]
@@ -105,7 +101,6 @@ jobs:
             echo "Error: Dockerfile 'cronjobs/${{ matrix.job }}/Dockerfile' not found"
             exit 1
           fi
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3.11.1
 
@@ -126,7 +121,6 @@ jobs:
             type=ref,event=branch
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-
       - name: Build and push Docker image
         uses: docker/build-push-action@v6.18.0
         with:
@@ -195,7 +189,6 @@ jobs:
             netplan apply
             echo "Network configuration applied successfully"
             ip route show
-
   deploy:
     name: Deploy ${{ matrix.job }}
     needs: [detect-changes, create-runner]
@@ -215,17 +208,14 @@ jobs:
         run: |
           # Default configuration
           CONFIG_JSON='{"name":"${{ matrix.job }}","version":"1.0.0","schedule":"*/15 * * * *"}'
-
           # Try to read config from package.json if it exists
           if [ -f "cronjobs/${{ matrix.job }}/package.json" ]; then
             SCHEDULE=$(grep -Po '"schedule":\s*"\K[^"]*' cronjobs/${{ matrix.job }}/index.ts 2>/dev/null || echo "*/15 * * * *")
             CONFIG_JSON="{\"name\":\"${{ matrix.job }}\",\"version\":\"1.0.0\",\"schedule\":\"$SCHEDULE\"}"
           fi
-
           echo "config=$CONFIG_JSON" >> $GITHUB_OUTPUT
           SCHEDULE=$(echo $CONFIG_JSON | jq -r '.schedule')
           echo "schedule=$SCHEDULE" >> $GITHUB_OUTPUT
-
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
@@ -237,7 +227,6 @@ jobs:
             ssh-keyscan -H ${{ vars.SERVER_IP_SALKO0 }} >> ~/.ssh/known_hosts
           fi
           chmod 600 ~/.ssh/id_ed25519
-
       - name: Deploy to server
         env:
           SCHEDULE: ${{ steps.config.outputs.schedule }}
@@ -254,7 +243,6 @@ jobs:
             # Use manual input
             ENVIRONMENT="${{ github.event.inputs.environment || 'production' }}"
           fi
-
           # Set branch suffix based on environment
           if [ "$ENVIRONMENT" = "production" ]; then
             BRANCH_SUFFIX="prod"
@@ -263,33 +251,27 @@ jobs:
             BRANCH_SUFFIX="dev"
             SERVER_IP="${{ vars.SERVER_IP_SALKO0 }}"
           fi
-
           # Get image tag (use branch name or sha)
           IMAGE_TAG="${GITHUB_REF_NAME}-${GITHUB_SHA::7}"
-
           # Transfer environment-specific docker-compose file
           if [ "$ENVIRONMENT" = "production" ]; then
             scp -i ~/.ssh/id_ed25519 cronjobs/docker-compose.prod.yaml salko@$SERVER_IP:/home/salko/cronjobs/docker-compose.yaml
           else
             scp -i ~/.ssh/id_ed25519 cronjobs/docker-compose.dev.yaml salko@$SERVER_IP:/home/salko/cronjobs/docker-compose.yaml
           fi
-
           # Deploy via SSH
           ssh -i ~/.ssh/id_ed25519 salko@$SERVER_IP <<REMOTE_EOF
             set -e
             cd /home/salko
-
             # Pull latest image
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker pull ${{ env.IMAGE_PREFIX }}-${{ matrix.job }}:$IMAGE_TAG
-
             # Convert cron schedule to systemd timer format
             TIMER_SPEC="*:0/15"  # Default: every 15 minutes
             if [ "$SCHEDULE" = "*/5 * * * *" ]; then TIMER_SPEC="*:0/5"; fi
             if [ "$SCHEDULE" = "*/15 * * * *" ]; then TIMER_SPEC="*:0/15"; fi
             if [ "$SCHEDULE" = "*/30 * * * *" ]; then TIMER_SPEC="*:0/30"; fi
             if [ "$SCHEDULE" = "0 * * * *" ]; then TIMER_SPEC="*:00"; fi
-
             # Create systemd service file in home directory (will be moved by Ansible/manual setup)
             mkdir -p ~/systemd
             cat > ~/systemd/salko-cronjob-${{ matrix.job }}.service <<SERVICE_EOF
@@ -297,7 +279,6 @@ jobs:
           Description=SaLKo Cronjob: ${{ matrix.job }}
           After=network.target docker.service
           Requires=docker.service
-
           [Service]
           Type=oneshot
           User=salko
@@ -308,25 +289,20 @@ jobs:
           StandardOutput=append:/var/log/salko/cronjobs/${{ matrix.job }}.log
           StandardError=append:/var/log/salko/cronjobs/${{ matrix.job }}.error.log
           SERVICE_EOF
-
             # Create systemd timer file
             cat > ~/systemd/salko-cronjob-${{ matrix.job }}.timer <<TIMER_EOF
           [Unit]
           Description=SaLKo Cronjob Timer: ${{ matrix.job }}
-
           [Timer]
           OnCalendar=$TIMER_SPEC
           Persistent=true
-
           [Install]
           WantedBy=timers.target
           TIMER_EOF
-
             echo "Systemd files created in ~/systemd/"
             echo "Please run Ansible playbook or manually install systemd files with sudo privileges"
             ls -la ~/systemd/
           REMOTE_EOF
-
   cleanup-runner:
     name: Cleanup Hetzner Cloud runner
     needs: [create-runner, deploy]
@@ -354,7 +330,6 @@ jobs:
           echo "**Environment:** ${{ github.event.inputs.environment || 'production' }}" >> $GITHUB_STEP_SUMMARY
           echo "**Deployed Jobs:** ${{ needs.detect-changes.outputs.jobs }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-
           if [ "${{ needs.deploy.result }}" = "success" ]; then
             echo "✅ All cronjobs deployed successfully" >> $GITHUB_STEP_SUMMARY
           else
