@@ -303,18 +303,22 @@ jobs:
             echo "Please run Ansible playbook or manually install systemd files with sudo privileges"
             ls -la ~/systemd/
           REMOTE_EOF
-  cleanup-runner:
-    name: Cleanup Hetzner Cloud runner
-    needs: [create-runner, deploy]
-    if: always()
+
+  delete-runner:
+    name: Delete Hetzner Cloud runner
+    needs:
+      - create-runner
+      - deploy
     runs-on: ubuntu-24.04
+    if: ${{ always() }}
     steps:
-      - name: Cleanup runner
+      - name: Delete runner
         uses: Cyclenerd/hcloud-github-runner@v1.3.0
         with:
           mode: delete
           github_token: ${{ secrets.HETZNER_GHA_RUNNER_PAT }}
           hcloud_token: ${{ secrets.HETZNER_API_TOKEN }}
+          name: ${{ needs.create-runner.outputs.label }}
           server_id: ${{ needs.create-runner.outputs.server_id }}
 
   summary:
