@@ -1,0 +1,19 @@
+{
+  "name": "salko-cronjob-update-metar",
+  "version": "1.0.0",
+  "description": "METAR weather data update cronjob for SaLKo website",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx index.ts"
+  },
+  "dependencies": {
+    "pg": "^8.16.3",
+    "tsx": "^4.19.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "@types/pg": "^8.15.6",
+    "typescript": "^5.9.2"
+  }
+}

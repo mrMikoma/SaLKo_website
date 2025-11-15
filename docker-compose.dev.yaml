@@ -69,7 +69,8 @@ services:
 
 networks:
   internal:
-    driver: bridge
+    external: true
+    name: salko_dev_internal
   outgoing:
     external: true
     name: global_outgoing

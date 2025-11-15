@@ -44,8 +44,8 @@ const Navbar = ({ session }: { session: Session | null }) => {
   };
 
   return (
-    <div className="w-full bg-sblued border-b border-sred">
-      <nav className="container relative flex flex-wrap items-center justify-between p-4 px-4">
+    <div className="w-full glass sticky top-0 z-50 border-b border-sred/30 transition-all duration-300">
+      <nav className="container relative flex flex-wrap items-center justify-between p-4 px-6 mx-auto">
         {/* Logo and Mobile Menu Toggle */}
         <div className="flex flex-wrap items-center justify-between w-full lg:w-auto">
           <Link href="/">
@@ -67,34 +67,36 @@ const Navbar = ({ session }: { session: Session | null }) => {
         <div className="hidden text-center lg:flex items-center justify-center">
           <ul className="items-center justify-center flex-1 pt-6 pl-6 list-none lg:pt-0 lg:flex">
             {/* Kerho (Club) */}
-            <li className="mr-3 nav__item border-sred hover:border-b-2">
+            <li className="mr-3 nav__item group">
               <Menu as="div" className="ml-auto relative">
                 {({ open }) => (
                   <div className="relative">
-                    <MenuButton className="group inline-block px-4 py-2 text-2xl uppercase no-underline text-center">
+                    <MenuButton className="group inline-block px-4 py-2 text-lg font-medium no-underline text-center hover:text-sbluel transition-colors duration-200 relative">
                       <div className="flex flex-row items-center">
                         <span>Kerho</span>
                         {/* Arrow Icon */}
                         <span
-                          className={`transition-transform ${
+                          className={`transition-transform duration-200 ${
                             open ? "rotate-180" : ""
-                          } mt-1`}
+                          } ml-1`}
                         >
-                          <ArrowDownIcon size={30} />
+                          <ArrowDownIcon size={20} />
                         </span>
                       </div>
+                      {/* Hover underline effect */}
+                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-sred transition-all duration-300 group-hover:w-full"></span>
                     </MenuButton>
 
                     {/* Menu Items*/}
                     <MenuItems
                       className={`${
                         open ? "block" : "hidden"
-                      } absolute w-48 bg-blue-800 shadow-lg z-50 uppercase text-left`}
+                      } absolute w-56 mt-2 bg-sblued/95 backdrop-blur-lg shadow-xl z-50 text-left rounded-lg border border-sred/20 overflow-hidden animate-slide-in`}
                     >
                       <MenuItem>
                         <Link
                           href="/kerho"
-                          className="block py-4 pl-2 hover:bg-indigo-600"
+                          className="block py-3 px-4 text-swhite hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
                         >
                           Kerho
                         </Link>
@@ -102,7 +104,7 @@ const Navbar = ({ session }: { session: Session | null }) => {
                       <MenuItem>
                         <Link
                           href="/kerho/jasenyys"
-                          className="block py-4 pl-2 hover:bg-indigo-600"
+                          className="block py-3 px-4 text-swhite hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
                         >
                           Jäsenyys
                         </Link>
@@ -110,7 +112,7 @@ const Navbar = ({ session }: { session: Session | null }) => {
                       <MenuItem>
                         <Link
                           href="/kerho/historiaa"
-                          className="block py-4 pl-2 hover:bg-indigo-600"
+                          className="block py-3 px-4 text-swhite hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
                         >
                           Historiaa
                         </Link>
@@ -118,7 +120,7 @@ const Navbar = ({ session }: { session: Session | null }) => {
                       <MenuItem>
                         <Link
                           href="/kerho/hallit"
-                          className="block py-4 pl-2 hover:bg-indigo-600"
+                          className="block py-3 px-4 text-swhite hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
                         >
                           Hallit
                         </Link>
@@ -130,34 +132,36 @@ const Navbar = ({ session }: { session: Session | null }) => {
             </li>
 
             {/* Kalusto (Planes) with Dropdown Menu */}
-            <li className="mr-3 nav__item border-sred hover:border-b-2">
+            <li className="mr-3 nav__item group">
               <Menu as="div" className="ml-auto relative">
                 {({ open }) => (
                   <div className="relative">
-                    <MenuButton className="group inline-block px-4 py-2 text-2xl uppercase no-underline text-center">
+                    <MenuButton className="group inline-block px-4 py-2 text-lg font-medium no-underline text-center hover:text-sbluel transition-colors duration-200 relative">
                       <div className="flex flex-row items-center">
                         <span>Kalusto</span>
                         {/* Arrow Icon */}
                         <span
-                          className={`transition-transform ${
+                          className={`transition-transform duration-200 ${
                             open ? "rotate-180" : ""
-                          } mt-1`}
+                          } ml-1`}
                         >
-                          <ArrowDownIcon size={30} />
+                          <ArrowDownIcon size={20} />
                         </span>
                       </div>
+                      {/* Hover underline effect */}
+                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-sred transition-all duration-300 group-hover:w-full"></span>
                     </MenuButton>
 
                     {/* Menu Items*/}
                     <MenuItems
                       className={`${
                         open ? "block" : "hidden"
-                      } absolute w-48 bg-blue-800 shadow-lg z-50 uppercase text-left`}
+                      } absolute w-56 mt-2 bg-sblued/95 backdrop-blur-lg shadow-xl z-50 text-left rounded-lg border border-sred/20 overflow-hidden animate-slide-in`}
                     >
                       <MenuItem>
                         <Link
                           href="/kalusto"
-                          className="block py-4 pl-2 hover:bg-indigo-600"
+                          className="block py-3 px-4 text-swhite hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
                         >
                           Kalusto
                         </Link>
@@ -165,7 +169,7 @@ const Navbar = ({ session }: { session: Session | null }) => {
                       <MenuItem>
                         <Link
                           href="/kalusto/varauskalenteri"
-                          className="block py-4 pl-2 hover:bg-indigo-600"
+                          className="block py-3 px-4 text-swhite hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
                         >
                           Varauskalenteri
                         </Link>
@@ -177,32 +181,35 @@ const Navbar = ({ session }: { session: Session | null }) => {
             </li>
 
             {/* Koulutus */}
-            <li className="mr-3 nav__item border-sred hover:border-b-2">
+            <li className="mr-3 nav__item group">
               <Link
                 href="/koulutus"
-                className="inline-block px-6 py-2 text-2xl uppercase no-underline rounded-md"
+                className="inline-block px-4 py-2 text-lg font-medium no-underline hover:text-sbluel transition-colors duration-200 relative"
               >
                 Koulutus
+                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-sred transition-all duration-300 group-hover:w-full"></span>
               </Link>
             </li>
 
             {/* Kenttä */}
-            <li className="mr-3 nav__item border-sred hover:border-b-2">
+            <li className="mr-3 nav__item group">
               <Link
                 href="/kentta"
-                className="inline-block px-6 py-2 text-2xl uppercase no-underline rounded-md"
+                className="inline-block px-4 py-2 text-lg font-medium no-underline hover:text-sbluel transition-colors duration-200 relative"
               >
                 Kenttä
+                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-sred transition-all duration-300 group-hover:w-full"></span>
               </Link>
             </li>
 
             {/* Yhteystiedot */}
-            <li className="mr-3 nav__item border-sred hover:border-b-2">
+            <li className="mr-3 nav__item group">
               <Link
                 href="/yhteystiedot"
-                className="inline-block px-6 py-2 text-2xl uppercase no-underline rounded-md"
+                className="inline-block px-4 py-2 text-lg font-medium no-underline hover:text-sbluel transition-colors duration-200 relative"
               >
                 Yhteystiedot
+                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-sred transition-all duration-300 group-hover:w-full"></span>
               </Link>
             </li>
           </ul>
@@ -214,7 +221,7 @@ const Navbar = ({ session }: { session: Session | null }) => {
             {({ open }) => (
               <div className="relative">
                 {/* Menu Button for Member Area */}
-                <MenuButton className="px-6 py-2 text-swhite text-xl bg-sblue rounded-md shadow-xl hover:border-2 border-sred">
+                <MenuButton className="px-6 py-2 text-swhite text-lg font-medium bg-sblue rounded-lg shadow-lg hover:bg-sblue/80 hover:shadow-xl transition-all duration-200 border-2 border-transparent hover:border-sred">
                   Jäsenalue
                 </MenuButton>
 
@@ -222,12 +229,12 @@ const Navbar = ({ session }: { session: Session | null }) => {
                 <MenuItems
                   className={`${
                     open ? "block" : "hidden"
-                  } absolute right-0 w-48 mt-2 bg-white shadow-lg z-50 rounded-md`}
+                  } absolute right-0 w-56 mt-2 bg-sblued/95 backdrop-blur-lg shadow-xl z-50 rounded-lg border border-sred/20 overflow-hidden animate-slide-in`}
                 >
                   <MenuItem>
                     <Link
                       href="/profiili"
-                      className={`block px-4 py-2 text-black ${isAdmin ? "" : "rounded-t-md"} hover:bg-sbluel`}
+                      className="block px-4 py-3 text-swhite hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
                     >
                       Omat tiedot
                     </Link>
@@ -236,14 +243,14 @@ const Navbar = ({ session }: { session: Session | null }) => {
                     <MenuItem>
                       <Link
                         href="/admin"
-                        className="block px-4 py-2 text-black rounded-t-md hover:bg-sbluel"
+                        className="block px-4 py-3 text-swhite hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
                       >
                         Admin
                       </Link>
                     </MenuItem>
                   )}
                   <MenuItem>
-                    <div className="block px-4 py-2 text-black rounded-b-md hover:bg-sbluel">
+                    <div className="block px-4 py-3 text-swhite hover:bg-sblue/50 hover:text-sbluel transition-all duration-200">
                       <Logout onHandleLogout={handleLogout} />
                     </div>
                   </MenuItem>
@@ -256,12 +263,12 @@ const Navbar = ({ session }: { session: Session | null }) => {
         {/* Non-logged-in Member Area Button */}
         {!authenticated && (
           <Popover className="relative">
-            <PopoverButton className="px-6 py-2 text-swhite text-xl bg-sblue rounded-md shadow-xl hover:border-2 border-sred">
+            <PopoverButton className="px-6 py-2 text-swhite text-lg font-medium bg-sblue rounded-lg shadow-lg hover:bg-sblue/80 hover:shadow-xl transition-all duration-200 border-2 border-transparent hover:border-sred">
               Jäsenalue
             </PopoverButton>
             <PopoverPanel
               anchor="bottom start"
-              className="relative w-96 min-h-64 h-auto bg-sbluel rounded-lg shadow-lg z-50 mt-4 transition duration-200 ease-out data-[closed]:scale-95 data-[closed]:opacity-0"
+              className="relative w-96 min-h-64 h-auto bg-sblued/95 backdrop-blur-lg rounded-lg shadow-xl z-50 mt-4 border border-sred/20 transition duration-200 ease-out data-[closed]:scale-95 data-[closed]:opacity-0"
             >
               {({ close }) => (
                 <div className="relative p-4">

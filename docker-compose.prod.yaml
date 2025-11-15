@@ -163,4 +163,5 @@ networks:
   outgoing:
     driver: bridge
   internal:
-    driver: bridge
+    external: true
+    name: salko_prod_internal

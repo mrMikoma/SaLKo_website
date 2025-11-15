@@ -34,6 +34,9 @@
     - { path: /home/salko/postgres }
     - { path: /home/salko/postgres-dev }
     - { path: /home/salko/nextjs }
+    - { path: /home/salko/cronjobs }
+    - { path: /home/salko/systemd }
+    - { path: /var/log/salko/cronjobs }
 
 - name: Ensure acme.json file exists for Traefik
   ansible.builtin.file:

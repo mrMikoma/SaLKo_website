@@ -16,7 +16,7 @@ CREATE TABLE
     avatar_url TEXT,
     email_verified BOOLEAN DEFAULT FALSE,
     last_login TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW ()
   );
 
 -- Create bullets table
@@ -27,7 +27,7 @@ CREATE TABLE
     date BIGINT NOT NULL,
     title TEXT NOT NULL,
     content TEXT NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW (),
     FOREIGN KEY (user_id) REFERENCES users (id)
   );
 
@@ -42,8 +42,8 @@ CREATE TABLE
     type TEXT NOT NULL,
     title TEXT NOT NULL,
     description TEXT NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW (),
+    updated_at TIMESTAMPTZ DEFAULT NOW (),
     FOREIGN KEY (user_id) REFERENCES users (id)
   );
 
@@ -54,44 +54,152 @@ CREATE TABLE
     contact_name TEXT NOT NULL,
     contact_email TEXT NOT NULL,
     contact_phone TEXT NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW (),
     FOREIGN KEY (booking_id) REFERENCES bookings (id) ON DELETE CASCADE
   );
 
 -- Create indexes for guest bookings
-CREATE INDEX idx_guest_bookings_email ON guest_bookings(contact_email);
+CREATE INDEX idx_guest_bookings_email ON guest_bookings (contact_email);
 
 -- NextAuth required tables
-CREATE TABLE verification_tokens (
-  identifier TEXT NOT NULL,
-  token TEXT NOT NULL UNIQUE,
-  expires TIMESTAMPTZ NOT NULL,
-  PRIMARY KEY (identifier, token)
-);
+CREATE TABLE
+  verification_tokens (
+    identifier TEXT NOT NULL,
+    token TEXT NOT NULL UNIQUE,
+    expires TIMESTAMPTZ NOT NULL,
+    PRIMARY KEY (identifier, token)
+  );
 
-CREATE TABLE accounts (
-  id TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  type TEXT NOT NULL,
-  provider TEXT NOT NULL,
-  provider_account_id TEXT NOT NULL,
-  refresh_token TEXT,
-  access_token TEXT,
-  expires_at INTEGER,
-  token_type TEXT,
-  scope TEXT,
-  id_token TEXT,
-  session_state TEXT,
-  UNIQUE (provider, provider_account_id)
-);
+CREATE TABLE
+  accounts (
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid (),
+    user_id TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    type TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    provider_account_id TEXT NOT NULL,
+    refresh_token TEXT,
+    access_token TEXT,
+    expires_at INTEGER,
+    token_type TEXT,
+    scope TEXT,
+    id_token TEXT,
+    session_state TEXT,
+    UNIQUE (provider, provider_account_id)
+  );
 
-CREATE TABLE sessions (
-  id TEXT PRIMARY KEY DEFAULT gen_random_uuid(),
-  session_token TEXT NOT NULL UNIQUE,
-  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  expires TIMESTAMPTZ NOT NULL
-);
+CREATE TABLE
+  sessions (
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid (),
+    session_token TEXT NOT NULL UNIQUE,
+    user_id TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    expires TIMESTAMPTZ NOT NULL
+  );
 
 -- Create indexes for NextAuth tables
-CREATE INDEX idx_accounts_user_id ON accounts(user_id);
-CREATE INDEX idx_sessions_user_id ON sessions(user_id);
+CREATE INDEX idx_accounts_user_id ON accounts (user_id);
+
+CREATE INDEX idx_sessions_user_id ON sessions (user_id);
+
+-- METAR Weather Data Table
+-- Stores weather data from Aviation Weather Center API
+CREATE TABLE
+  IF NOT EXISTS metar_data (
+    id SERIAL PRIMARY KEY,
+    station_code VARCHAR(4) NOT NULL DEFAULT 'EFSA',
+    raw_metar TEXT NOT NULL,
+    temperature VARCHAR(10),
+    wind_speed VARCHAR(20),
+    wind_direction VARCHAR(10),
+    visibility VARCHAR(20),
+    clouds VARCHAR(50),
+    qnh VARCHAR(20),
+    observation_time TIMESTAMP,
+    fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT unique_observation UNIQUE (station_code, observation_time)
+  );
+
+-- Indexes for METAR queries
+CREATE INDEX IF NOT EXISTS idx_metar_station_fetched ON metar_data (station_code, fetched_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_metar_observation_time ON metar_data (observation_time DESC);
+
+-- View for latest METAR
+CREATE
+OR REPLACE VIEW latest_metar AS
+SELECT
+  *
+FROM
+  metar_data
+WHERE
+  station_code = 'EFSA'
+ORDER BY
+  fetched_at DESC
+LIMIT
+  1;
+
+-- METAR table comments
+COMMENT ON TABLE metar_data IS 'Stores METAR weather data for airports';
+
+COMMENT ON COLUMN metar_data.station_code IS 'ICAO airport code (e.g., EFSA)';
+
+COMMENT ON COLUMN metar_data.raw_metar IS 'Raw METAR string from Aviation Weather Center API';
+
+COMMENT ON COLUMN metar_data.observation_time IS 'Time of actual weather observation';
+
+COMMENT ON COLUMN metar_data.fetched_at IS 'Time when data was fetched from API';
+
+-- Insert mock METAR data for testing
+INSERT INTO
+  metar_data (
+    station_code,
+    raw_metar,
+    temperature,
+    wind_speed,
+    wind_direction,
+    visibility,
+    clouds,
+    qnh,
+    observation_time,
+    fetched_at
+  )
+VALUES
+  (
+    'EFSA',
+    'EFSA 151420Z 27015KT 9999 FEW025 SCT040 12/08 Q1013',
+    '12°C',
+    '8 m/s',
+    '270°',
+    '>10 km',
+    'Muutama (FEW) 750m, Hajanainen (SCT) 1200m',
+    '1013 hPa',
+    CURRENT_TIMESTAMP - INTERVAL '5 minutes',
+    CURRENT_TIMESTAMP
+  ) ON CONFLICT (station_code, observation_time) DO NOTHING;
+
+INSERT INTO
+  metar_data (
+    station_code,
+    raw_metar,
+    temperature,
+    wind_speed,
+    wind_direction,
+    visibility,
+    clouds,
+    qnh,
+    observation_time,
+    fetched_at
+  )
+VALUES
+  (
+    'EFSA',
+    'EFSA 151450Z 18010KT 9999 FEW025 SCT040 12/08 Q1013',
+    '15°C',
+    '8 m/s',
+    '180°',
+    '>10 km',
+    'Muutama (FEW) 750m, Hajanainen (SCT) 1200m',
+    '1013 hPa',
+    CURRENT_TIMESTAMP - INTERVAL '5 minutes',
+    CURRENT_TIMESTAMP
+  ) ON CONFLICT (station_code, observation_time) DO NOTHING;

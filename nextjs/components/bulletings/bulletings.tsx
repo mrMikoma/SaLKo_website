@@ -5,16 +5,20 @@ const Bulletings = async () => {
   const { status, result } = await fetchLatestFiveBulletings();
 
   return (
-    <div className="w-full h-full flex flex-col gap-2 z-50">
-      <span className="text-2xl text-center font-semibold uppercase text-white mx-4 my-6 pb-4 border-b border-sred">
-        Kerho tiedotteet
-      </span>
+    <div className="w-full h-full flex flex-col z-50">
+      <h3 className="text-2xl text-center font-bold text-swhite mb-6 pb-3 border-b-2 border-sred">
+        Kerhotiedotteet
+      </h3>
       {status === "success" ? (
-        result.map((item, index) => <Bullet key={index} item={item} />)
+        <div className="space-y-3">
+          {result.map((item, index) => <Bullet key={index} item={item} />)}
+        </div>
       ) : (
-        <span className="text-xl text-center font-semibold text-white">
-          Ei tiedotteita
-        </span>
+        <div className="text-center py-8">
+          <span className="text-lg font-medium text-swhite/70">
+            Ei tiedotteita
+          </span>
+        </div>
       )}
     </div>
   );

@@ -2,7 +2,9 @@
 .env.*
 !.env.template
 lentokerho.sql
+SaLKo nettisivut sisältö 12-2024.pdf
 
 /letsencrypt
 /postgres/postgres-data
 /postgres/pgadmin-data
+/node_modules

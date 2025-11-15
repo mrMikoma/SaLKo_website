@@ -49,9 +49,11 @@
     executable: /bin/bash
   changed_when: false
 
-- name: Create 'global_outgoing' Docker network
+- name: Create required Docker networks
   ansible.builtin.shell: |
     docker network create --driver bridge global_outgoing || true
+    docker network create --driver bridge salko_dev_internal || true
+    docker network create --driver bridge salko_prod_internal || true
   args:
     executable: /bin/bash
   changed_when: false

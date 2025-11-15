@@ -1,0 +1,357 @@
+name: Deploy Background Cronjobs
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - dev
+      specific_job:
+        description: 'Specific cronjob to deploy (leave empty for all)'
+        required: false
+        type: string
+  push:
+    branches:
+      - main
+      - dev
+    paths:
+      - 'cronjobs/**'
+      - '.github/workflows/deploy-cronjobs-docker.yaml'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/${{ github.repository }}/cronjob
+
+jobs:
+  detect-changes:
+    name: Detect Changed Cronjobs
+    runs-on: ubuntu-24.04
+    outputs:
+      jobs: ${{ steps.detect.outputs.jobs }}
+      deploy_all: ${{ steps.detect.outputs.deploy_all }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed cronjobs
+        id: detect
+        run: |
+          # If specific job specified in manual trigger, use that
+          if [ -n "${{ github.event.inputs.specific_job }}" ]; then
+            echo "jobs=[\"${{ github.event.inputs.specific_job }}\"]" >> $GITHUB_OUTPUT
+            echo "deploy_all=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Detect all available cronjobs (those with Dockerfiles)
+          ALL_JOBS=$(find cronjobs -mindepth 1 -maxdepth 1 -type d -exec test -f {}/Dockerfile \; -exec basename {} \; | jq -R -s -c 'split("\n") | map(select(length > 0))')
+
+          # On push, detect changed jobs
+          if [ "${{ github.event_name }}" = "push" ]; then
+            CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep '^cronjobs/' || true)
+
+            if [ -z "$CHANGED_FILES" ]; then
+              # No cronjob changes, but workflow file changed - deploy all
+              echo "jobs=$ALL_JOBS" >> $GITHUB_OUTPUT
+              echo "deploy_all=true" >> $GITHUB_OUTPUT
+            else
+              # Extract changed job directories
+              CHANGED_JOBS=$(echo "$CHANGED_FILES" | cut -d'/' -f2 | sort -u | jq -R -s -c 'split("\n") | map(select(length > 0))')
+              echo "jobs=$CHANGED_JOBS" >> $GITHUB_OUTPUT
+              echo "deploy_all=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            # Manual trigger without specific job - deploy all
+            echo "jobs=$ALL_JOBS" >> $GITHUB_OUTPUT
+            echo "deploy_all=true" >> $GITHUB_OUTPUT
+          fi
+
+  build-and-push:
+    name: Build ${{ matrix.job }}
+    needs: [detect-changes]
+    if: ${{ needs.detect-changes.outputs.jobs != '[]' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        job: ${{ fromJson(needs.detect-changes.outputs.jobs) }}
+      fail-fast: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5.0.0
+
+      - name: Validate cronjob exists
+        run: |
+          if [ ! -d "cronjobs/${{ matrix.job }}" ]; then
+            echo "Error: Cronjob directory 'cronjobs/${{ matrix.job }}' not found"
+            exit 1
+          fi
+          if [ ! -f "cronjobs/${{ matrix.job }}/Dockerfile" ]; then
+            echo "Error: Dockerfile 'cronjobs/${{ matrix.job }}/Dockerfile' not found"
+            exit 1
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3.11.1
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3.6.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5.9.0
+        with:
+          images: ${{ env.IMAGE_PREFIX }}-${{ matrix.job }}
+          tags: |
+            type=sha,prefix={{branch}}-
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6.18.0
+        with:
+          context: .
+          file: cronjobs/${{ matrix.job }}/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  create-runner:
+    name: Create Hetzner Cloud runner
+    needs: [detect-changes, build-and-push]
+    runs-on: ubuntu-24.04
+    outputs:
+      label: ${{ steps.create-hcloud-runner.outputs.label }}
+      server_id: ${{ steps.create-hcloud-runner.outputs.server_id }}
+    steps:
+      - name: Create runner
+        id: create-hcloud-runner
+        uses: Cyclenerd/hcloud-github-runner@v1.3.0
+        with:
+          mode: create
+          github_token: ${{ secrets.HETZNER_GHA_RUNNER_PAT }}
+          hcloud_token: ${{ secrets.HETZNER_API_TOKEN }}
+          network: ${{ secrets.HETZNER_NETWORK_ID }}
+          ssh_key: ${{ secrets.HETZNER_GHA_RUNNER_SSH_KEY_ID }}
+          server_type: cx23
+          location: hel1
+          image: ubuntu-24.04
+          pre_runner_script: |
+            set -ex
+            echo "Configuring private network routing..."
+            sleep 10
+            PRIVATE_IFACE=$(ip -o addr show | grep "10.1.1." | awk '{print $2}' | head -n1)
+            if [ -z "$PRIVATE_IFACE" ]; then
+              echo "No private interface found in 10.1.1.0/24 subnet, skipping network configuration"
+              exit 0
+            fi
+            PRIVATE_IP=$(ip -o -4 addr show $PRIVATE_IFACE | awk '{print $4}' | cut -d/ -f1)
+            echo "Found interface $PRIVATE_IFACE with IP $PRIVATE_IP"
+            cat > /etc/netplan/60-private-network.yaml <<'NETPLAN_EOF'
+            network:
+              version: 2
+              renderer: networkd
+              ethernets:
+                PLACEHOLDER_IFACE:
+                  dhcp4: false
+                  dhcp6: false
+                  accept-ra: false
+                  addresses:
+                    - PLACEHOLDER_IP/32
+                  routes:
+                    - to: 10.1.0.0/16
+                      via: 10.1.0.1
+                      on-link: true
+                      metric: 100
+                  nameservers:
+                    addresses:
+                      - 1.1.1.1
+                      - 1.0.0.1
+            NETPLAN_EOF
+            sed -i "s/PLACEHOLDER_IFACE/$PRIVATE_IFACE/g" /etc/netplan/60-private-network.yaml
+            sed -i "s|PLACEHOLDER_IP|$PRIVATE_IP|g" /etc/netplan/60-private-network.yaml
+            netplan apply
+            echo "Network configuration applied successfully"
+            ip route show
+
+  deploy:
+    name: Deploy ${{ matrix.job }}
+    needs: [detect-changes, create-runner]
+    if: ${{ needs.detect-changes.outputs.jobs != '[]' }}
+    runs-on: ${{ needs.create-runner.outputs.label }}
+    strategy:
+      matrix:
+        job: ${{ fromJson(needs.detect-changes.outputs.jobs) }}
+      fail-fast: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5.0.0
+
+      - name: Read cronjob configuration
+        id: config
+        run: |
+          # Default configuration
+          CONFIG_JSON='{"name":"${{ matrix.job }}","version":"1.0.0","schedule":"*/15 * * * *"}'
+
+          # Try to read config from package.json if it exists
+          if [ -f "cronjobs/${{ matrix.job }}/package.json" ]; then
+            SCHEDULE=$(grep -Po '"schedule":\s*"\K[^"]*' cronjobs/${{ matrix.job }}/index.ts 2>/dev/null || echo "*/15 * * * *")
+            CONFIG_JSON="{\"name\":\"${{ matrix.job }}\",\"version\":\"1.0.0\",\"schedule\":\"$SCHEDULE\"}"
+          fi
+
+          echo "config=$CONFIG_JSON" >> $GITHUB_OUTPUT
+          SCHEDULE=$(echo $CONFIG_JSON | jq -r '.schedule')
+          echo "schedule=$SCHEDULE" >> $GITHUB_OUTPUT
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          if [ "${{ github.event.inputs.environment || 'production' }}" = "production" ]; then
+            echo "${{ secrets.VPS_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/id_ed25519
+            ssh-keyscan -H ${{ vars.SERVER_IP_SALKO0 }} >> ~/.ssh/known_hosts
+          else
+            echo "${{ secrets.VPS_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/id_ed25519
+            ssh-keyscan -H ${{ vars.SERVER_IP_SALKO0 }} >> ~/.ssh/known_hosts
+          fi
+          chmod 600 ~/.ssh/id_ed25519
+
+      - name: Deploy to server
+        env:
+          SCHEDULE: ${{ steps.config.outputs.schedule }}
+        run: |
+          # Determine environment from branch or manual input
+          if [ "${{ github.event_name }}" = "push" ]; then
+            # Auto-detect from branch
+            if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+              ENVIRONMENT="production"
+            else
+              ENVIRONMENT="dev"
+            fi
+          else
+            # Use manual input
+            ENVIRONMENT="${{ github.event.inputs.environment || 'production' }}"
+          fi
+
+          # Set branch suffix based on environment
+          if [ "$ENVIRONMENT" = "production" ]; then
+            BRANCH_SUFFIX="prod"
+            SERVER_IP="${{ vars.SERVER_IP_SALKO0 }}"
+          else
+            BRANCH_SUFFIX="dev"
+            SERVER_IP="${{ vars.SERVER_IP_SALKO0 }}"
+          fi
+
+          # Get image tag (use branch name or sha)
+          IMAGE_TAG="${GITHUB_REF_NAME}-${GITHUB_SHA::7}"
+
+          # Transfer environment-specific docker-compose file
+          if [ "$ENVIRONMENT" = "production" ]; then
+            scp -i ~/.ssh/id_ed25519 cronjobs/docker-compose.prod.yaml salko@$SERVER_IP:/home/salko/cronjobs/docker-compose.yaml
+          else
+            scp -i ~/.ssh/id_ed25519 cronjobs/docker-compose.dev.yaml salko@$SERVER_IP:/home/salko/cronjobs/docker-compose.yaml
+          fi
+
+          # Deploy via SSH
+          ssh -i ~/.ssh/id_ed25519 salko@$SERVER_IP <<REMOTE_EOF
+            set -e
+            cd /home/salko
+
+            # Pull latest image
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker pull ${{ env.IMAGE_PREFIX }}-${{ matrix.job }}:$IMAGE_TAG
+
+            # Convert cron schedule to systemd timer format
+            TIMER_SPEC="*:0/15"  # Default: every 15 minutes
+            if [ "$SCHEDULE" = "*/5 * * * *" ]; then TIMER_SPEC="*:0/5"; fi
+            if [ "$SCHEDULE" = "*/15 * * * *" ]; then TIMER_SPEC="*:0/15"; fi
+            if [ "$SCHEDULE" = "*/30 * * * *" ]; then TIMER_SPEC="*:0/30"; fi
+            if [ "$SCHEDULE" = "0 * * * *" ]; then TIMER_SPEC="*:00"; fi
+
+            # Create systemd service file in home directory (will be moved by Ansible/manual setup)
+            mkdir -p ~/systemd
+            cat > ~/systemd/salko-cronjob-${{ matrix.job }}.service <<SERVICE_EOF
+          [Unit]
+          Description=SaLKo Cronjob: ${{ matrix.job }}
+          After=network.target docker.service
+          Requires=docker.service
+
+          [Service]
+          Type=oneshot
+          User=salko
+          WorkingDirectory=/home/salko
+          Environment="NAME_PREFIX=salko"
+          Environment="BRANCH_SUFFIX=$BRANCH_SUFFIX"
+          ExecStart=/usr/bin/docker compose -f cronjobs/docker-compose.yaml run --rm cronjob-${{ matrix.job }}
+          StandardOutput=append:/var/log/salko/cronjobs/${{ matrix.job }}.log
+          StandardError=append:/var/log/salko/cronjobs/${{ matrix.job }}.error.log
+          SERVICE_EOF
+
+            # Create systemd timer file
+            cat > ~/systemd/salko-cronjob-${{ matrix.job }}.timer <<TIMER_EOF
+          [Unit]
+          Description=SaLKo Cronjob Timer: ${{ matrix.job }}
+
+          [Timer]
+          OnCalendar=$TIMER_SPEC
+          Persistent=true
+
+          [Install]
+          WantedBy=timers.target
+          TIMER_EOF
+
+            echo "Systemd files created in ~/systemd/"
+            echo "Please run Ansible playbook or manually install systemd files with sudo privileges"
+            ls -la ~/systemd/
+          REMOTE_EOF
+
+  cleanup-runner:
+    name: Cleanup Hetzner Cloud runner
+    needs: [create-runner, deploy]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Cleanup runner
+        uses: Cyclenerd/hcloud-github-runner@v1.3.0
+        with:
+          mode: delete
+          github_token: ${{ secrets.HETZNER_GHA_RUNNER_PAT }}
+          hcloud_token: ${{ secrets.HETZNER_API_TOKEN }}
+          server_id: ${{ needs.create-runner.outputs.server_id }}
+
+  summary:
+    name: Deployment Summary
+    needs: [detect-changes, build-and-push, deploy]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Summary
+        run: |
+          echo "## Cronjob Deployment Summary (Docker)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ github.event.inputs.environment || 'production' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployed Jobs:** ${{ needs.detect-changes.outputs.jobs }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.deploy.result }}" = "success" ]; then
+            echo "✅ All cronjobs deployed successfully" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Some cronjobs failed to deploy" >> $GITHUB_STEP_SUMMARY
+          fi
