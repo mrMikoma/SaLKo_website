@@ -10,11 +10,11 @@
  *
  * Usage:
  *   npm run cronjob:update-metar
- *   tsx cronjobs/updateMetar/index.ts
+ *   tsx cronjobs/update-metar/index.ts
  *   docker run --rm -e DATABASE_CONNECTION_STRING="..." cronjob-update-metar
  */
 
-import { updateMETARData, cleanupOldMETARData } from "./lib/metarService";
+import { update-metarData, cleanupOldMETARData } from "./lib/metarService";
 import connectionPool from "./lib/db";
 
 interface CronjobConfig {
@@ -44,7 +44,7 @@ async function main() {
   try {
     // Update METAR data
     console.log("Fetching and storing METAR data...");
-    await updateMETARData();
+    await update-metarData();
 
     // Run cleanup once per day (at midnight hour)
     if (config.retention.enabled) {

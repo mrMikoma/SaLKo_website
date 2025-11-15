@@ -16,17 +16,19 @@ Fetches and stores METAR weather data for Savonlinna Airport (EFSA).
 npm run cronjob:update-metar
 
 # Direct execution
-tsx cronjobs/updateMetar/index.ts
+tsx cronjobs/update-metar/index.ts
 ```
 
 ## Environment Variables
 
 Required:
+
 - `DATABASE_CONNECTION_STRING` - PostgreSQL connection string
 
 ## Database
 
 Creates/updates records in the `metar_data` table:
+
 - Stores raw METAR and parsed weather data
 - Handles duplicate observations (upsert)
 - Automatic cleanup of old records
@@ -34,6 +36,7 @@ Creates/updates records in the `metar_data` table:
 ## Monitoring
 
 Check logs for:
+
 ```
 [timestamp] Starting update-metar v1.0.0
 Fetching and storing METAR data...

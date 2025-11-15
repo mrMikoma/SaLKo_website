@@ -5,7 +5,7 @@ FROM node:lts-alpine
 WORKDIR /app
 
 # Copy cronjob files
-COPY cronjobs/updateMetar/ ./
+COPY cronjobs/update-metar/ ./
 
 # Install dependencies
 RUN npm install --production

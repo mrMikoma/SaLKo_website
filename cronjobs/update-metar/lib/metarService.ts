@@ -106,7 +106,7 @@ export async function storeMETARInDB(
  * Fetch and store METAR data (main service function)
  * This should be called by a cron job or background service
  */
-export async function updateMETARData(
+export async function update-metarData(
   stationCode: string = STATION_CODE
 ): Promise<void> {
   try {

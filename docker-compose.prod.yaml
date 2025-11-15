@@ -1,63 +1,20 @@
 services:
-  traefik:
-    image: "traefik:v3.3.1"
-    container_name: ${NAME_PREFIX}-traefik
-    command:
-      - "--log.level=DEBUG"
-      - "--api.insecure=false"
-      - "--api.dashboard=false"
-      - "--providers.docker=true"
-      - "--providers.docker.network=${NAME_PREFIX}_outgoing"
-      - "--providers.docker.exposedbydefault=false"
-      - "--entryPoints.web.address=:80"
-      - "--entryPoints.websecure.address=:443"
-      # - "--entryPoints.web.http.redirections.entryPoint.to=websecure"
-      # - "--entryPoints.web.http.redirections.entryPoint.scheme=https"
-      - "--certificatesresolvers.myresolver.acme.httpchallenge=true"
-      - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
-      - "--certificatesresolvers.myresolver.acme.email=${HTTP_RESOLVER_EMAIL}"
-      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
-      - "--certificatesresolvers.myresolver.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
-    ports:
-      - "80:80"
-      - "443:443"
+  postgres:
+    image: postgres:17.5
+    container_name: ${NAME_PREFIX}-postgres
     networks:
-      - outgoing
+      - internal_prod
+    env_file: .env.prod
     volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock:ro"
-      - "./letsencrypt:/letsencrypt"
-    restart: always
-
-  watchtower:
-    image: "ghcr.io/containrrr/watchtower:amd64-1.7.1"
-    container_name: ${NAME_PREFIX}-watchtower
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - /root/.docker/config.json:/config.json
-    command: --interval 30 --cleanup --rolling-restart --label-enable
-    restart: always
-
-  postgres-dev:
-    image: "postgres:17.2"
-    container_name: ${NAME_PREFIX}-postgres-${DEV_SUFFIX}
-    networks:
-      - internal
-    environment:
-      - POSTGRES_USER=${DEV_POSTGRES_USER}
-      - POSTGRES_PASSWORD=${DEV_POSTGRES_PASSWORD}
-      - POSTGRES_DB=${DEV_POSTGRES_DB}
-      - TZ=UTC
-      - PGTZ=UTC
-    command: postgres -c timezone=UTC
-    volumes:
-      - ./postgres-${DEV_SUFFIX}/postgres-data:/var/lib/postgresql/data
-      - ./postgres-${DEV_SUFFIX}/init/init.sql:/docker-entrypoint-initdb.d/init.sql
-    restart: always
+      - /home/salko/postgres/init:/docker-entrypoint-initdb.d:ro
+      - /home/salko/postgres/postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "postgres"]
+      test: ["CMD-SHELL", "pg_isready -d ${POSTGRES_DB} -U ${POSTGRES_USER}"]
       interval: 30s
-      timeout: 10s
+      timeout: 60s
       retries: 5
+      start_period: 80s
 
   nextjs-dev:
     image: "ghcr.io/mrmikoma/salko_website-nextjs-dev:latest"

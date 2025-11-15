@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "cronjob:update-metar": "tsx ../cronjobs/updateMetar/index.ts"
+    "cronjob:update-metar": "tsx ../cronjobs/update-metar/index.ts"
   },
   "dependencies": {
     "@ant-design/nextjs-registry": "^1.2.0",

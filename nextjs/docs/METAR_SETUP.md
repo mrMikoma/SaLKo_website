@@ -15,26 +15,30 @@ Aviation Weather API → Background Service → PostgreSQL → Server Action →
 ### Components
 
 1. **Database Schema** (`db/schema/metar.sql`)
+
    - Stores raw and parsed METAR data
    - Includes indexes for performance
    - View for latest METAR
 
 2. **METAR Parser** (`utilities/metarParser.ts`)
+
    - Parses raw METAR strings
    - Extracts temperature, wind, visibility, clouds, QNH
    - Handles edge cases (calm wind, variable wind, etc.)
 
 3. **METAR Service** (`services/metarService.ts`)
+
    - Fetches data from Aviation Weather API
    - Stores data in PostgreSQL
    - Retrieves latest data from database
 
 4. **Server Actions** (`utilities/metarActions.ts`)
+
    - Provides `getLatestMETAR()` for client components
    - Handles errors gracefully
 
 5. **Update Scripts**
-   - `scripts/updateMETAR.ts` - CLI script for cron
+   - `scripts/update-metar.ts` - CLI script for cron
    - `app/api/cron/metar/route.ts` - API route for external cron services
 
 ## Setup Instructions
@@ -169,7 +173,7 @@ CREATE TABLE metar_data (
 
 - Old METAR data (>7 days) is automatically cleaned up
 - Cleanup runs once daily at midnight
-- Configurable in `updateMETAR.ts`
+- Configurable in `update-metar.ts`
 
 ## Monitoring
 
@@ -191,11 +195,13 @@ psql $DATABASE_CONNECTION_STRING -c "SELECT * FROM metar_data ORDER BY fetched_a
 ### No data showing
 
 1. Check database connection:
+
    ```bash
    psql $DATABASE_CONNECTION_STRING -c "SELECT COUNT(*) FROM metar_data;"
    ```
 
 2. Manually fetch data:
+
    ```bash
    npm run update-metar
    ```
@@ -230,10 +236,10 @@ const response = await getLatestMETAR();
 ### Service Functions
 
 ```typescript
-import { updateMETARData, getLatestMETARFromDB } from "@/services/metarService";
+import { update-metarData, getLatestMETARFromDB } from "@/services/metarService";
 
 // Fetch and store new data
-await updateMETARData("EFSA");
+await update-metarData("EFSA");
 
 // Get latest from database
 const metar = await getLatestMETARFromDB("EFSA");

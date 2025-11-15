@@ -10,5 +10,5 @@ SaLKo nettisivut sisältö 12-2024.pdf
 /node_modules
 
 # Cronjobs
-/cronjobs/updateMetar/node_modules
-/cronjobs/updateMetar/package-lock.json
+/cronjobs/update-metar/node_modules
+/cronjobs/update-metar/package-lock.json

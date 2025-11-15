@@ -3,14 +3,14 @@ services:
   cronjob-update-metar:
     build:
       context: ..
-      dockerfile: cronjobs/updateMetar/Dockerfile
+      dockerfile: cronjobs/update-metar/Dockerfile
     container_name: ${NAME_PREFIX:-salko}-cronjob-update-metar-${BRANCH_SUFFIX:-prod}
     networks:
       - internal_prod
+    env_file: .env.prod
     environment:
-      # Database connection - will use environment-specific values from .env file
-      - DATABASE_CONNECTION_STRING=${DATABASE_CONNECTION_STRING:-postgresql://salko_app:salko_app@${NAME_PREFIX:-salko}-postgres-${BRANCH_SUFFIX:-prod}:5432/salko}
-    restart: "no" # Cronjobs should not restart automatically
+      - DATABASE_CONNECTION_STRING=postgresql://${APP_DB_USER}:${APP_DB_PASSWORD}@${NAME_PREFIX}-postgres-${BRANCH_SUFFIX}:${PGPORT}/${POSTGRES_DB}
+    restart: "no"
 
 networks:
   internal_prod:
