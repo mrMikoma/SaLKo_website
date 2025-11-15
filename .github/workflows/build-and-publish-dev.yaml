@@ -1,15 +1,15 @@
 name: Build and Publish Development
 
 on:
-  pull_request:
-    branches:
-      - main
-    paths:
-      - "nextjs/**"
-      - "docker-compose.dev.yaml"
-      - "postgres/init/**"
-      - ".github/workflows/build-and-publish-dev.yaml"
-      - ".github/workflows/deploy-app-dev.yaml"
+  # pull_request:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - "nextjs/**"
+  #     - "docker-compose.dev.yaml"
+  #     - "postgres/init/**"
+  #     - ".github/workflows/build-and-publish-dev.yaml"
+  #     - ".github/workflows/deploy-app-dev.yaml"
   push:
     branches:
       - dev
