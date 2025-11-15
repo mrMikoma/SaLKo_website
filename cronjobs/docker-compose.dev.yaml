@@ -7,7 +7,7 @@ services:
     container_name: ${NAME_PREFIX:-salko}-cronjob-update-metar-${BRANCH_SUFFIX:-dev}
     networks:
       - internal_dev
-    env_file: .env.dev
+    env_file: ../.env.dev
     environment:
       - DATABASE_CONNECTION_STRING=postgresql://${APP_DB_USER}:${APP_DB_PASSWORD}@${NAME_PREFIX}-postgres-${BRANCH_SUFFIX}:${PGPORT}/${POSTGRES_DB}
     restart: "no"
