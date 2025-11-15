@@ -10,7 +10,7 @@ on:
         type: choice
         options:
           - production
-          - dev
+          - development
       specific_job:
         description: 'Specific cronjob to deploy (leave empty for all)'
         required: false
@@ -25,7 +25,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_PREFIX: ghcr.io/${{ github.repository }}/cronjob
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/salko_website/cronjob
 
 jobs:
   detect-changes:
