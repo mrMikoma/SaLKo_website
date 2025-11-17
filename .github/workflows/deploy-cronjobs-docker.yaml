@@ -231,24 +231,9 @@ jobs:
           echo "config=$CONFIG_JSON" >> $GITHUB_OUTPUT
           SCHEDULE=$(echo $CONFIG_JSON | jq -r '.schedule')
           echo "schedule=$SCHEDULE" >> $GITHUB_OUTPUT
-      - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh
-          if [ "${{ github.event.inputs.environment || 'production' }}" = "production" ]; then
-            echo "${{ secrets.VPS_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/id_ed25519
-            ssh-keyscan -H ${{ vars.SERVER_IP_SALKO0 }} >> ~/.ssh/known_hosts
-          else
-            echo "${{ secrets.VPS_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/id_ed25519
-            ssh-keyscan -H ${{ vars.SERVER_IP_SALKO0 }} >> ~/.ssh/known_hosts
-          fi
-          chmod 600 ~/.ssh/id_ed25519
-      - name: Deploy to server
-        env:
-          SCHEDULE: ${{ steps.config.outputs.schedule }}
-          NAME_PREFIX: "salko"
-          PGPORT: "5432"
-          POSTGRES_DB: "salko"
-          APP_DB_USER: "salko_app"
+
+      - name: Define deployment variables
+        id: vars
         run: |
           # Determine environment from branch or manual input
           if [ "${{ github.event_name }}" = "push" ]; then
@@ -262,92 +247,107 @@ jobs:
             # Use manual input
             ENVIRONMENT="${{ github.event.inputs.environment || 'production' }}"
           fi
+
           # Set branch suffix based on environment
           if [ "$ENVIRONMENT" = "production" ]; then
             BRANCH_SUFFIX="prod"
-            SERVER_IP="${{ vars.SERVER_IP_SALKO0 }}"
-            SITE_PREFIX="www"
           else
             BRANCH_SUFFIX="dev"
-            SERVER_IP="${{ vars.SERVER_IP_SALKO0 }}"
-            SITE_PREFIX="kehitys"
           fi
+
           # Get image tag (use branch name or sha)
           IMAGE_TAG="${GITHUB_REF_NAME}-${GITHUB_SHA::7}"
           IMAGE_NAME="${{ env.IMAGE_PREFIX }}-${{ matrix.job }}"
 
+          # Export all variables to GITHUB_ENV for use in subsequent steps
+          echo "ENVIRONMENT=${ENVIRONMENT}" >> $GITHUB_ENV
+          echo "BRANCH_SUFFIX=${BRANCH_SUFFIX}" >> $GITHUB_ENV
+          echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_ENV
+          echo "IMAGE_NAME=${IMAGE_NAME}" >> $GITHUB_ENV
+          echo "SERVER_IP=${{ vars.SERVER_IP_SALKO0 }}" >> $GITHUB_ENV
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ vars.SERVER_IP_SALKO0 }} >> ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_ed25519
+
+      - name: Deploy to server
+        env:
+          SCHEDULE: ${{ steps.config.outputs.schedule }}
+          NAME_PREFIX: "salko"
+          PGPORT: "5432"
+          POSTGRES_DB: "salko"
+          APP_DB_USER: "salko_app"
+        run: |
           # Transfer environment-specific docker-compose file
-          if [ "$ENVIRONMENT" = "production" ]; then
-            scp -i ~/.ssh/id_ed25519 cronjobs/docker-compose.prod.yaml salko@$SERVER_IP:/home/salko/cronjobs/docker-compose.yaml
+          if [ "${{ env.ENVIRONMENT }}" = "production" ]; then
+            scp -i ~/.ssh/id_ed25519 cronjobs/docker-compose.prod.yaml salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/cronjobs/docker-compose.yaml
           else
-            scp -i ~/.ssh/id_ed25519 cronjobs/docker-compose.dev.yaml salko@$SERVER_IP:/home/salko/cronjobs/docker-compose.yaml
+            scp -i ~/.ssh/id_ed25519 cronjobs/docker-compose.dev.yaml salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/cronjobs/docker-compose.yaml
           fi
 
-          # Create .env file in cronjobs directory on the server
-          ssh -i ~/.ssh/id_ed25519 salko@$SERVER_IP << "EOF"
+          # Create .env file and deploy
+          ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} << "EOF"
             set -e
             cd /home/salko/cronjobs
 
             # Create or clear the .env file
-            > .env.${ENVIRONMENT}
+            > .env.${{ env.ENVIRONMENT }}
 
             # Append environment variables one by one
-            echo "NAME_PREFIX=${{ env.NAME_PREFIX }}" > .env.${ENVIRONMENT}
-            echo "BRANCH_SUFFIX=${BRANCH_SUFFIX}" >> .env.${ENVIRONMENT}
-            echo "IMAGE_TAG_NAME=${IMAGE_NAME}" >> .env.${ENVIRONMENT}
-            echo "IMAGE_VERSION=${IMAGE_TAG}" >> .env.${ENVIRONMENT}
-            echo "PGPORT=${{ env.PGPORT }}" >> .env.${ENVIRONMENT}
-            echo "POSTGRES_DB=${{ env.POSTGRES_DB }}" >> .env.${ENVIRONMENT}
-            echo "APP_DB_USER=${{ env.APP_DB_USER }}" >> .env.${ENVIRONMENT}
-            echo "APP_DB_PASSWORD=${{ secrets.APP_DB_PASSWORD }}" >> .env.${ENVIRONMENT}
+            echo "NAME_PREFIX=${{ env.NAME_PREFIX }}" > .env.${{ env.ENVIRONMENT }}
+            echo "BRANCH_SUFFIX=${{ env.BRANCH_SUFFIX }}" >> .env.${{ env.ENVIRONMENT }}
+            echo "IMAGE_TAG_NAME=${{ env.IMAGE_NAME }}" >> .env.${{ env.ENVIRONMENT }}
+            echo "IMAGE_VERSION=${{ env.IMAGE_TAG }}" >> .env.${{ env.ENVIRONMENT }}
+            echo "PGPORT=${{ env.PGPORT }}" >> .env.${{ env.ENVIRONMENT }}
+            echo "POSTGRES_DB=${{ env.POSTGRES_DB }}" >> .env.${{ env.ENVIRONMENT }}
+            echo "APP_DB_USER=${{ env.APP_DB_USER }}" >> .env.${{ env.ENVIRONMENT }}
+            echo "APP_DB_PASSWORD=${{ secrets.APP_DB_PASSWORD }}" >> .env.${{ env.ENVIRONMENT }}
 
             # Secure the .env file permissions (readable only by owner)
-            chmod 600 .env.${ENVIRONMENT}
-            echo ".env.${ENVIRONMENT} file created with environment variables."
-          EOF
-          
-          # Deploy via SSH
-          ssh -i ~/.ssh/id_ed25519 salko@$SERVER_IP <<REMOTE_EOF
-            set -e
-            cd /home/salko
-            # Pull latest image
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            docker pull ${{ env.IMAGE_PREFIX }}-${{ matrix.job }}:$IMAGE_TAG
+            chmod 600 .env.${{ env.ENVIRONMENT }}
+            echo ".env.${{ env.ENVIRONMENT }} file created with environment variables."
+
             # Convert cron schedule to systemd timer format
-            TIMER_SPEC="*:0/15"  # Default: every 15 minutes
-            if [ "$SCHEDULE" = "*/5 * * * *" ]; then TIMER_SPEC="*:0/5"; fi
-            if [ "$SCHEDULE" = "*/15 * * * *" ]; then TIMER_SPEC="*:0/15"; fi
-            if [ "$SCHEDULE" = "*/30 * * * *" ]; then TIMER_SPEC="*:0/30"; fi
-            if [ "$SCHEDULE" = "0 * * * *" ]; then TIMER_SPEC="*:00"; fi
-            # Create systemd service file in home directory (will be moved by Ansible/manual setup)
+            TIMER_SPEC="*:0/15"
+            if [ "${{ env.SCHEDULE }}" = "*/5 * * * *" ]; then TIMER_SPEC="*:0/5"; fi
+            if [ "${{ env.SCHEDULE }}" = "*/15 * * * *" ]; then TIMER_SPEC="*:0/15"; fi
+            if [ "${{ env.SCHEDULE }}" = "*/30 * * * *" ]; then TIMER_SPEC="*:0/30"; fi
+            if [ "${{ env.SCHEDULE }}" = "0 * * * *" ]; then TIMER_SPEC="*:00"; fi
+
+            # Create systemd service file
             mkdir -p ~/systemd
-            cat > ~/systemd/salko-cronjob-${{ matrix.job }}-${BRANCH_SUFFIX}.service <<SERVICE_EOF
+            cat > ~/systemd/salko-cronjob-${{ matrix.job }}-${{ env.BRANCH_SUFFIX }}.service << SERVICEFILE
           [Unit]
-          Description=SaLKo Cronjob: ${{ matrix.job }} (${BRANCH_SUFFIX})
+          Description=SaLKo Cronjob: ${{ matrix.job }} (${{ env.BRANCH_SUFFIX }})
           After=network.target docker.service
           Requires=docker.service
           [Service]
           Type=oneshot
           User=salko
           WorkingDirectory=/home/salko
-          ExecStart=/usr/bin/docker compose --env-file cronjobs/.env.${BRANCH_SUFFIX} -f cronjobs/docker-compose.yaml run --rm cronjob-${{ matrix.job }}
-          StandardOutput=append:/var/log/salko/cronjobs/${{ matrix.job }}-${BRANCH_SUFFIX}.log
-          StandardError=append:/var/log/salko/cronjobs/${{ matrix.job }}-${BRANCH_SUFFIX}.error.log
-          SERVICE_EOF
+          ExecStart=/usr/bin/docker compose --env-file cronjobs/.env.${{ env.BRANCH_SUFFIX }} -f cronjobs/docker-compose.yaml run --rm cronjob-${{ matrix.job }}
+          StandardOutput=append:/var/log/salko/cronjobs/${{ matrix.job }}-${{ env.BRANCH_SUFFIX }}.log
+          StandardError=append:/var/log/salko/cronjobs/${{ matrix.job }}-${{ env.BRANCH_SUFFIX }}.error.log
+          SERVICEFILE
+
             # Create systemd timer file
-            cat > ~/systemd/salko-cronjob-${{ matrix.job }}-${BRANCH_SUFFIX}.timer <<TIMER_EOF
+            cat > ~/systemd/salko-cronjob-${{ matrix.job }}-${{ env.BRANCH_SUFFIX }}.timer << TIMERFILE
           [Unit]
-          Description=SaLKo Cronjob Timer: ${{ matrix.job }} (${BRANCH_SUFFIX})
+          Description=SaLKo Cronjob Timer: ${{ matrix.job }} (${{ env.BRANCH_SUFFIX }})
           [Timer]
-          OnCalendar=$TIMER_SPEC
+          OnCalendar=\${TIMER_SPEC}
           Persistent=true
           [Install]
           WantedBy=timers.target
-          TIMER_EOF
+          TIMERFILE
+
             echo "Systemd files created in ~/systemd/"
             echo "Please run Ansible playbook or manually install systemd files with sudo privileges"
             ls -la ~/systemd/
-          REMOTE_EOF
+          EOF
 
   delete-runner:
     name: Delete Hetzner Cloud runner
