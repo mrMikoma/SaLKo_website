@@ -86,6 +86,9 @@ jobs:
       matrix:
         job: ${{ fromJson(needs.detect-changes.outputs.jobs) }}
       fail-fast: false
+    outputs:
+      image_tag: ${{ steps.image-info.outputs.image_tag }}
+      image_name: ${{ steps.image-info.outputs.image_name }}
 
     steps:
       - name: Checkout code
@@ -112,6 +115,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Determine image tag
+        id: image-info
+        run: |
+          IMAGE_TAG="${GITHUB_REF_NAME}-${GITHUB_SHA::7}"
+          IMAGE_NAME="${{ env.IMAGE_PREFIX }}-${{ matrix.job }}"
+          echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
+          echo "Building image: $IMAGE_NAME:$IMAGE_TAG"
+
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5.9.0
@@ -122,6 +134,7 @@ jobs:
             type=ref,event=branch
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
+            ${{ steps.image-info.outputs.image_tag }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6.18.0
@@ -193,7 +206,7 @@ jobs:
             ip route show
   deploy:
     name: Deploy ${{ matrix.job }}
-    needs: [detect-changes, create-runner]
+    needs: [detect-changes, build-and-push, create-runner]
     if: ${{ needs.detect-changes.outputs.jobs != '[]' }}
     runs-on: ${{ needs.create-runner.outputs.label }}
     strategy:
@@ -255,6 +268,8 @@ jobs:
           fi
           # Get image tag (use branch name or sha)
           IMAGE_TAG="${GITHUB_REF_NAME}-${GITHUB_SHA::7}"
+          IMAGE_NAME="${{ env.IMAGE_PREFIX }}-${{ matrix.job }}"
+
           # Transfer environment-specific docker-compose file
           if [ "$ENVIRONMENT" = "production" ]; then
             scp -i ~/.ssh/id_ed25519 cronjobs/docker-compose.prod.yaml salko@$SERVER_IP:/home/salko/cronjobs/docker-compose.yaml
@@ -266,8 +281,7 @@ jobs:
             set -e
             cd /home/salko
             # Pull latest image
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            docker pull ${{ env.IMAGE_PREFIX }}-${{ matrix.job }}:$IMAGE_TAG
+            docker pull $IMAGE_NAME:$IMAGE_TAG
             # Convert cron schedule to systemd timer format
             TIMER_SPEC="*:0/15"  # Default: every 15 minutes
             if [ "$SCHEDULE" = "*/5 * * * *" ]; then TIMER_SPEC="*:0/5"; fi
@@ -287,6 +301,8 @@ jobs:
           WorkingDirectory=/home/salko
           Environment="NAME_PREFIX=salko"
           Environment="BRANCH_SUFFIX=$BRANCH_SUFFIX"
+          Environment="IMAGE_TAG_NAME=$IMAGE_NAME"
+          Environment="IMAGE_VERSION=$IMAGE_TAG"
           ExecStart=/usr/bin/docker compose -f cronjobs/docker-compose.yaml run --rm cronjob-${{ matrix.job }}
           StandardOutput=append:/var/log/salko/cronjobs/${{ matrix.job }}.log
           StandardError=append:/var/log/salko/cronjobs/${{ matrix.job }}.error.log

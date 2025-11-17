@@ -1,9 +1,7 @@
 services:
   # METAR Update Cronjob
   cronjob-update-metar:
-    build:
-      context: ..
-      dockerfile: cronjobs/update-metar/Dockerfile
+    image: ${IMAGE_TAG_NAME}:${IMAGE_VERSION}
     container_name: ${NAME_PREFIX:-salko}-cronjob-update-metar-${BRANCH_SUFFIX:-dev}
     networks:
       - internal_dev

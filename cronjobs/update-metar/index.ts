@@ -14,7 +14,7 @@
  *   docker run --rm -e DATABASE_CONNECTION_STRING="..." cronjob-update-metar
  */
 
-import { update-metarData, cleanupOldMETARData } from "./lib/metarService";
+import { updateMetarData, cleanupOldMETARData } from "./lib/metarService";
 import connectionPool from "./lib/db";
 
 interface CronjobConfig {
@@ -39,12 +39,14 @@ const config: CronjobConfig = {
 
 async function main() {
   const startTime = Date.now();
-  console.log(`[${new Date().toISOString()}] Starting ${config.name} v${config.version}`);
+  console.log(
+    `[${new Date().toISOString()}] Starting ${config.name} v${config.version}`
+  );
 
   try {
     // Update METAR data
     console.log("Fetching and storing METAR data...");
-    await update-metarData();
+    await updateMetarData();
 
     // Run cleanup once per day (at midnight hour)
     if (config.retention.enabled) {
@@ -52,20 +54,31 @@ async function main() {
       const isCleanupTime = now.getHours() === 0 && now.getMinutes() < 15;
 
       if (isCleanupTime) {
-        console.log(`Running data cleanup (keep last ${config.retention.days} days)...`);
+        console.log(
+          `Running data cleanup (keep last ${config.retention.days} days)...`
+        );
         await cleanupOldMETARData(config.retention.days);
       }
     }
 
     const duration = Date.now() - startTime;
-    console.log(`[${new Date().toISOString()}] ${config.name} completed successfully in ${duration}ms`);
+    console.log(
+      `[${new Date().toISOString()}] ${
+        config.name
+      } completed successfully in ${duration}ms`
+    );
 
     // Close database connection pool
     await connectionPool.end();
     process.exit(0);
   } catch (error) {
     const duration = Date.now() - startTime;
-    console.error(`[${new Date().toISOString()}] ${config.name} failed after ${duration}ms:`, error);
+    console.error(
+      `[${new Date().toISOString()}] ${
+        config.name
+      } failed after ${duration}ms:`,
+      error
+    );
 
     // Close database connection pool
     await connectionPool.end();
