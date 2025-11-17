@@ -245,6 +245,10 @@ jobs:
       - name: Deploy to server
         env:
           SCHEDULE: ${{ steps.config.outputs.schedule }}
+          NAME_PREFIX: "salko"
+          PGPORT: "5432"
+          POSTGRES_DB: "salko"
+          APP_DB_USER: "salko_app"
         run: |
           # Determine environment from branch or manual input
           if [ "${{ github.event_name }}" = "push" ]; then
@@ -262,9 +266,11 @@ jobs:
           if [ "$ENVIRONMENT" = "production" ]; then
             BRANCH_SUFFIX="prod"
             SERVER_IP="${{ vars.SERVER_IP_SALKO0 }}"
+            SITE_PREFIX="www"
           else
             BRANCH_SUFFIX="dev"
             SERVER_IP="${{ vars.SERVER_IP_SALKO0 }}"
+            SITE_PREFIX="kehitys"
           fi
           # Get image tag (use branch name or sha)
           IMAGE_TAG="${GITHUB_REF_NAME}-${GITHUB_SHA::7}"
@@ -276,6 +282,30 @@ jobs:
           else
             scp -i ~/.ssh/id_ed25519 cronjobs/docker-compose.dev.yaml salko@$SERVER_IP:/home/salko/cronjobs/docker-compose.yaml
           fi
+
+          # Create .env file in cronjobs directory on the server
+          ssh -i ~/.ssh/id_ed25519 salko@$SERVER_IP << "EOF"
+            set -e
+            cd /home/salko/cronjobs
+
+            # Create or clear the .env file
+            > .env.${ENVIRONMENT}
+
+            # Append environment variables one by one
+            echo "NAME_PREFIX=${{ env.NAME_PREFIX }}" > .env.${ENVIRONMENT}
+            echo "BRANCH_SUFFIX=${BRANCH_SUFFIX}" >> .env.${ENVIRONMENT}
+            echo "IMAGE_TAG_NAME=${IMAGE_NAME}" >> .env.${ENVIRONMENT}
+            echo "IMAGE_VERSION=${IMAGE_TAG}" >> .env.${ENVIRONMENT}
+            echo "PGPORT=${{ env.PGPORT }}" >> .env.${ENVIRONMENT}
+            echo "POSTGRES_DB=${{ env.POSTGRES_DB }}" >> .env.${ENVIRONMENT}
+            echo "APP_DB_USER=${{ env.APP_DB_USER }}" >> .env.${ENVIRONMENT}
+            echo "APP_DB_PASSWORD=${{ secrets.APP_DB_PASSWORD }}" >> .env.${ENVIRONMENT}
+
+            # Secure the .env file permissions (readable only by owner)
+            chmod 600 .env.${ENVIRONMENT}
+            echo ".env.${ENVIRONMENT} file created with environment variables."
+          EOF
+          
           # Deploy via SSH
           ssh -i ~/.ssh/id_ed25519 salko@$SERVER_IP <<REMOTE_EOF
             set -e
@@ -291,27 +321,23 @@ jobs:
             if [ "$SCHEDULE" = "0 * * * *" ]; then TIMER_SPEC="*:00"; fi
             # Create systemd service file in home directory (will be moved by Ansible/manual setup)
             mkdir -p ~/systemd
-            cat > ~/systemd/salko-cronjob-${{ matrix.job }}.service <<SERVICE_EOF
+            cat > ~/systemd/salko-cronjob-${{ matrix.job }}-${BRANCH_SUFFIX}.service <<SERVICE_EOF
           [Unit]
-          Description=SaLKo Cronjob: ${{ matrix.job }}
+          Description=SaLKo Cronjob: ${{ matrix.job }} (${BRANCH_SUFFIX})
           After=network.target docker.service
           Requires=docker.service
           [Service]
           Type=oneshot
           User=salko
           WorkingDirectory=/home/salko
-          Environment="NAME_PREFIX=salko"
-          Environment="BRANCH_SUFFIX=$BRANCH_SUFFIX"
-          Environment="IMAGE_TAG_NAME=$IMAGE_NAME"
-          Environment="IMAGE_VERSION=$IMAGE_TAG"
-          ExecStart=/usr/bin/docker compose -f cronjobs/docker-compose.yaml run --rm cronjob-${{ matrix.job }}
-          StandardOutput=append:/var/log/salko/cronjobs/${{ matrix.job }}.log
-          StandardError=append:/var/log/salko/cronjobs/${{ matrix.job }}.error.log
+          ExecStart=/usr/bin/docker compose --env-file cronjobs/.env.${BRANCH_SUFFIX} -f cronjobs/docker-compose.yaml run --rm cronjob-${{ matrix.job }}
+          StandardOutput=append:/var/log/salko/cronjobs/${{ matrix.job }}-${BRANCH_SUFFIX}.log
+          StandardError=append:/var/log/salko/cronjobs/${{ matrix.job }}-${BRANCH_SUFFIX}.error.log
           SERVICE_EOF
             # Create systemd timer file
-            cat > ~/systemd/salko-cronjob-${{ matrix.job }}.timer <<TIMER_EOF
+            cat > ~/systemd/salko-cronjob-${{ matrix.job }}-${BRANCH_SUFFIX}.timer <<TIMER_EOF
           [Unit]
-          Description=SaLKo Cronjob Timer: ${{ matrix.job }}
+          Description=SaLKo Cronjob Timer: ${{ matrix.job }} (${BRANCH_SUFFIX})
           [Timer]
           OnCalendar=$TIMER_SPEC
           Persistent=true
