@@ -43,7 +43,7 @@ Fetching and storing METAR data...
 [timestamp] update-metar completed successfully in XXXms
 ```
 
-Errors will exit with code 1 and log details.
+Errors will exit with code 1 and log details..
 
 ## Related Files
 
