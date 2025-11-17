@@ -209,6 +209,7 @@ jobs:
     needs: [detect-changes, build-and-push, create-runner]
     if: ${{ needs.detect-changes.outputs.jobs != '[]' }}
     runs-on: ${{ needs.create-runner.outputs.label }}
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
     strategy:
       matrix:
         job: ${{ fromJson(needs.detect-changes.outputs.jobs) }}
