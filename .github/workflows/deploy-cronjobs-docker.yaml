@@ -281,7 +281,8 @@ jobs:
             set -e
             cd /home/salko
             # Pull latest image
-            docker pull $IMAGE_NAME:$IMAGE_TAG
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker pull ${{ env.IMAGE_PREFIX }}-${{ matrix.job }}:$IMAGE_TAG
             # Convert cron schedule to systemd timer format
             TIMER_SPEC="*:0/15"  # Default: every 15 minutes
             if [ "$SCHEDULE" = "*/5 * * * *" ]; then TIMER_SPEC="*:0/5"; fi
