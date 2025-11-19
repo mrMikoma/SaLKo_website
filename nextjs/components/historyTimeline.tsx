@@ -10,27 +10,32 @@ const events: TimelineEvent[] = [
   {
     year: "1962",
     title: "Kerhon perustaminen",
-    description: "Savonlinnan Lentokerho ry perustettiin yleisilmailun harrastustoiminnan edistämiseksi.",
+    description:
+      "Savonlinnan Lentokerho ry perustettiin yleisilmailun harrastustoiminnan edistämiseksi.",
   },
   {
     year: "1970-luku",
     title: "Toiminnan laajeneminen",
-    description: "Kerhon toiminta laajeni merkittävästi ja jäsenmäärä kasvoi voimakkaasti.",
+    description:
+      "Kerhon toiminta laajeni merkittävästi ja jäsenmäärä kasvoi voimakkaasti.",
   },
   {
     year: "1980-luku",
     title: "Kaluston kehittäminen",
-    description: "Hankittiin uutta kalustoa ja modernisoitiin olemassa olevaa lentotekniikkaa.",
+    description:
+      "Hankittiin uutta kalustoa ja modernisoitiin olemassa olevaa lentotekniikkaa.",
   },
   {
     year: "2000-luku",
     title: "Modernisaatio",
-    description: "Toiminnan modernisointi ja uusien koulutusmuotojen käyttöönotto digitalisoituvassa maailmassa.",
+    description:
+      "Toiminnan modernisointi ja uusien koulutusmuotojen käyttöönotto digitalisoituvassa maailmassa.",
   },
   {
     year: "2025",
     title: "Nykyaika",
-    description: "Aktiivinen kerho yli 60 vuoden historialla, tarjoten laadukasta koulutusta ja monipuolista harrastustoimintaa.",
+    description:
+      "Aktiivinen kerho yli 60 vuoden historialla, tarjoten laadukasta koulutusta ja monipuolista harrastustoimintaa.",
   },
 ];
 
@@ -43,13 +48,13 @@ const HistoryTimeline = () => {
           <h2 className="text-3xl md:text-4xl font-bold text-swhite mb-4">
             Historiamme
           </h2>
-          <p className="text-lg text-swhite/80 max-w-2xl mx-auto">
+          <p className="text-lg text-swhite/80 mx-auto">
             Yli 60 vuotta ilmailun parissa Savonlinnassa
           </p>
         </div>
 
         {/* Timeline */}
-        <div className="relative max-w-4xl mx-auto">
+        <div className="relative mx-auto">
           {/* Vertical Line */}
           <div className="absolute left-1/2 transform -translate-x-1/2 w-1 h-full bg-gradient-to-b from-sred via-sbluel to-sred hidden md:block"></div>
 

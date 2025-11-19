@@ -41,7 +41,7 @@ const NavbarMobile = () => {
             onClick={handleToggle}
             className="px-2 py-1 ml-auto rounded-md lg:hidden hover:text-sbluel focus:text-sbluel transition-colors duration-200"
           >
-            <MenuIcon size={48}/>
+            <MenuIcon size={48} />
           </DisclosureButton>
         )}
       </Disclosure>
@@ -53,7 +53,7 @@ const NavbarMobile = () => {
           onClick={handleClose}
         >
           <div
-            className="flex flex-col items-center justify-start h-full pt-24 pb-8 space-y-2 overflow-y-auto"
+            className="flex flex-col items-center justify-start h-full pt-4 pb-8 space-y-2 overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close Button */}
@@ -64,18 +64,6 @@ const NavbarMobile = () => {
             >
               <XCrossIcon size={48} />
             </button>
-
-            {/* Logo */}
-            <Link href="/" onClick={handleClose} className="mb-6">
-              <span className="flex justify-center mx-auto">
-                <Image
-                  src="/images/SaLKon Logo_vaakunaversio.png"
-                  alt="SaLKo"
-                  width={140}
-                  height={47}
-                />
-              </span>
-            </Link>
 
             {/* Kerho (Club) */}
             <Disclosure>

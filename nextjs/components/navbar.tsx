@@ -82,10 +82,10 @@ const Navbar = ({ session }: { session: Session | null }) => {
                 alt="SaLKo"
                 width={120}
                 height={40}
+                className="w-20 h-auto sm:w-28 md:w-32"
               />
             </span>
-          </Link>
-
+          </Link>{" "}
           {/* Mobile menu toggle button */}
           <NavbarMobile />
         </div>
@@ -248,7 +248,7 @@ const Navbar = ({ session }: { session: Session | null }) => {
             {({ open }) => (
               <div className="relative">
                 {/* Menu Button for Member Area */}
-                <MenuButton className="px-6 py-2 text-swhite text-2xl font-medium bg-sblue rounded-lg shadow-lg hover:bg-sblue/80 hover:shadow-xl transition-all duration-200 border-2 border-transparent hover:border-sred">
+                <MenuButton className="px-3 py-1 md:px-6 md:py-2 text-swhite text-base md:text-2xl font-medium bg-sblue rounded-lg shadow-lg hover:bg-sblue/80 hover:shadow-xl transition-all duration-200 border-2 border-transparent hover:border-sred">
                   Jäsenalue
                 </MenuButton>
 
@@ -261,7 +261,7 @@ const Navbar = ({ session }: { session: Session | null }) => {
                   <MenuItem>
                     <Link
                       href="/profiili"
-                      className="block px-4 py-3 text-swhite hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
+                      className="block px-3 py-2 md:px-4 md:py-3 text-swhite hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
                     >
                       Omat tiedot
                     </Link>
@@ -270,14 +270,14 @@ const Navbar = ({ session }: { session: Session | null }) => {
                     <MenuItem>
                       <Link
                         href="/admin"
-                        className="block px-4 py-3 text-swhite hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
+                        className="block px-3 py-2 md:px-4 md:py-3 text-swhite hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
                       >
                         Admin
                       </Link>
                     </MenuItem>
                   )}
                   <MenuItem>
-                    <div className="block px-4 py-3 text-swhite hover:bg-sblue/50 hover:text-sbluel transition-all duration-200">
+                    <div className="block px-3 py-2 md:px-4 md:py-3 text-swhite hover:bg-sblue/50 hover:text-sbluel transition-all duration-200">
                       <Logout onHandleLogout={handleLogout} />
                     </div>
                   </MenuItem>
@@ -289,13 +289,13 @@ const Navbar = ({ session }: { session: Session | null }) => {
 
         {/* Non-logged-in Member Area Button */}
         {!authenticated && (
-          <Popover className="relative">
-            <PopoverButton className="px-6 py-2 text-swhite text-xl font-medium bg-sblue rounded-lg shadow-lg hover:bg-sblue/80 hover:shadow-xl transition-all duration-200 border-2 border-transparent hover:border-sred">
+          <Popover className="relative ml-auto">
+            <PopoverButton className="px-3 py-1 md:px-6 md:py-2 text-swhite text-sm md:text-xl font-medium bg-sblue rounded-lg shadow-lg hover:bg-sblue/80 hover:shadow-xl transition-all duration-200 border-2 border-transparent hover:border-sred">
               Jäsenalue
             </PopoverButton>
             <PopoverPanel
               anchor="bottom start"
-              className="relative w-96 min-h-64 h-auto bg-sblued/95 backdrop-blur-lg rounded-lg shadow-xl z-50 mt-4 border border-sred/20 transition duration-200 ease-out data-[closed]:scale-95 data-[closed]:opacity-0"
+              className="relative w-72 md:w-96 min-h-64 h-auto bg-sblued/95 backdrop-blur-lg rounded-lg shadow-xl z-50 mt-4 border border-sred/20 transition duration-200 ease-out data-[closed]:scale-95 data-[closed]:opacity-0"
             >
               {({ close }) => (
                 <div className="relative p-4">

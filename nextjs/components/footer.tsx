@@ -41,7 +41,7 @@ export default function Footer() {
               </Link>
             </div>
 
-            <div className="max-w-md mt-4">
+            <div className="mt-4">
               Savonlinnan Lentokerho ry on 1962 perustettu yleisilmailun
               harrastustoimintaan ja koulutukseen keskittynyt ilmailuyhdistys.
               Kerhomme toiminta tukeutuu Savonlinnan Lentoasemalle, 15 km
