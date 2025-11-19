@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 interface TimelineEvent {
   year: string;
   title: string;
@@ -8,27 +10,27 @@ const events: TimelineEvent[] = [
   {
     year: "1962",
     title: "Kerhon perustaminen",
-    description: "Savonlinnan Lentokerho ry perustettiin",
+    description: "Savonlinnan Lentokerho ry perustettiin yleisilmailun harrastustoiminnan edistämiseksi.",
   },
   {
     year: "1970-luku",
     title: "Toiminnan laajeneminen",
-    description: "Kerhon toiminta laajeni ja jäsenmäärä kasvoi",
+    description: "Kerhon toiminta laajeni merkittävästi ja jäsenmäärä kasvoi voimakkaasti.",
   },
   {
     year: "1980-luku",
     title: "Kaluston kehittäminen",
-    description: "Hankittiin uutta kalustoa ja päivitettiin olemassa olevaa",
+    description: "Hankittiin uutta kalustoa ja modernisoitiin olemassa olevaa lentotekniikkaa.",
   },
   {
     year: "2000-luku",
     title: "Modernisaatio",
-    description: "Toiminnan modernisointi ja uusien koulutusmuotojen käyttöönotto",
+    description: "Toiminnan modernisointi ja uusien koulutusmuotojen käyttöönotto digitalisoituvassa maailmassa.",
   },
   {
-    year: "2024",
+    year: "2025",
     title: "Nykyaika",
-    description: "Aktiivinen kerho 60+ vuoden historialla, tarjoten koulutusta ja harrastustoimintaa",
+    description: "Aktiivinen kerho yli 60 vuoden historialla, tarjoten laadukasta koulutusta ja monipuolista harrastustoimintaa.",
   },
 ];
 
@@ -95,12 +97,12 @@ const HistoryTimeline = () => {
 
         {/* CTA */}
         <div className="text-center mt-12">
-          <a
+          <Link
             href="/kerho/historiaa"
             className="inline-block px-8 py-4 bg-sred text-swhite font-semibold rounded-lg shadow-xl hover:bg-sred/90 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300"
           >
             Lue lisää historiastamme
-          </a>
+          </Link>
         </div>
       </div>
     </section>

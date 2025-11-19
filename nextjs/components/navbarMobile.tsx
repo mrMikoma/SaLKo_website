@@ -35,13 +35,13 @@ const NavbarMobile = () => {
     <div>
       {/* Mobile Menu Button (Hamburger) */}
       <Disclosure>
-        {({ open }) => (
+        {() => (
           <DisclosureButton
             aria-label="Toggle Menu"
             onClick={handleToggle}
-            className="px-2 py-1 ml-auto rounded-md lg:hidden hover:text-indigo-500 focus:text-indigo-500"
+            className="px-2 py-1 ml-auto rounded-md lg:hidden hover:text-sbluel focus:text-sbluel transition-colors duration-200"
           >
-            <MenuIcon size={60}/>
+            <MenuIcon size={48}/>
           </DisclosureButton>
         )}
       </Disclosure>
@@ -49,30 +49,30 @@ const NavbarMobile = () => {
       {/* Full-Screen Menu */}
       {isOpen && (
         <div
-          className="fixed top-0 left-0 w-full h-full bg-gradient-to-b from-sblued via-sblack to-sblued z-50 transform transition-transform animate-fade-in"
+          className="fixed inset-0 w-full h-full bg-sblued/95 backdrop-blur-lg z-[60] transform transition-all duration-300 animate-fade-in"
           onClick={handleClose}
         >
           <div
-            className="flex flex-col items-center justify-start h-full pt-20 space-y-4 overflow-y-auto"
+            className="flex flex-col items-center justify-start h-full pt-24 pb-8 space-y-2 overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close Button */}
             <button
               aria-label="Close Menu"
               onClick={handleClose}
-              className="absolute top-6 right-6 text-swhite hover:text-sred transition-colors duration-200"
+              className="absolute top-4 right-4 text-swhite hover:text-sred transition-colors duration-200 z-10"
             >
-              <XCrossIcon size={40} />
+              <XCrossIcon size={48} />
             </button>
 
             {/* Logo */}
-            <Link href="/" onClick={handleClose}>
-              <span className="flex justify-center mx-auto mb-8">
+            <Link href="/" onClick={handleClose} className="mb-6">
+              <span className="flex justify-center mx-auto">
                 <Image
                   src="/images/SaLKon Logo_vaakunaversio.png"
                   alt="SaLKo"
-                  width={120}
-                  height={40}
+                  width={140}
+                  height={47}
                 />
               </span>
             </Link>
@@ -81,7 +81,7 @@ const NavbarMobile = () => {
             <Disclosure>
               {({ open }) => (
                 <div className="w-full px-6">
-                  <DisclosureButton className="w-full py-4 text-center text-swhite text-lg font-medium hover:text-sbluel transition-colors duration-200 border-b border-sred/30">
+                  <DisclosureButton className="w-full py-4 text-center text-swhite text-xl font-semibold hover:text-sbluel transition-colors duration-200 border-b border-sred/30">
                     <div className="flex flex-row items-center justify-center gap-2">
                       <span>Kerho</span>
                       <span
@@ -89,11 +89,11 @@ const NavbarMobile = () => {
                           open ? "rotate-180" : ""
                         }`}
                       >
-                        <ArrowDownIcon size={20} />
+                        <ArrowDownIcon size={24} />
                       </span>
                     </div>
                   </DisclosureButton>
-                  <DisclosurePanel className="w-full text-base text-center mt-2 mb-4 space-y-2">
+                  <DisclosurePanel className="w-full text-base text-center mt-3 mb-2 space-y-1">
                     <Link
                       href="/kerho"
                       className="block w-full py-3 px-4 rounded-lg text-swhite hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
@@ -131,7 +131,7 @@ const NavbarMobile = () => {
             <Disclosure>
               {({ open }) => (
                 <div className="w-full px-6">
-                  <DisclosureButton className="w-full py-4 text-center text-swhite text-lg font-medium hover:text-sbluel transition-colors duration-200 border-b border-sred/30">
+                  <DisclosureButton className="w-full py-4 text-center text-swhite text-xl font-semibold hover:text-sbluel transition-colors duration-200 border-b border-sred/30">
                     <div className="flex flex-row items-center justify-center gap-2">
                       <span>Kalusto</span>
                       <span
@@ -139,11 +139,11 @@ const NavbarMobile = () => {
                           open ? "rotate-180" : ""
                         }`}
                       >
-                        <ArrowDownIcon size={20} />
+                        <ArrowDownIcon size={24} />
                       </span>
                     </div>
                   </DisclosureButton>
-                  <DisclosurePanel className="w-full text-base text-center mt-2 mb-4 space-y-2">
+                  <DisclosurePanel className="w-full text-base text-center mt-3 mb-2 space-y-1">
                     <Link
                       href="/kalusto"
                       className="block w-full py-3 px-4 rounded-lg text-swhite hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
@@ -166,7 +166,7 @@ const NavbarMobile = () => {
             {/* Koulutus (Training) */}
             <Link
               href="/koulutus"
-              className="w-full px-6 py-4 text-center text-swhite text-lg font-medium hover:text-sbluel transition-colors duration-200 border-b border-sred/30"
+              className="w-full px-6 py-4 text-center text-swhite text-xl font-semibold hover:text-sbluel transition-colors duration-200 border-b border-sred/30"
               onClick={handleClose}
             >
               Koulutus
@@ -175,7 +175,7 @@ const NavbarMobile = () => {
             {/* Kenttä (Field) */}
             <Link
               href="/kentta"
-              className="w-full px-6 py-4 text-center text-swhite text-lg font-medium hover:text-sbluel transition-colors duration-200 border-b border-sred/30"
+              className="w-full px-6 py-4 text-center text-swhite text-xl font-semibold hover:text-sbluel transition-colors duration-200 border-b border-sred/30"
               onClick={handleClose}
             >
               Kenttä
@@ -184,7 +184,7 @@ const NavbarMobile = () => {
             {/* Yhteystiedot (Contact) */}
             <Link
               href="/yhteystiedot"
-              className="w-full px-6 py-4 text-center text-swhite text-lg font-medium hover:text-sbluel transition-colors duration-200 border-b border-sred/30"
+              className="w-full px-6 py-4 text-center text-swhite text-xl font-semibold hover:text-sbluel transition-colors duration-200 border-b border-sred/30"
               onClick={handleClose}
             >
               Yhteystiedot

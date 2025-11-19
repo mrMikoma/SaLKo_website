@@ -23,6 +23,8 @@ const Navbar = ({ session }: { session: Session | null }) => {
   const [authenticated, setAuthenticated] = useState(false);
   const [userName, setUserName] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
   const router = useRouter();
 
   useEffect(() => {
@@ -37,6 +39,27 @@ const Navbar = ({ session }: { session: Session | null }) => {
     }
   }, [session]);
 
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+
+      if (currentScrollY < 10) {
+        setIsVisible(true);
+      } else if (currentScrollY > lastScrollY) {
+        // Scrolling down
+        setIsVisible(false);
+      } else {
+        // Scrolling up
+        setIsVisible(true);
+      }
+
+      setLastScrollY(currentScrollY);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [lastScrollY]);
+
   const handleLogout = async () => {
     router.refresh();
     setAuthenticated(false);
@@ -44,7 +67,11 @@ const Navbar = ({ session }: { session: Session | null }) => {
   };
 
   return (
-    <div className="w-full glass sticky top-0 z-50 border-b border-sred/30 transition-all duration-300">
+    <div
+      className={`w-full fixed top-0 z-50 bg-sblued/80  border-b border-sred/30 transition-all duration-300 ${
+        isVisible ? "translate-y-0" : "-translate-y-full"
+      }`}
+    >
       <nav className="container relative flex flex-wrap items-center justify-between p-4 px-6 mx-auto">
         {/* Logo and Mobile Menu Toggle */}
         <div className="flex flex-wrap items-center justify-between w-full lg:w-auto">
@@ -71,7 +98,7 @@ const Navbar = ({ session }: { session: Session | null }) => {
               <Menu as="div" className="ml-auto relative">
                 {({ open }) => (
                   <div className="relative">
-                    <MenuButton className="group inline-block px-4 py-2 text-lg font-medium no-underline text-center hover:text-sbluel transition-colors duration-200 relative">
+                    <MenuButton className="group inline-block px-4 py-2 text-2xl font-medium no-underline text-center hover:text-sbluel transition-colors duration-200 relative">
                       <div className="flex flex-row items-center">
                         <span>Kerho</span>
                         {/* Arrow Icon */}
@@ -136,7 +163,7 @@ const Navbar = ({ session }: { session: Session | null }) => {
               <Menu as="div" className="ml-auto relative">
                 {({ open }) => (
                   <div className="relative">
-                    <MenuButton className="group inline-block px-4 py-2 text-lg font-medium no-underline text-center hover:text-sbluel transition-colors duration-200 relative">
+                    <MenuButton className="group inline-block px-4 py-2 text-2xl font-medium no-underline text-center hover:text-sbluel transition-colors duration-200 relative">
                       <div className="flex flex-row items-center">
                         <span>Kalusto</span>
                         {/* Arrow Icon */}
@@ -184,7 +211,7 @@ const Navbar = ({ session }: { session: Session | null }) => {
             <li className="mr-3 nav__item group">
               <Link
                 href="/koulutus"
-                className="inline-block px-4 py-2 text-lg font-medium no-underline hover:text-sbluel transition-colors duration-200 relative"
+                className="inline-block px-4 py-2 text-2xl font-medium no-underline hover:text-sbluel transition-colors duration-200 relative"
               >
                 Koulutus
                 <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-sred transition-all duration-300 group-hover:w-full"></span>
@@ -195,7 +222,7 @@ const Navbar = ({ session }: { session: Session | null }) => {
             <li className="mr-3 nav__item group">
               <Link
                 href="/kentta"
-                className="inline-block px-4 py-2 text-lg font-medium no-underline hover:text-sbluel transition-colors duration-200 relative"
+                className="inline-block px-4 py-2 text-2xl font-medium no-underline hover:text-sbluel transition-colors duration-200 relative"
               >
                 Kenttä
                 <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-sred transition-all duration-300 group-hover:w-full"></span>
@@ -206,7 +233,7 @@ const Navbar = ({ session }: { session: Session | null }) => {
             <li className="mr-3 nav__item group">
               <Link
                 href="/yhteystiedot"
-                className="inline-block px-4 py-2 text-lg font-medium no-underline hover:text-sbluel transition-colors duration-200 relative"
+                className="inline-block px-4 py-2 text-2xl font-medium no-underline hover:text-sbluel transition-colors duration-200 relative"
               >
                 Yhteystiedot
                 <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-sred transition-all duration-300 group-hover:w-full"></span>
@@ -221,7 +248,7 @@ const Navbar = ({ session }: { session: Session | null }) => {
             {({ open }) => (
               <div className="relative">
                 {/* Menu Button for Member Area */}
-                <MenuButton className="px-6 py-2 text-swhite text-lg font-medium bg-sblue rounded-lg shadow-lg hover:bg-sblue/80 hover:shadow-xl transition-all duration-200 border-2 border-transparent hover:border-sred">
+                <MenuButton className="px-6 py-2 text-swhite text-2xl font-medium bg-sblue rounded-lg shadow-lg hover:bg-sblue/80 hover:shadow-xl transition-all duration-200 border-2 border-transparent hover:border-sred">
                   Jäsenalue
                 </MenuButton>
 
@@ -263,7 +290,7 @@ const Navbar = ({ session }: { session: Session | null }) => {
         {/* Non-logged-in Member Area Button */}
         {!authenticated && (
           <Popover className="relative">
-            <PopoverButton className="px-6 py-2 text-swhite text-lg font-medium bg-sblue rounded-lg shadow-lg hover:bg-sblue/80 hover:shadow-xl transition-all duration-200 border-2 border-transparent hover:border-sred">
+            <PopoverButton className="px-6 py-2 text-swhite text-xl font-medium bg-sblue rounded-lg shadow-lg hover:bg-sblue/80 hover:shadow-xl transition-all duration-200 border-2 border-transparent hover:border-sred">
               Jäsenalue
             </PopoverButton>
             <PopoverPanel

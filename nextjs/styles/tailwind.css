@@ -12,29 +12,29 @@
   --color-swhite: #f6f4f3;
   --color-sblack: #0c1821;
   --color-sblued: #162752;
-  --color-sblue: #0047AA;
+  --color-sblue: #0047aa;
   --color-sbluel: #53a2be;
   --color-sred: #e84855;
   --color-sgrey: #e6e6e6;
 
   /* Extended Aviation Palette */
-  --color-sky-blue: #0047AA;
+  --color-sky-blue: #0047aa;
   --color-deep-navy: #162752;
   --color-light-blue: #53a2be;
   --color-aviation-red: #e84855;
   --color-cloud-white: #ffffff;
   --color-charcoal: #0c1821;
   --color-light-grey: #e6e6e6;
-  --color-horizon-orange: #FF6B35;
-  --color-success-green: #4CAF50;
-  --color-warning-amber: #FFC107;
+  --color-horizon-orange: #ff6b35;
+  --color-success-green: #4caf50;
+  --color-warning-amber: #ffc107;
 
   /* Background Images */
-  --background-image-efsa-one: url('/images/efsa_1.jpg');
-  --background-image-ohcon-one: url('/images/OH-CON/ohcon_1.jpg');
-  --background-image-olavinlinna-one: url('/images/olavinlinna_1.jpg');
-  --background-image-punkaharju-one: url('/images/punkaharju_1.jpg');
-  --background-image-savonlinna-one: url('/images/savonlinna_1.jpg');
+  --background-image-efsa-one: url("/images/efsa_1.jpg");
+  --background-image-ohcon-one: url("/images/OH-CON/ohcon_1.jpg");
+  --background-image-olavinlinna-one: url("/images/olavinlinna_1.jpg");
+  --background-image-punkaharju-one: url("/images/punkaharju_1.jpg");
+  --background-image-savonlinna-one: url("/images/savonlinna_1.jpg");
 
   /* Spacing Scale */
   --spacing-xs: 0.25rem;
@@ -75,23 +75,41 @@
 
 /* Custom Animation Keyframes */
 @keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
 }
 
 @keyframes slide-in-right {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(0); }
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
 }
 
 @keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 5px rgba(232, 72, 85, 0.5); }
-  50% { box-shadow: 0 0 20px rgba(232, 72, 85, 0.8); }
+  0%,
+  100% {
+    box-shadow: 0 0 5px rgba(232, 72, 85, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(232, 72, 85, 0.8);
+  }
 }
 
 /* Utility Classes */

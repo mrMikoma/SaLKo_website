@@ -18,11 +18,13 @@ export interface ParsedMETAR {
  */
 export const parseMETAR = (metar: string): ParsedMETAR => {
   // Extract temperature (format: 12/08 means 12°C temp, 08°C dewpoint)
-  const tempMatch = metar.match(/\s(M?\d{2})\/(M?\d{2})\s/);
+  const tempMatch = metar.match(/\s(M?\d{1,2})\/(M?\d{1,2})\s/);
   let temperature = "N/A";
   if (tempMatch) {
     const temp = tempMatch[1].replace("M", "-");
-    temperature = `${temp}°C`;
+    // Parse and format without leading zeros
+    const tempNum = parseInt(temp);
+    temperature = `${tempNum}°C`;
   }
 
   // Extract wind (format: 22005KT means 220° at 5 knots)

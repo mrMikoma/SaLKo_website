@@ -16,41 +16,38 @@ export default function Page() {
   return (
     <div className="min-h-screen flex flex-col w-full">
       {/* Hero Section */}
-      <section className="relative w-full min-h-[90vh] flex items-center justify-center bg-cover bg-center bg-olavinlinna-one overflow-hidden">
+      <section className="relative w-full min-h-screen flex items-center justify-center bg-cover bg-center bg-olavinlinna-one overflow-hidden">
         {/* Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-b from-sblack/70 via-sblack/50 to-sblued/90"></div>
-
+        <div className="absolute inset-0 bg-gradient-to-b from-sblack/50 via-sblack/40 to-sblued/95"></div>
         {/* Hero Content */}
-        <div className="relative z-10 container mx-auto px-6 py-20 flex flex-col lg:flex-row items-center justify-between gap-8">
+        <div className="relative z-10 w-full max-w-[1600px] mx-auto px-6 pt-32 pb-16 flex flex-col lg:flex-row items-center lg:items-start justify-between gap-8 lg:gap-16">
           {/* Main Content - Left Side */}
-          <div className="w-full lg:w-2/3 text-center lg:text-left space-y-8 animate-fade-in">
+          <div className="w-full lg:w-[55%] text-center lg:text-left space-y-8 animate-fade-in mt-16">
             {/* Pretitle */}
             <div className="inline-block">
-              <span className="text-sbluel text-sm md:text-base font-semibold tracking-wider uppercase border-l-4 border-sred pl-4">
-                Perustettu 1962
-              </span>
+              <span className="text-sbluel text-sm md:text-base font-semibold tracking-wider uppercase"></span>
             </div>
 
             {/* Main Title */}
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight text-swhite">
+            <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold leading-tight text-swhite">
               Savonlinnan <br />
               <span className="text-sbluel">Lentokerho ry</span>
             </h1>
 
             {/* Description */}
-            <p className="text-lg md:text-xl text-swhite/90 max-w-2xl leading-relaxed">
+            <p className="text-base md:text-lg text-swhite/90  leading-relaxed lg:mx-0">
               Yleisilmailun harrastustoimintaan ja koulutukseen keskittynyt
               ilmailuyhdistys. Toimintamme tukeutuu Savonlinnan Lentoasemalle,
               15 km Savonlinnasta Enonkoskelle päin.
             </p>
 
             {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start pt-4">
+            <div className="flex flex-col sm:flex-row flex-wrap gap-3 justify-center lg:justify-start pt-2">
               <Link
-                href="/kerho/jasenyys"
+                href="/esittelylento"
                 className="px-8 py-4 bg-sred text-swhite font-semibold rounded-lg shadow-xl hover:bg-sred/90 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 text-center"
               >
-                Liity jäseneksi
+                Lähde esittelylennolle
               </Link>
               <Link
                 href="/koulutus"
@@ -59,42 +56,56 @@ export default function Page() {
                 Aloita lentokoulutus
               </Link>
               <Link
-                href="/yhteystiedot"
+                href="/kerho/jasenyys"
                 className="px-8 py-4 bg-transparent text-swhite font-semibold rounded-lg shadow-xl hover:bg-sblue/30 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 border-2 border-sbluel text-center"
               >
-                Lähde esittelylennolle
+                Liity jäseneksi
               </Link>
             </div>
 
             {/* Stats */}
-            <div className="flex flex-wrap gap-8 justify-center lg:justify-start pt-8">
+            <div className="flex flex-wrap gap-6 lg:gap-8 justify-center lg:justify-start pt-4">
               <div className="text-center lg:text-left">
-                <div className="text-3xl md:text-4xl font-bold text-sred">~40</div>
+                <div className="text-3xl md:text-4xl font-bold text-sred">
+                  30
+                </div>
                 <div className="text-sm text-swhite/80">Jäsentä</div>
               </div>
               <div className="text-center lg:text-left">
-                <div className="text-3xl md:text-4xl font-bold text-sred">5</div>
+                <div className="text-3xl md:text-4xl font-bold text-sred">
+                  5
+                </div>
                 <div className="text-sm text-swhite/80">Ilma-alusta</div>
               </div>
               <div className="text-center lg:text-left">
-                <div className="text-3xl md:text-4xl font-bold text-sred">60+</div>
-                <div className="text-sm text-swhite/80">Vuotta</div>
+                <div className="text-3xl md:text-4xl font-bold text-sred">
+                  1962
+                </div>
+                <div className="text-sm text-swhite/80">Perustettu</div>
               </div>
             </div>
           </div>
 
           {/* Bulletin Sidebar - Right Side (Desktop) */}
-          <div className="hidden lg:block w-full lg:w-1/3 max-w-md">
-            <div className="glass rounded-2xl p-6 shadow-2xl border border-sred/20 max-h-[70vh] overflow-y-auto">
+          <div className="hidden lg:block w-full lg:w-[40%] lg:max-w-[500px] flex-shrink-0 lg:mt-20">
+            <div className="glass rounded-2xl p-6 shadow-2xl border border-sred/20 max-h-[65vh] overflow-y-auto">
               <Bulletings />
             </div>
           </div>
         </div>
 
         {/* Scroll Indicator */}
-        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-float">
-          <div className="w-6 h-10 border-2 border-swhite/50 rounded-full flex items-start justify-center p-2">
-            <div className="w-1 h-3 bg-swhite/50 rounded-full animate-pulse"></div>
+        <div className="hidden lg:block absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-float">
+          <div className="flex flex-col items-center gap-2">
+            <svg
+              className="w-8 h-8 text-swhite/70 animate-pulse"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              style={{ transform: "rotate(90deg)" }}
+            >
+              <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z" />
+            </svg>
+            <div className="text-swhite/60 text-sm font-medium">Vieritä</div>
           </div>
         </div>
       </section>
@@ -114,7 +125,7 @@ export default function Page() {
             <h2 className="text-3xl md:text-4xl font-bold text-swhite mb-4">
               Tutustu toimintaamme
             </h2>
-            <p className="text-lg text-swhite/80 max-w-2xl mx-auto">
+            <p className="text-lg text-swhite/80 mx-auto">
               Tarjoamme monipuolisia ilmailupalveluja koulutuksesta vapaalentoon
             </p>
           </div>
@@ -191,7 +202,8 @@ export default function Page() {
                   <div>
                     <div className="font-semibold text-swhite">Sijainti</div>
                     <div className="text-swhite/80">
-                      Savonlinnan Lentoasema (EFSA)<br />
+                      Savonlinnan Lentoasema (EFSA)
+                      <br />
                       Lentoasemantie 50, 57310 Savonlinna
                     </div>
                   </div>
@@ -213,7 +225,8 @@ export default function Page() {
                   <div>
                     <div className="font-semibold text-swhite">Kiitotie</div>
                     <div className="text-swhite/80">
-                      15/33, 2000m asfaltti<br />
+                      15/33, 2000m asfaltti
+                      <br />
                       Toimii ympäri vuoden
                     </div>
                   </div>
@@ -235,7 +248,8 @@ export default function Page() {
                   <div>
                     <div className="font-semibold text-swhite">Etäisyys</div>
                     <div className="text-swhite/80">
-                      15 km Savonlinnan keskustasta<br />
+                      15 km Savonlinnan keskustasta
+                      <br />
                       Enonkosken suuntaan
                     </div>
                   </div>
@@ -257,8 +271,9 @@ export default function Page() {
               Haluatko lentäjäksi?
             </h2>
             <p className="text-lg md:text-xl text-swhite/90 mb-8 max-w-2xl mx-auto">
-              Ota yhteyttä ja aloita matkasi taivaalle. Tarjoamme tutustumislentoja
-              ja koulutusta kaikille ilmailusta kiinnostuneille.
+              Ota yhteyttä ja aloita matkasi taivaalle. Tarjoamme
+              tutustumislentoja ja koulutusta kaikille ilmailusta
+              kiinnostuneille.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
