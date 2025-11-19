@@ -2,6 +2,8 @@ services:
   postgres:
     image: postgres:17.5
     container_name: ${NAME_PREFIX}-postgres-${BRANCH_SUFFIX}
+    ports:
+      - "5432:5432"
     networks:
       - internal
     env_file: .env.dev
