@@ -1,5 +1,4 @@
 services:
-  # Ofelia - Docker Cron Job Scheduler
   ofelia:
     image: mcuadros/ofelia:0.3.19
     container_name: ${NAME_PREFIX:-salko}-ofelia-${BRANCH_SUFFIX:-dev}
@@ -14,7 +13,6 @@ services:
       - internal_dev
     restart: unless-stopped
 
-  # METAR Update Cronjob
   cronjob-update-metar:
     image: ${IMAGE_TAG_NAME}:${IMAGE_VERSION}
     container_name: ${NAME_PREFIX:-salko}-cronjob-update-metar-${BRANCH_SUFFIX:-dev}
@@ -23,11 +21,12 @@ services:
     env_file: .env.dev
     environment:
       - DATABASE_CONNECTION_STRING=postgresql://${APP_DB_USER}:${APP_DB_PASSWORD}@${NAME_PREFIX}-postgres-${BRANCH_SUFFIX}:${PGPORT}/${POSTGRES_DB}
+    command: tail -f /dev/null
     labels:
       ofelia.enabled: "true"
       ofelia.job-exec.update-metar.schedule: "21,51 * * * *"
       ofelia.job-exec.update-metar.command: "npm start"
-    restart: "no"
+    restart: unless-stopped
 
 networks:
   internal_dev:

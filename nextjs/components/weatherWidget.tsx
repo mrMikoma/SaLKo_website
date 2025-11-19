@@ -43,7 +43,7 @@ const WeatherWidget = () => {
     // Fetch immediately
     fetchWeather();
 
-    // Refresh every 5 minutes (backend updates every 15 min, but we check more often for freshness)
+    // Refresh every 5 minutes
     const interval = setInterval(fetchWeather, 5 * 60 * 1000);
 
     return () => clearInterval(interval);
@@ -95,23 +95,33 @@ const WeatherWidget = () => {
       {/* Weather Info Grid */}
       <div className="grid grid-cols-2 gap-4 mb-4">
         <div className="text-center">
-          <div className="text-2xl font-bold text-sred">{weather.temperature}</div>
+          <div className="text-2xl font-bold text-sred">
+            {weather.temperature}
+          </div>
           <div className="text-sm text-swhite/70">Lämpötila</div>
         </div>
         <div className="text-center">
-          <div className="text-2xl font-bold text-sred">{weather.windSpeed}</div>
+          <div className="text-2xl font-bold text-sred">
+            {weather.windSpeed}
+          </div>
           <div className="text-sm text-swhite/70">Tuuli</div>
         </div>
         <div className="text-center">
-          <div className="text-xl font-semibold text-sbluel">{weather.windDirection}</div>
+          <div className="text-xl font-semibold text-sbluel">
+            {weather.windDirection}
+          </div>
           <div className="text-sm text-swhite/70">Tuulen suunta</div>
         </div>
         <div className="text-center">
-          <div className="text-xl font-semibold text-sbluel">{weather.visibility}</div>
+          <div className="text-xl font-semibold text-sbluel">
+            {weather.visibility}
+          </div>
           <div className="text-sm text-swhite/70">Näkyvyys</div>
         </div>
         <div className="text-center">
-          <div className="text-lg font-medium text-swhite">{weather.clouds}</div>
+          <div className="text-lg font-medium text-swhite">
+            {weather.clouds}
+          </div>
           <div className="text-sm text-swhite/70">Pilvisyys</div>
         </div>
         <div className="text-center">
@@ -129,7 +139,7 @@ const WeatherWidget = () => {
 
       {/* Update Info */}
       <div className="mt-3 text-xs text-center text-swhite/50">
-        Taustajärjestelmä päivittää datan 15 min välein
+        Taustajärjestelmä päivittää säätiedot 20 yli ja 10 vaille joka tunti.
       </div>
 
       {/* Data Source */}

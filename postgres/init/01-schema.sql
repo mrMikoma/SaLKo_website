@@ -150,6 +150,7 @@ COMMENT ON COLUMN metar_data.observation_time IS 'Time of actual weather observa
 COMMENT ON COLUMN metar_data.fetched_at IS 'Time when data was fetched from API';
 
 -- Insert mock METAR data for testing
+-- Format: METAR EFSA DDHHmmZ [AUTO] wind visibility clouds temp/dewpoint QNH
 INSERT INTO
   metar_data (
     station_code,
@@ -166,15 +167,15 @@ INSERT INTO
 VALUES
   (
     'EFSA',
-    'EFSA 151420Z 27015KT 9999 FEW025 SCT040 12/08 Q1013',
-    '12°C',
-    '8 m/s',
-    '270°',
-    '>10 km',
-    'Muutama (FEW) 750m, Hajanainen (SCT) 1200m',
-    '1013 hPa',
-    CURRENT_TIMESTAMP - INTERVAL '5 minutes',
-    CURRENT_TIMESTAMP
+    'METAR EFSA 191550Z AUTO VRB02KT 9999 OVC022 M03/M05 Q1009',
+    '-3°C',
+    '1 m/s',
+    'Vaihteleva',
+    '10+ km',
+    'Pilvipeite',
+    '1009 hPa',
+    CURRENT_TIMESTAMP - INTERVAL '10 minutes',
+    CURRENT_TIMESTAMP - INTERVAL '10 minutes'
   ) ON CONFLICT (station_code, observation_time) DO NOTHING;
 
 INSERT INTO
@@ -193,13 +194,13 @@ INSERT INTO
 VALUES
   (
     'EFSA',
-    'EFSA 151450Z 18010KT 9999 FEW025 SCT040 12/08 Q1013',
-    '15°C',
-    '8 m/s',
-    '180°',
-    '>10 km',
-    'Muutama (FEW) 750m, Hajanainen (SCT) 1200m',
-    '1013 hPa',
-    CURRENT_TIMESTAMP - INTERVAL '5 minutes',
-    CURRENT_TIMESTAMP
+    'METAR EFSA 191520Z AUTO 27008KT 9999 BKN015 OVC025 M01/M04 Q1010',
+    '-1°C',
+    '4 m/s',
+    'W',
+    '10+ km',
+    'Melko pilvistä',
+    '1010 hPa',
+    CURRENT_TIMESTAMP - INTERVAL '40 minutes',
+    CURRENT_TIMESTAMP - INTERVAL '40 minutes'
   ) ON CONFLICT (station_code, observation_time) DO NOTHING;
