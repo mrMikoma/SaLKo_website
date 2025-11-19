@@ -219,12 +219,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5.0.0
 
-      - name: Read cronjob configuration
-        id: config
-        run: |
-          # Configuration is now managed via Ofelia labels in docker-compose files
-          echo "Cronjob scheduling is handled by Ofelia via Docker labels"
-
       - name: Define deployment variables
         id: vars
         run: |
@@ -275,9 +269,9 @@ jobs:
         run: |
           # Transfer environment-specific docker-compose file
           if [ "${{ env.ENVIRONMENT }}" = "production" ]; then
-            scp -i ~/.ssh/id_ed25519 cronjobs/docker-compose.prod.yaml salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/cronjobs/docker-compose.yaml
+            scp -i ~/.ssh/id_ed25519 cronjobs/docker-compose.prod.yaml salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/cronjobs/docker-compose.prod.yaml
           else
-            scp -i ~/.ssh/id_ed25519 cronjobs/docker-compose.dev.yaml salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/cronjobs/docker-compose.yaml
+            scp -i ~/.ssh/id_ed25519 cronjobs/docker-compose.dev.yaml salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/cronjobs/docker-compose.dev.yaml
           fi
 
           # Create .env file and deploy with Ofelia
@@ -286,30 +280,29 @@ jobs:
             cd /home/salko/cronjobs
 
             # Create or clear the .env file
-            > .env.${{ env.ENVIRONMENT }}
+            > .env.${{ env.BRANCH_SUFFIX }}
 
             # Append environment variables one by one
-            echo "NAME_PREFIX=${{ env.NAME_PREFIX }}" > .env.${{ env.ENVIRONMENT }}
-            echo "BRANCH_SUFFIX=${{ env.BRANCH_SUFFIX }}" >> .env.${{ env.ENVIRONMENT }}
-            echo "IMAGE_TAG_NAME=${{ env.IMAGE_NAME }}" >> .env.${{ env.ENVIRONMENT }}
-            echo "IMAGE_VERSION=${{ env.IMAGE_TAG }}" >> .env.${{ env.ENVIRONMENT }}
-            echo "PGPORT=${{ env.PGPORT }}" >> .env.${{ env.ENVIRONMENT }}
-            echo "POSTGRES_DB=${{ env.POSTGRES_DB }}" >> .env.${{ env.ENVIRONMENT }}
-            echo "APP_DB_USER=${{ env.APP_DB_USER }}" >> .env.${{ env.ENVIRONMENT }}
-            echo "APP_DB_PASSWORD=${{ secrets.APP_DB_PASSWORD }}" >> .env.${{ env.ENVIRONMENT }}
+            echo "NAME_PREFIX=${{ env.NAME_PREFIX }}" > .env.${{ env.BRANCH_SUFFIX }}
+            echo "BRANCH_SUFFIX=${{ env.BRANCH_SUFFIX }}" >> .env.${{ env.BRANCH_SUFFIX }}
+            echo "IMAGE_TAG_NAME=${{ env.IMAGE_NAME }}" >> .env.${{ env.BRANCH_SUFFIX }}
+            echo "IMAGE_VERSION=${{ env.IMAGE_TAG }}" >> .env.${{ env.BRANCH_SUFFIX }}
+            echo "PGPORT=${{ env.PGPORT }}" >> .env.${{ env.BRANCH_SUFFIX }}
+            echo "POSTGRES_DB=${{ env.POSTGRES_DB }}" >> .env.${{ env.BRANCH_SUFFIX }}
+            echo "APP_DB_USER=${{ env.APP_DB_USER }}" >> .env.${{ env.BRANCH_SUFFIX }}
+            echo "APP_DB_PASSWORD=${{ secrets.APP_DB_PASSWORD }}" >> .env.${{ env.BRANCH_SUFFIX }}
 
             # Secure the .env file permissions (readable only by owner)
-            chmod 600 .env.${{ env.ENVIRONMENT }}
-            echo ".env.${{ env.ENVIRONMENT }} file created with environment variables."
-
+            chmod 600 .env.${{ env.BRANCH_SUFFIX }}
+            echo ".env.${{ env.BRANCH_SUFFIX }} file created with environment variables."
             # Pull latest images
-            docker compose --env-file .env.${{ env.BRANCH_SUFFIX }} pull
+            docker compose --env-file .env.${{ env.BRANCH_SUFFIX }} -f docker-compose.${{ env.BRANCH_SUFFIX }}.yaml pull
 
             # Start/restart containers with Ofelia
-            docker compose --env-file .env.${{ env.BRANCH_SUFFIX }} up -d
+            docker compose --env-file .env.${{ env.BRANCH_SUFFIX }} -f docker-compose.${{ env.BRANCH_SUFFIX }}.yaml up -d
 
             echo "Ofelia cronjob scheduler deployed successfully"
-            echo "Jobs are scheduled via Docker labels in docker-compose.yaml"
+            echo "Jobs are scheduled via Docker labels in docker-compose.${{ env.BRANCH_SUFFIX }}.yaml"
             docker ps | grep ofelia
           EOF
 

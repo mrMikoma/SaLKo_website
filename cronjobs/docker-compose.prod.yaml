@@ -1,7 +1,7 @@
 services:
   # Ofelia - Docker Cron Job Scheduler
   ofelia:
-    image: mcuadros/ofelia:v0.3.19
+    image: mcuadros/ofelia:0.3.19
     container_name: ${NAME_PREFIX:-salko}-ofelia-${BRANCH_SUFFIX:-prod}
     depends_on:
       - cronjob-update-metar
