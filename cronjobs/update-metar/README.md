@@ -4,7 +4,8 @@ Fetches and stores METAR weather data for Savonlinna Airport (EFSA).
 
 ## Configuration
 
-- **Schedule**: Every 15 minutes (`*/15 * * * *`)
+- **Schedule**: Twice per hour at :21 and :51 (`21,51 * * * *`)
+- **Scheduler**: Ofelia (Docker-based cron scheduler)
 - **Data Source**: NOAA Aviation Weather Center API
 - **Station**: EFSA (Savonlinna Airport)
 - **Retention**: 7 days (cleanup runs daily at midnight)

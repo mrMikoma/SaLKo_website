@@ -6,7 +6,8 @@
  * Fetches and stores METAR weather data for Savonlinna Airport (EFSA)
  * from the NOAA Aviation Weather Center API.
  *
- * Schedule: Every 15 minutes (METAR updates typically every 30 minutes)
+ * Schedule: Twice per hour at :21 and :51 (METAR updates at :20 and :50 in Finland)
+ * Scheduler: Ofelia (Docker-based cron scheduler)
  *
  * Usage:
  *   npm run cronjob:update-metar
@@ -30,7 +31,7 @@ interface CronjobConfig {
 const config: CronjobConfig = {
   name: "update-metar",
   version: "1.0.0",
-  schedule: "*/15 * * * *", // Every 15 minutes
+  schedule: "21,51 * * * *", // Twice per hour at :21 and :51
   retention: {
     enabled: true,
     days: 7, // Keep last 7 days of data
