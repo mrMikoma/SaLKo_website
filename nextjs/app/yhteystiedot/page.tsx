@@ -4,6 +4,7 @@ import Image from "next/image";
 
 type genericContact = {
   name: string;
+  email: string;
   address: string;
   city: string;
   postalCode: string;
@@ -41,7 +42,7 @@ export default function Page() {
   const towPilots = contacts.towPilots as Person[];
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center w-screen bg-sblued">
+    <div className="min-h-screen flex flex-col items-center w-full bg-sblued pt-36 pb-16">
       <section className="max-w-screen relative my-10">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 p-8 w-[350px] sm:w-5/6 mx-auto font-finlandica text-sblack bg-swhite rounded-xl shadow-lg">
           <div className="flex flex-col items-center">
@@ -57,6 +58,15 @@ export default function Page() {
             />
           </div>
           <div>
+            <div className="flex flex-col items-start text-xl">
+              <p className="mt-4 text-sblued font-semibold">Sähköposti:</p>
+              <a
+                href={`mailto:${contacts.general.email}`}
+                className="underline hover:text-gray-300"
+              >
+                {contacts.general.email}
+              </a>
+            </div>
             <div className="flex flex-col items-start text-xl">
               <p className="mt-4 text-sblued font-semibold">Postiosoite:</p>
               <p>{address}</p>
@@ -80,7 +90,7 @@ export default function Page() {
       </section>
 
       <section className="max-w-screen relative">
-        <ContactCardGrid title="Hallitus" board={board} />
+        <ContactCardGrid title="Hallitus 2025" board={board} />
       </section>
 
       <section className="max-w-[1500px] w-4/6 relative">

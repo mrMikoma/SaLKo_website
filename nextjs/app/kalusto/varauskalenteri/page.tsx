@@ -19,7 +19,7 @@ export default async function Page() {
   };
 
   return (
-    <div>
+    <div className="min-h-screen w-full pt-42">
       <BookingSection userContext={userContext} />
     </div>
   );

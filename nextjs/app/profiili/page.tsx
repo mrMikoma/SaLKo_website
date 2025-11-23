@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic";
 import ProfileManager from "@/components/profile/profileManager";
 import { getUserData } from "@/utilities/user";
 import { isProfileComplete } from "@/utilities/userManagement";
@@ -9,20 +9,14 @@ export default async function Page() {
 
   if (!user) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center w-screen">
-        <section className="max-w-screen relative">
-          <div className="w-screen h-screen flex bg-cover bg-center bg-olavinlinna-one">
-            <div className="absolute inset-0 bg-black opacity-50 flex justify-center items-center"></div>
-            <div className="absolute inset-x-0 bottom-0 z-10 w-full h-full sm:h-5/6 flex flex-col justify-between">
-              <div className="flex flex-col justify-end">
-                <div className="text-sm sm:text-md lg:text-lg xl:text-xl text-white font-light text-center text-nowrap mt-10 hidden sm:block">
-                  <section className="flex flex-col items-center">
-                    <div className="text-white">
-                      Käyttäjätietoja ei löytynyt
-                    </div>
-                  </section>
-                </div>
-              </div>
+      <div className="min-h-screen flex flex-col w-full">
+        <section className="relative w-full min-h-screen flex items-center justify-center bg-cover bg-center bg-olavinlinna-one">
+          <div className="absolute inset-0 bg-gradient-to-b from-sblack/50 via-sblack/40 to-sblued/95"></div>
+          <div className="relative z-10 w-full max-w-[1600px] mx-auto px-6 pt-48 pb-16 flex flex-col items-center justify-center">
+            <div className="text-center space-y-6 animate-fade-in">
+              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-swhite">
+                Käyttäjätietoja ei löytynyt
+              </h1>
             </div>
           </div>
         </section>
@@ -31,25 +25,19 @@ export default async function Page() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center w-screen">
-      <section className="max-w-screen relative">
-        <div className="w-screen h-screen flex bg-cover bg-center bg-olavinlinna-one">
-          <div className="absolute inset-0 bg-black opacity-50 flex justify-center items-center"></div>
-          <div className="absolute inset-x-0 bottom-0 z-10 w-full h-full sm:h-5/6 flex flex-col justify-between">
-            <div className="flex flex-col justify-end">
-              <div className="text-sm sm:text-md lg:text-lg xl:text-xl text-white font-light text-center text-nowrap mt-10 hidden sm:block">
-                <section className="flex flex-col items-center">
-                  {!profileComplete && (
-                    <div className="bg-yellow-500 text-gray-900 px-6 py-3 rounded-lg mb-4 max-w-2xl">
-                      <p className="text-sm font-medium">
-                        Täydennä profiilisi tiedot varauksia varten
-                      </p>
-                    </div>
-                  )}
-                  <ProfileManager user={user} />
-                </section>
+    <div className="min-h-screen flex flex-col w-full">
+      <section className="relative w-full min-h-screen flex items-center justify-center bg-cover bg-center bg-olavinlinna-one">
+        <div className="absolute inset-0 bg-gradient-to-b from-sblack/50 via-sblack/40 to-sblued/95"></div>
+        <div className="relative z-10 w-full max-w-[1600px] mx-auto px-6 pt-48 pb-16 flex flex-col items-center justify-center">
+          <div className="w-full space-y-6">
+            {!profileComplete && (
+              <div className="bg-yellow-500 text-gray-900 px-6 py-3 rounded-lg mb-4 text-center">
+                <p className="text-sm font-medium">
+                  Täydennä profiilisi tiedot varauksia varten
+                </p>
               </div>
-            </div>
+            )}
+            <ProfileManager user={user} />
           </div>
         </div>
       </section>

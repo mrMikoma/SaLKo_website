@@ -271,9 +271,8 @@ export default function Page() {
               Haluatko lentäjäksi?
             </h2>
             <p className="text-lg md:text-xl text-swhite/90 mb-8 mx-auto">
-              Ota yhteyttä ja aloita matkasi taivaalle. Tarjoamme
-              tutustumislentoja ja koulutusta kaikille ilmailusta
-              kiinnostuneille.
+              Ota yhteyttä ja aloita lentoharrastus! Tarjoamme tutustumislentoja
+              ja koulutusta kaikille ilmailusta kiinnostuneille.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link

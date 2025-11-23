@@ -1,7 +1,11 @@
 "use client";
 
 import { DateTime } from "luxon";
-import { CalendarOutlined, LeftOutlined, RightOutlined } from "@ant-design/icons";
+import {
+  CalendarOutlined,
+  LeftOutlined,
+  RightOutlined,
+} from "@ant-design/icons";
 import { useDateFromUrl } from "@/hooks/useDateFromUrl";
 import { ViewMode } from "./viewSelector";
 
@@ -44,7 +48,8 @@ const DatePicker = ({ viewMode = "day" }: DatePickerProps) => {
             Viikko {date.weekNumber}
           </div>
           <div className="text-sm text-white/90 mt-1">
-            {weekStart.setLocale("fi").toFormat("dd.MM")} - {weekEnd.setLocale("fi").toFormat("dd.MM.yyyy")}
+            {weekStart.setLocale("fi").toFormat("dd.MM")} -{" "}
+            {weekEnd.setLocale("fi").toFormat("dd.MM.yyyy")}
           </div>
         </div>
       );
@@ -87,7 +92,7 @@ const DatePicker = ({ viewMode = "day" }: DatePickerProps) => {
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto">
+    <div className="lg:w-1/2 mx-auto">
       <div className="bg-gradient-to-r from-sblue to-sblued rounded-xl shadow-lg p-6">
         {/* Main navigation row */}
         <div className="flex items-center justify-between gap-4">
@@ -103,10 +108,7 @@ const DatePicker = ({ viewMode = "day" }: DatePickerProps) => {
 
           {/* Date display and picker */}
           <div className="flex-1 flex items-center justify-center gap-4">
-            <div className="flex-1 max-w-md">
-              {getDisplayText()}
-            </div>
-
+            <div className="flex-1">{getDisplayText()}</div>
             {/* Date picker input (hidden by default, shown as calendar icon) */}
             <div className="relative">
               <input
@@ -124,7 +126,7 @@ const DatePicker = ({ viewMode = "day" }: DatePickerProps) => {
               <div className="flex items-center justify-center w-12 h-12 rounded-full bg-swhite/20 hover:bg-swhite/30 text-swhite transition-all duration-200 cursor-pointer">
                 <CalendarOutlined className="text-xl" />
               </div>
-            </div>
+            </div>{" "}
           </div>
 
           {/* Next button */}

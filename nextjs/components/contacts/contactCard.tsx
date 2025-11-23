@@ -1,7 +1,7 @@
 const ContactCard = ({ member, idx }: { member: any; idx: number }) => {
   return (
     <div className="flex flex-col w-[350px] sm:w-[450px] items-center p-6 bg-swhite rounded-xl shadow-lg text-sblack">
-      <li key={idx} className="w-full max-w-md space-y-4">
+      <li key={idx} className="w-full space-y-4">
         <p className="text-2xl text-center text-sblued font-semibold">
           {member.role}
         </p>
