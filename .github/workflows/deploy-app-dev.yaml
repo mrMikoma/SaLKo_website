@@ -249,14 +249,23 @@ jobs:
           ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} << 'EOF'
             # Update .env.monitoring with dev secrets (replace, not append)
             if [ -f .env.monitoring ]; then
-              sed -i "s|^DEV_POSTGRES_EXPORTER_DSN=.*|DEV_POSTGRES_EXPORTER_DSN=postgresql://postgres:${{ env.POSTGRES_PASSWORD }}@salko-postgres-dev:5432/salko?sslmode=disable|" .env.monitoring
+              # File exists - replace the line
+              if grep -q "^DEV_POSTGRES_EXPORTER_DSN=" .env.monitoring; then
+                sed -i "s|^DEV_POSTGRES_EXPORTER_DSN=.*|DEV_POSTGRES_EXPORTER_DSN=postgresql://postgres:${{ env.POSTGRES_PASSWORD }}@salko-postgres-dev:5432/salko?sslmode=disable|" .env.monitoring
+              else
+                # Line doesn't exist - append it
+                echo "DEV_POSTGRES_EXPORTER_DSN=postgresql://postgres:${{ env.POSTGRES_PASSWORD }}@salko-postgres-dev:5432/salko?sslmode=disable" >> .env.monitoring
+              fi
+              echo "Monitoring secrets updated"
+            else
+              echo ".env.monitoring file not found - skipping monitoring update"
             fi
 
-            echo "Monitoring secrets updated."
-
             # Restart monitoring stack to apply new secrets
-            echo "Restarting monitoring stack..."
-            docker compose --env-file .env.monitoring -f docker-compose.monitoring.yaml restart || true
+            if [ -f .env.monitoring ]; then
+              echo "Restarting monitoring stack..."
+              docker compose --env-file .env.monitoring -f docker-compose.monitoring.yaml restart || true
+            fi
           EOF
 
       - name: Notify success
