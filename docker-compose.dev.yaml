@@ -2,8 +2,6 @@ services:
   postgres:
     image: postgres:17.5
     container_name: ${NAME_PREFIX}-postgres-${BRANCH_SUFFIX}
-    ports:
-      - "5432:5432"
     networks:
       - internal
     env_file: .env.dev
@@ -17,6 +15,9 @@ services:
       timeout: 60s
       retries: 5
       start_period: 80s
+    labels:
+      - logging=promtail
+      - environment=dev
 
   nextjs:
     image: ${IMAGE_TAG_NAME}:${IMAGE_VERSION}
@@ -29,10 +30,6 @@ services:
       - PORT=${CONTAINER_PORT}
       - HOSTNAME=${HOSTNAME}
       - DATABASE_CONNECTION_STRING=postgresql://${APP_DB_USER}:${APP_DB_PASSWORD}@${NAME_PREFIX}-postgres-${BRANCH_SUFFIX}:${PGPORT}/${POSTGRES_DB}
-      - NEXTAUTH_URL=${NEXTAUTH_URL}
-      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
     depends_on:
       postgres:
         condition: service_healthy
@@ -44,6 +41,8 @@ services:
     #   retries: 3
     #   start_period: 30
     labels:
+      - logging=promtail
+      - environment=dev
       - traefik.enable=true
       - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.rule=Host(`${SITE_PREFIX}.${HOST_URL}`)
       - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.entrypoints=websecure
@@ -55,24 +54,10 @@ services:
       # - traefik.http.services.nextjs-${BRANCH_SUFFIX}.rateLimit.burst=100
       # - traefik.http.services.nextjs-${BRANCH_SUFFIX}.rateLimit.average=50
 
-#   whoami:
-#     image: traefik/whoami
-#     container_name: whoami
-#     networks:
-#       - outgoing
-#     env_file: .env.dev
-#     labels:
-#       - traefik.enable=true
-#       - traefik.http.routers.whoami.rule=Host(`${SITE_PREFIX}.${HOST_URL}`) && PathPrefix(`/${SITE_PREFIX}`)
-#       - traefik.http.routers.whoami.entrypoints=websecure
-#       - traefik.http.routers.whoami.tls.certresolver=cloudflare
-#       - traefik.http.routers.whoami.middlewares=strip-prefix
-#       - traefik.http.middlewares.strip-prefix.stripPrefix.prefixes='/${SITE_PREFIX}'
-
 networks:
-  internal:
-    external: true
-    name: salko_dev_internal
   outgoing:
     external: true
     name: global_outgoing
+  internal:
+    external: true
+    name: salko_dev_internal

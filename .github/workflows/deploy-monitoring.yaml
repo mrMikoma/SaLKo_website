@@ -1,0 +1,250 @@
+name: Deploy Monitoring Stack
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'monitoring/**'
+      - 'docker-compose.monitoring.yaml'
+      - '.github/workflows/deploy-monitoring.yaml'
+  workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: 'Force deployment even without changes'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+env:
+  NAME_PREFIX: "salko"
+  ENVIRONMENT: "prod"
+
+jobs:
+  create-runner:
+    name: Create Hetzner Cloud runner
+    runs-on: ubuntu-24.04
+    outputs:
+      label: ${{ steps.create-hcloud-runner.outputs.label }}
+      server_id: ${{ steps.create-hcloud-runner.outputs.server_id }}
+    steps:
+      - name: Create runner
+        id: create-hcloud-runner
+        uses: Cyclenerd/hcloud-github-runner@v1.3.0
+        with:
+          mode: create
+          github_token: ${{ secrets.HETZNER_GHA_RUNNER_PAT }}
+          hcloud_token: ${{ secrets.HETZNER_API_TOKEN }}
+          network: ${{ secrets.HETZNER_NETWORK_ID }}
+          ssh_key: ${{ secrets.HETZNER_GHA_RUNNER_SSH_KEY_ID }}
+          server_type: cx23
+          location: hel1
+          image: ubuntu-24.04
+          pre_runner_script: |
+            set -ex
+            echo "Configuring private network routing..."
+            sleep 10
+            PRIVATE_IFACE=$(ip -o addr show | grep "10.1.1." | awk '{print $2}' | head -n1)
+            if [ -z "$PRIVATE_IFACE" ]; then
+              echo "No private interface found in 10.1.1.0/24 subnet, skipping network configuration"
+              exit 0
+            fi
+            PRIVATE_IP=$(ip -o -4 addr show $PRIVATE_IFACE | awk '{print $4}' | cut -d/ -f1)
+            echo "Found interface $PRIVATE_IFACE with IP $PRIVATE_IP"
+            cat > /etc/netplan/60-private-network.yaml <<'NETPLAN_EOF'
+            network:
+              version: 2
+              renderer: networkd
+              ethernets:
+                PLACEHOLDER_IFACE:
+                  dhcp4: false
+                  dhcp6: false
+                  accept-ra: false
+                  addresses:
+                    - PLACEHOLDER_IP/32
+                  routes:
+                    - to: 10.1.0.0/16
+                      via: 10.1.0.1
+                      on-link: true
+                      metric: 100
+                  nameservers:
+                    addresses:
+                      - 1.1.1.1
+                      - 1.0.0.1
+            NETPLAN_EOF
+            sed -i "s/PLACEHOLDER_IFACE/$PRIVATE_IFACE/g" /etc/netplan/60-private-network.yaml
+            sed -i "s|PLACEHOLDER_IP|$PRIVATE_IP|g" /etc/netplan/60-private-network.yaml
+            netplan apply
+            echo "Network configuration applied successfully"
+            ip route show
+
+  deploy:
+    needs: create-runner
+    runs-on: ${{ needs.create-runner.outputs.label }}
+    environment: production
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4.2.2
+        with:
+          ref: main
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ vars.SERVER_IP_SALKO0 }} >> ~/.ssh/known_hosts
+
+      - name: Create monitoring directories on server
+        run: |
+          echo "Creating monitoring directories..."
+          ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} << 'EOF'
+            mkdir -p /home/salko/monitoring/{prometheus-data,loki-data,grafana-data}
+          EOF
+
+      - name: Transfer monitoring configuration files
+        run: |
+          echo "Transferring docker-compose.monitoring.yaml..."
+          scp -i ~/.ssh/id_ed25519 ./docker-compose.monitoring.yaml salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/docker-compose.monitoring.yaml
+
+          echo "Transferring monitoring configs..."
+          scp -i ~/.ssh/id_ed25519 -r ./monitoring/* salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/monitoring/
+
+          echo "Verifying file transfers..."
+          ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} "ls -la /home/salko/docker-compose.monitoring.yaml /home/salko/monitoring/"
+
+      - name: Deploy monitoring stack
+        env:
+          GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+        run: |
+          echo "Deploying monitoring stack..."
+          ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} << 'EOF'
+            # Create or update the .env.monitoring file
+            cat > .env.monitoring << ENVEOF
+          NAME_PREFIX=${{ env.NAME_PREFIX }}
+          ENVIRONMENT=${{ env.ENVIRONMENT }}
+          GRAFANA_ADMIN_PASSWORD=${{ env.GRAFANA_ADMIN_PASSWORD }}
+          DEV_POSTGRES_EXPORTER_DSN=postgresql://postgres:${{ env.POSTGRES_PASSWORD }}@salko-postgres-dev:5432/salko?sslmode=disable
+          PROD_POSTGRES_EXPORTER_DSN=postgresql://postgres:${{ env.POSTGRES_PASSWORD }}@salko-postgres-prod:5432/salko?sslmode=disable
+          ENVEOF
+
+            echo ".env.monitoring file created."
+
+            # Set proper permissions and ownership for data directories
+            # Grafana runs as UID 472, Loki as UID 10001, Prometheus as UID 65534 (nobody)
+            sudo chown -R 472:472 /home/salko/monitoring/grafana-data || true
+            sudo chown -R 10001:10001 /home/salko/monitoring/loki-data || true
+            sudo chown -R 65534:65534 /home/salko/monitoring/prometheus-data || true
+            chmod -R 755 /home/salko/monitoring/prometheus-data || true
+            chmod -R 755 /home/salko/monitoring/loki-data || true
+            chmod -R 755 /home/salko/monitoring/grafana-data || true
+
+            # Stop the current monitoring stack if running
+            echo "Stopping current monitoring stack..."
+            docker compose --env-file .env.monitoring -f docker-compose.monitoring.yaml down || true
+
+            # Start the monitoring stack
+            echo "Starting monitoring stack..."
+            docker compose --env-file .env.monitoring -f docker-compose.monitoring.yaml up -d
+
+            # Wait for services to start
+            sleep 15
+
+            # Verify deployment
+            echo "Verifying deployment..."
+            docker compose --env-file .env.monitoring -f docker-compose.monitoring.yaml ps
+
+            # Check if Grafana is responding
+            if docker ps | grep -q "salko-grafana"; then
+              echo "✅ Grafana is running"
+            else
+              echo "❌ Grafana failed to start"
+              exit 1
+            fi
+
+            # Check if Prometheus is responding
+            if docker ps | grep -q "salko-prometheus"; then
+              echo "✅ Prometheus is running"
+            else
+              echo "❌ Prometheus failed to start"
+              exit 1
+            fi
+
+            # Check if Loki is responding
+            if docker ps | grep -q "salko-loki"; then
+              echo "✅ Loki is running"
+            else
+              echo "❌ Loki failed to start"
+              exit 1
+            fi
+
+            echo "Cleaning up old images..."
+            docker image prune -f
+
+            echo "✅ Monitoring stack deployment complete!"
+          EOF
+
+      - name: Notify success
+        if: ${{ success() }}
+        run: |
+          echo "✅ Monitoring stack deployment successful!"
+          echo "Access Grafana at: http://10.1.0.x:3001 (from your local network)"
+          echo "Default credentials: admin / (password from secrets)"
+
+      - name: Notify failure
+        if: ${{ failure() }}
+        run: |
+          echo "❌ Monitoring stack deployment failed!"
+
+      - name: Post Task Summary
+        run: |
+          {
+            echo "## Monitoring Stack Deployment Summary"
+            echo "- **Environment:** ${{ env.ENVIRONMENT }}"
+            echo "- **Branch:** \`main\`"
+            echo "- **Grafana URL:** http://10.1.0.x:3001"
+            echo "- **Prometheus URL:** http://10.1.0.x:9090"
+            echo "- **Deployment Status:** \`${{ job.status }}\`"
+            echo ""
+            echo "### Services Deployed"
+            echo "- Grafana (Dashboards)"
+            echo "- Prometheus (Metrics)"
+            echo "- Loki (Logs)"
+            echo "- Promtail (Log Collection)"
+            echo "- Node Exporter (Host Metrics)"
+            echo "- cAdvisor (Container Metrics)"
+            echo "- Postgres Exporters (DB Metrics)"
+            echo ""
+            echo "### Access Information"
+            echo "All services are accessible from 10.0.0.0/16 network only"
+            echo "- Grafana: Port 3001"
+            echo "- Prometheus: Port 9090"
+            echo "- Loki: Port 3100"
+            echo ""
+            echo "**Workflow:** ${{ github.workflow }}"
+            echo "**Run:** [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+          } >> $GITHUB_STEP_SUMMARY
+
+  delete-runner:
+    name: Delete Hetzner Cloud runner
+    needs:
+      - create-runner
+      - deploy
+    runs-on: ubuntu-24.04
+    if: ${{ always() }}
+    steps:
+      - name: Delete runner
+        uses: Cyclenerd/hcloud-github-runner@v1.3.0
+        with:
+          mode: delete
+          github_token: ${{ secrets.HETZNER_GHA_RUNNER_PAT }}
+          hcloud_token: ${{ secrets.HETZNER_API_TOKEN }}
+          name: ${{ needs.create-runner.outputs.label }}
+          server_id: ${{ needs.create-runner.outputs.server_id }}

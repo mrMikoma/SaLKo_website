@@ -238,6 +238,22 @@ jobs:
             echo "Deployment complete."
           EOF
 
+      - name: Update monitoring secrets
+        env:
+          GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+        run: |
+          echo "Updating monitoring secrets..."
+          ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} << 'EOF'
+            # Update .env.monitoring with dev secrets
+            sed -i "s|^DEV_POSTGRES_EXPORTER_DSN=.*|DEV_POSTGRES_EXPORTER_DSN=postgresql://postgres:${{ env.POSTGRES_PASSWORD }}@salko-postgres-dev:5432/salko?sslmode=disable|" .env.monitoring || true
+            echo "✅ Monitoring secrets updated"
+
+            # Restart monitoring stack to apply new secrets
+            echo "Restarting monitoring stack..."
+            docker compose --env-file .env.monitoring -f docker-compose.monitoring.yaml restart || true
+          EOF
+
       - name: Notify success
         if: ${{ success() }}
         run: |

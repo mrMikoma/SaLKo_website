@@ -1,0 +1,67 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'salko-production'
+    environment: '${ENVIRONMENT}'
+
+# Alertmanager configuration (optional, can be added later)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets: []
+
+# Load rules once and periodically evaluate them
+rule_files:
+  # - "alerts.yml"
+
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Node Exporter - Host system metrics
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          instance: 'salko-server'
+
+  # cAdvisor - Container metrics
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+        labels:
+          instance: 'salko-server'
+
+  # Postgres Exporter - Dev database
+  - job_name: 'postgres-dev'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['postgres-exporter-dev:9187']
+        labels:
+          database: 'dev'
+          instance: 'salko-postgres-dev'
+
+  # Postgres Exporter - Prod database
+  - job_name: 'postgres-prod'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['postgres-exporter-prod:9187']
+        labels:
+          database: 'prod'
+          instance: 'salko-postgres-prod'
+
+  # Grafana metrics
+  - job_name: 'grafana'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['grafana:3000']
+
+  # Traefik metrics (if enabled)
+  - job_name: 'traefik'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['traefik:8080']
+    metrics_path: '/metrics'
