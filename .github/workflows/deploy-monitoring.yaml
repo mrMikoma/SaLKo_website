@@ -106,7 +106,6 @@ jobs:
           echo "Creating monitoring directories..."
           ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} << 'EOF'
             mkdir -p /home/salko/monitoring/{prometheus-data,loki-data,grafana-data}
-            mkdir -p /home/salko/monitoring-config
           EOF
 
       - name: Transfer monitoring configuration files
@@ -115,10 +114,10 @@ jobs:
           scp -i ~/.ssh/id_ed25519 ./docker-compose.monitoring.yaml salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/docker-compose.monitoring.yaml
 
           echo "Transferring monitoring configs..."
-          scp -i ~/.ssh/id_ed25519 -r ./monitoring salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/monitoring-config/
+          scp -i ~/.ssh/id_ed25519 -r ./monitoring/* salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/monitoring/
 
           echo "Verifying file transfers..."
-          ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} "ls -la /home/salko/docker-compose.monitoring.yaml /home/salko/monitoring-config/monitoring/"
+          ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} "ls -la /home/salko/docker-compose.monitoring.yaml /home/salko/monitoring/"
 
       - name: Deploy monitoring stack
         env:
@@ -137,10 +136,6 @@ jobs:
           ENVEOF
 
             echo ".env.monitoring file created."
-
-            # Copy monitoring configs to proper location
-            rm -rf /home/salko/monitoring/prometheus /home/salko/monitoring/loki /home/salko/monitoring/promtail /home/salko/monitoring/grafana
-            cp -r /home/salko/monitoring-config/monitoring/* /home/salko/monitoring/ || cp -r /home/salko/monitoring-config/monitoring /home/salko/
 
             # Set proper permissions for data directories
             chmod -R 755 /home/salko/monitoring/prometheus-data || true
