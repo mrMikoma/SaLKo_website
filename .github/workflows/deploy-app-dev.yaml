@@ -1,4 +1,4 @@
-name: Deploy non-production branch
+name: Deploy dev branch
 
 on:
   workflow_dispatch:
@@ -220,6 +220,9 @@ jobs:
             echo "Starting containers using Docker Compose..."
             docker compose --env-file .env.dev -f docker-compose.dev.yaml up -d
 
+            # Wait for services to start
+            sleep 15
+
             # Verify the deployment
             echo "Verifying the deployment..."
             if docker ps | grep -q "${{ env.IMAGE_TAG_NAME }}"; then
@@ -236,6 +239,24 @@ jobs:
             docker image prune -f
 
             echo "Deployment complete."
+          EOF
+
+      - name: Update monitoring secrets
+        env:
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+        run: |
+          echo "Updating monitoring secrets..."
+          ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} << 'EOF'
+            # Update .env.monitoring with dev secrets (replace, not append)
+            if [ -f .env.monitoring ]; then
+              sed -i "s|^DEV_POSTGRES_EXPORTER_DSN=.*|DEV_POSTGRES_EXPORTER_DSN=postgresql://postgres:${{ env.POSTGRES_PASSWORD }}@salko-postgres-dev:5432/salko?sslmode=disable|" .env.monitoring
+            fi
+
+            echo "Monitoring secrets updated."
+
+            # Restart monitoring stack to apply new secrets
+            echo "Restarting monitoring stack..."
+            docker compose --env-file .env.monitoring -f docker-compose.monitoring.yaml restart || true
           EOF
 
       - name: Notify success
