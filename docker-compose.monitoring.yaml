@@ -126,7 +126,7 @@ services:
       - "0.0.0.0:9187:9187"
     networks:
       - monitoring
-      - global_internal
+      - dev_internal
     restart: unless-stopped
     labels:
       - logging=promtail
@@ -140,7 +140,7 @@ services:
       - "0.0.0.0:9188:9187"
     networks:
       - monitoring
-      - global_internal
+      - prod_internal
     restart: unless-stopped
     labels:
       - logging=promtail
@@ -150,7 +150,9 @@ networks:
     driver: bridge
   global_outgoing:
     external: true
-    name: global_outgoing
-  global_internal:
+  dev_internal:
     external: true
-    name: global_internal
+    name: salko_dev_internal
+  prod_internal:
+    external: true
+    name: salko_prod_internal

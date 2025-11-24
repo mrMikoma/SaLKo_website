@@ -133,6 +133,17 @@ All monitoring services are accessible only from the `10.0.0.0/16` network:
 - Access controlled by UFW firewall (configured via Ansible)
 - Ports are bound to 0.0.0.0 but restricted by firewall rules
 
+## Docker Networks
+
+The monitoring stack uses shared Docker networks to communicate with application containers:
+
+- **salko_dev_internal** - Created by Ansible, shared between dev postgres and dev postgres-exporter
+- **salko_prod_internal** - Created by Ansible, shared between prod postgres and prod postgres-exporter
+- **global_outgoing** - Shared network for Traefik and external connectivity
+- **monitoring** - Internal network for monitoring stack components
+
+These networks are created automatically during Ansible provisioning ([infra/ansible/roles/docker_install/tasks/main.yml](../../infra/ansible/roles/docker_install/tasks/main.yml)).
+
 ## Troubleshooting
 
 ### Check Service Status

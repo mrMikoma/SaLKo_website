@@ -55,8 +55,9 @@ services:
       # - traefik.http.services.nextjs-${BRANCH_SUFFIX}.rateLimit.average=50
 
 networks:
-  internal:
-    driver: bridge
   outgoing:
     external: true
     name: global_outgoing
+  internal:
+    external: true
+    name: salko_dev_internal
