@@ -130,7 +130,8 @@ All monitoring services are accessible only from the `10.0.0.0/16` network:
 
 - No Traefik routing required
 - Direct access via IP:PORT
-- Ports bound to 10.1.0.0/16 interface
+- Access controlled by UFW firewall (configured via Ansible)
+- Ports are bound to 0.0.0.0 but restricted by firewall rules
 
 ## Troubleshooting
 
