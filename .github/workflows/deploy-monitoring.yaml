@@ -136,15 +136,6 @@ jobs:
 
             echo ".env.monitoring file created."
 
-            # Set proper permissions and ownership for data directories
-            # Grafana runs as UID 472, Loki as UID 10001, Prometheus as UID 65534 (nobody)
-            sudo chown -R 472:0 /home/salko/monitoring/grafana-data || true
-            sudo chmod -R 775 /home/salko/monitoring/grafana-data || true
-            sudo chown -R 10001:0 /home/salko/monitoring/loki-data || true
-            sudo chmod -R 775 /home/salko/monitoring/loki-data || true
-            sudo chown -R 65534:0 /home/salko/monitoring/prometheus-data || true
-            sudo chmod -R 775 /home/salko/monitoring/prometheus-data || true
-
             # Stop the current monitoring stack if running
             echo "Stopping current monitoring stack..."
             docker compose --env-file .env.monitoring -f docker-compose.monitoring.yaml down || true

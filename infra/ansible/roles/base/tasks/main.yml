@@ -38,9 +38,9 @@
     - { path: /home/salko/systemd }
     - { path: /var/log/salko/cronjobs }
     - { path: /home/salko/monitoring }
-    - { path: /home/salko/monitoring/prometheus-data }
-    - { path: /home/salko/monitoring/loki-data }
-    - { path: /home/salko/monitoring/grafana-data }
+    - { path: /home/salko/monitoring/prometheus-data, owner: "65534", group: "0", mode: "0775" }
+    - { path: /home/salko/monitoring/loki-data, owner: "10001", group: "0", mode: "0775" }
+    - { path: /home/salko/monitoring/grafana-data, owner: "472", group: "0", mode: "0775" }
 
 - name: Ensure acme.json file exists for Traefik
   ansible.builtin.file:
