@@ -243,7 +243,8 @@ jobs:
 
       - name: Update monitoring secrets
         env:
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_USER: "salko_admin"
+          POSTGRES_DB: "salko"
         run: |
           echo "Updating monitoring secrets..."
           ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} << 'EOF'
@@ -251,10 +252,10 @@ jobs:
             if [ -f .env.monitoring ]; then
               # File exists - replace the line
               if grep -q "^DEV_POSTGRES_EXPORTER_DSN=" .env.monitoring; then
-                sed -i "s|^DEV_POSTGRES_EXPORTER_DSN=.*|DEV_POSTGRES_EXPORTER_DSN=postgresql://postgres:${{ env.POSTGRES_PASSWORD }}@salko-postgres-dev:5432/salko?sslmode=disable|" .env.monitoring
+                sed -i "s|^DEV_POSTGRES_EXPORTER_DSN=.*|DEV_POSTGRES_EXPORTER_DSN=postgresql://${{ env.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@salko-postgres-dev:5432/${{ env.POSTGRES_DB }}?sslmode=disable|" .env.monitoring
               else
                 # Line doesn't exist - append it
-                echo "DEV_POSTGRES_EXPORTER_DSN=postgresql://postgres:${{ env.POSTGRES_PASSWORD }}@salko-postgres-dev:5432/salko?sslmode=disable" >> .env.monitoring
+                echo "DEV_POSTGRES_EXPORTER_DSN=postgresql://${{ env.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@salko-postgres-dev:5432/${{ env.POSTGRES_DB }}?sslmode=disable" >> .env.monitoring
               fi
               echo "Monitoring secrets updated"
             else
