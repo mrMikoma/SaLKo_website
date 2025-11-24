@@ -45,6 +45,55 @@
     proto: tcp
     from_ip: 10.1.0.0/16
 
+- name: Allow Grafana from private network (10.1.0.0/16)
+  community.general.ufw:
+    rule: allow
+    port: "3001"
+    proto: tcp
+    from_ip: 10.1.0.0/16
+
+- name: Allow Prometheus from private network (10.1.0.0/16)
+  community.general.ufw:
+    rule: allow
+    port: "9090"
+    proto: tcp
+    from_ip: 10.1.0.0/16
+
+- name: Allow Loki from private network (10.1.0.0/16)
+  community.general.ufw:
+    rule: allow
+    port: "3100"
+    proto: tcp
+    from_ip: 10.1.0.0/16
+
+- name: Allow Node Exporter from private network (10.1.0.0/16)
+  community.general.ufw:
+    rule: allow
+    port: "9100"
+    proto: tcp
+    from_ip: 10.1.0.0/16
+
+- name: Allow cAdvisor from private network (10.1.0.0/16)
+  community.general.ufw:
+    rule: allow
+    port: "8080"
+    proto: tcp
+    from_ip: 10.1.0.0/16
+
+- name: Allow Postgres Exporter Dev from private network (10.1.0.0/16)
+  community.general.ufw:
+    rule: allow
+    port: "9187"
+    proto: tcp
+    from_ip: 10.1.0.0/16
+
+- name: Allow Postgres Exporter Prod from private network (10.1.0.0/16)
+  community.general.ufw:
+    rule: allow
+    port: "9188"
+    proto: tcp
+    from_ip: 10.1.0.0/16
+
 - name: Enable UFW
   community.general.ufw:
     state: enabled

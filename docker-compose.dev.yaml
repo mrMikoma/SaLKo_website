@@ -15,6 +15,9 @@ services:
       timeout: 60s
       retries: 5
       start_period: 80s
+    labels:
+      - logging=promtail
+      - environment=dev
 
   nextjs:
     image: ${IMAGE_TAG_NAME}:${IMAGE_VERSION}
@@ -38,6 +41,8 @@ services:
     #   retries: 3
     #   start_period: 30
     labels:
+      - logging=promtail
+      - environment=dev
       - traefik.enable=true
       - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.rule=Host(`${SITE_PREFIX}.${HOST_URL}`)
       - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.entrypoints=websecure
@@ -48,20 +53,6 @@ services:
       # - traefik.http.services.nextjs-${BRANCH_SUFFIX}.loadbalancer.healthcheck
       # - traefik.http.services.nextjs-${BRANCH_SUFFIX}.rateLimit.burst=100
       # - traefik.http.services.nextjs-${BRANCH_SUFFIX}.rateLimit.average=50
-
-#   whoami:
-#     image: traefik/whoami
-#     container_name: whoami
-#     networks:
-#       - outgoing
-#     env_file: .env.dev
-#     labels:
-#       - traefik.enable=true
-#       - traefik.http.routers.whoami.rule=Host(`${SITE_PREFIX}.${HOST_URL}`) && PathPrefix(`/${SITE_PREFIX}`)
-#       - traefik.http.routers.whoami.entrypoints=websecure
-#       - traefik.http.routers.whoami.tls.certresolver=cloudflare
-#       - traefik.http.routers.whoami.middlewares=strip-prefix
-#       - traefik.http.middlewares.strip-prefix.stripPrefix.prefixes='/${SITE_PREFIX}'
 
 networks:
   internal:
