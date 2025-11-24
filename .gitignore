@@ -1,8 +1,15 @@
 .env
 .env.*
 !.env.template
+!.env.monitoring.template
 lentokerho.sql
+SaLKo nettisivut sisältö 12-2024.pdf
 
 /letsencrypt
 /postgres/postgres-data
 /postgres/pgadmin-data
+
+# Monitoring data directories
+/monitoring/prometheus-data
+/monitoring/loki-data
+/monitoring/grafana-data
