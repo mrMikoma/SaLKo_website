@@ -61,7 +61,7 @@ Manual deployment:
 ### Initial Access
 
 1. From your local machine in the 10.0.0.0/16 network:
-   - Grafana: http://10.1.0.x:3001
+   - Grafana: http://10.1.0.x:4000
    - Prometheus: http://10.1.0.x:9090
    - Loki: http://10.1.0.x:3100
 
