@@ -146,6 +146,14 @@ const Navbar = ({ session }: { session: Session | null }) => {
                       </MenuItem>
                       <MenuItem>
                         <Link
+                          href="/kerho/kentta"
+                          className="block py-3 px-4 text-swhite hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
+                        >
+                          Kotikenttä
+                        </Link>
+                      </MenuItem>
+                      <MenuItem>
+                        <Link
                           href="/kerho/hallit"
                           className="block py-3 px-4 text-swhite hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
                         >
@@ -221,10 +229,10 @@ const Navbar = ({ session }: { session: Session | null }) => {
             {/* Kenttä */}
             <li className="mr-3 nav__item group">
               <Link
-                href="/kentta"
+                href="/esittelylennot"
                 className="inline-block px-4 py-2 text-2xl font-medium no-underline hover:text-sbluel transition-colors duration-200 relative"
               >
-                Kenttä
+                Esittelylennot
                 <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-sred transition-all duration-300 group-hover:w-full"></span>
               </Link>
             </li>

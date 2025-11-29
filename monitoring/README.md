@@ -61,7 +61,7 @@ Manual deployment:
 ### Initial Access
 
 1. From your local machine in the 10.0.0.0/16 network:
-   - Grafana: http://10.1.0.x:3001
+   - Grafana: http://10.1.0.x:4000
    - Prometheus: http://10.1.0.x:9090
    - Loki: http://10.1.0.x:3100
 
@@ -151,6 +151,31 @@ These networks are created automatically during Ansible provisioning ([infra/ans
 ```bash
 docker compose --env-file .env.monitoring -f docker-compose.monitoring.yaml ps
 ```
+
+### Permission Issues
+
+If Grafana/Loki/Prometheus fail with "attempt to write a readonly database" errors:
+
+1. **Run Ansible provisioning** to set correct directory permissions:
+   ```bash
+   cd infra/ansible
+   ansible-playbook -i inventory.ini playbook.yml
+   ```
+
+2. **Or manually fix permissions on the server**:
+   ```bash
+   sudo chown -R 472:0 /home/salko/monitoring/grafana-data
+   sudo chmod -R 775 /home/salko/monitoring/grafana-data
+   sudo chown -R 10001:0 /home/salko/monitoring/loki-data
+   sudo chmod -R 775 /home/salko/monitoring/loki-data
+   sudo chown -R 65534:0 /home/salko/monitoring/prometheus-data
+   sudo chmod -R 775 /home/salko/monitoring/prometheus-data
+   ```
+
+3. **Restart the monitoring stack**:
+   ```bash
+   docker compose --env-file .env.monitoring -f docker-compose.monitoring.yaml restart
+   ```
 
 ### View Service Logs
 

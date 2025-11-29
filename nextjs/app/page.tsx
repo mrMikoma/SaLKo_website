@@ -5,6 +5,8 @@ import GraduationIcon from "@/components/icons/graduation";
 import MapPinIcon from "@/components/icons/mapPin";
 import HistoryTimeline from "@/components/historyTimeline";
 import WeatherWidget from "@/components/weatherWidget";
+import ContentSection from "@/components/contentSection";
+import CallToAction from "@/components/callToAction";
 import Link from "next/link";
 
 export const metadata = {
@@ -118,179 +120,175 @@ export default function Page() {
       </section>
 
       {/* Feature Cards Section */}
-      <section className="w-full bg-gradient-to-b from-sblued to-sblack py-16 lg:py-24">
-        <div className="container mx-auto px-6">
-          {/* Section Header */}
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-swhite mb-4">
-              Tutustu toimintaamme
-            </h2>
-            <p className="text-lg text-swhite/80 mx-auto">
-              Tarjoamme monipuolisia ilmailupalveluja koulutuksesta vapaalentoon
-            </p>
-          </div>
-
-          {/* Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {/* Kalusto Card */}
-            <FeatureCard
-              title="Kalusto"
-              description="Meillä on käytössä kaksi moottorilentokoneita sekä kolme purjekonetta. Koneemme ovat huolellisesti huollettuja ja turvallisuusstandardien mukaisia."
-              icon={<PlaneIcon size={48} />}
-              href="/kalusto"
-              imageSrc="/images/OH-CON/ohcon_1.jpg"
-              variant="default"
-            />
-
-            {/* Koulutus Card */}
-            <FeatureCard
-              title="Koulutus"
-              description="Tarjoamme kattavaa lentokoulutusta aina alkeista ammattilentäjäksi. Kokeneet lennonopettajamme ohjaavat sinua turvallisesti kohti unelmiasi."
-              icon={<GraduationIcon size={48} />}
-              href="/koulutus"
-              variant="highlighted"
-            />
-
-            {/* Kenttä Card */}
-            <FeatureCard
-              title="Savonlinnan Lentoasema"
-              description="Toimintamme sijaitsee Savonlinnan lentoasemalla (EFSA), noin 15 km Savonlinnan keskustasta Enonkoskelle päin. Kenttä on avoinna ympäri vuoden."
-              icon={<MapPinIcon size={48} />}
-              href="/kentta"
-              imageSrc="/images/efsa_1.jpg"
-              variant="default"
-            />
-          </div>
+      <ContentSection variant="dark" containerSize="default">
+        {/* Section Header */}
+        <div className="text-center mb-12">
+          <h2 className="text-3xl md:text-4xl font-bold text-swhite mb-4">
+            Tutustu toimintaamme
+          </h2>
+          <p className="text-lg text-swhite/80 mx-auto">
+            Toimintamme keskittyy moottorilentotoimintaan Savonlinnassa
+          </p>
         </div>
-      </section>
+
+        {/* Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {/* Kalusto Card */}
+          <FeatureCard
+            title="Kalusto"
+            description="Meillä on käytössä kaksi moottorilentokoneita sekä kolme purjekonetta. Koneemme ovat huolellisesti huollettuja ja turvallisuusstandardien mukaisia."
+            icon={<PlaneIcon size={48} />}
+            href="/kalusto"
+            imageSrc="/images/OH-CON/ohcon_1.jpg"
+            variant="default"
+          />
+
+          {/* Koulutus Card */}
+          <FeatureCard
+            title="Koulutus"
+            description="Tarjoamme kattavaa lentokoulutusta aina alkeista ammattilentäjäksi. Kokeneet lennonopettajamme ohjaavat sinua turvallisesti kohti unelmiasi."
+            icon={<GraduationIcon size={48} />}
+            href="/koulutus"
+            imageSrc="/images/OH-386/oh386_1.jpg"
+            variant="highlighted"
+          />
+
+          {/* Kenttä Card */}
+          <FeatureCard
+            title="Savonlinnan Lentoasema"
+            description="Toimintamme sijaitsee Savonlinnan lentoasemalla (EFSA), noin 15 km Savonlinnan keskustasta Enonkoskelle päin. Kenttä on avoinna ympäri vuoden."
+            icon={<MapPinIcon size={48} />}
+            href="/kerho/kentta"
+            imageSrc="/images/EFSA/efsa_1.jpg"
+            variant="default"
+          />
+        </div>
+      </ContentSection>
 
       {/* Weather and Info Section */}
-      <section className="w-full bg-sblack py-16 lg:py-20">
-        <div className="container mx-auto px-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Weather Widget */}
-            <div>
-              <WeatherWidget />
-            </div>
+      <ContentSection
+        variant="dark"
+        backgroundImage="bg-efsa-one"
+        overlay="medium"
+        containerSize="default"
+      >
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Weather Widget */}
+          <div>
+            <WeatherWidget />
+          </div>
 
-            {/* Quick Info Card */}
-            <div className="glass rounded-2xl p-8 border border-sred/20 shadow-xl">
-              <h3 className="text-2xl font-bold text-swhite mb-6 pb-3 border-b-2 border-sred">
-                Lentokenttä
-              </h3>
-              <div className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <svg
-                    className="w-6 h-6 text-sred flex-shrink-0 mt-1"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                    />
-                  </svg>
-                  <div>
-                    <div className="font-semibold text-swhite">Sijainti</div>
-                    <div className="text-swhite/80">
-                      Savonlinnan Lentoasema (EFSA)
-                      <br />
-                      Lentoasemantie 50, 57310 Savonlinna
-                    </div>
+          {/* Quick Info Card */}
+          <div className="glass rounded-2xl p-8 border border-sred/20 shadow-xl">
+            <h3 className="text-2xl font-bold text-swhite mb-6 pb-3 border-b-2 border-sred">
+              Lentokenttä
+            </h3>
+            <div className="space-y-4">
+              <div className="flex items-start gap-3">
+                <svg
+                  className="w-6 h-6 text-sred flex-shrink-0 mt-1"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                </svg>
+                <div>
+                  <div className="font-semibold text-swhite">Sijainti</div>
+                  <div className="text-swhite/80">
+                    Savonlinnan Lentoasema (EFSA)
+                    <br />
+                    Lentoasemantie 50, 57310 Savonlinna
                   </div>
                 </div>
-                <div className="flex items-start gap-3">
-                  <svg
-                    className="w-6 h-6 text-sred flex-shrink-0 mt-1"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                  <div>
-                    <div className="font-semibold text-swhite">Kiitotie</div>
-                    <div className="text-swhite/80">
-                      15/33, 2000m asfaltti
-                      <br />
-                      Toimii ympäri vuoden
-                    </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <svg
+                  className="w-6 h-6 text-sred flex-shrink-0 mt-1"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <div>
+                  <div className="font-semibold text-swhite">Kiitotie</div>
+                  <div className="text-swhite/80">
+                    12/30, 2300m asfaltti
+                    <br />
+                    Toimii ympäri vuoden (Varmista NATOM)
                   </div>
                 </div>
-                <div className="flex items-start gap-3">
-                  <svg
-                    className="w-6 h-6 text-sred flex-shrink-0 mt-1"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                  <div>
-                    <div className="font-semibold text-swhite">Etäisyys</div>
-                    <div className="text-swhite/80">
-                      15 km Savonlinnan keskustasta
-                      <br />
-                      Enonkosken suuntaan
-                    </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <svg
+                  className="w-6 h-6 text-sred flex-shrink-0 mt-1"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <div>
+                  <div className="font-semibold text-swhite">Etäisyys</div>
+                  <div className="text-swhite/80">
+                    15 km Savonlinnan keskustasta
+                    <br />
+                    Enonkosken suuntaan
                   </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </section>
+      </ContentSection>
 
       {/* History Timeline */}
-      <HistoryTimeline />
+      {/*<HistoryTimeline />*/}
 
       {/* Call to Action Section */}
-      <section className="w-full bg-gradient-to-b from-sblack to-sblued py-16 lg:py-20">
-        <div className="container mx-auto px-6">
-          <div className="glass rounded-3xl p-8 md:p-12 text-center border border-sred/30 shadow-2xl">
-            <h2 className="text-3xl md:text-4xl font-bold text-swhite mb-4">
-              Haluatko lentäjäksi?
-            </h2>
-            <p className="text-lg md:text-xl text-swhite/90 mb-8 mx-auto">
-              Ota yhteyttä ja aloita lentoharrastus! Tarjoamme tutustumislentoja
-              ja koulutusta kaikille ilmailusta kiinnostuneille.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link
-                href="/yhteystiedot"
-                className="px-8 py-4 bg-sred text-swhite font-semibold rounded-lg shadow-xl hover:bg-sred/90 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300"
-              >
-                Ota yhteyttä
-              </Link>
-              <Link
-                href="/koulutus"
-                className="px-8 py-4 bg-transparent text-swhite font-semibold rounded-lg shadow-xl hover:bg-sblue/30 transition-all duration-300 border-2 border-sbluel"
-              >
-                Katso koulutusohjelma
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
+      <ContentSection
+        variant="dark"
+        backgroundImage="bg-ohcon-three"
+        overlay="heavy"
+        containerSize="default"
+      >
+        <CallToAction
+          title="Haluatko lentäjäksi?"
+          description="Ota yhteyttä ja aloita lentoharrastus! Tarjoamme tutustumislentoja ja koulutusta kaikille ilmailusta kiinnostuneille."
+          primaryButton={{
+            text: "Ota yhteyttä",
+            href: "/yhteystiedot",
+            variant: "primary",
+          }}
+          secondaryButton={{
+            text: "Katso koulutusohjelma",
+            href: "/koulutus",
+            variant: "outline",
+          }}
+        />
+      </ContentSection>
     </div>
   );
 }

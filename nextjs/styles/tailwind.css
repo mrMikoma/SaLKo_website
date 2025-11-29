@@ -12,15 +12,15 @@
   --color-swhite: #f6f4f3;
   --color-sblack: #0c1821;
   --color-sblued: #162752;
-  --color-sblue: #0047aa;
-  --color-sbluel: #53a2be;
+  --color-sblue: #003580;
+  --color-sbluel: #2d7a94;
   --color-sred: #e84855;
   --color-sgrey: #e6e6e6;
 
   /* Extended Aviation Palette */
-  --color-sky-blue: #0047aa;
+  --color-sky-blue: #003580;
   --color-deep-navy: #162752;
-  --color-light-blue: #53a2be;
+  --color-light-blue: #2d7a94;
   --color-aviation-red: #e84855;
   --color-cloud-white: #ffffff;
   --color-charcoal: #0c1821;
@@ -30,8 +30,12 @@
   --color-warning-amber: #ffc107;
 
   /* Background Images */
-  --background-image-efsa-one: url("/images/efsa_1.jpg");
+  --background-image-efsa-one: url("/images/EFSA/efsa_1.jpg");
   --background-image-ohcon-one: url("/images/OH-CON/ohcon_1.jpg");
+  --background-image-ohcon-two: url("/images/OH-CON/ohcon_2.jpg");
+  --background-image-ohcon-three: url("/images/OH-CON/ohcon_3.jpg");
+  --background-image-ohcon-four: url("/images/OH-CON/ohcon_4.jpg");
+  --background-image-mopu-five: url("/images/OH-CON/oh386_1.jpg");
   --background-image-olavinlinna-one: url("/images/olavinlinna_1.jpg");
   --background-image-punkaharju-one: url("/images/punkaharju_1.jpg");
   --background-image-savonlinna-one: url("/images/savonlinna_1.jpg");
@@ -64,6 +68,23 @@
   --radius-lg: 0.75rem;
   --radius-xl: 1rem;
   --radius-2xl: 1.5rem;
+
+  /* Max Width */
+  --max-width-sm: 24rem;
+  --max-width-md: 28rem;
+  --max-width-lg: 32rem;
+  --max-width-xl: 36rem;
+  --max-width-2xl: 42rem;
+  --max-width-3xl: 48rem;
+  --max-width-4xl: 56rem;
+  --max-width-5xl: 64rem;
+  --max-width-6xl: 72rem;
+  --max-width-7xl: 80rem;
+  --max-width-full: 100%;
+  --max-width-screen-sm: 640px;
+  --max-width-screen-md: 768px;
+  --max-width-screen-lg: 1024px;
+  --max-width-screen-xl: 1280px;
 
   /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
