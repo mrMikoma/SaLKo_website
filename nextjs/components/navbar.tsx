@@ -138,10 +138,10 @@ const Navbar = ({ session }: { session: Session | null }) => {
                       </MenuItem>
                       <MenuItem>
                         <Link
-                          href="/kerho/historiaa"
+                          href="/kerho/hinnasto"
                           className="block py-3 px-4 text-swhite hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
                         >
-                          Historiaa
+                          Hinnasto
                         </Link>
                       </MenuItem>
                       <MenuItem>
@@ -158,6 +158,14 @@ const Navbar = ({ session }: { session: Session | null }) => {
                           className="block py-3 px-4 text-swhite hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
                         >
                           Hallit
+                        </Link>
+                      </MenuItem>
+                      <MenuItem>
+                        <Link
+                          href="/kerho/historiaa"
+                          className="block py-3 px-4 text-swhite hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
+                        >
+                          Historiaa
                         </Link>
                       </MenuItem>
                     </MenuItems>
