@@ -1,6 +1,7 @@
 {
   "general": {
     "name": "Savonlinnan Lentokerho r.y.",
+    "email": "info@savonlinnanlentokerho.fi",
     "address": "Lentoasemantie 50",
     "city": "Savonlinna",
     "postalCode": "57310",
@@ -14,7 +15,7 @@
     {
       "role": "Puheenjohtaja",
       "name": "Joonatan Jääskeläinen",
-      "email": "jussi.laine@savonlinnanlentokerho.fi",
+      "email": "joonatan.jaaskelainen@savonlinnanlentokerho.fi",
       "phone": "+358"
     },
     {
@@ -51,7 +52,7 @@
     {
       "role": "Laskutus, maksut ja jäsenasiat",
       "name": "Simo Marila",
-      "email": "@savonlinnanlentokerho.fi",
+      "email": "laskutus@savonlinnanlentokerho.fi",
       "phone": "+358"
     },
     {
@@ -63,7 +64,7 @@
     {
       "role": "DTO Vastaava",
       "name": "Joonatan Jääskeläinen",
-      "email": "",
+      "email": "dto@savonlinnanlentokerho.fi",
       "phone": "+358"
     }
   ],

@@ -1,5 +1,5 @@
 import BookingSection from "@/components/bookings/bookingSection";
-import { verifySession } from "@/utilities/sessions";
+import { auth } from "@/auth";
 
 export const metadata = {
   title: "Varauskalenteri :: SaLKo",
@@ -7,12 +7,20 @@ export const metadata = {
 };
 
 export default async function Page() {
-  const payload = await verifySession();
-  const isLoggedIn = payload ? true : false;
+  // Get session if it exists, but don't require it (public access)
+  const session = await auth();
+
+  const userContext = {
+    isLoggedIn: !!session,
+    userId: session?.user?.id || null,
+    userName: session?.user?.name || null,
+    userRole: session?.user?.role || "guest", // Default to guest for unauthenticated users
+    userEmail: session?.user?.email || null,
+  };
 
   return (
-    <div>
-      <BookingSection isLoggedIn={isLoggedIn} />
+    <div className="min-h-screen w-full pt-42">
+      <BookingSection userContext={userContext} />
     </div>
   );
 }
