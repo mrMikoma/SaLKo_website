@@ -106,12 +106,14 @@ pgAdmin4 is included in the monitoring stack with **automatic database server co
 
 ### Auto-Configured Servers
 
-The deployment workflow automatically sets up:
+The deployment workflow automatically creates a `servers.json` file that configures:
 
-- **SaLKo Dev** - Development database (salko-postgres-dev)
-- **SaLKo Prod** - Production database (salko-postgres-prod)
+- **SaLKo Dev** - Development database (salko-postgres-dev:5432)
+- **SaLKo Prod** - Production database (salko-postgres-prod:5432)
 
-Both use the `salko_admin` credentials and are ready to connect without manual configuration.
+Both use `salko_admin` username. You'll need to enter the password on first connection.
+
+**Note**: If servers don't appear, redeploy the monitoring stack via GitHub Actions to regenerate the configuration.
 
 ### Common Tasks
 

@@ -136,6 +136,12 @@ jobs:
 
             echo ".env.monitoring file created."
 
+            # Configure pgAdmin4 server connections BEFORE starting containers
+            echo "Configuring pgAdmin4 database servers..."
+            echo '{"Servers":{"1":{"Name":"SaLKo Dev","Group":"Servers","Host":"salko-postgres-dev","Port":5432,"MaintenanceDB":"salko","Username":"salko_admin","SSLMode":"prefer","Comment":"Development database"},"2":{"Name":"SaLKo Prod","Group":"Servers","Host":"salko-postgres-prod","Port":5432,"MaintenanceDB":"salko","Username":"salko_admin","SSLMode":"prefer","Comment":"Production database"}}}' > /home/salko/monitoring/pgadmin-data/servers.json
+            sudo chown 5050:5050 /home/salko/monitoring/pgadmin-data/servers.json
+            echo "✅ pgAdmin4 servers.json created"
+
             # Stop the current monitoring stack if running
             echo "Stopping current monitoring stack..."
             docker compose --env-file .env.monitoring -f docker-compose.monitoring.yaml down || true
@@ -175,32 +181,11 @@ jobs:
               exit 1
             fi
 
-            # Configure pgAdmin4 server connections if container is running
+            # Check if pgAdmin4 is running
             if docker ps | grep -q "salko-pgadmin"; then
-              echo "Configuring pgAdmin4 server connections..."
-
-              # Create passfile and servers.json using echo to avoid YAML parsing issues
-              echo "salko-postgres-dev:5432:salko:salko_admin:${{ env.POSTGRES_PASSWORD }}" > /tmp/pgpassfile
-              echo "salko-postgres-prod:5432:salko:salko_admin:${{ env.POSTGRES_PASSWORD }}" >> /tmp/pgpassfile
-              chmod 600 /tmp/pgpassfile
-
-              # Create servers.json
-              echo '{"Servers":{"1":{"Name":"SaLKo Dev","Group":"Servers","Host":"salko-postgres-dev","Port":5432,"MaintenanceDB":"salko","Username":"salko_admin","SSLMode":"prefer","PassFile":"/var/lib/pgadmin/.pgpass","Comment":"Development database"},"2":{"Name":"SaLKo Prod","Group":"Servers","Host":"salko-postgres-prod","Port":5432,"MaintenanceDB":"salko","Username":"salko_admin","SSLMode":"prefer","PassFile":"/var/lib/pgadmin/.pgpass","Comment":"Production database"}}}' > /tmp/servers.json
-
-              # Copy files to pgAdmin container
-              docker cp /tmp/servers.json salko-pgadmin:/pgadmin4/servers.json
-              docker cp /tmp/pgpassfile salko-pgadmin:/var/lib/pgadmin/.pgpass
-              docker exec salko-pgadmin chown pgadmin:root /var/lib/pgadmin/.pgpass
-              docker exec salko-pgadmin chmod 600 /var/lib/pgadmin/.pgpass
-
-              # Clean up temp files
-              rm -f /tmp/servers.json /tmp/pgpassfile
-
-              # Restart pgAdmin to apply configuration
-              docker restart salko-pgadmin
-              echo "✅ pgAdmin4 server connections configured"
+              echo "✅ pgAdmin4 is running"
             else
-              echo "⚠️  pgAdmin4 not running, skipping server configuration"
+              echo "⚠️  pgAdmin4 not running"
             fi
 
             echo "Cleaning up old images..."
