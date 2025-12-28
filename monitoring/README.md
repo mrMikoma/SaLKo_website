@@ -94,6 +94,36 @@ Manual deployment:
 - Search across all containers
 - Log rate visualization
 
+## Database Management with pgAdmin4
+
+pgAdmin4 is included in the monitoring stack with **automatic database server configuration**.
+
+### Accessing pgAdmin4
+
+1. Open http://10.1.0.x:5000 in your browser (from private network)
+2. Login with `admin@savonlinnanlentokerho.fi` and your `GRAFANA_ADMIN_PASSWORD`
+3. **Both dev and prod database servers are automatically configured** - they will appear in your server list ready to use
+
+### Auto-Configured Servers
+
+The deployment workflow automatically sets up:
+
+- **SaLKo Dev** - Development database (salko-postgres-dev)
+- **SaLKo Prod** - Production database (salko-postgres-prod)
+
+Both use the `salko_admin` credentials and are ready to connect without manual configuration.
+
+### Common Tasks
+
+**Running Queries:**
+- Navigate to a server → expand database → Right-click → "Query Tool"
+
+**Viewing Data:**
+- Navigate to Tables → Right-click a table → "View/Edit Data" → "All Rows"
+
+**Database Backup:**
+- Right-click database → "Backup..." → Choose format and location
+
 ## Configuration
 
 ### Environment Variables
