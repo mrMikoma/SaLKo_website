@@ -76,6 +76,9 @@ services:
       - "traefik.http.routers.traefik-secure.entrypoints=websecure"
       # Defines the HTTPS entry point for the Traefik router (must match traefik.yaml entryPoints.websecure).
 
+      - "traefik.http.routers.traefik-secure.rule=Host(`traefik.savonlinnanlentokerho.fi`)"
+      # Routes requests for traefik.savonlinnanlentokerho.fi to the Traefik dashboard.
+
       - "traefik.http.routers.traefik-secure.tls=true"
       # Enables TLS (HTTPS) for secure communication.
 
@@ -87,6 +90,9 @@ services:
 
       - "traefik.http.routers.traefik-secure.tls.domains[0].sans=*.savonlinnanlentokerho.fi"
       # Adds wildcard subdomain support to the SSL certificate for all *.savonlinnanlentokerho.fi domains.
+
+      - "traefik.http.routers.traefik-secure.middlewares=internal-only@file"
+      # Restricts dashboard access to internal networks only.
 
       - "traefik.http.routers.traefik-secure.service=api@internal"
       # Uses the internal Traefik API service to monitor and manage the router.
