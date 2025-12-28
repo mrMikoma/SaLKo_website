@@ -21,6 +21,12 @@ services:
       - ENVIRONMENT=${ENVIRONMENT}
     labels:
       - logging=promtail
+      - traefik.enable=true
+      - traefik.http.routers.prometheus.rule=Host(`prometheus.savonlinnanlentokerho.fi`)
+      - traefik.http.routers.prometheus.entrypoints=websecure
+      - traefik.http.routers.prometheus.tls.certresolver=cloudflare
+      - traefik.http.routers.prometheus.middlewares=internal-only@file
+      - traefik.http.services.prometheus.loadbalancer.server.port=9090
 
   grafana:
     image: grafana/grafana:12.4.0-20447603318-ubuntu
@@ -65,9 +71,16 @@ services:
       - "0.0.0.0:3100:3100"
     networks:
       - monitoring
+      - global_outgoing
     restart: unless-stopped
     labels:
       - logging=promtail
+      - traefik.enable=true
+      - traefik.http.routers.loki.rule=Host(`loki.savonlinnanlentokerho.fi`)
+      - traefik.http.routers.loki.entrypoints=websecure
+      - traefik.http.routers.loki.tls.certresolver=cloudflare
+      - traefik.http.routers.loki.middlewares=internal-only@file
+      - traefik.http.services.loki.loadbalancer.server.port=3100
 
   promtail:
     image: grafana/promtail:3.5.8
@@ -100,9 +113,16 @@ services:
       - "0.0.0.0:9100:9100"
     networks:
       - monitoring
+      - global_outgoing
     restart: unless-stopped
     labels:
       - logging=promtail
+      - traefik.enable=true
+      - traefik.http.routers.nodeexporter.rule=Host(`nodeexporter.savonlinnanlentokerho.fi`)
+      - traefik.http.routers.nodeexporter.entrypoints=websecure
+      - traefik.http.routers.nodeexporter.tls.certresolver=cloudflare
+      - traefik.http.routers.nodeexporter.middlewares=internal-only@file
+      - traefik.http.services.nodeexporter.loadbalancer.server.port=9100
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.52.0
@@ -120,9 +140,16 @@ services:
       - "0.0.0.0:8080:8080"
     networks:
       - monitoring
+      - global_outgoing
     restart: unless-stopped
     labels:
       - logging=promtail
+      - traefik.enable=true
+      - traefik.http.routers.cadvisor.rule=Host(`cadvisor.savonlinnanlentokerho.fi`)
+      - traefik.http.routers.cadvisor.entrypoints=websecure
+      - traefik.http.routers.cadvisor.tls.certresolver=cloudflare
+      - traefik.http.routers.cadvisor.middlewares=internal-only@file
+      - traefik.http.services.cadvisor.loadbalancer.server.port=8080
 
   postgres-exporter-dev:
     image: prometheuscommunity/postgres-exporter:v0.18.1
@@ -168,11 +195,18 @@ services:
       - monitoring
       - dev_internal
       - prod_internal
+      - global_outgoing
     volumes:
       - /home/salko/monitoring/pgadmin-data:/var/lib/pgadmin
     restart: unless-stopped
     labels:
       - logging=promtail
+      - traefik.enable=true
+      - traefik.http.routers.pgadmin.rule=Host(`pgadmin.savonlinnanlentokerho.fi`)
+      - traefik.http.routers.pgadmin.entrypoints=websecure
+      - traefik.http.routers.pgadmin.tls.certresolver=cloudflare
+      - traefik.http.routers.pgadmin.middlewares=internal-only@file
+      - traefik.http.services.pgadmin.loadbalancer.server.port=80
     healthcheck:
       test: ["CMD", "wget", "-O", "-", "http://localhost/misc/ping"]
       interval: 30s

@@ -50,7 +50,7 @@ certificatesResolvers:
 http:
   middlewares:
     internal-only:
-      ipWhiteList:
+      ipAllowList:
         sourceRange:
           - "10.1.0.0/16" # Hetzner Cloud network
           - "10.10.0.0/24" # Home site network
