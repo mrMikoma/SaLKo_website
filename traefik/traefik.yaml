@@ -29,7 +29,10 @@ providers:
   docker:
     endpoint: "unix:///var/run/docker.sock"
     exposedByDefault: false
-    network: outgoing
+    network: global_outgoing
+  file:
+    filename: /traefik.yaml
+    watch: true
 
 certificatesResolvers:
   cloudflare:
