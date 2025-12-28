@@ -6,13 +6,14 @@ Complete observability solution for the SaLKo website infrastructure using open-
 
 The monitoring stack provides comprehensive observability with:
 
-- **Grafana** - Visualization and dashboards (Port 3001)
+- **Grafana** - Visualization and dashboards (Port 4000)
 - **Prometheus** - Metrics collection and storage (Port 9090)
 - **Loki** - Log aggregation (Port 3100)
 - **Promtail** - Log shipper for Docker containers
 - **Node Exporter** - Host system metrics (Port 9100)
 - **cAdvisor** - Container metrics (Port 8080)
 - **Postgres Exporter** - Database metrics for dev (Port 9187) and prod (Port 9188)
+- **pgAdmin4** - PostgreSQL database management UI (Port 5000)
 
 ## What's Monitored
 
@@ -46,6 +47,8 @@ The monitoring stack provides comprehensive observability with:
 1. Add the following secrets to your GitHub repository's **development** environment:
    - `GRAFANA_ADMIN_PASSWORD` - Password for Grafana admin user
    - `POSTGRES_PASSWORD` - PostgreSQL password (used for both dev and prod database monitoring)
+   - `PGADMIN_DEFAULT_EMAIL` - Email for pgAdmin4 login (e.g., admin@example.com)
+   - `PGADMIN_DEFAULT_PASSWORD` - Password for pgAdmin4 login
 
 ### Deployment
 
@@ -60,13 +63,14 @@ Manual deployment:
 
 ### Initial Access
 
-1. From your local machine in the 10.0.0.0/16 network:
+1. From your local machine in the 10.1.0.0/16 network:
    - Grafana: http://10.1.0.x:4000
    - Prometheus: http://10.1.0.x:9090
    - Loki: http://10.1.0.x:3100
+   - pgAdmin4: http://10.1.0.x:5000
 
-2. Login to Grafana:
-   - Username: `admin`
+2. Login to Grafana and pgAdmin4:
+   - Email: `admin@savonlinnanlentokerho.fi`
    - Password: (from GitHub secret `GRAFANA_ADMIN_PASSWORD`)
 
 ## Pre-configured Dashboards
@@ -93,6 +97,57 @@ Manual deployment:
 - Filter by service
 - Search across all containers
 - Log rate visualization
+
+## Database Management with pgAdmin4
+
+pgAdmin4 is included in the monitoring stack for easy PostgreSQL database management.
+
+### Accessing pgAdmin4
+
+1. Open http://10.1.0.x:5000 in your browser (from private network)
+2. Login with `admin@savonlinnanlentokerho.fi` and your `GRAFANA_ADMIN_PASSWORD`
+
+### Adding Database Servers
+
+To connect to your PostgreSQL databases in pgAdmin4:
+
+**Development Database:**
+- Right-click "Servers" → "Register" → "Server"
+- General tab:
+  - Name: `SaLKo Dev`
+- Connection tab:
+  - Host: `salko-postgres-dev`
+  - Port: `5432`
+  - Database: `salko`
+  - Username: `postgres`
+  - Password: (your `POSTGRES_PASSWORD`)
+- Save
+
+**Production Database:**
+- Right-click "Servers" → "Register" → "Server"
+- General tab:
+  - Name: `SaLKo Prod`
+- Connection tab:
+  - Host: `salko-postgres-prod`
+  - Port: `5432`
+  - Database: `salko`
+  - Username: `postgres`
+  - Password: (your `POSTGRES_PASSWORD`)
+- Save
+
+### Features Available in pgAdmin4
+
+- Query tool for running SQL queries
+- Database schema browser
+- Table data viewer and editor
+- Visual query builder
+- Backup and restore tools
+- Performance monitoring
+- User and role management
+
+### Data Persistence
+
+pgAdmin4 settings and server configurations are persisted in `/home/salko/monitoring/pgadmin-data/`
 
 ## Configuration
 
@@ -275,10 +330,11 @@ The monitoring stack is designed to be lightweight:
 - Prometheus: ~200MB RAM, minimal CPU
 - Loki: ~100MB RAM, minimal CPU
 - Grafana: ~100MB RAM, minimal CPU
+- pgAdmin4: ~200-400MB RAM, <5% CPU (mostly idle)
 - Exporters: <50MB RAM each, minimal CPU
 - Promtail: ~50MB RAM, minimal CPU
 
-Total overhead: ~600MB RAM, <5% CPU under normal load
+Total overhead: ~800MB-1GB RAM, <10% CPU under normal load
 
 ## Security
 
