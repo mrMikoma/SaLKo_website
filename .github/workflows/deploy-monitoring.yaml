@@ -136,15 +136,21 @@ jobs:
 
             echo ".env.monitoring file created."
 
-            # Configure pgAdmin4 server connections BEFORE starting containers
-            echo "Configuring pgAdmin4 database servers..."
-            echo '{"Servers":{"1":{"Name":"SaLKo Dev","Group":"Servers","Host":"salko-postgres-dev","Port":5432,"MaintenanceDB":"salko","Username":"salko_admin","SSLMode":"prefer","Comment":"Development database"},"2":{"Name":"SaLKo Prod","Group":"Servers","Host":"salko-postgres-prod","Port":5432,"MaintenanceDB":"salko","Username":"salko_admin","SSLMode":"prefer","Comment":"Production database"}}}' > /home/salko/monitoring/pgadmin-data/servers.json
-            sudo chown 5050:5050 /home/salko/monitoring/pgadmin-data/servers.json
-            echo "✅ pgAdmin4 servers.json created"
-
             # Stop the current monitoring stack if running
             echo "Stopping current monitoring stack..."
             docker compose --env-file .env.monitoring -f docker-compose.monitoring.yaml down || true
+
+            # Configure pgAdmin4 server connections - remove directory if it exists, create file
+            echo "Configuring pgAdmin4 database servers..."
+            sudo rm -rf /home/salko/monitoring/pgadmin-data/servers.json
+            echo '{"Servers":{"1":{"Name":"SaLKo Dev","Group":"Servers","Host":"salko-postgres-dev","Port":5432,"MaintenanceDB":"salko","Username":"salko_admin","SSLMode":"disable","PassFile":"/var/lib/pgadmin/.pgpass","Comment":"Development database"}}}' > /home/salko/monitoring/pgadmin-data/servers.json
+            sudo chown 5050:5050 /home/salko/monitoring/pgadmin-data/servers.json
+
+            # Create pgpass file for automatic password authentication
+            echo "salko-postgres-dev:5432:salko:salko_admin:${{ env.POSTGRES_PASSWORD }}" > /home/salko/monitoring/pgadmin-data/.pgpass
+            sudo chown 5050:5050 /home/salko/monitoring/pgadmin-data/.pgpass
+            sudo chmod 600 /home/salko/monitoring/pgadmin-data/.pgpass
+            echo "✅ pgAdmin4 servers.json and .pgpass created"
 
             # Start the monitoring stack
             echo "Starting monitoring stack..."
