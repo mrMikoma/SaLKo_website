@@ -94,6 +94,13 @@
     proto: tcp
     from_ip: 10.1.0.0/16
 
+- name: Allow pgAdmin4 from private network (10.1.0.0/16)
+  community.general.ufw:
+    rule: allow
+    port: "5000"
+    proto: tcp
+    from_ip: 10.1.0.0/16
+
 - name: Enable UFW
   community.general.ufw:
     state: enabled
