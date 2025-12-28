@@ -146,8 +146,6 @@ services:
     container_name: ${NAME_PREFIX}-postgres-exporter-dev
     environment:
       - DATA_SOURCE_NAME=${DEV_POSTGRES_EXPORTER_DSN}
-    ports:
-      - "0.0.0.0:9187:9187"
     networks:
       - monitoring
       - dev_internal
@@ -160,8 +158,6 @@ services:
     container_name: ${NAME_PREFIX}-postgres-exporter-prod
     environment:
       - DATA_SOURCE_NAME=${PROD_POSTGRES_EXPORTER_DSN}
-    ports:
-      - "0.0.0.0:9188:9187"
     networks:
       - monitoring
       - prod_internal
