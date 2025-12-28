@@ -81,6 +81,9 @@ services:
       - "traefik.http.routers.traefik-secure.tls.domains[0].main=savonlinnanlentokerho.fi"
       # Specifies the main domain for which the SSL certificate will be generated (savonlinnanlentokerho.fi).
 
+      - "traefik.http.routers.traefik-secure.tls.domains[0].sans=*.savonlinnanlentokerho.fi"
+      # Adds wildcard subdomain support to the SSL certificate for all *.savonlinnanlentokerho.fi domains.
+
       - "traefik.http.routers.traefik-secure.service=api@internal"
       # Uses the internal Traefik API service to monitor and manage the router.
 
