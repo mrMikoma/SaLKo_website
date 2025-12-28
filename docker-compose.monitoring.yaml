@@ -156,7 +156,6 @@ services:
       - PGADMIN_CONFIG_SERVER_MODE=True
       - PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED=False
       - PGADMIN_SERVER_JSON_FILE=/pgadmin4/servers.json
-      - PGADMIN_CONFIG_PASSWORD_FILE=/var/lib/pgadmin/.pgpass
     networks:
       - monitoring
       - dev_internal
