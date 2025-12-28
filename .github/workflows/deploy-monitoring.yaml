@@ -143,7 +143,7 @@ jobs:
             # Configure pgAdmin4 server connections - remove directory if it exists, create file
             echo "Configuring pgAdmin4 database servers..."
             rm -rf /home/salko/monitoring/pgadmin-data/servers.json
-            echo '{"Servers":{"1":{"Name":"SaLKo Dev","Group":"Servers","Host":"salko-postgres-dev","Port":5432,"MaintenanceDB":"salko","Username":"salko_admin","SSLMode":"disable","PassFile":"/var/lib/pgadmin/.pgpass","Comment":"Development database"}}}' > /home/salko/monitoring/pgadmin-data/servers.json
+            echo '{"Servers":{"1":{"Name":"SaLKo Dev","Group":"Servers","Host":"salko-postgres-dev","Port":5432,"MaintenanceDB":"salko","Username":"salko_admin","SSLMode":"disable","Comment":"Development database"}}}' > /home/salko/monitoring/pgadmin-data/servers.json
 
             # Create pgpass file for automatic password authentication
             echo "salko-postgres-dev:5432:salko:salko_admin:${{ env.POSTGRES_PASSWORD }}" > /home/salko/monitoring/pgadmin-data/.pgpass
