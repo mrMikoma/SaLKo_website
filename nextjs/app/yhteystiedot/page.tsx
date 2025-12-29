@@ -28,8 +28,14 @@ export const metadata = {
   keywords: [
     "Savonlinnan Lentokerho",
     "yhteystiedot",
+    "hallitus",
+    "lennonopettajat",
+    "puheenjohtaja",
+    "laskutus",
     "Savonlinna",
     "lentokerho",
+    "puhelinnumero",
+    "sähköpostiosoite",
   ],
 };
 

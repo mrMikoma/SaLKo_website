@@ -38,7 +38,7 @@ const NavbarMobile = () => {
           <DisclosureButton
             aria-label="Toggle Menu"
             onClick={handleToggle}
-            className="px-2 py-1 ml-auto rounded-md lg:hidden hover:text-sbluel focus:text-sbluel transition-colors duration-200"
+            className="px-2 pt-4 ml-auto rounded-md lg:hidden hover:text-sbluel focus:text-sbluel transition-colors duration-200"
           >
             <MenuIcon size={48} />
           </DisclosureButton>

@@ -1,6 +1,18 @@
 import pricesData from "@/data/prices.json";
 import Link from "next/link";
 
+export const metadata = {
+  title: "Hinnasto | SaLKo",
+  description: "Savonlinnan Lentokerhon hinnasto ja jäsenmaksut",
+  keywords: [
+    "Savonlinnan Lentokerho",
+    "hinnasto",
+    "jäsenmaksut",
+    "lentokerho",
+    "Savonlinna",
+  ],
+};
+
 export default function Page() {
   return (
     <div className="min-h-screen flex flex-col w-full">
