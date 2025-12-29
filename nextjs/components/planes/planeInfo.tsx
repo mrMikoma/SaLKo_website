@@ -57,23 +57,26 @@ const PlaneInfo = (props: any) => {
           <h2 className="text-2xl md:text-3xl font-bold text-sred mb-6">
             Tekniset tiedot
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {validSpecs.map(([key, value]) => (
-              <div
-                key={key}
-                className="flex items-start gap-3 p-3 rounded-lg bg-sblack/20 border border-swhite/10"
-              >
-                <span className="text-sbluel text-lg flex-shrink-0">✈</span>
-                <div className="flex-1">
-                  <div className="text-swhite/70 text-sm">
-                    {specLabels[key as keyof typeof specLabels] || key}
-                  </div>
-                  <div className="text-swhite font-semibold">
-                    {String(value)}
-                  </div>
-                </div>
-              </div>
-            ))}
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <tbody>
+                {validSpecs.map(([key, value], index) => (
+                  <tr
+                    key={key}
+                    className={`border-b border-swhite/10 hover:bg-sblack/20 transition-colors ${
+                      index % 2 === 0 ? "bg-sblack/10" : ""
+                    }`}
+                  >
+                    <td className="py-3 px-4 text-swhite/70 font-medium">
+                      {specLabels[key as keyof typeof specLabels] || key}
+                    </td>
+                    <td className="py-3 px-4 text-swhite font-semibold text-right">
+                      {String(value)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
