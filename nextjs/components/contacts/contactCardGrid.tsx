@@ -2,13 +2,33 @@ import PersonCard from "./contactCard";
 
 const PersonCardGrid = ({ title, board }: { title: string; board: any }) => {
   return (
-    <div className="p-8 max-w-[1500px] mx-auto font-finlandica">
-      <h2 className="text-4xl font-finlandica my-6">{title}</h2>
-      <ul className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-4">
-        {board.map((member, idx) => (
-          <PersonCard key={idx} member={member} idx={idx} />
-        ))}
-      </ul>
+    <div className="glass rounded-lg p-4 md:p-6 border border-sred/20 overflow-hidden">
+      <h2 className="text-xl md:text-2xl font-bold text-sred mb-4">{title}</h2>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm md:text-base">
+          <thead>
+            <tr className="border-b border-sbluel/30">
+              <th className="text-left py-2 px-1 text-sbluel font-semibold">
+                Tehtävä
+              </th>
+              <th className="text-left py-2 px-1 text-sbluel font-semibold">
+                Nimi
+              </th>
+              <th className="text-left py-2 px-1 text-sbluel font-semibold">
+                Sähköposti
+              </th>
+              <th className="text-left py-2 px-1 text-sbluel font-semibold">
+                Puhelin
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {board.map((member: any, idx: number) => (
+              <PersonCard key={idx} member={member} idx={idx} />
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };

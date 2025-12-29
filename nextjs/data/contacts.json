@@ -7,40 +7,37 @@
     "postalCode": "57310",
     "country": "Suomi - Finland",
     "buseinessId": "Y-0481856-3",
-    "IBAN": "FI00 1234 5600 0000 00",
-    "BIC": "OKOYFIxx",
-    "bank": "Säästöpankki"
+    "IBAN": "FI51 4108 0011 8965 14",
+    "BIC": "ITELFIHH",
+    "bank": "Oma Säästöpankki Oyj"
   },
   "board": [
     {
       "role": "Puheenjohtaja",
       "name": "Joonatan Jääskeläinen",
       "email": "joonatan.jaaskelainen@savonlinnanlentokerho.fi",
-      "phone": "+358"
+      "phone": "+358 44 5278151"
     },
     {
       "role": "Varapuheenjohtaja",
       "name": "Jussi Laine",
-      "email": "jussi.laine@savonlinnanlentokerho.fi",
-      "phone": "+358"
+      "email": "jussi.laine@savonlinnanlentokerho.fi"
     },
     {
       "role": "Koulutuspäällikkö",
       "name": "Tero Kuutti",
       "email": "tero.kuutti@savonlinnanlentokerho.fi",
-      "phone": "+358"
+      "phone": "+358 40 5729218"
     },
     {
       "role": "Rahastonhoitaja",
       "name": "Simo Marila",
-      "email": "simo.marila@savonlinnanlentokerho.fi",
-      "phone": "+358"
+      "email": "simo.marila@savonlinnanlentokerho.fi"
     },
     {
       "role": "Sihteeri",
       "name": "Miro Brunou",
-      "email": "miro.brunou@savonlinnanlentokerho.fi",
-      "phone": "+358"
+      "email": "miro.brunou@savonlinnanlentokerho.fi"
     },
     {
       "role": "Hallituksen jäsen",
@@ -52,20 +49,23 @@
     {
       "role": "Laskutus, maksut ja jäsenasiat",
       "name": "Simo Marila",
-      "email": "laskutus@savonlinnanlentokerho.fi",
-      "phone": "+358"
+      "email": "laskutus@savonlinnanlentokerho.fi"
     },
     {
       "role": "Palolento - Tukikohdan päällikkö",
       "name": "Jukka Honkanen",
-      "email": "",
-      "phone": "+358"
+      "email": "jukka.honkanen@savonlinnanlentokerho.fi"
     },
     {
       "role": "DTO Vastaava",
       "name": "Joonatan Jääskeläinen",
       "email": "dto@savonlinnanlentokerho.fi",
-      "phone": "+358"
+      "phone": "+358 44 5278151"
+    },
+    {
+      "role": "Verkkosivut ja tietosuoja",
+      "name": "Miko Mattila",
+      "email": "miko.mattila@savonlinnanlentokerho.fi"
     }
   ],
   "instructors": [
@@ -73,39 +73,18 @@
       "name": "Tero Kuutti",
       "role": "Päälennonopettaja",
       "email": "tero.kuutti@savonlinnanlentokerho.fi",
-      "phone": "+358"
+      "phone": "+358 40 5729218"
     },
     {
       "name": "Pekka Hiltunen",
       "role": "Tarkastuslentäjä",
-      "email": "",
-      "phone": ""
+      "email": ""
     },
     {
       "name": "Joonatan Jääskeläinen",
       "role": "Purjelennonopettaja",
-      "email": "",
-      "phone": ""
-    }
-  ],
-  "towPilots": [
-    {
-      "name": "Ari Kuutti",
-      "role": "Hinauslentäjä",
-      "email": "",
-      "phone": ""
-    },
-    {
-      "name": "Joonatan Jääskeläinen",
-      "role": "Hinauslentäjä",
-      "email": "",
-      "phone": ""
-    },
-    {
-      "name": "Tero Kuutti",
-      "role": "Hinauslentäjä",
-      "email": "",
-      "phone": ""
+      "email": "joonatan.jaaskelainen@savonlinnanlentokerho.fi",
+      "phone": "+358 44 5278151"
     }
   ]
 }

@@ -4,14 +4,11 @@ import Link from "next/link";
 export default function Page() {
   return (
     <div className="min-h-screen flex flex-col w-full">
-      <section className="relative w-full min-h-screen flex items-center justify-center bg-cover bg-center bg-olavinlinna-one">
+      <section className="relative w-full min-h-screen flex items-center justify-center bg-cover bg-center bg-savonlinna-one">
         <div className="absolute inset-0 bg-gradient-to-b from-sblack/50 via-sblack/40 to-sblued/95"></div>
         <div className="relative z-10 w-full max-w-[1600px] mx-auto px-6 pt-48 pb-16">
           <div className="text-center space-y-6 animate-fade-in mb-12">
-            <span className="text-sbluel text-sm md:text-base font-semibold tracking-wider uppercase">
-              Savonlinnan lentokerho ry
-            </span>
-            <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold leading-tight text-swhite">
+            <h1 className="text-3xl md:text-4xl lg:text-6xl font-bold leading-tight text-swhite">
               Hinnasto
             </h1>
             <p className="text-xl text-swhite">
