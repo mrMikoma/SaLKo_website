@@ -56,45 +56,71 @@ export async function storeMETARInDB(
 
   const parsed = parseMETAR(rawMetar);
 
-  const query = `
-    INSERT INTO metar_data (
-      station_code,
-      raw_metar,
-      temperature,
-      wind_speed,
-      wind_direction,
-      visibility,
-      clouds,
-      qnh,
-      observation_time
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-    ON CONFLICT (station_code, observation_time)
-    DO UPDATE SET
-      raw_metar = EXCLUDED.raw_metar,
-      temperature = EXCLUDED.temperature,
-      wind_speed = EXCLUDED.wind_speed,
-      wind_direction = EXCLUDED.wind_direction,
-      visibility = EXCLUDED.visibility,
-      clouds = EXCLUDED.clouds,
-      qnh = EXCLUDED.qnh,
-      fetched_at = CURRENT_TIMESTAMP
-    RETURNING id;
+  // Check if we already have a newer observation in the database
+  const checkQuery = `
+    SELECT observation_time
+    FROM metar_data
+    WHERE station_code = $1
+    ORDER BY observation_time DESC
+    LIMIT 1;
   `;
 
-  const values = [
-    stationCode,
-    rawMetar,
-    parsed.temperature,
-    parsed.windSpeed,
-    parsed.windDirection,
-    parsed.visibility,
-    parsed.clouds,
-    parsed.qnh,
-    parsed.observationTime,
-  ];
-
   try {
-    const result = await connectionPool.query(query, values);
+    const checkResult = await connectionPool.query(checkQuery, [stationCode]);
+
+    if (checkResult.rows.length > 0) {
+      const latestObservationTime = new Date(checkResult.rows[0].observation_time);
+      const newObservationTime = parsed.observationTime;
+
+      // Skip if the new observation is not newer than what we have
+      if (newObservationTime && newObservationTime <= latestObservationTime) {
+        console.log(
+          `Skipping METAR: observation time ${newObservationTime.toISOString()} ` +
+          `is not newer than latest ${latestObservationTime.toISOString()}`
+        );
+        return;
+      }
+    }
+
+    // Proceed with insert/update only if observation is newer
+    const insertQuery = `
+      INSERT INTO metar_data (
+        station_code,
+        raw_metar,
+        temperature,
+        wind_speed,
+        wind_direction,
+        visibility,
+        clouds,
+        qnh,
+        observation_time
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      ON CONFLICT (station_code, observation_time)
+      DO UPDATE SET
+        raw_metar = EXCLUDED.raw_metar,
+        temperature = EXCLUDED.temperature,
+        wind_speed = EXCLUDED.wind_speed,
+        wind_direction = EXCLUDED.wind_direction,
+        visibility = EXCLUDED.visibility,
+        clouds = EXCLUDED.clouds,
+        qnh = EXCLUDED.qnh,
+        fetched_at = CURRENT_TIMESTAMP
+      RETURNING id;
+    `;
+
+    const values = [
+      stationCode,
+      rawMetar,
+      parsed.temperature,
+      parsed.windSpeed,
+      parsed.windDirection,
+      parsed.visibility,
+      parsed.clouds,
+      parsed.qnh,
+      parsed.observationTime,
+    ];
+
+    const result = await connectionPool.query(insertQuery, values);
     console.log(`METAR stored successfully with ID: ${result.rows[0].id}`);
   } catch (error) {
     console.error("Error storing METAR in database:", error);
