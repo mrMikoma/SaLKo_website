@@ -140,6 +140,16 @@ jobs:
             echo "Stopping current monitoring stack..."
             docker compose --env-file .env.monitoring -f docker-compose.monitoring.yaml down || true
 
+            # Configure pgAdmin4 server connections - remove directory if it exists, create file
+            echo "Configuring pgAdmin4 database servers..."
+            rm -rf /home/salko/monitoring/pgadmin-data/servers.json
+            echo '{"Servers":{"1":{"Name":"SaLKo Dev","Group":"Servers","Host":"salko-postgres-dev","Port":5432,"MaintenanceDB":"salko","Username":"salko_admin","SSLMode":"disable","Comment":"Development database"}}}' > /home/salko/monitoring/pgadmin-data/servers.json
+
+            # Create pgpass file for automatic password authentication
+            echo "salko-postgres-dev:5432:salko:salko_admin:${{ env.POSTGRES_PASSWORD }}" > /home/salko/monitoring/pgadmin-data/.pgpass
+            chmod 600 /home/salko/monitoring/pgadmin-data/.pgpass
+            echo "✅ pgAdmin4 servers.json and .pgpass created"
+
             # Start the monitoring stack
             echo "Starting monitoring stack..."
             docker compose --env-file .env.monitoring -f docker-compose.monitoring.yaml up -d
@@ -173,6 +183,13 @@ jobs:
             else
               echo "❌ Loki failed to start"
               exit 1
+            fi
+
+            # Check if pgAdmin4 is running
+            if docker ps | grep -q "salko-pgadmin"; then
+              echo "✅ pgAdmin4 is running"
+            else
+              echo "⚠️  pgAdmin4 not running"
             fi
 
             echo "Cleaning up old images..."

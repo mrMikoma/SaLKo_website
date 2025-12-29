@@ -18,16 +18,19 @@ The monitoring stack provides comprehensive observability with:
 ## What's Monitored
 
 ### System Metrics
+
 - CPU usage, memory, disk space, network I/O
 - System load averages
 - Filesystem usage
 
 ### Container Metrics
+
 - CPU and memory per container
 - Network traffic per container
 - Container health status
 
 ### Database Metrics
+
 - Active connections
 - Transaction rates (commits/rollbacks)
 - Query performance
@@ -36,6 +39,7 @@ The monitoring stack provides comprehensive observability with:
 - Tuple operations (inserts/updates/deletes)
 
 ### Application Logs
+
 - All Docker container logs collected automatically
 - Searchable and filterable in Grafana
 - Correlated with metrics
@@ -55,6 +59,7 @@ The monitoring stack provides comprehensive observability with:
 The monitoring stack is deployed automatically via GitHub Actions when changes are pushed to the `main` branch affecting monitoring files.
 
 Manual deployment:
+
 ```bash
 # Go to GitHub Actions
 # Run "Deploy Monitoring Stack" workflow
@@ -64,6 +69,7 @@ Manual deployment:
 ### Initial Access
 
 1. From your local machine in the 10.1.0.0/16 network:
+
    - Grafana: http://10.1.0.x:4000
    - Prometheus: http://10.1.0.x:9090
    - Loki: http://10.1.0.x:3100
@@ -76,16 +82,19 @@ Manual deployment:
 ## Pre-configured Dashboards
 
 ### 1. System Overview
+
 - Real-time system metrics
 - CPU, Memory, Disk, Network graphs
 - System load indicators
 
 ### 2. Container Metrics
+
 - Per-container resource usage
 - Network I/O by container
 - Container statistics table
 
 ### 3. PostgreSQL Metrics
+
 - Database connections
 - Transaction rates
 - Query performance
@@ -93,6 +102,7 @@ Manual deployment:
 - Database size tracking
 
 ### 4. Application Logs
+
 - Live log streaming
 - Filter by service
 - Search across all containers
@@ -100,54 +110,38 @@ Manual deployment:
 
 ## Database Management with pgAdmin4
 
-pgAdmin4 is included in the monitoring stack for easy PostgreSQL database management.
+pgAdmin4 is included in the monitoring stack with **automatic database server configuration**.
 
 ### Accessing pgAdmin4
 
 1. Open http://10.1.0.x:5000 in your browser (from private network)
 2. Login with `admin@savonlinnanlentokerho.fi` and your `GRAFANA_ADMIN_PASSWORD`
+3. **Both dev and prod database servers are automatically configured** - they will appear in your server list ready to use
 
-### Adding Database Servers
+### Auto-Configured Servers
 
-To connect to your PostgreSQL databases in pgAdmin4:
+The deployment workflow automatically creates a `servers.json` file that configures:
 
-**Development Database:**
-- Right-click "Servers" → "Register" → "Server"
-- General tab:
-  - Name: `SaLKo Dev`
-- Connection tab:
-  - Host: `salko-postgres-dev`
-  - Port: `5432`
-  - Database: `salko`
-  - Username: `postgres`
-  - Password: (your `POSTGRES_PASSWORD`)
-- Save
+- **SaLKo Dev** - Development database (salko-postgres-dev:5432)
+- **SaLKo Prod** - Production database (salko-postgres-prod:5432)
 
-**Production Database:**
-- Right-click "Servers" → "Register" → "Server"
-- General tab:
-  - Name: `SaLKo Prod`
-- Connection tab:
-  - Host: `salko-postgres-prod`
-  - Port: `5432`
-  - Database: `salko`
-  - Username: `postgres`
-  - Password: (your `POSTGRES_PASSWORD`)
-- Save
+Both use `salko_admin` username. You'll need to enter the password on first connection.
 
-### Features Available in pgAdmin4
+**Note**: If servers don't appear, redeploy the monitoring stack via GitHub Actions to regenerate the configuration.
 
-- Query tool for running SQL queries
-- Database schema browser
-- Table data viewer and editor
-- Visual query builder
-- Backup and restore tools
-- Performance monitoring
-- User and role management
+### Common Tasks
 
-### Data Persistence
+**Running Queries:**
 
-pgAdmin4 settings and server configurations are persisted in `/home/salko/monitoring/pgadmin-data/`
+- Navigate to a server → expand database → Right-click → "Query Tool"
+
+**Viewing Data:**
+
+- Navigate to Tables → Right-click a table → "View/Edit Data" → "All Rows"
+
+**Database Backup:**
+
+- Right-click database → "Backup..." → Choose format and location
 
 ## Configuration
 
@@ -170,7 +164,7 @@ To enable log collection for a new Docker service, add these labels:
 ```yaml
 labels:
   - logging=promtail
-  - environment=prod  # or dev
+  - environment=prod # or dev
 ```
 
 ### Data Retention
@@ -212,12 +206,14 @@ docker compose --env-file .env.monitoring -f docker-compose.monitoring.yaml ps
 If Grafana/Loki/Prometheus fail with "attempt to write a readonly database" errors:
 
 1. **Run Ansible provisioning** to set correct directory permissions:
+
    ```bash
    cd infra/ansible
    ansible-playbook -i inventory.ini playbook.yml
    ```
 
 2. **Or manually fix permissions on the server**:
+
    ```bash
    sudo chown -R 472:0 /home/salko/monitoring/grafana-data
    sudo chmod -R 775 /home/salko/monitoring/grafana-data
@@ -250,19 +246,23 @@ docker compose --env-file .env.monitoring -f docker-compose.monitoring.yaml rest
 ### Common Issues
 
 **Grafana won't start:**
+
 - Check data directory permissions: `chmod -R 755 /home/salko/monitoring/grafana-data`
 - Check password is set in `.env.monitoring`
 
 **No metrics showing:**
+
 - Verify Prometheus targets: http://10.1.0.x:9090/targets
 - Ensure containers have `logging=promtail` label
 
 **Logs not appearing:**
+
 - Check Promtail is running: `docker logs salko-promtail`
 - Verify containers have the `logging=promtail` label
 - Check Loki datasource in Grafana
 
 **Database metrics missing:**
+
 - Verify postgres exporter can connect to databases
 - Check connection strings in `.env.monitoring`
 - Ensure databases are running
@@ -346,6 +346,7 @@ Total overhead: ~800MB-1GB RAM, <10% CPU under normal load
 ## Support
 
 For issues or questions:
+
 - Check logs: `docker logs <container-name>`
 - Review workflow runs in GitHub Actions
 - Verify network connectivity from 10.0.0.0/16

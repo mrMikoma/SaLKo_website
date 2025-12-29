@@ -3,7 +3,7 @@ global:
   sendAnonymousUsage: false
 
 api:
-  dashboard: false
+  dashboard: true
   debug: false
 
 log:
@@ -11,7 +11,7 @@ log:
 
 entryPoints:
   web:
-    address: ':80'
+    address: ":80"
     http:
       redirections:
         entryPoint:
@@ -20,16 +20,19 @@ entryPoints:
           permanent: true
 
   websecure:
-    address: ':443'
+    address: ":443"
 
 serversTransport:
   insecureSkipVerify: true
 
 providers:
   docker:
-    endpoint: 'unix:///var/run/docker.sock'
+    endpoint: "unix:///var/run/docker.sock"
     exposedByDefault: false
-    network: outgoing
+    network: global_outgoing
+  file:
+    filename: /traefik.yaml
+    watch: true
 
 certificatesResolvers:
   cloudflare:
@@ -43,3 +46,14 @@ certificatesResolvers:
         resolvers:
           - "1.1.1.1:53"
           - "1.0.0.1:53"
+
+http:
+  middlewares:
+    internal-only:
+      ipAllowList:
+        sourceRange:
+          - "10.1.0.0/16" # Hetzner Cloud network
+          - "10.10.0.0/24" # Home site network
+          - "10.20.0.0/24" # Vanttula site network
+          - "127.0.0.1/32" # Localhost
+          - "172.16.0.0/12" # Docker internal networks

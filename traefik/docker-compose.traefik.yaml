@@ -7,6 +7,10 @@ services:
     container_name: traefik
     # Names the container 'traefik' for easier identification.
 
+    command:
+      - "--configFile=/traefik.yaml"
+      # Explicitly load the static configuration file with middleware definitions.
+
     restart: unless-stopped
     # Ensures the container restarts automatically unless it is explicitly stopped.
 
@@ -57,8 +61,8 @@ services:
       - "traefik.enable=true"
       # Enables Traefik for this container, allowing it to manage traffic for the container.
 
-      - "traefik.http.routers.traefik.entrypoints=http"
-      # Defines the HTTP entry point for the Traefik router.
+      - "traefik.http.routers.traefik.entrypoints=web"
+      # Defines the HTTP entry point for the Traefik router (must match traefik.yaml entryPoints.web).
 
       - "traefik.http.middlewares.traefik-https-redirect.redirectscheme.scheme=https"
       # Redirects HTTP traffic to HTTPS using middleware for security.
@@ -69,8 +73,11 @@ services:
       - "traefik.http.routers.traefik.middlewares=traefik-https-redirect"
       # Applies the HTTPS redirection middleware to the Traefik router.
 
-      - "traefik.http.routers.traefik-secure.entrypoints=https"
-      # Defines the HTTPS entry point for the Traefik router.
+      - "traefik.http.routers.traefik-secure.entrypoints=websecure"
+      # Defines the HTTPS entry point for the Traefik router (must match traefik.yaml entryPoints.websecure).
+
+      - "traefik.http.routers.traefik-secure.rule=Host(`traefik.savonlinnanlentokerho.fi`)"
+      # Routes requests for traefik.savonlinnanlentokerho.fi to the Traefik dashboard.
 
       - "traefik.http.routers.traefik-secure.tls=true"
       # Enables TLS (HTTPS) for secure communication.
@@ -80,6 +87,12 @@ services:
 
       - "traefik.http.routers.traefik-secure.tls.domains[0].main=savonlinnanlentokerho.fi"
       # Specifies the main domain for which the SSL certificate will be generated (savonlinnanlentokerho.fi).
+
+      - "traefik.http.routers.traefik-secure.tls.domains[0].sans=*.savonlinnanlentokerho.fi"
+      # Adds wildcard subdomain support to the SSL certificate for all *.savonlinnanlentokerho.fi domains.
+
+      - "traefik.http.routers.traefik-secure.middlewares=internal-only@file"
+      # Restricts dashboard access to internal networks only.
 
       - "traefik.http.routers.traefik-secure.service=api@internal"
       # Uses the internal Traefik API service to monitor and manage the router.
