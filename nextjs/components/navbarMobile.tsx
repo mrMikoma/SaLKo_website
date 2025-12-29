@@ -101,13 +101,9 @@ const NavbarMobile = () => {
                     >
                       Hinnasto
                     </Link>
-                    <Link
-                      href="/kerho/kuvagalleria"
-                      className="block w-full py-4 px-10 text-lg text-swhite/95 hover:bg-sblue/40 hover:text-swhite hover:pl-12 transition-all duration-200 border-l-2 border-transparent hover:border-sred backdrop-blur-sm"
-                      onClick={handleClose}
-                    >
+                    <span className="block w-full py-4 px-10 text-lg text-swhite/40 cursor-not-allowed border-l-2 border-transparent backdrop-blur-sm">
                       Kuvagalleria
-                    </Link>
+                    </span>
                     <span className="block w-full py-4 px-10 text-lg text-swhite/40 cursor-not-allowed border-l-2 border-transparent backdrop-blur-sm">
                       Kotikenttä
                     </span>

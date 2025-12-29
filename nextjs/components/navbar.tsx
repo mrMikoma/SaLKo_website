@@ -142,12 +142,9 @@ const Navbar = ({ session }: { session: Session | null }) => {
                         </Link>
                       </MenuItem>
                       <MenuItem>
-                        <Link
-                          href="/kerho/kuvagalleria"
-                          className="block py-3 px-4 text-swhite hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
-                        >
+                        <span className="block py-3 px-4 text-swhite/40 cursor-not-allowed">
                           Kuvagalleria
-                        </Link>
+                        </span>
                       </MenuItem>
                       <MenuItem>
                         <span className="block py-3 px-4 text-swhite/40 cursor-not-allowed">
