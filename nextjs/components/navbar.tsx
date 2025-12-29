@@ -121,12 +121,9 @@ const Navbar = ({ session }: { session: Session | null }) => {
                       } absolute w-56 mt-2 bg-sblued/95 backdrop-blur-lg shadow-xl z-50 text-left rounded-lg border border-sred/20 overflow-hidden animate-slide-in`}
                     >
                       <MenuItem>
-                        <Link
-                          href="/kerho"
-                          className="block py-3 px-4 text-swhite hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
-                        >
+                        <span className="block py-3 px-4 text-swhite/40 cursor-not-allowed">
                           Kerho
-                        </Link>
+                        </span>
                       </MenuItem>
                       <MenuItem>
                         <Link
@@ -146,27 +143,26 @@ const Navbar = ({ session }: { session: Session | null }) => {
                       </MenuItem>
                       <MenuItem>
                         <Link
-                          href="/kerho/kentta"
+                          href="/kerho/kuvagalleria"
                           className="block py-3 px-4 text-swhite hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
                         >
+                          Kuvagalleria
+                        </Link>
+                      </MenuItem>
+                      <MenuItem>
+                        <span className="block py-3 px-4 text-swhite/40 cursor-not-allowed">
                           Kotikenttä
-                        </Link>
+                        </span>
                       </MenuItem>
                       <MenuItem>
-                        <Link
-                          href="/kerho/hallit"
-                          className="block py-3 px-4 text-swhite hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
-                        >
+                        <span className="block py-3 px-4 text-swhite/40 cursor-not-allowed">
                           Hallit
-                        </Link>
+                        </span>
                       </MenuItem>
                       <MenuItem>
-                        <Link
-                          href="/kerho/historiaa"
-                          className="block py-3 px-4 text-swhite hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
-                        >
+                        <span className="block py-3 px-4 text-swhite/40 cursor-not-allowed">
                           Historiaa
-                        </Link>
+                        </span>
                       </MenuItem>
                     </MenuItems>
                   </div>

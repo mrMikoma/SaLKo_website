@@ -84,13 +84,9 @@ const NavbarMobile = () => {
                     </div>
                   </DisclosureButton>
                   <DisclosurePanel className="w-full bg-sblue/20 backdrop-blur-md mt-1 overflow-hidden border-l-2 border-sred/60 shadow-lg">
-                    <Link
-                      href="/kerho"
-                      className="block w-full py-4 px-10 text-lg text-swhite/95 hover:bg-sblue/40 hover:text-swhite hover:pl-12 transition-all duration-200 border-l-2 border-transparent hover:border-sred backdrop-blur-sm"
-                      onClick={handleClose}
-                    >
+                    <span className="block w-full py-4 px-10 text-lg text-swhite/40 cursor-not-allowed border-l-2 border-transparent backdrop-blur-sm">
                       Kerho
-                    </Link>
+                    </span>
                     <Link
                       href="/kerho/jasenyys"
                       className="block w-full py-4 px-10 text-lg text-swhite/95 hover:bg-sblue/40 hover:text-swhite hover:pl-12 transition-all duration-200 border-l-2 border-transparent hover:border-sred backdrop-blur-sm"
@@ -106,26 +102,21 @@ const NavbarMobile = () => {
                       Hinnasto
                     </Link>
                     <Link
-                      href="/kerho/kentta"
+                      href="/kerho/kuvagalleria"
                       className="block w-full py-4 px-10 text-lg text-swhite/95 hover:bg-sblue/40 hover:text-swhite hover:pl-12 transition-all duration-200 border-l-2 border-transparent hover:border-sred backdrop-blur-sm"
                       onClick={handleClose}
                     >
+                      Kuvagalleria
+                    </Link>
+                    <span className="block w-full py-4 px-10 text-lg text-swhite/40 cursor-not-allowed border-l-2 border-transparent backdrop-blur-sm">
                       Kotikenttä
-                    </Link>
-                    <Link
-                      href="/kerho/hallit"
-                      className="block w-full py-4 px-10 text-lg text-swhite/95 hover:bg-sblue/40 hover:text-swhite hover:pl-12 transition-all duration-200 border-l-2 border-transparent hover:border-sred backdrop-blur-sm"
-                      onClick={handleClose}
-                    >
+                    </span>
+                    <span className="block w-full py-4 px-10 text-lg text-swhite/40 cursor-not-allowed border-l-2 border-transparent backdrop-blur-sm">
                       Hallit
-                    </Link>
-                    <Link
-                      href="/kerho/historiaa"
-                      className="block w-full py-4 px-10 text-lg text-swhite/95 hover:bg-sblue/40 hover:text-swhite hover:pl-12 transition-all duration-200 border-l-2 border-transparent hover:border-sred backdrop-blur-sm"
-                      onClick={handleClose}
-                    >
+                    </span>
+                    <span className="block w-full py-4 px-10 text-lg text-swhite/40 cursor-not-allowed border-l-2 border-transparent backdrop-blur-sm">
                       Historiaa
-                    </Link>
+                    </span>
                   </DisclosurePanel>
                 </div>
               )}
