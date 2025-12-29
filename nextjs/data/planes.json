@@ -35,41 +35,39 @@
     ],
     "images": [
       {
-        "src": "/images/OH-CON/ohcon_1.jpg",
+        "src": "/images/OH-CON/ohcon_2.jpg",
         "alt": "OH-CON"
       }
     ]
   },
   {
-    "registeration": "OH-SEE",
-    "name": "Socata M.S. 893E Rallye 180GT",
-    "description": "Socata M.S.893E Rallye 180GT on ranskalaisvalmisteinen alatasoinen nelipaikkainen kokometallirakenteinen yleisilmailukone. Savonlinnan lentokerho hankki Rallyen Vaasasta helmikuussa 1982 korvaamaan aiemmin mahalaskussa tuhoutuneen F.8L Falcon. SaLKon Rallye on valmistettu 1974. Rallyen pääasiallinen käyttötarkoitus on ollut purjekoneiden hinaaminen, johon se soveltuukin hyvin tehokkaan moottorinsa ja hyvien hidaslento-ominaisuuksiensa ansiosta. Konetta on käytetty myös matkalentoihin, kouluttamiseen ja palolentotoimintaan. Rallye peruskorjattiin kerhon omin voimin 1990-luvun alussa, jolloin se sai uuden moottorin ja maalipinnan.",
+    "registeration": "OH-386",
+    "name": "Fournier RF-5 (Tuulia)",
+    "description": "Fournier RF-5 on ranskalaisvalmisteinen kaksipaikkainen moottoripurjekone, joka on suunniteltu erityisesti moottoripurjelentoon. Koneen on suunnitellut René Fournier ja se lensi ensilentonsa vuonna 1968. RF-5 on kehitetty aiemmasta RF-4 mallista, ja siinä on parannettu suorituskykyä ja lentoominaisuuksia.\n\nRF-5:n rakenne on pääosin lasikuitukomposiitti, mikä tekee siitä kevyen ja kestävän. Koneessa on kiinteä päälaskuteline sekä nokkapyörä. Siivessä on negatiivinen nuolimuoto ja tehokkaat lentojarrut, jotka auttavat hallitsemaan laskeutumista. Ohjaamo on tilava ja tarjoaa hyvän näkyvyyden ulos suuren yksiosaisen kuomun ansiosta.\n\nMoottoripurjelentokoneena RF-5:llä on sisäänrakennettu moottori, joka mahdollistaa itsenäisen nousun ilman hinausta. Tämä tekee siitä monipuolisen koneen, joka soveltuu sekä purjelentoon että moottorilentoon. RF-5 on suosittu valinta harrasteilmailijoiden keskuudessa sen monikäyttöisyyden ja hyvien lentoominaisuuksien vuoksi.",
     "specs": {
-      "length": "7,24 m",
-      "wingspan": "9,61 m",
-      "height": "2,8 m",
-      "wingArea": "12,28 m²",
-      "emptyWeight": "634 kg",
-      "maxTakeoffWeight": "1050 kg",
-      "engine": "Lycoming O-360-A3A 180 hp 5,9 litrainen ilmajäähdytteinen 4-syl. bokseri",
-      "maxSpeed": "156 kt (290 km/h)",
-      "maxCruiseSpeed": "114 kt (212 km/h)",
-      "economyCruiseSpeed": "106 kt (197 km/h), kulutus noin 34 l/h",
-      "stallSpeed": "~54 kt (100 km/h), 1050 kg",
-      "bestClimbRate": "4,00 m/s (788 fpm, 79 kt / 1050 kg)",
-      "serviceCeiling": "3600 m",
-      "maxRange": "1000 km (540 nm, 5h / 170 l)"
+      "length": "-",
+      "wingspan": "-",
+      "height": "-",
+      "wingArea": "-",
+      "emptyWeight": "-",
+      "maxTakeoffWeight": "-",
+      "engine": "-",
+      "maxSpeedCalm": "-",
+      "maxSpeedGusts": "-",
+      "stallSpeed": "-",
+      "bestGlideRatio": "-",
+      "minSinkRate": "-"
     },
     "links": [
       {
-        "text": "Wikipedian artikkeli Socata Rallyesta",
-        "url": "https://fi.wikipedia.org/wiki/Socata_M.S._893E_Rallye_180GT"
+        "text": "Fournier RF-5 - Wikipedia",
+        "url": "https://en.wikipedia.org/wiki/Fournier_RF-5"
       }
     ],
     "images": [
       {
-        "src": "/images/OH-SEE/socata_rallye.jpg",
-        "alt": "Socata M.S. 893E Rallye 180GT"
+        "src": "/images/OH-386/oh386_1.jpg",
+        "alt": "Fournier RF-5"
       }
     ]
   },
@@ -111,12 +109,7 @@
         "url": "https://www.airliners.net"
       }
     ],
-    "images": [
-      {
-        "src": "/images/OH-PDX/piper_j3c_85_cub.jpg",
-        "alt": "Piper J-3C-85 Cub"
-      }
-    ]
+    "images": []
   },
   {
     "registeration": "OH-816",
@@ -168,12 +161,7 @@
         "url": "/files/ilmailu_1978_6_puchacz.pdf"
       }
     ],
-    "images": [
-      {
-        "src": "/images/OH-816/puchacz_image.jpg",
-        "alt": "SZD-50-3 Puchacz"
-      }
-    ]
+    "images": []
   },
   {
     "registeration": "OH-829",
@@ -220,12 +208,7 @@
         "url": "/files/junior_ice_flying_video.mp4"
       }
     ],
-    "images": [
-      {
-        "src": "/images/OH-829/junior_image.jpg",
-        "alt": "SZD-51-1 Junior"
-      }
-    ]
+    "images": []
   },
   {
     "registeration": "OH-475",
@@ -268,11 +251,6 @@
         "url": "/files/jantar_salko_purjelentosanomissa.pdf"
       }
     ],
-    "images": [
-      {
-        "src": "/images/OH-475/jantar_image.jpg",
-        "alt": "SZD-41A Jantar Standard"
-      }
-    ]
+    "images": []
   }
 ]
