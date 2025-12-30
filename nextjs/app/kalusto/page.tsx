@@ -1,6 +1,8 @@
 import Link from "next/link";
 import planesData from "@/data/planes.json";
 import PlanePreviewCard from "@/components/planes/planePreviewCard";
+import PageHero from "@/components/pageHero";
+import ContentSection from "@/components/contentSection";
 
 export const metadata = {
   title: "Kalusto | SaLKo",
@@ -20,16 +22,13 @@ export const metadata = {
 const Page = () => {
   return (
     <div className="min-h-screen flex flex-col w-full">
-      <section className="relative w-full min-h-screen flex items-center justify-center bg-cover bg-center bg-olavinlinna-one">
-        <div className="absolute inset-0 bg-gradient-to-b from-sblack/50 via-sblack/40 to-sblued/95"></div>
-        <div className="relative z-10 w-full max-w-[1600px] mx-auto px-6 pt-48 pb-16">
-          <div className="text-center space-y-6 animate-fade-in mt-10 mb-20 md:mt-12 md:mb-24">
-            <h2 className="text-xl md:text-2xl font-bold leading-tight text-swhite">
-              Tutustut kerhomme monipuoliseen lentokonekalustoon
-            </h2>
-          </div>
-
-          <div className="space-y-12">
+      <PageHero
+        title="Kalusto"
+        breadcrumbs={["Kalusto"]}
+        compact={true}
+        backgroundImage="bg-mopu-one"
+        children={
+          <div className="space-y-12 max-w-7xl mx-auto py-12 px-6 w-full">
             {/* Aircraft Categories */}
             <div className="space-y-8">
               {/* Motor Aircraft */}
@@ -56,7 +55,7 @@ const Page = () => {
 
               {/* Gliders */}
               <div>
-                <h2 className="text-2xl md:text-3xl font-bold text-sred mb-6 text-center">
+                <h2 className="text-2xl md:text-3xl font-bold text-sred my-6 text-center">
                   Purjelentokoneemme
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -97,8 +96,8 @@ const Page = () => {
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        }
+      />
     </div>
   );
 };

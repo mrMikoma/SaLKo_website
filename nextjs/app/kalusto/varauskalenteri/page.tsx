@@ -1,5 +1,6 @@
 import BookingSection from "@/components/bookings/bookingSection";
 import { auth } from "@/auth";
+import PageHero from "@/components/pageHero";
 
 export const metadata = {
   title: "Varauskalenteri :: SaLKo",
@@ -19,8 +20,15 @@ export default async function Page() {
   };
 
   return (
-    <div className="min-h-screen w-full pt-42">
-      <BookingSection userContext={userContext} />
+    <div className="min-h-screen flex flex-col w-full">
+      <PageHero
+        title="Varauskalenteri"
+        breadcrumbs={["Kalusto", "Varauskalenteri"]}
+        compact={true}
+        backgroundImage="bg-mopu-one"
+        showScrollIndicator={false}
+        children={<BookingSection userContext={userContext} />}
+      />
     </div>
   );
 }

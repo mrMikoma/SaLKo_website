@@ -8,6 +8,7 @@ interface PageHeroProps {
   breadcrumbs?: string[];
   compact?: boolean;
   children?: React.ReactNode;
+  showScrollIndicator?: boolean;
 }
 
 const PageHero = ({
@@ -17,6 +18,7 @@ const PageHero = ({
   breadcrumbs,
   compact = false,
   children,
+  showScrollIndicator = true,
 }: PageHeroProps) => {
   return (
     <section
@@ -35,7 +37,7 @@ const PageHero = ({
       {/* Hero Content */}
       <div className="relative z-10 w-full">
         {/* Top Section - Breadcrumbs and Title */}
-        <div className="max-w-[1600px] mx-auto px-6 pt-44 lg:pt-48 pb-12 lg:pb-16">
+        <div className="max-w-[1600px] mx-auto px-6 pt-44 lg:pt-48 pb-12">
           <div className="space-y-4">
             {/* Breadcrumbs */}
             {breadcrumbs && breadcrumbs.length > 0 && (
@@ -88,7 +90,7 @@ const PageHero = ({
       </div>
 
       {/* Scroll Indicator - only show on full-screen hero */}
-      {!compact && (
+      {!compact && showScrollIndicator && (
         <div className="hidden lg:block absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-float">
           <div className="flex flex-col items-center gap-2">
             <svg
