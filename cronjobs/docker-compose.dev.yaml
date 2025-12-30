@@ -24,7 +24,7 @@ services:
     command: tail -f /dev/null
     labels:
       ofelia.enabled: "true"
-      ofelia.job-exec.update-metar.schedule: "0 22,52 * * * *"
+      ofelia.job-exec.update-metar.schedule: "0 25,55 * * * *"
       ofelia.job-exec.update-metar.command: "npm start"
     restart: unless-stopped
 

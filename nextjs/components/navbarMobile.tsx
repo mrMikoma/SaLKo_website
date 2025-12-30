@@ -5,48 +5,45 @@ import {
   DisclosurePanel,
 } from "@headlessui/react";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import ArrowDownIcon from "@/components/icons/arrowDown";
 import XCrossIcon from "@/components/icons/xCross";
 import MenuIcon from "@/components/icons/menu";
+import { useNavbar } from "@/providers/NavbarContextProvider";
 
 const NavbarMobile = () => {
-  const [isOpen, setIsOpen] = useState(false);
+  const { isMobileMenuOpen, setIsMobileMenuOpen } = useNavbar();
   const pathName = usePathname();
 
   // Toggle menu visibility
   const handleToggle = () => {
-    setIsOpen(!isOpen);
+    setIsMobileMenuOpen(!isMobileMenuOpen);
   };
 
   // Close the menu
   const handleClose = () => {
-    setIsOpen(false);
+    setIsMobileMenuOpen(false);
   };
 
   // Close menu on navigation
   useEffect(() => {
-    setIsOpen(false);
-  }, [pathName]);
+    setIsMobileMenuOpen(false);
+  }, [pathName, setIsMobileMenuOpen]);
 
   return (
     <div>
       {/* Mobile Menu Button (Hamburger) */}
-      <Disclosure>
-        {() => (
-          <DisclosureButton
-            aria-label="Toggle Menu"
-            onClick={handleToggle}
-            className="px-2 pt-4 ml-auto rounded-md lg:hidden hover:text-sbluel focus:text-sbluel transition-colors duration-200"
-          >
-            <MenuIcon size={48} />
-          </DisclosureButton>
-        )}
-      </Disclosure>
+      <button
+        aria-label="Toggle Menu"
+        onClick={handleToggle}
+        className="px-2 pt-4 ml-auto rounded-md lg:hidden hover:text-sbluel focus:text-sbluel transition-colors duration-200"
+      >
+        <MenuIcon size={48} />
+      </button>
 
       {/* Full-Screen Menu */}
-      {isOpen && (
+      {isMobileMenuOpen && (
         <div
           className="fixed inset-0 w-screen h-screen bg-gradient-to-br from-sblued/75 via-sblued/65 to-sblue/70 backdrop-blur-lg z-[60] transform transition-all duration-300 animate-fade-in overflow-y-auto"
           onClick={handleClose}

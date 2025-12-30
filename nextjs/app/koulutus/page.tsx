@@ -427,8 +427,11 @@ export default function Page() {
             Lentokoulutus käytännössä
           </h2>
           <p className="text-lg text-swhite/80 text-center max-w-3xl mx-auto mb-12">
-            Koulutus sisältää teoriaopintoja, lennon suunnittelua ja käytännön
-            lentotunteja.
+            Lentokoulutus koostuu Blue Skies Aviationin tarjoamista
+            etäteoriaopinnoista ja käytännön lentokoulutuksesta Savonlinnan
+            lentokentällä. Käytännön lentokoulutus sisältää erilaisia
+            harjoituksia ja tehtäviä, jotka kehittävät lentotaitojasi ja
+            valmistelevat sinut lupakirjakokeeseen.
           </p>
         </div>
 
@@ -437,7 +440,7 @@ export default function Page() {
           <div className="relative overflow-hidden rounded-xl border-2 border-sbluel/30 hover:border-sred/50 transition-all duration-300 group">
             <div className="relative h-64 md:h-80">
               <Image
-                src="/images/planning_1.jpeg"
+                src="/images/planning_1.jpg"
                 alt="Teoriaopintojen yhdistäminen käytäntöön"
                 fill
                 className="object-cover group-hover:scale-105 transition-transform duration-300 opacity-85"
@@ -458,7 +461,7 @@ export default function Page() {
           <div className="relative overflow-hidden rounded-xl border-2 border-sbluel/30 hover:border-sred/50 transition-all duration-300 group">
             <div className="relative h-64 md:h-80">
               <Image
-                src="/images/planning_2.jpeg"
+                src="/images/planning_2.jpg"
                 alt="Lennon suunnittelua"
                 fill
                 className="object-cover group-hover:scale-105 transition-transform duration-300 opacity-85"

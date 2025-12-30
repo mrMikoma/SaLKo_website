@@ -18,6 +18,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Logout from "./auth/logout";
 import type { Session } from "next-auth";
+import { useNavbar } from "@/providers/NavbarContextProvider";
 
 const Navbar = ({ session }: { session: Session | null }) => {
   const [authenticated, setAuthenticated] = useState(false);
@@ -26,6 +27,7 @@ const Navbar = ({ session }: { session: Session | null }) => {
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
   const router = useRouter();
+  const { isFullscreenMode } = useNavbar();
 
   useEffect(() => {
     if (session?.user) {
@@ -69,7 +71,7 @@ const Navbar = ({ session }: { session: Session | null }) => {
   return (
     <div
       className={`w-full fixed top-0 z-50 bg-sblued/80  border-b border-sred/30 transition-all duration-300 ${
-        isVisible ? "translate-y-0" : "-translate-y-full"
+        isVisible && !isFullscreenMode ? "translate-y-0" : "-translate-y-full"
       }`}
     >
       <nav className="container relative flex flex-wrap items-center justify-between p-4 px-6 mx-auto">

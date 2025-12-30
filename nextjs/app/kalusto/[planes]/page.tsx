@@ -1,6 +1,6 @@
 import PlaneInfo from "@/components/planes/planeInfo";
+import PlaneGallery from "@/components/planes/planeGallery";
 import planeData from "@/data/planes.json";
-import Image from "next/image";
 import Link from "next/link";
 
 export async function generateMetadata({ params }) {
@@ -69,21 +69,12 @@ const Page = async ({ params }) => {
           </div>
 
           {/* Main Content */}
-          <div className="space-y-8">
-            {/* Hero Image */}
-            {hasImage && (
-              <div className="relative w-full h-[400px] md:h-[500px] rounded-xl overflow-hidden border-2 border-sbluel/30 shadow-2xl">
-                <Image
-                  src={plane.images[0].src}
-                  alt={plane.images[0].alt || plane.name}
-                  fill
-                  className="object-cover"
-                  priority
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-sblack/60 via-transparent to-transparent"></div>
-              </div>
-            )}
 
+          {/* Image Gallery */}
+          {hasImage && (
+            <PlaneGallery images={plane.images} planeName={plane.name} />
+          )}
+          <div className="space-y-8">
             {/* Plane Info */}
             <PlaneInfo
               name={plane.name}
