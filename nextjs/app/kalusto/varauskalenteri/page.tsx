@@ -3,8 +3,16 @@ import { auth } from "@/auth";
 import PageHero from "@/components/pageHero";
 
 export const metadata = {
-  title: "Varauskalenteri :: SaLKo",
+  title: "Varauskalenteri | SaLKo",
   description: "SaLKo ry - Varauskalenteri",
+  keywords: [
+    "Savonlinnan Lentokerho",
+    "varauskalenteri",
+    "lentokonevaraukset",
+    "lentokoneiden varaus",
+    "SaLKo",
+    "Savonlinna",
+  ],
 };
 
 export default async function Page() {
