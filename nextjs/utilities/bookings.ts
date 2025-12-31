@@ -26,7 +26,10 @@ const allowedPlaneTypes: string[] = [
 /**
  * Validates booking times to ensure they are on hour boundaries and at least 1 hour apart
  */
-function validateBookingTimes(start_time: string | number, end_time: string | number): void {
+function validateBookingTimes(
+  start_time: string | number,
+  end_time: string | number
+): void {
   if (typeof start_time === "number" || typeof end_time === "number") {
     throw new Error("Invalid time format");
   }
@@ -192,6 +195,110 @@ export async function fetchDayBookings(
   }
 }
 
+/**
+ * Fetches bookings for multiple planes across a date range
+ * Optimized for calendar views (month/week/day)
+ *
+ * This function consolidates what would normally be N×M queries (N dates × M planes)
+ * into a single optimized query using:
+ * - ANY($1) for multiple planes
+ * - Range comparison instead of ::date cast for index usage
+ * - Overlap detection for multi-day bookings
+ *
+ * @param planes - Array of plane identifiers (e.g., ['OH-CON', 'OH-816'])
+ * @param startDate - ISO date string (start of range, inclusive) - YYYY-MM-DD format
+ * @param endDate - ISO date string (end of range, inclusive) - YYYY-MM-DD format
+ * @returns Promise with bookings array or error
+ *
+ * Performance: Month view (35 days × 6 planes) = 210 queries → 1 query (99.5% reduction)
+ */
+export async function fetchBookingsForDateRange(
+  planes: string[],
+  startDate: string,
+  endDate: string
+): Promise<{ status: string; result: BookingType[] | Error }> {
+  try {
+    // Validate inputs
+    if (!Array.isArray(planes) || planes.length === 0) {
+      throw new Error("Invalid planes array");
+    }
+
+    const invalidPlanes = planes.filter(p => !allowedPlaneTypes.includes(p));
+    if (invalidPlanes.length > 0) {
+      throw new Error(`Invalid plane types: ${invalidPlanes.join(', ')}`);
+    }
+
+    // Validate dates
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      throw new Error("Invalid date format");
+    }
+    if (start > end) {
+      throw new Error("Start date must be before or equal to end date");
+    }
+
+    // Normalize to full day ranges in UTC
+    const startOfDay = new Date(startDate);
+    startOfDay.setUTCHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(endDate);
+    endOfDay.setUTCHours(23, 59, 59, 999);
+
+    console.log(`Fetching bookings for ${planes.length} planes from ${startDate} to ${endDate}`);
+
+    // OPTIMIZED QUERY: Fetches all planes and dates in one query
+    // Uses timestamp range comparison instead of ::date cast for index usage
+    // Handles multi-day bookings with overlap detection:
+    //   - Booking starts before range end (start_time <= endOfDay)
+    //   - Booking ends after range start (end_time >= startOfDay)
+    const query = `
+      SELECT
+        b.id, b.plane, b.start_time, b.end_time, b.user_id,
+        u.full_name, u.email, u.phone,
+        b.type, b.title, b.description,
+        gb.contact_name as guest_contact_name,
+        gb.contact_email as guest_contact_email,
+        gb.contact_phone as guest_contact_phone,
+        CASE WHEN gb.booking_id IS NOT NULL THEN true ELSE false END as is_guest
+      FROM bookings b
+      JOIN users u ON b.user_id = u.id
+      LEFT JOIN guest_bookings gb ON b.id = gb.booking_id
+      WHERE
+        b.plane = ANY($1)
+        AND b.start_time <= $3
+        AND b.end_time >= $2
+      ORDER BY b.plane, b.start_time
+    `;
+
+    const response = await connectionPool.query(query, [
+      planes,
+      startOfDay.toISOString(),
+      endOfDay.toISOString(),
+    ]);
+
+    console.log(`Fetched ${response.rowCount} bookings in single bulk query`);
+
+    if (response.rowCount === 0) {
+      return { status: "success", result: [] };
+    }
+
+    // Format timestamps to ISO strings
+    response.rows.forEach((booking: BookingType) => {
+      booking.start_time = new Date(booking.start_time).toISOString();
+      booking.end_time = new Date(booking.end_time).toISOString();
+    });
+
+    return { status: "success", result: response.rows };
+  } catch (error) {
+    console.error("Error fetching bookings for date range:", error);
+    return {
+      status: "error",
+      result: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+}
+
 export async function addRepeatingBookings({
   user_id,
   plane,
@@ -201,7 +308,11 @@ export async function addRepeatingBookings({
   title,
   description,
   repeat_end_date,
-}: AddBookingParams & { repeat_end_date: string }): Promise<{ status: string; data: null | Error; count?: number }> {
+}: AddBookingParams & { repeat_end_date: string }): Promise<{
+  status: string;
+  data: null | Error;
+  count?: number;
+}> {
   try {
     if (!allowedPlaneTypes.includes(plane)) {
       throw new Error("Invalid plane type");
@@ -250,7 +361,15 @@ export async function addRepeatingBookings({
 
         await connectionPool.query(
           "INSERT INTO bookings (user_id, plane, start_time, end_time, type, title, description) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-          [user_id, plane, dayStart.toISOString(), dayEnd.toISOString(), type, title, description]
+          [
+            user_id,
+            plane,
+            dayStart.toISOString(),
+            dayEnd.toISOString(),
+            type,
+            title,
+            description,
+          ]
         );
 
         bookingsCreated++;
@@ -285,7 +404,11 @@ export async function addGuestBooking({
   title,
   description,
   contactInfo,
-}: AddGuestBookingParams): Promise<{ status: string; data: null | Error; bookingId?: number }> {
+}: AddGuestBookingParams): Promise<{
+  status: string;
+  data: null | Error;
+  bookingId?: number;
+}> {
   const client = await connectionPool.connect();
 
   try {
@@ -302,7 +425,11 @@ export async function addGuestBooking({
     validateBookingTimes(start_time, end_time);
 
     // Validate contact info
-    if (!contactInfo.contactName || !contactInfo.contactEmail || !contactInfo.contactPhone) {
+    if (
+      !contactInfo.contactName ||
+      !contactInfo.contactEmail ||
+      !contactInfo.contactPhone
+    ) {
       throw new Error("Contact information is required for guest bookings");
     }
 
@@ -335,7 +462,12 @@ export async function addGuestBooking({
     await client.query(
       `INSERT INTO guest_bookings (booking_id, contact_name, contact_email, contact_phone)
        VALUES ($1, $2, $3, $4)`,
-      [bookingId, contactInfo.contactName, contactInfo.contactEmail, contactInfo.contactPhone]
+      [
+        bookingId,
+        contactInfo.contactName,
+        contactInfo.contactEmail,
+        contactInfo.contactPhone,
+      ]
     );
 
     await client.query("COMMIT");
@@ -413,7 +545,10 @@ export async function updateBooking({
   type,
   title,
   description,
-}: UpdateBookingParams & { userRole?: string }): Promise<{ status: string; data: BookingType | Error }> {
+}: UpdateBookingParams & { userRole?: string }): Promise<{
+  status: string;
+  data: BookingType | Error;
+}> {
   try {
     // Validation
     if (typeof id !== "number" || id < 0) {
@@ -442,7 +577,9 @@ export async function updateBooking({
         [user_id]
       );
 
-      const isAdmin = userRoleResult.rows.length > 0 && userRoleResult.rows[0].role === "admin";
+      const isAdmin =
+        userRoleResult.rows.length > 0 &&
+        userRoleResult.rows[0].role === "admin";
 
       // Admin can update any booking, regular users can only update their own
       const updateQuery = isAdmin
@@ -470,7 +607,9 @@ export async function updateBooking({
 
       // Format timestamps to ISO string
       const updatedBooking = response.rows[0];
-      updatedBooking.start_time = new Date(updatedBooking.start_time).toISOString();
+      updatedBooking.start_time = new Date(
+        updatedBooking.start_time
+      ).toISOString();
       updatedBooking.end_time = new Date(updatedBooking.end_time).toISOString();
 
       // Fetch user details from users table
@@ -518,9 +657,10 @@ export async function removeBooking(
 
     try {
       // Admin can delete any booking, regular users can only delete their own
-      const query = userRole === "admin"
-        ? "DELETE FROM bookings WHERE id = $1"
-        : "DELETE FROM bookings WHERE id = $1 AND user_id = $2";
+      const query =
+        userRole === "admin"
+          ? "DELETE FROM bookings WHERE id = $1"
+          : "DELETE FROM bookings WHERE id = $1 AND user_id = $2";
 
       const params = userRole === "admin" ? [bookingId] : [bookingId, userId];
 
@@ -549,7 +689,9 @@ export async function removeBooking(
   }
 }
 
-export async function arrangeBookingsColumns(bookings: BookingType[]): Promise<BookingType[][]> {
+export async function arrangeBookingsColumns(
+  bookings: BookingType[]
+): Promise<BookingType[][]> {
   // Simple column arrangement - just return bookings in a single column for now
   // This can be enhanced later to handle overlapping bookings in multiple columns
   return [bookings];
@@ -584,7 +726,9 @@ export async function fetchGuestContactInfo(
     if (userRoleResult.rows[0].role !== "admin") {
       return {
         status: "error",
-        result: new Error("Unauthorized: Only admins can view guest contact information"),
+        result: new Error(
+          "Unauthorized: Only admins can view guest contact information"
+        ),
       };
     }
 

@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { DateTime } from "luxon";
 import {
-  fetchDayBookings,
+  fetchBookingsForDateRange,
   addBooking,
   addGuestBooking,
   updateBooking,
@@ -20,37 +20,37 @@ interface UseBookingsOptions {
   userRole?: string;
 }
 
-interface FetchBookingsResponse {
-  status: string;
-  result: BookingType[] | Error;
-}
-
 /**
- * Fetches bookings for all planes on a specific date
+ * Fetches bookings for multiple dates using optimized bulk query
+ * Consolidates N×M queries (N dates × M planes) into a single query
  */
-const fetchBookingsForDate = async (date: string): Promise<BookingType[]> => {
-  const promises = PLANES.map((plane) => fetchDayBookings(plane, date));
-  const results = await Promise.all(promises);
+const fetchBookingsForDates = async (dates: string[]): Promise<BookingType[]> => {
+  if (dates.length === 0) return [];
 
-  const fetchedBookings: BookingType[] = results
-    .filter(
-      (result): result is FetchBookingsResponse =>
-        result.status === "success" &&
-        Array.isArray(result.result) &&
-        result.result.length > 0
-    )
-    .flatMap((result) => result.result as BookingType[]);
+  // Sort dates to get range
+  const sortedDates = [...dates].sort();
+  const startDate = sortedDates[0];
+  const endDate = sortedDates[sortedDates.length - 1];
 
-  return fetchedBookings;
+  console.log(`Bulk fetching ${startDate} to ${endDate} for ${PLANES.length} planes`);
+
+  // SINGLE BULK QUERY instead of N×M queries
+  const response = await fetchBookingsForDateRange(PLANES, startDate, endDate);
+
+  if (response.status === "success" && Array.isArray(response.result)) {
+    console.log(`Bulk query returned ${response.result.length} bookings`);
+    return response.result as BookingType[];
+  }
+
+  console.error("Error fetching bookings:", response.result);
+  return [];
 };
 
 /**
- * Fetches bookings for multiple dates
+ * Fetches bookings for a single date using the bulk query for consistency
  */
-const fetchBookingsForDates = async (dates: string[]): Promise<BookingType[]> => {
-  const promises = dates.map((date) => fetchBookingsForDate(date));
-  const results = await Promise.all(promises);
-  return results.flat();
+const fetchBookingsForDate = async (date: string): Promise<BookingType[]> => {
+  return fetchBookingsForDates([date]);
 };
 
 /**
@@ -66,7 +66,13 @@ export const useBookings = ({ date, dates, enabled = true, userId, userRole }: U
 
   // Determine which mode we're in
   const dateList = dates || (date ? [date] : []);
-  const queryKey = dates ? ["bookings", "multiple", dates.join(",")] : ["bookings", date];
+
+  // IMPROVED: Use range-based keys for better cache hits
+  // Sort dates to ensure consistent cache keys regardless of input order
+  const sortedDates = [...dateList].sort();
+  const queryKey = dateList.length > 1
+    ? ["bookings", "range", sortedDates[0], sortedDates[sortedDates.length - 1]]
+    : ["bookings", "single", date];
 
   // Fetch bookings for all planes on a specific date or dates
   const {
@@ -85,7 +91,7 @@ export const useBookings = ({ date, dates, enabled = true, userId, userRole }: U
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
-  // Prefetch adjacent dates for smoother navigation (only for single date mode)
+  // ENHANCED: Prefetch adjacent dates and week view for smoother navigation
   useEffect(() => {
     if (dates || !date || !DateTime.fromISO(date).isValid) return;
 
@@ -96,7 +102,7 @@ export const useBookings = ({ date, dates, enabled = true, userId, userRole }: U
     // Prefetch previous day
     if (previousDate) {
       queryClient.prefetchQuery({
-        queryKey: ["bookings", previousDate],
+        queryKey: ["bookings", "single", previousDate],
         queryFn: () => fetchBookingsForDate(previousDate),
         staleTime: 1000 * 60 * 5,
       });
@@ -105,8 +111,23 @@ export const useBookings = ({ date, dates, enabled = true, userId, userRole }: U
     // Prefetch next day
     if (nextDate) {
       queryClient.prefetchQuery({
-        queryKey: ["bookings", nextDate],
+        queryKey: ["bookings", "single", nextDate],
         queryFn: () => fetchBookingsForDate(nextDate),
+        staleTime: 1000 * 60 * 5,
+      });
+    }
+
+    // ENHANCED: Prefetch current week for faster week view switching
+    const weekStart = currentDate.startOf("week").toISODate();
+    const weekEnd = currentDate.endOf("week").toISODate();
+    if (weekStart && weekEnd) {
+      const weekDates = Array.from({ length: 7 }, (_, i) =>
+        currentDate.startOf("week").plus({ days: i }).toISODate()
+      ).filter((d): d is string => d !== null);
+
+      queryClient.prefetchQuery({
+        queryKey: ["bookings", "range", weekStart, weekEnd],
+        queryFn: () => fetchBookingsForDates(weekDates),
         staleTime: 1000 * 60 * 5,
       });
     }
@@ -185,8 +206,11 @@ export const useBookings = ({ date, dates, enabled = true, userId, userRole }: U
       console.error("Failed to add booking:", err);
     },
     onSuccess: () => {
-      // Refetch to ensure data consistency
-      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      // IMPROVED: More granular invalidation - invalidate all booking queries
+      queryClient.invalidateQueries({
+        queryKey: ["bookings"],
+        exact: false, // Invalidate all booking-related queries
+      });
     },
   });
 
@@ -225,7 +249,10 @@ export const useBookings = ({ date, dates, enabled = true, userId, userRole }: U
       console.error("Failed to remove booking:", err);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      queryClient.invalidateQueries({
+        queryKey: ["bookings"],
+        exact: false,
+      });
     },
   });
 
@@ -271,7 +298,10 @@ export const useBookings = ({ date, dates, enabled = true, userId, userRole }: U
       console.error("Failed to update booking:", err);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      queryClient.invalidateQueries({
+        queryKey: ["bookings"],
+        exact: false,
+      });
     },
   });
 
