@@ -144,7 +144,7 @@ const BookingModal = ({
         : booking.end_time;
 
       // Build updated booking object with form values
-      const updatedBooking: BookingType = {
+      const updatedBooking: BookingType & { contactName?: string; contactEmail?: string; contactPhone?: string } = {
         ...booking,
         plane: formValues.plane,
         type: formValues.type,
@@ -152,11 +152,11 @@ const BookingModal = ({
         description: formValues.description || "",
         start_time: startTimeISO || "",
         end_time: endTimeISO || "",
-        // For guest bookings, add guest contact info
+        // For guest bookings, add contact info (without guest_ prefix for mutation)
         ...(isGuestMode && {
-          guest_contact_name: (formValues as any).contactName,
-          guest_contact_email: (formValues as any).contactEmail,
-          guest_contact_phone: (formValues as any).contactPhone,
+          contactName: (formValues as any).contactName,
+          contactEmail: (formValues as any).contactEmail,
+          contactPhone: (formValues as any).contactPhone,
         }),
       };
 

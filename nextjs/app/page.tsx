@@ -46,7 +46,7 @@ export default function Page() {
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row flex-wrap gap-3 justify-center lg:justify-start pt-2">
               <Link
-                href="/esittelylento"
+                href="/esittelylennot"
                 className="px-8 py-4 bg-sred text-swhite font-semibold rounded-lg shadow-xl hover:bg-sred/90 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 text-center"
               >
                 Lähde esittelylennolle
@@ -146,7 +146,7 @@ export default function Page() {
           {/* Koulutus Card */}
           <FeatureCard
             title="Koulutus"
-            description="Tarjoamme kattavaa lentokoulutusta aina alkeista ammattilentäjäksi. Kokeneet lennonopettajamme ohjaavat sinua turvallisesti kohti unelmiasi."
+            description="Tarjoamme kattavaa lentokoulutusta aina yksityislentäjän lupakirjaan ja lisäkelpuutuksiin asti."
             icon={<GraduationIcon size={48} />}
             href="/koulutus"
             imageSrc="/images/OH-386/oh386_1.jpg"
