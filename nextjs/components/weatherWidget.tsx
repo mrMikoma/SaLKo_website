@@ -137,11 +137,6 @@ const WeatherWidget = () => {
         </div>
       </div>
 
-      {/* Update Info */}
-      <div className="mt-3 text-xs text-center text-swhite/50">
-        Taustajärjestelmä päivittää säätiedot 20 yli ja 10 vaille joka tunti.
-      </div>
-
       {/* Data Source */}
       <div className="mt-2 text-xs text-center text-swhite/40">
         Lähde: NOAA Aviation Weather Center
