@@ -4,17 +4,16 @@ import Container from "./container";
 
 export default function Footer() {
   const firstNavigation = [
-    { Kerho: "/kerho" },
+    { Esittelylennot: "/esittelylennot" },
+    { Koulutus: "/koulutus" },
+    { Jäsenyys: "/jasenyys" },
     { Kalusto: "/kalusto" },
     { Koulutus: "/koulutus" },
-    { Historiaa: "/kentta/historiaa" },
-    { Hallit: "/kentta/hallit" },
-    { Kenttä: "/kentta" },
   ];
   const secondNavigation = [
-    { Jäsenyys: "/jasenyys" },
     { Yhteystiedot: "/yhteystiedot" },
     { Varauskalenteri: "/kalusto/varauskalenteri" },
+    { Hinnasto: "/hinnasto" },
     { Tietosuojaseloste: "/" },
     {
       "DTO-ilmoitus":
@@ -78,7 +77,6 @@ export default function Footer() {
 
         <div className="my-10 text-sm text-center">
           Copyright © {new Date().getFullYear()}. Savonlinnan Lentokerho ry.
-          Pictures by ...
         </div>
       </Container>
     </div>
