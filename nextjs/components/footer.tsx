@@ -6,14 +6,13 @@ export default function Footer() {
   const firstNavigation = [
     { Esittelylennot: "/esittelylennot" },
     { Koulutus: "/koulutus" },
-    { Jäsenyys: "/jasenyys" },
+    { Jäsenyys: "/kerho/jasenyys" },
     { Kalusto: "/kalusto" },
-    { Koulutus: "/koulutus" },
   ];
   const secondNavigation = [
     { Yhteystiedot: "/yhteystiedot" },
     { Varauskalenteri: "/kalusto/varauskalenteri" },
-    { Hinnasto: "/hinnasto" },
+    { Hinnasto: "/kerho/hinnasto" },
     { Tietosuojaseloste: "/" },
     {
       "DTO-ilmoitus":
