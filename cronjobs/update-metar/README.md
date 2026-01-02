@@ -50,4 +50,4 @@ Errors will exit with code 1 and log details..
 
 - Service: `nextjs/services/metarService.ts`
 - Parser: `nextjs/utilities/metarParser.ts`
-- Schema: `postgres/init/06-metar-schema.sql`
+- Schema: `postgres/init/01-schema.sql`

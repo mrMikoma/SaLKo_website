@@ -37,17 +37,27 @@ export async function getLatestMETAR(): Promise<METARResponse> {
       };
     }
 
-    // Format timestamp for display
-    const timestamp = metar.observationTime
-      ? new Date(metar.observationTime).toLocaleTimeString("fi-FI", {
-          hour: "2-digit",
-          minute: "2-digit",
-          timeZone: "UTC",
-        }) + " UTC"
-      : new Date(metar.fetchedAt).toLocaleTimeString("fi-FI", {
-          hour: "2-digit",
-          minute: "2-digit",
-        });
+    // Format timestamp for display - show relative time
+    const observationDate = metar.observationTime
+      ? new Date(metar.observationTime)
+      : new Date(metar.fetchedAt);
+
+    const now = new Date();
+    const diffMs = now.getTime() - observationDate.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+
+    let timestamp: string;
+    if (diffMins < 1) {
+      timestamp = "Päivitetty juuri äsken";
+    } else if (diffMins < 60) {
+      timestamp = `Päivitetty ${diffMins} min sitten`;
+    } else if (diffMins < 1440) {
+      const hours = Math.floor(diffMins / 60);
+      timestamp = `Päivitetty ${hours} h sitten`;
+    } else {
+      const days = Math.floor(diffMins / 1440);
+      timestamp = `Päivitetty ${days} pv sitten`;
+    }
 
     return {
       success: true,
