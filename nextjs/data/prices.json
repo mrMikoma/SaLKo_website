@@ -128,5 +128,14 @@
       "price": "800",
       "unit": "€/vuosi"
     }
-  ]
+  ],
+  "trainingPrices": {
+    "LAPL": "9000",
+    "PPL": "13000",
+    "TMG": "TBA",
+    "NF": "TBA",
+    "TOW": "TBA",
+    "SPL": "3000",
+    "UPL": "4500"
+  }
 }

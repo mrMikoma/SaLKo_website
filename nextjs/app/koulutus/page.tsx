@@ -5,10 +5,19 @@ import TextBlock from "@/components/textBlock";
 import CallToAction from "@/components/callToAction";
 import PlaneIcon from "@/components/icons/plane";
 import Image from "next/image";
+import pricesData from "@/data/prices.json";
 
 export const metadata = {
   title: "Koulutus / SaLKo",
   description: "Lentokoulutus Savonlinnan Lentokerholla",
+};
+
+const getPrice = (courseCode: string): string => {
+  const price =
+    pricesData.trainingPrices[
+      courseCode as keyof typeof pricesData.trainingPrices
+    ];
+  return price === "TBA" ? "Kysy tarjousta" : `alkaen ${price} €`;
 };
 
 export default function Page() {
@@ -40,15 +49,6 @@ export default function Page() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
               {/* Card 1 */}
               <div className="bg-sblued/50 backdrop-blur-sm border-2 border-sbluel/30 rounded-xl p-6 text-center hover:border-sred/50 transition-all duration-300">
-                <div className="text-4xl font-bold text-sred mb-2">PPL (A)</div>
-                <div className="text-m text-swhite/80">
-                  Yksityislentäjän lupakirja
-                </div>
-                <div className="text-s text-swhite/60 mt-2">45+ tuntia</div>
-              </div>
-
-              {/* Card 2 */}
-              <div className="bg-sblued/50 backdrop-blur-sm border-2 border-sbluel/30 rounded-xl p-6 text-center hover:border-sred/50 transition-all duration-300">
                 <div className="text-4xl font-bold text-sred mb-2">
                   LAPL (A)
                 </div>
@@ -58,100 +58,115 @@ export default function Page() {
                 <div className="text-s text-swhite/60 mt-2">30+ tuntia</div>
               </div>
 
-              {/* Card 3 */}
+              {/* Card 2 */}
               <div className="bg-sblued/50 backdrop-blur-sm border-2 border-sbluel/30 rounded-xl p-6 text-center hover:border-sred/50 transition-all duration-300">
-                <div className="text-4xl font-bold text-sred mb-2">TMG</div>
+                <div className="text-4xl font-bold text-sred mb-2">PPL (A)</div>
                 <div className="text-m text-swhite/80">
-                  TMG-moottoripurjelentäjän lupakirja
+                  Yksityislentäjän lupakirja
                 </div>
-                <div className="text-s text-swhite/60 mt-2">10+ tuntia</div>
+                <div className="text-s text-swhite/60 mt-2">45+ tuntia</div>
               </div>
 
-              {/* Card 4 - Night Flight */}
+              {/* Card 3 */}
               <div className="bg-sblued/50 backdrop-blur-sm border-2 border-sbluel/30 rounded-xl p-6 text-center hover:border-sred/50 transition-all duration-300">
-                <div className="text-4xl font-bold text-sred mb-2">NF</div>
-                <div className="text-m text-swhite/80">Yölento-oikeus</div>
+                <div className="text-4xl font-bold text-sred mb-2">UPL</div>
+                <div className="text-m text-swhite/80">
+                  Ultrakevyt lentäjän lupakirja
+                </div>
+                <div className="text-s text-swhite/60 mt-2">30+ tuntia</div>
+              </div>
+
+              {/* Card 4 */}
+              <div className="bg-sblued/50 backdrop-blur-sm border-2 border-sbluel/30 rounded-xl p-6 text-center hover:border-sred/50 transition-all duration-300">
+                <div className="text-4xl font-bold text-sred mb-2">SPL</div>
+                <div className="text-m text-swhite/80">
+                  Purjelentäjän lupakirja
+                </div>
+                <div className="text-s text-swhite/60 mt-2">45+ lentoa</div>
+              </div>
+
+              {/* Card 5 */}
+              <div className="bg-sblued/50 backdrop-blur-sm border-2 border-sbluel/30 rounded-xl p-6 text-center hover:border-sred/50 transition-all duration-300">
+                <div className="text-4xl font-bold text-sred mb-2">TMG</div>
+                <div className="text-m text-swhite/80">TMG luokkakelpuutus</div>
+                <div className="text-s text-swhite/60 mt-2">3+ tuntia</div>
+              </div>
+
+              {/* Card 6 */}
+              <div className="bg-sblued/50 backdrop-blur-sm border-2 border-sbluel/30 rounded-xl p-6 text-center hover:border-sred/50 transition-all duration-300">
+                <div className="text-4xl font-bold text-sred mb-2">NF (A)</div>
+                <div className="text-m text-swhite/80">Yölentokelpuutus</div>
                 <div className="text-s text-swhite/60 mt-2">5+ tuntia</div>
+              </div>
+
+              {/* Card 7 */}
+              <div className="bg-sblued/50 backdrop-blur-sm border-2 border-sbluel/30 rounded-xl p-6 text-center hover:border-sred/50 transition-all duration-300">
+                <div className="text-4xl font-bold text-sred mb-2">TOW</div>
+                <div className="text-m text-swhite/80">
+                  Hinauslentäjän luokkakelpuutus
+                </div>
+                <div className="text-s text-swhite/60 mt-2">10+ hinausta</div>
               </div>
             </div>
           </div>
         </div>
       </PageHero>
 
-      {/* Training Programs Section */}
-      <ContentSection variant="dark">
+      {/* Main Training Programs Section */}
+      <ContentSection variant="dark" backgroundImage="bg-savonlinna-one">
         <div className="mb-12">
           <h2 className="text-3xl md:text-4xl font-bold text-swhite mb-4 text-center">
-            Koulutusohjelmat
+            Koulutusohjelmat Savonlinnassa
           </h2>
           <p className="text-lg text-swhite/80 text-center max-w-3xl mx-auto mb-12">
-            Annamme lentokoulutusta kolmessa eri lupakirjatyypissä sekä
-            yölento-oikeuden koulutusta.
+            Annamme lentokoulutusta lupakirjojen ja lisäkelpuutusten
+            hankkimiseen Savonlinnan lentokentällä.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {/* PPL - Private Pilot License */}
-          <SolidCard
-            title="PPL(A)"
-            description="Yksityislentäjän lupakirja (Private Pilot License - Airplane). Voit lentää yksin tai matkustajien kanssa harrastemielessä."
-            icon={<PlaneIcon size={48} />}
-            variant="highlighted"
-          >
-            <div className="mt-4 space-y-2 text-swhite/80 text-sm">
-              <div className="flex items-center gap-2">
-                <svg
-                  className="w-4 h-4 text-sred flex-shrink-0"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                <span>Vähintään 45 lentotuntia</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <svg
-                  className="w-4 h-4 text-sred flex-shrink-0"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                <span>Teoriaopinnot ja kokeet</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <svg
-                  className="w-4 h-4 text-sred flex-shrink-0"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                <span>Ikäraja: 17 vuotta</span>
-              </div>
-            </div>
-          </SolidCard>
-
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
           {/* LAPL - Light Aircraft Pilot License */}
           <SolidCard
             title="LAPL(A)"
-            description="Kevytlentäjän lupakirja (Light Aircraft Pilot License). Suunniteltu harrasteilmailuun Euroopassa."
+            description="Kevyiden ilma-alusten lentäjän lupakirja"
             icon={<PlaneIcon size={48} />}
             variant="default"
           >
             <div className="mt-4 space-y-2 text-swhite/80 text-sm">
+              <p className="text-swhite/90 mb-3">
+                Suunniteltu harrasteilmailuun Euroopassa
+              </p>
+              <div className="flex items-center gap-2">
+                <svg
+                  className="w-4 h-4 text-sred flex-shrink-0"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <span>
+                  Oikeus lentää yleisimmillä alle 2000 kg
+                  yksimoottorilentokoneilla
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <svg
+                  className="w-4 h-4 text-sred flex-shrink-0"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <span>Blueskies ePPL-etäteoriakurssi</span>
+              </div>
               <div className="flex items-center gap-2">
                 <svg
                   className="w-4 h-4 text-sred flex-shrink-0"
@@ -178,7 +193,71 @@ export default function Page() {
                     clipRule="evenodd"
                   />
                 </svg>
-                <span>Kevyempi teoriaopinnot</span>
+                <span>Ikäraja: 17 vuotta</span>
+              </div>
+              <div className="mt-4 pt-4 border-t border-swhite/20">
+                <p className="text-sred font-bold text-lg">
+                  Hinta {getPrice("LAPL")}
+                </p>
+              </div>
+            </div>
+          </SolidCard>
+
+          {/* PPL - Private Pilot License */}
+          <SolidCard
+            title="PPL(A)"
+            description="Yksityislentäjän lupakirja"
+            icon={<PlaneIcon size={48} />}
+            variant="highlighted"
+          >
+            <div className="mt-4 space-y-2 text-swhite/80 text-sm">
+              <p className="text-swhite/90 mb-3">
+                Voit lentää yksin tai matkustajien kanssa harrastemielessä
+              </p>
+              <div className="flex items-center gap-2">
+                <svg
+                  className="w-4 h-4 text-sred flex-shrink-0"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <span>
+                  Voi olla ensimmäinen askel kohti ammatti-ilmailua, laajemmat
+                  mahdollisuudet vrt. LAPL lupakirjaan
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <svg
+                  className="w-4 h-4 text-sred flex-shrink-0"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <span>Blueskies ePPL-etäteoriakurssi</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <svg
+                  className="w-4 h-4 text-sred flex-shrink-0"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <span>Vähintään 45 lentotuntia</span>
               </div>
               <div className="flex items-center gap-2">
                 <svg
@@ -194,17 +273,26 @@ export default function Page() {
                 </svg>
                 <span>Ikäraja: 17 vuotta</span>
               </div>
+              <div className="mt-4 pt-4 border-t border-swhite/20">
+                <p className="text-sred font-bold text-lg">
+                  Hinta {getPrice("PPL")}
+                </p>
+              </div>
             </div>
           </SolidCard>
 
-          {/* TMG - Touring Motor Glider License */}
+          {/* TMG - Touring Motor Glider */}
           <SolidCard
             title="TMG"
-            description="Purjelentokoneen moottorilupakirja (Touring Motor Glider License). Yhdistää purjelennon ja moottorilentämisen edut."
+            description="TMG luokkakelpuutus"
             icon={<PlaneIcon size={48} />}
             variant="default"
           >
             <div className="mt-4 space-y-2 text-swhite/80 text-sm">
+              <p className="text-swhite/90 mb-3">
+                Mahdollistaa lentämisen moottoripurjelentokoneella vähintään
+                LAPL-lupakirjan laajennuksena
+              </p>
               <div className="flex items-center gap-2">
                 <svg
                   className="w-4 h-4 text-sred flex-shrink-0"
@@ -217,7 +305,7 @@ export default function Page() {
                     clipRule="evenodd"
                   />
                 </svg>
-                <span>Vähintään 15 lentotuntia</span>
+                <span>Yhdistää purjelennon ja moottorilentämisen edut</span>
               </div>
               <div className="flex items-center gap-2">
                 <svg
@@ -231,7 +319,10 @@ export default function Page() {
                     clipRule="evenodd"
                   />
                 </svg>
-                <span>Teoriaopinnot ja kokeet</span>
+                <span>
+                  Edullista moottorilentokokemusta mielenkiintoisella RF-5
+                  moottoripurjelentokoneella
+                </span>
               </div>
               <div className="flex items-center gap-2">
                 <svg
@@ -245,19 +336,70 @@ export default function Page() {
                     clipRule="evenodd"
                   />
                 </svg>
-                <span>Ikäraja: 16 vuotta</span>
+                <span>Sisältää oikeuden lentää kannuspyöräkoneilla</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <svg
+                  className="w-4 h-4 text-sred flex-shrink-0"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <span>Teoriakoulutus 4 tuntia</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <svg
+                  className="w-4 h-4 text-sred flex-shrink-0"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <span>Vähintään 3 lentotuntia</span>
+              </div>
+              <div className="mt-4 pt-4 border-t border-swhite/20">
+                <p className="text-sred font-bold text-lg">
+                  Hinta {getPrice("TMG")}
+                </p>
               </div>
             </div>
           </SolidCard>
 
           {/* NF - Night Flight Rating */}
           <SolidCard
-            title="NF"
-            description="Yölento-oikeus (Night Flight Rating). Mahdollistaa lentämisen yöolosuhteissa PPL-lupakirjan laajennuksena."
+            title="NF(A)"
+            description="Yölentokelpuutus"
             icon={<PlaneIcon size={48} />}
             variant="default"
           >
             <div className="mt-4 space-y-2 text-swhite/80 text-sm">
+              <p className="text-swhite/90 mb-3">
+                Mahdollistaa lentämisen yöolosuhteissa vähintään LAPL-lupakirjan
+                laajennuksena
+              </p>
+              <div className="flex items-center gap-2">
+                <svg
+                  className="w-4 h-4 text-sred flex-shrink-0"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <span>NF-etäteoriakurssi</span>
+              </div>
               <div className="flex items-center gap-2">
                 <svg
                   className="w-4 h-4 text-sred flex-shrink-0"
@@ -272,36 +414,233 @@ export default function Page() {
                 </svg>
                 <span>Vähintään 5 lentotuntia</span>
               </div>
-              <div className="flex items-center gap-2">
-                <svg
-                  className="w-4 h-4 text-sred flex-shrink-0"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                <span>Teoria ja yölento-harjoittelu</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <svg
-                  className="w-4 h-4 text-sred flex-shrink-0"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                <span>Vaatii voimassa olevan PPL</span>
+              <div className="mt-4 pt-4 border-t border-swhite/20">
+                <p className="text-sred font-bold text-lg">
+                  Hinta {getPrice("NF")}
+                </p>
               </div>
             </div>
           </SolidCard>
+
+          {/* TOW - Towing Rating */}
+          <SolidCard
+            title="TOW"
+            description="Hinauslentokelpuutus"
+            icon={<PlaneIcon size={48} />}
+            variant="default"
+          >
+            <div className="mt-4 space-y-2 text-swhite/80 text-sm">
+              <p className="text-swhite/90 mb-3">
+                Mahdollistaa purjelentokeneiden hinaamisen moottorikoneella
+                vähintään LAPL-lupakirjan laajennuksena
+              </p>
+              <div className="flex items-center gap-2">
+                <svg
+                  className="w-4 h-4 text-sred flex-shrink-0"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <span>Teoriakoulutus 5 tuntia</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <svg
+                  className="w-4 h-4 text-sred flex-shrink-0"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <span>Hinauslentokoulutus vähintään 10 hinausta</span>
+              </div>
+              <div className="mt-4 pt-4 border-t border-swhite/20">
+                <p className="text-sred font-bold text-lg">
+                  Hinta {getPrice("TOW")}
+                </p>
+              </div>
+            </div>
+          </SolidCard>
+        </div>
+      </ContentSection>
+
+      {/* Partnership Section */}
+      <ContentSection variant="dark" backgroundImage="bg-mopu-one">
+        <div className="mb-12">
+          <h2 className="text-3xl md:text-4xl font-bold text-swhite mb-4 text-center">
+            Yhteistyössä Varkauden ilmailuyhdistyksen kanssa
+          </h2>
+          <p className="text-lg text-swhite/80 text-center max-w-3xl mx-auto mb-12">
+            Lisäksi tarjoamme purjelento- ja ultrakevyt-koulutusta yhteistyössä
+            Varkauden ilmailuyhdistyksen kanssa Joroisissa.
+          </p>
+        </div>
+
+        <div className="max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* SPL - Sailplane License */}
+            <div className="bg-sblack/50 rounded-lg p-6 border border-sbluel/20">
+              <h4 className="text-xl font-bold text-sred mb-3">
+                SPL - Purjelentäjän lupakirja
+              </h4>
+              <p className="text-swhite/90 mb-4">
+                Voit lentää yksin tai matkustajan kanssa ympäristöystävällisesti
+                auringon energialla
+              </p>
+              <ul className="space-y-2 text-sm text-swhite/80">
+                <li className="flex items-start gap-2">
+                  <svg
+                    className="w-4 h-4 text-sred flex-shrink-0 mt-0.5"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  <span>
+                    Teoriakoulutus 44 tuntia, mahdollisuus etäosallistumiseen
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <svg
+                    className="w-4 h-4 text-sred flex-shrink-0 mt-0.5"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  <span>Vähintään 15 lentotuntia ja 45 lentoa</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <svg
+                    className="w-4 h-4 text-sred flex-shrink-0 mt-0.5"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  <span>Lentokoulutus Joroisten lentokentällä</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <svg
+                    className="w-4 h-4 text-sred flex-shrink-0 mt-0.5"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  <span>
+                    Lentokoulutuksen voit aloittaa samana vuonna kun täytät 15,
+                    lupakirjan saat täytettyäsi 16
+                  </span>
+                </li>
+              </ul>
+              <div className="mt-4 pt-4 border-t border-swhite/20">
+                <p className="text-sred font-bold text-lg">
+                  Hinta {getPrice("SPL")}
+                </p>
+              </div>
+            </div>
+
+            {/* UPL - Ultralight Pilot License */}
+            <div className="bg-sblack/50 rounded-lg p-6 border border-sbluel/20">
+              <h4 className="text-xl font-bold text-sred mb-3">
+                UPL - Ultrakevyt lentäjän lupakirja
+              </h4>
+              <p className="text-swhite/90 mb-4">
+                Mahdollistaa lentämisen yksin tai matkustajan kanssa
+                ultrakevyellä moottorilentokoneella
+              </p>
+              <ul className="space-y-2 text-sm text-swhite/80">
+                <li className="flex items-start gap-2">
+                  <svg
+                    className="w-4 h-4 text-sred flex-shrink-0 mt-0.5"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  <span>
+                    Teoriakoulutus 48 tuntia, mahdollisuus etäosallistumiseen
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <svg
+                    className="w-4 h-4 text-sred flex-shrink-0 mt-0.5"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  <span>Vähintään 25 lentotuntia</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <svg
+                    className="w-4 h-4 text-sred flex-shrink-0 mt-0.5"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  <span>Lentokoulutus Joroisten lentokentällä</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <svg
+                    className="w-4 h-4 text-sred flex-shrink-0 mt-0.5"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  <span>Ikäraja: 17 vuotta</span>
+                </li>
+              </ul>
+              <div className="mt-4 pt-4 border-t border-swhite/20">
+                <p className="text-sred font-bold text-lg">
+                  Hinta {getPrice("UPL")}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </ContentSection>
 
@@ -385,10 +724,10 @@ export default function Page() {
             </div>
           </div>
 
-          {/* Step 4 */}
+          {/* Step 5 */}
           <div className="flex gap-6 items-start">
             <div className="flex-shrink-0 w-12 h-12 bg-sred rounded-full flex items-center justify-center text-swhite font-bold text-xl">
-              4
+              5
             </div>
             <div>
               <h3 className="text-xl font-bold text-swhite mb-2">
@@ -402,10 +741,10 @@ export default function Page() {
             </div>
           </div>
 
-          {/* Step 5 */}
+          {/* Step 6 */}
           <div className="flex gap-6 items-start">
             <div className="flex-shrink-0 w-12 h-12 bg-sred rounded-full flex items-center justify-center text-swhite font-bold text-xl">
-              5
+              6
             </div>
             <div>
               <h3 className="text-xl font-bold text-swhite mb-2">
@@ -560,7 +899,7 @@ export default function Page() {
           }}
           secondaryButton={{
             text: "Varaa tutustumislento",
-            href: "/esittelylento",
+            href: "/esittelylennot",
             variant: "outline",
           }}
         />

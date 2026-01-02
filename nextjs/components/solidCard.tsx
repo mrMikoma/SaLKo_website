@@ -23,7 +23,7 @@ const SolidCard = ({
   const cardContent = (
     <div
       className={`
-        group relative overflow-hidden rounded-xl shadow-lg
+        group relative opacity-85 overflow-hidden rounded-xl shadow-lg
         transition-all duration-300 hover:shadow-2xl hover:-translate-y-1
         ${
           variant === "highlighted"
@@ -36,7 +36,7 @@ const SolidCard = ({
     >
       {/* Icon */}
       {icon && (
-        <div className="mb-4 text-sred group-hover:scale-110 transition-transform duration-300">
+        <div className="mb-4 text-sred group-hover:scale-105 transition-transform duration-300">
           {icon}
         </div>
       )}

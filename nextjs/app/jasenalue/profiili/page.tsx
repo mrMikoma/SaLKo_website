@@ -59,10 +59,10 @@ export default async function Page() {
                 </svg>
                 <div>
                   <h3 className="text-warning-amber font-bold text-lg mb-1">
-                    Profiili epätäydellinen
+                    Käyttäjätietosi ovat keskeneräiset
                   </h3>
                   <p className="text-swhite/90 font-medium">
-                    Täydennä profiilisi tiedot varauksia varten
+                    Täydennä puuttuvat tietosi käyttäjätietosi!
                   </p>
                 </div>
               </div>
