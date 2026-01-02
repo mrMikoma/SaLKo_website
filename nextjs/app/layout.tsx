@@ -6,6 +6,7 @@ import { Finlandica } from "next/font/google";
 import { auth } from "@/auth";
 import { QueryProvider } from "@/providers/QueryProvider";
 import { NavbarProvider } from "@/providers/NavbarContextProvider";
+import { SessionProvider } from "@/providers/SessionProvider";
 
 const finlandica = Finlandica({
   subsets: ["latin"],
@@ -40,17 +41,19 @@ const RootLayout = async ({ children }: React.PropsWithChildren) => {
   return (
     <html lang="fi" className={`${finlandica.variable}`}>
       <body>
-        <QueryProvider>
-          <NavbarProvider>
-            <main className="max-w-screen min-h-screen flex flex-col overflow-x-hidden relative bg-background bg-sblued text-white font-finlandica">
-              <AntdRegistry>
-                <Navbar session={session} />
-                {children}
-                <Footer />
-              </AntdRegistry>
-            </main>
-          </NavbarProvider>
-        </QueryProvider>
+        <SessionProvider session={session}>
+          <QueryProvider>
+            <NavbarProvider>
+              <main className="max-w-screen min-h-screen flex flex-col overflow-x-hidden relative bg-background bg-sblued text-white font-finlandica">
+                <AntdRegistry>
+                  <Navbar session={session} />
+                  {children}
+                  <Footer />
+                </AntdRegistry>
+              </main>
+            </NavbarProvider>
+          </QueryProvider>
+        </SessionProvider>
       </body>
     </html>
   );

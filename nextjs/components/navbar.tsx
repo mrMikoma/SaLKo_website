@@ -255,11 +255,11 @@ const Navbar = ({ session }: { session: Session | null }) => {
 
         {/* Conditionally render Member Area Dropdown if the user is logged in */}
         {authenticated && (
-          <Menu as="div" className="relative ml-auto">
+          <Menu as="div" className="relative ml-auto hidden lg:block">
             {({ open }) => (
               <div className="relative">
                 {/* Menu Button for Member Area */}
-                <MenuButton className="px-3 py-1 md:px-6 md:py-2 text-swhite text-base md:text-xl font-bold bg-sblue rounded-lg shadow-xl hover:bg-sblue/90 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-300 border-2 border-sbluel/30 hover:border-sbluel">
+                <MenuButton className="px-6 py-2 text-swhite text-xl font-bold bg-sblue rounded-lg shadow-xl hover:bg-sblue/90 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-300 border-2 border-sbluel/30 hover:border-sbluel">
                   Jäsenalue
                 </MenuButton>
 
@@ -300,11 +300,11 @@ const Navbar = ({ session }: { session: Session | null }) => {
 
         {/* Non-logged-in Member Area Button */}
         {!authenticated && (
-          <Popover className="relative ml-auto">
-            <PopoverButton className="px-3 py-1 md:px-6 md:py-2 text-swhite text-sm md:text-xl font-bold bg-sblue rounded-lg shadow-xl hover:bg-sblue/90 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-300 border-2 border-transparent hover:border-sred/50">
+          <Popover className="relative ml-auto hidden lg:block">
+            <PopoverButton className="px-6 py-2 text-swhite text-xl font-bold bg-sblue rounded-lg shadow-xl hover:bg-sblue/90 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-300 border-2 border-transparent hover:border-sred/50">
               Jäsenalue
             </PopoverButton>
-            <PopoverPanel className="absolute right-0 top-full w-80 md:w-[450px] glass rounded-2xl shadow-2xl z-[60] mt-2 border-2 border-sred/30 transition-all duration-200 ease-out origin-top-right data-[closed]:scale-95 data-[closed]:opacity-0">
+            <PopoverPanel className="absolute right-0 top-full w-[450px] glass rounded-2xl shadow-2xl z-[60] mt-2 border-2 border-sred/30 transition-all duration-200 ease-out origin-top-right data-[closed]:scale-95 data-[closed]:opacity-0">
               {({ close }) => (
                 <div className="relative p-6">
                   <button
