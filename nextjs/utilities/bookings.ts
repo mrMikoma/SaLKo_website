@@ -74,6 +74,7 @@ export interface BookingType {
   type: string;
   plane: string;
   description: string;
+  repeat_group_id?: string; // UUID to group repeating bookings together
   is_guest?: boolean; // True if this is a guest booking
   guest_contact_name?: string; // Guest contact name
   guest_contact_email?: string; // Guest contact email
@@ -153,7 +154,7 @@ export async function fetchDayBookings(
         selectedDate
       ); // debug
       const response = await connectionPool.query(
-        `SELECT b.id, b.plane, b.start_time, b.end_time, b.user_id, u.full_name, u.email, u.phone, b.type, b.title, b.description,
+        `SELECT b.id, b.plane, b.start_time, b.end_time, b.user_id, u.full_name, u.email, u.phone, b.type, b.title, b.description, b.repeat_group_id,
                 gb.contact_name as guest_contact_name, gb.contact_email as guest_contact_email, gb.contact_phone as guest_contact_phone,
                 CASE WHEN gb.booking_id IS NOT NULL THEN true ELSE false END as is_guest
          FROM bookings b
@@ -256,7 +257,7 @@ export async function fetchBookingsForDateRange(
       SELECT
         b.id, b.plane, b.start_time, b.end_time, b.user_id,
         u.full_name, u.email, u.phone,
-        b.type, b.title, b.description,
+        b.type, b.title, b.description, b.repeat_group_id,
         gb.contact_name as guest_contact_name,
         gb.contact_email as guest_contact_email,
         gb.contact_phone as guest_contact_phone,
@@ -351,6 +352,9 @@ export async function addRepeatingBookings({
 
     let bookingsCreated = 0;
 
+    // Generate a unique repeat_group_id for this series of repeating bookings
+    const repeatGroupId = crypto.randomUUID();
+
     try {
       // Create a booking for each day (inclusive of end date)
       while (currentDate <= normalizedEndDate) {
@@ -360,7 +364,7 @@ export async function addRepeatingBookings({
         const dayEnd = new Date(dayStart.getTime() + bookingDurationMs);
 
         await connectionPool.query(
-          "INSERT INTO bookings (user_id, plane, start_time, end_time, type, title, description) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+          "INSERT INTO bookings (user_id, plane, start_time, end_time, type, title, description, repeat_group_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
           [
             user_id,
             plane,
@@ -369,6 +373,7 @@ export async function addRepeatingBookings({
             type,
             title,
             description,
+            repeatGroupId,
           ]
         );
 
@@ -683,6 +688,106 @@ export async function removeBooking(
       status: "success",
       result: null,
     };
+  } catch (error) {
+    console.error("Error occurred:", error);
+    throw error;
+  }
+}
+
+/**
+ * Removes a booking and optionally all following bookings in the same repeat group
+ *
+ * @param bookingId - The ID of the booking to delete
+ * @param userId - The ID of the user attempting the deletion
+ * @param userRole - The role of the user (admin can delete any booking)
+ * @param deleteFollowing - If true, deletes all bookings in the same repeat group that start on or after this booking
+ * @returns Promise with status and result
+ */
+export async function removeBookingWithRepeats(
+  bookingId: number,
+  userId: string,
+  userRole?: string,
+  deleteFollowing: boolean = false
+): Promise<{ status: string; result: null | Error; deletedCount?: number }> {
+  try {
+    if (typeof bookingId !== "number") {
+      throw new Error("Invalid booking ID");
+    }
+
+    if (typeof userId !== "string") {
+      throw new Error("Invalid user ID");
+    }
+
+    // First, get the booking to check if it has a repeat_group_id and get its start_time
+    const bookingQuery = await connectionPool.query(
+      "SELECT repeat_group_id, start_time, user_id FROM bookings WHERE id = $1",
+      [bookingId]
+    );
+
+    if (bookingQuery.rowCount === 0) {
+      return {
+        status: "error",
+        result: new Error("Booking not found"),
+      };
+    }
+
+    const booking = bookingQuery.rows[0];
+
+    // Check authorization
+    if (userRole !== "admin" && booking.user_id !== userId) {
+      return {
+        status: "error",
+        result: new Error("Unauthorized to delete this booking"),
+      };
+    }
+
+    try {
+      let result;
+
+      if (deleteFollowing && booking.repeat_group_id) {
+        // Delete this booking and all following bookings in the same repeat group
+        const query =
+          userRole === "admin"
+            ? "DELETE FROM bookings WHERE repeat_group_id = $1 AND start_time >= $2"
+            : "DELETE FROM bookings WHERE repeat_group_id = $1 AND start_time >= $2 AND user_id = $3";
+
+        const params =
+          userRole === "admin"
+            ? [booking.repeat_group_id, booking.start_time]
+            : [booking.repeat_group_id, booking.start_time, userId];
+
+        result = await connectionPool.query(query, params);
+      } else {
+        // Just delete the single booking
+        const query =
+          userRole === "admin"
+            ? "DELETE FROM bookings WHERE id = $1"
+            : "DELETE FROM bookings WHERE id = $1 AND user_id = $2";
+
+        const params = userRole === "admin" ? [bookingId] : [bookingId, userId];
+
+        result = await connectionPool.query(query, params);
+      }
+
+      if (result.rowCount === 0) {
+        return {
+          status: "error",
+          result: new Error("Booking not found or unauthorized to delete"),
+        };
+      }
+
+      return {
+        status: "success",
+        result: null,
+        deletedCount: result.rowCount,
+      };
+    } catch (error) {
+      console.error("Error removing booking(s):", error);
+      return {
+        status: "error",
+        result: error instanceof Error ? error : new Error(String(error)),
+      };
+    }
   } catch (error) {
     console.error("Error occurred:", error);
     throw error;

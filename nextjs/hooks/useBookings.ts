@@ -72,7 +72,7 @@ export const useBookings = ({ date, dates, enabled = true, userId, userRole }: U
   const sortedDates = [...dateList].sort();
   const queryKey = dateList.length > 1
     ? ["bookings", "range", sortedDates[0], sortedDates[sortedDates.length - 1]]
-    : ["bookings", "single", date];
+    : ["bookings", "single", dateList[0]];
 
   // Fetch bookings for all planes on a specific date or dates
   const {

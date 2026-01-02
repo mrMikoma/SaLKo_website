@@ -209,10 +209,41 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
     closeModal();
   };
 
-  const handleDeleteBooking = async () => {
+  const handleDeleteBooking = async (deleteFollowing?: boolean): Promise<void> => {
     if (selectedBooking.id >= 0) {
-      removeBooking(selectedBooking.id);
-      closeModal();
+      // If deleteFollowing is true and the booking has a repeat_group_id, use the new function
+      if (deleteFollowing && selectedBooking.repeat_group_id) {
+        const { removeBookingWithRepeats } = await import("@/utilities/bookings");
+        try {
+          const response = await removeBookingWithRepeats(
+            selectedBooking.id,
+            userId!,
+            userRole,
+            true
+          );
+
+          if (response.status === "success") {
+            // Invalidate ALL bookings cache to refresh all views
+            queryClient.invalidateQueries({ queryKey: ["bookings"] });
+            closeModal();
+          } else {
+            console.error("Error deleting repeating bookings:", response.result);
+            alert("Virhe poistettaessa toistuvia varauksia");
+            throw new Error("Failed to delete repeating bookings");
+          }
+        } catch (error) {
+          console.error("Error deleting repeating bookings:", error);
+          alert("Virhe poistettaessa toistuvia varauksia");
+          throw error;
+        }
+      } else {
+        // Regular single booking deletion - this uses React Query mutation
+        removeBooking(selectedBooking.id);
+        // Don't close modal here - let the mutation's onSuccess handle it
+        // Wait a bit for the mutation to process
+        await new Promise(resolve => setTimeout(resolve, 100));
+        closeModal();
+      }
     }
   };
 

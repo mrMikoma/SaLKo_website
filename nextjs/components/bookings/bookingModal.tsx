@@ -15,7 +15,7 @@ interface BookingModalProps {
   booking: BookingType;
   onSave: (booking: BookingType, repeatEndDate?: string) => void;
   onUpdate: (booking: BookingType) => void;
-  onDelete: () => void;
+  onDelete: (deleteFollowing?: boolean) => void | Promise<void>;
   onCancel: () => void;
   onChange: (updatedBooking: BookingType) => void;
   isLoggedIn?: boolean;
@@ -35,10 +35,12 @@ const BookingModal = ({
 }: BookingModalProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteFollowing, setDeleteFollowing] = useState(false);
   const [isRepeating, setIsRepeating] = useState(false);
   const [repeatEndDate, setRepeatEndDate] = useState("");
   const isReadOnly = mode === "view";
   const isGuestMode = !isLoggedIn && mode === "create";
+  const hasRepeatGroup = !!booking.repeat_group_id;
 
   // Use different schema and form type based on login status
   const {
@@ -177,11 +179,13 @@ const BookingModal = ({
     setShowDeleteConfirm(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     setIsSubmitting(true);
     try {
-      onDelete();
+      await onDelete(deleteFollowing);
       setShowDeleteConfirm(false);
+    } catch (error) {
+      console.error("Error deleting booking:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -682,11 +686,17 @@ const BookingModal = ({
         <Modal
           title="Vahvista poisto"
           open={showDeleteConfirm}
-          onCancel={() => setShowDeleteConfirm(false)}
+          onCancel={() => {
+            setShowDeleteConfirm(false);
+            setDeleteFollowing(false);
+          }}
           footer={[
             <Button
               key="cancel"
-              onClick={() => setShowDeleteConfirm(false)}
+              onClick={() => {
+                setShowDeleteConfirm(false);
+                setDeleteFollowing(false);
+              }}
               disabled={isSubmitting}
             >
               Peruuta
@@ -698,12 +708,38 @@ const BookingModal = ({
               onClick={confirmDelete}
               loading={isSubmitting}
             >
-              Poista varaus
+              {deleteFollowing && hasRepeatGroup ? "Poista valitut varaukset" : "Poista varaus"}
             </Button>,
           ]}
         >
-          <p>Haluatko varmasti poistaa varauksen "{booking.title}"?</p>
-          <p className="text-sm text-gray-600 mt-2">Tätä toimintoa ei voi peruuttaa.</p>
+          <div className="space-y-3">
+            <p>Haluatko varmasti poistaa varauksen "{booking.title}"?</p>
+
+            {hasRepeatGroup && (
+              <div className="pt-3 border-t border-gray-200">
+                <div className="flex items-start gap-2">
+                  <input
+                    id="delete_following"
+                    type="checkbox"
+                    checked={deleteFollowing}
+                    onChange={(e) => setDeleteFollowing(e.target.checked)}
+                    className="mt-1 w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                  />
+                  <label
+                    htmlFor="delete_following"
+                    className="text-sm text-gray-700 cursor-pointer"
+                  >
+                    <span className="font-medium">Poista myös kaikki seuraavat toistuvat varaukset</span>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Tämä varaus on osa toistuvaa varausta. Valitsemalla tämän vaihtoehdon poistat myös kaikki tästä päivästä eteenpäin olevat varaukset samassa sarjassa.
+                    </p>
+                  </label>
+                </div>
+              </div>
+            )}
+
+            <p className="text-sm text-gray-600">Tätä toimintoa ei voi peruuttaa.</p>
+          </div>
         </Modal>
       )}
     </>

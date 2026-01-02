@@ -42,6 +42,7 @@ CREATE TABLE
     type TEXT NOT NULL,
     title TEXT NOT NULL,
     description TEXT NOT NULL,
+    repeat_group_id TEXT, -- UUID to group repeating bookings together
     created_at TIMESTAMPTZ DEFAULT NOW (),
     updated_at TIMESTAMPTZ DEFAULT NOW (),
     FOREIGN KEY (user_id) REFERENCES users (id)
@@ -60,6 +61,9 @@ CREATE INDEX idx_bookings_plane_start_end ON bookings (plane, start_time, end_ti
 
 -- Index for user_id lookups (supports update/delete operations)
 CREATE INDEX idx_bookings_user_id ON bookings (user_id);
+
+-- Index for repeat_group_id to efficiently find and delete repeating bookings
+CREATE INDEX idx_bookings_repeat_group_id ON bookings (repeat_group_id) WHERE repeat_group_id IS NOT NULL;
 
 -- Create guest_bookings table (for unauthenticated bookings)
 CREATE TABLE
