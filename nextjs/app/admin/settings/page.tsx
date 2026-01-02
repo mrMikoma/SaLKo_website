@@ -1,6 +1,14 @@
 export const dynamic = 'force-dynamic';
+import { auth } from "@/auth";
+import { hasPermission } from "@/utilities/roles";
+import { redirect } from "next/navigation";
 
 export default async function SettingsPage() {
+  const session = await auth();
+
+  if (!session?.user?.role || !hasPermission(session.user.role, "ACCESS_ADMIN_SITE")) {
+    redirect("/");
+  }
   return (
     <div className="space-y-6">
       <div>

@@ -7,7 +7,7 @@ const AdminNav = () => {
   const pathname = usePathname();
 
   const navItems = [
-    { href: "/admin", label: "Dashboard", exact: true },
+    { href: "/admin", label: "Etusivu", exact: true },
     { href: "/admin/users", label: "Käyttäjät" },
     { href: "/admin/settings", label: "Asetukset" },
   ];
@@ -46,7 +46,7 @@ const AdminNav = () => {
           <div className="flex items-center space-x-4">
             <span className="text-sm text-blue-200">Admin</span>
             <Link
-              href="/profiili"
+              href="/jasenalue/profiili"
               className="text-blue-100 hover:text-white text-sm"
             >
               Profiili

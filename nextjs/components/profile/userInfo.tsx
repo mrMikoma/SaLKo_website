@@ -1,4 +1,4 @@
-import { getRoleDisplayName, Role } from "@/utilities/roles";
+import { getRoleDisplayName } from "@/utilities/roles";
 import React from "react";
 
 interface UserInfoProps {
@@ -14,7 +14,6 @@ interface UserInfoProps {
 
 const UserInfo = ({
   name,
-  full_name,
   email,
   role,
   address,
@@ -24,21 +23,21 @@ const UserInfo = ({
 }: UserInfoProps) => {
   const InfoRow = ({ icon, label, value }: { icon: React.ReactElement; label: string; value: string | React.ReactElement }) => (
     <div className="flex items-start space-x-3 py-3">
-      <div className="flex-shrink-0 text-blue-600 mt-0.5">
+      <div className="flex-shrink-0 text-sbluel mt-0.5">
         {icon}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-500">{label}</p>
-        <p className="text-base text-gray-900 break-words">{value}</p>
+        <p className="text-sm font-semibold text-swhite/70">{label}</p>
+        <p className="text-base text-swhite break-words font-medium">{value}</p>
       </div>
     </div>
   );
 
   return (
     <div className="user-info">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Omat tiedot</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 divide-y md:divide-y-0">
-        <div className="space-y-1">
+      <h3 className="text-lg md:text-xl font-bold text-swhite mb-4 md:mb-6 pb-2 md:pb-3 border-b-2 border-sred">Omat tiedot</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 divide-y md:divide-y-0 md:divide-x md:divide-swhite/10">
+        <div className="space-y-1 md:pr-6 pt-4 md:pt-0">
           <InfoRow
             icon={
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -64,7 +63,7 @@ const UserInfo = ({
               </svg>
             }
             label="Rooli"
-            value={<span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+            value={<span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-sblue/50 text-swhite border border-sbluel/30">
               {getRoleDisplayName(role as any)}
             </span>}
           />
@@ -75,10 +74,10 @@ const UserInfo = ({
               </svg>
             }
             label="Puhelinnumero"
-            value={phone || <span className="text-gray-400 italic">Ei asetettu</span>}
+            value={phone || <span className="text-swhite/40 italic">Ei asetettu</span>}
           />
         </div>
-        <div className="space-y-1">
+        <div className="space-y-1 md:pl-6 pt-4 md:pt-0">
           <InfoRow
             icon={
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -87,7 +86,7 @@ const UserInfo = ({
               </svg>
             }
             label="Osoite"
-            value={address || <span className="text-gray-400 italic">Ei asetettu</span>}
+            value={address || <span className="text-swhite/40 italic">Ei asetettu</span>}
           />
           <InfoRow
             icon={
@@ -96,7 +95,7 @@ const UserInfo = ({
               </svg>
             }
             label="Asuinkunta"
-            value={city || <span className="text-gray-400 italic">Ei asetettu</span>}
+            value={city || <span className="text-swhite/40 italic">Ei asetettu</span>}
           />
           <InfoRow
             icon={
@@ -105,7 +104,7 @@ const UserInfo = ({
               </svg>
             }
             label="Postinumero"
-            value={postalCode || <span className="text-gray-400 italic">Ei asetettu</span>}
+            value={postalCode || <span className="text-swhite/40 italic">Ei asetettu</span>}
           />
         </div>
       </div>

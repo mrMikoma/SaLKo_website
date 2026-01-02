@@ -33,7 +33,7 @@ export default function Page() {
             {/* Main Title */}
             <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold leading-tight text-swhite">
               Savonlinnan <br />
-              <span className="text-sbluel">Lentokerho ry</span>
+              <span className="text-swhite/90">Lentokerho ry</span>
             </h1>
 
             {/* Description */}

@@ -84,7 +84,7 @@ const Navbar = ({ session }: { session: Session | null }) => {
                 alt="SaLKo"
                 width={120}
                 height={40}
-                className="w-20 h-auto sm:w-28 md:w-32"
+                className="w-20 h-auto md:w-26"
               />
             </span>
           </Link>{" "}
@@ -259,7 +259,7 @@ const Navbar = ({ session }: { session: Session | null }) => {
             {({ open }) => (
               <div className="relative">
                 {/* Menu Button for Member Area */}
-                <MenuButton className="px-3 py-1 md:px-6 md:py-2 text-swhite text-base md:text-2xl font-medium bg-sblue rounded-lg shadow-lg hover:bg-sblue/80 hover:shadow-xl transition-all duration-200 border-2 border-transparent hover:border-sred">
+                <MenuButton className="px-3 py-1 md:px-6 md:py-2 text-swhite text-base md:text-xl font-bold bg-sblue rounded-lg shadow-xl hover:bg-sblue/90 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-300 border-2 border-sbluel/30 hover:border-sbluel">
                   Jäsenalue
                 </MenuButton>
 
@@ -267,12 +267,12 @@ const Navbar = ({ session }: { session: Session | null }) => {
                 <MenuItems
                   className={`${
                     open ? "block" : "hidden"
-                  } absolute right-0 w-56 mt-2 bg-sblued/95 backdrop-blur-lg shadow-xl z-50 rounded-lg border border-sred/20 overflow-hidden animate-slide-in`}
+                  } absolute right-0 w-56 mt-3 glass shadow-2xl z-50 rounded-xl border-2 border-sred/30 overflow-hidden animate-slide-in`}
                 >
                   <MenuItem>
                     <Link
-                      href="/profiili"
-                      className="block px-3 py-2 md:px-4 md:py-3 text-swhite hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
+                      href="/jasenalue/profiili"
+                      className="block px-4 py-3 text-swhite font-semibold hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
                     >
                       Omat tiedot
                     </Link>
@@ -281,14 +281,14 @@ const Navbar = ({ session }: { session: Session | null }) => {
                     <MenuItem>
                       <Link
                         href="/admin"
-                        className="block px-3 py-2 md:px-4 md:py-3 text-swhite hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
+                        className="block px-4 py-3 text-swhite font-semibold hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
                       >
-                        Admin
+                        Admin sivut
                       </Link>
                     </MenuItem>
                   )}
                   <MenuItem>
-                    <div className="block px-3 py-2 md:px-4 md:py-3 text-swhite hover:bg-sblue/50 hover:text-sbluel transition-all duration-200">
+                    <div className="block px-4 py-3 text-swhite font-semibold hover:bg-sblue/50 hover:text-sbluel transition-all duration-200">
                       <Logout onHandleLogout={handleLogout} />
                     </div>
                   </MenuItem>
@@ -301,21 +301,18 @@ const Navbar = ({ session }: { session: Session | null }) => {
         {/* Non-logged-in Member Area Button */}
         {!authenticated && (
           <Popover className="relative ml-auto">
-            <PopoverButton className="px-3 py-1 md:px-6 md:py-2 text-swhite text-sm md:text-xl font-medium bg-sblue rounded-lg shadow-lg hover:bg-sblue/80 hover:shadow-xl transition-all duration-200 border-2 border-transparent hover:border-sred">
+            <PopoverButton className="px-3 py-1 md:px-6 md:py-2 text-swhite text-sm md:text-xl font-bold bg-sblue rounded-lg shadow-xl hover:bg-sblue/90 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-300 border-2 border-transparent hover:border-sred/50">
               Jäsenalue
             </PopoverButton>
-            <PopoverPanel
-              anchor="bottom start"
-              className="relative w-72 md:w-96 min-h-64 h-auto bg-sblued/95 backdrop-blur-lg rounded-lg shadow-xl z-50 mt-4 border border-sred/20 transition duration-200 ease-out data-[closed]:scale-95 data-[closed]:opacity-0"
-            >
+            <PopoverPanel className="absolute right-0 top-full w-80 md:w-[450px] glass rounded-2xl shadow-2xl z-[60] mt-2 border-2 border-sred/30 transition-all duration-200 ease-out origin-top-right data-[closed]:scale-95 data-[closed]:opacity-0">
               {({ close }) => (
-                <div className="relative p-4">
+                <div className="relative p-6">
                   <button
                     onClick={() => close()}
-                    className="absolute top-2 right-2 text-sblued hover:text-sred focus:outline-none"
+                    className="absolute top-3 right-3 text-swhite hover:text-sred focus:outline-none transition-colors duration-200 z-10"
                     aria-label="Close"
                   >
-                    <XCrossIcon size={40} />
+                    <XCrossIcon size={36} />
                   </button>
                   <Login />
                 </div>

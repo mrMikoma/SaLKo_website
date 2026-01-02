@@ -37,7 +37,7 @@ const PageHero = ({
       {/* Hero Content */}
       <div className="relative z-10 w-full">
         {/* Top Section - Breadcrumbs and Title */}
-        <div className="max-w-[1600px] mx-auto px-6 pt-44 lg:pt-48 pb-12">
+        <div className={`max-w-[1600px] mx-auto px-6 pt-44 lg:pt-48 pb-12`}>
           <div className="space-y-4">
             {/* Breadcrumbs */}
             {breadcrumbs && breadcrumbs.length > 0 && (

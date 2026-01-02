@@ -48,9 +48,6 @@ CREATE TABLE
   );
 
 -- Performance indexes for bookings table
--- These indexes optimize the booking calendar queries by eliminating N+1 query pattern
--- Expected improvement: 99% reduction in queries (252+ → 1 for month view)
-
 -- Primary composite index for plane + time-based queries
 CREATE INDEX idx_bookings_plane_start_time ON bookings (plane, start_time);
 

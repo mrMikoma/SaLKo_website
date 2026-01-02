@@ -72,7 +72,7 @@ export async function updateProfile(
     );
 
     // Revalidate the profile page
-    revalidatePath("/profiili");
+    revalidatePath("/jasenalue/profiili");
 
     return {
       status: "success",
@@ -112,12 +112,7 @@ export async function isProfileComplete(): Promise<boolean> {
     const user = result.rows[0];
 
     // Check if all optional contact fields are filled
-    return !!(
-      user.phone &&
-      user.address &&
-      user.city &&
-      user.postal_code
-    );
+    return !!(user.phone && user.address && user.city && user.postal_code);
   } catch (error) {
     console.error("Error checking profile completion:", error);
     return false;

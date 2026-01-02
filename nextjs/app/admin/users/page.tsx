@@ -2,12 +2,21 @@ export const dynamic = 'force-dynamic';
 import { getAllUsers } from "@/utilities/adminUserActions";
 import UserTable from "@/components/admin/userTable";
 import UserSearch from "@/components/admin/userSearch";
+import { auth } from "@/auth";
+import { hasPermission } from "@/utilities/roles";
+import { redirect } from "next/navigation";
 
 interface PageProps {
   searchParams: Promise<{ search?: string }>;
 }
 
 export default async function UsersPage({ searchParams }: PageProps) {
+  const session = await auth();
+
+  if (!session?.user?.role || !hasPermission(session.user.role, "ACCESS_ADMIN_SITE")) {
+    redirect("/");
+  }
+
   const params = await searchParams;
   const searchQuery = params.search || "";
   const users = await getAllUsers(searchQuery);

@@ -5,52 +5,25 @@ export default auth((req) => {
   const { pathname } = req.nextUrl;
   const session = req.auth;
 
-  // Public routes (no auth required)
-  const publicRoutes = [
-    "/",
-    "/kalusto",
-    "/kalusto/varauskalenteri", // Public access for guest bookings
-    "/jasenyys",
-    "/lentaminen",
-    "/yhteystiedot",
-    "/auth/login",
-    "/auth/error",
-  ];
-
-  // Check if the current path is public
-  const isPublicRoute = publicRoutes.some(
-    (route) => pathname === route || pathname.startsWith(route + "/")
-  );
-
-  if (isPublicRoute) {
-    return NextResponse.next();
-  }
-
   // Protected routes requiring authentication (user or admin)
-  const protectedRoutes = ["/profiili"];
+  const protectedRoutes = ["/jasenalue"];
   const isProtectedRoute = protectedRoutes.some((route) =>
     pathname.startsWith(route)
   );
 
   if (isProtectedRoute) {
     if (!session) {
-      const callbackUrl = encodeURIComponent(pathname);
-      return NextResponse.redirect(
-        new URL(`/auth/login?callbackUrl=${callbackUrl}`, req.url)
-      );
+      return NextResponse.redirect(new URL(`/`, req.url));
     }
   }
 
   // Admin-only routes
   if (pathname.startsWith("/admin")) {
     if (!session) {
-      const callbackUrl = encodeURIComponent(pathname);
-      return NextResponse.redirect(
-        new URL(`/auth/login?callbackUrl=${callbackUrl}`, req.url)
-      );
+      return NextResponse.redirect(new URL(`/`, req.url));
     }
     if (session.user.role !== "admin") {
-      return NextResponse.redirect(new URL("/?error=unauthorized", req.url));
+      return NextResponse.redirect(new URL("/", req.url));
     }
   }
 

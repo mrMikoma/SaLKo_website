@@ -2,7 +2,7 @@
 -- This runs after schema and seed data creation
 
 -- Use environment variables directly in SQL
-\set app_user `echo "${APP_DB_USER:-salko_app}"`
+\set app_user `echo "${APP_DB_USER}"`
 
 -- Grant permissions on all existing tables
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO :app_user;
