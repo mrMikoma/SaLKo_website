@@ -28,7 +28,7 @@ const WeatherWidget = () => {
         const response = await getLatestMETAR();
 
         if (!response.success || !response.data) {
-          throw new Error(response.error || "Failed to fetch METAR data");
+          console.log("Failed to fetch METAR data");
         }
 
         setWeather(response.data);

@@ -63,7 +63,9 @@ CREATE INDEX idx_bookings_plane_start_end ON bookings (plane, start_time, end_ti
 CREATE INDEX idx_bookings_user_id ON bookings (user_id);
 
 -- Index for repeat_group_id to efficiently find and delete repeating bookings
-CREATE INDEX idx_bookings_repeat_group_id ON bookings (repeat_group_id) WHERE repeat_group_id IS NOT NULL;
+CREATE INDEX idx_bookings_repeat_group_id ON bookings (repeat_group_id)
+WHERE
+  repeat_group_id IS NOT NULL;
 
 -- Create guest_bookings table (for unauthenticated bookings)
 CREATE TABLE
@@ -166,59 +168,3 @@ COMMENT ON COLUMN metar_data.raw_metar IS 'Raw METAR string from Aviation Weathe
 COMMENT ON COLUMN metar_data.observation_time IS 'Time of actual weather observation';
 
 COMMENT ON COLUMN metar_data.fetched_at IS 'Time when data was fetched from API';
-
--- Insert mock METAR data for testing
--- Format: METAR EFSA DDHHmmZ [AUTO] wind visibility clouds temp/dewpoint QNH
-INSERT INTO
-  metar_data (
-    station_code,
-    raw_metar,
-    temperature,
-    wind_speed,
-    wind_direction,
-    visibility,
-    clouds,
-    qnh,
-    observation_time,
-    fetched_at
-  )
-VALUES
-  (
-    'EFSA',
-    'METAR EFSA 191550Z AUTO VRB02KT 9999 OVC022 M03/M05 Q1009',
-    '-3°C',
-    '1 m/s',
-    'Vaihteleva',
-    '10+ km',
-    'Pilvipeite',
-    '1009 hPa',
-    CURRENT_TIMESTAMP - INTERVAL '10 minutes',
-    CURRENT_TIMESTAMP - INTERVAL '10 minutes'
-  ) ON CONFLICT (station_code, observation_time) DO NOTHING;
-
-INSERT INTO
-  metar_data (
-    station_code,
-    raw_metar,
-    temperature,
-    wind_speed,
-    wind_direction,
-    visibility,
-    clouds,
-    qnh,
-    observation_time,
-    fetched_at
-  )
-VALUES
-  (
-    'EFSA',
-    'METAR EFSA 191520Z AUTO 27008KT 9999 BKN015 OVC025 M01/M04 Q1010',
-    '-1°C',
-    '4 m/s',
-    'W',
-    '10+ km',
-    'Melko pilvistä',
-    '1010 hPa',
-    CURRENT_TIMESTAMP - INTERVAL '40 minutes',
-    CURRENT_TIMESTAMP - INTERVAL '40 minutes'
-  ) ON CONFLICT (station_code, observation_time) DO NOTHING;
