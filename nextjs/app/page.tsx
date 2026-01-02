@@ -136,7 +136,7 @@ export default function Page() {
           {/* Kalusto Card */}
           <FeatureCard
             title="Kalusto"
-            description="Meillä on käytössä kaksi moottorilentokoneita sekä kolme purjekonetta. Koneemme ovat huolellisesti huollettuja ja turvallisuusstandardien mukaisia."
+            description="Meillä on käytössä kaksi moottorilentokoneita sekä kolme purjekonetta."
             icon={<PlaneIcon size={48} />}
             href="/kalusto"
             imageSrc="/images/OH-CON/ohcon_1.jpg"
