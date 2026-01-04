@@ -33,8 +33,8 @@
       "model": "Cessna 172N Skyhawk 100 II",
       "type": "moottori",
       "pricePerMinuteWithEquipmentFee": "3.1",
-      "pricePerMinuteWithoutEquipmentFee": "186",
-      "pricePerHourWithEquipmentFee": "5",
+      "pricePerMinuteWithoutEquipmentFee": "5",
+      "pricePerHourWithEquipmentFee": "186",
       "pricePerHourWithoutEquipmentFee": "300",
       "notes": "katso huomio 1*"
     },

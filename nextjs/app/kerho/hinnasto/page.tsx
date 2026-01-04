@@ -115,14 +115,14 @@ export default function Page() {
                       €/min
                       <br />
                       <span className="text-xs font-normal text-swhite/60">
-                        (ilman)
+                        (ilman kalustomaksua)
                       </span>
                     </th>
                     <th className="text-right py-4 px-4 text-sbluel font-semibold">
                       €/h
                       <br />
                       <span className="text-xs font-normal text-swhite/60">
-                        (ilman)
+                        (ilman kalustomaksua)
                       </span>
                     </th>
                   </tr>
