@@ -5,6 +5,7 @@ import TextBlock from "@/components/textBlock";
 import CallToAction from "@/components/callToAction";
 import PlaneIcon from "@/components/icons/plane";
 import Image from "next/image";
+import Link from "next/link";
 import pricesData from "@/data/prices.json";
 
 export const metadata = {
@@ -38,10 +39,15 @@ export default function Page() {
               <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-swhite mb-6">
                 Aloita lentoharrastus
               </h2>
-              <p className="text-lg md:text-xl text-swhite/90 max-w-3xl mx-auto leading-relaxed">
+              <p className="text-lg md:text-xl text-swhite/90 max-w-3xl mx-auto leading-relaxed mb-6">
                 Tarjoamme monipuolista moottorilentokoulutusta Savonlinnan
                 lentokentällä. Koulutus räätälöidään henkilökohtaisten
                 tavoitteidesi mukaan yhteistyössä lennonopettajien kanssa.
+              </p>
+              <p className="text-lg md:text-xl text-swhite/90 max-w-3xl mx-auto leading-relaxed">
+                Lisäksi kerhomme ylläpitämä DTO-koulutusyhteisö mahdollistaa
+                lento-opinnot Kiteellä, Joroisissa, Rantasalmella,
+                Lappeenrannassa ja Kymissä.
               </p>
             </div>
           </div>
@@ -412,18 +418,18 @@ export default function Page() {
       <ContentSection variant="dark" backgroundImage="bg-mopu-one">
         <div className="mb-12">
           <h2 className="text-3xl md:text-4xl font-bold text-swhite mb-4 text-center">
-            Yhteistyössä Varkauden ilmailuyhdistyksen kanssa
+            Yhteistyössä Varkauden lentokerhon kanssa
           </h2>
           <p className="text-lg text-swhite/80 text-center max-w-3xl mx-auto mb-12">
             Lisäksi tarjoamme purjelento- ja ultrakevyt-koulutusta yhteistyössä
-            Varkauden ilmailuyhdistyksen kanssa Joroisissa.
+            Varkauden lentokerhon kanssa Joroisissa.
           </p>
         </div>
 
         <div className="max-w-5xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* SPL - Sailplane License */}
-            <div className="bg-sblack/50 rounded-lg p-6 border border-sbluel/20">
+            <div className="bg-sblack/50 rounded-lg p-6 border border-sbluel/20 flex flex-col">
               <h4 className="text-xl font-bold text-sred mb-3">
                 SPL - Purjelentäjän lupakirja
               </h4>
@@ -431,7 +437,7 @@ export default function Page() {
                 Voit lentää yksin tai matkustajan kanssa ympäristöystävällisesti
                 auringon energialla
               </p>
-              <ul className="space-y-2 text-sm text-swhite/80">
+              <ul className="space-y-2 text-sm text-swhite/80 flex-grow mb-4">
                 <li className="flex items-start gap-2">
                   <svg
                     className="w-4 h-4 text-sred flex-shrink-0 mt-0.5"
@@ -494,15 +500,36 @@ export default function Page() {
                   </span>
                 </li>
               </ul>
-              <div className="mt-4 pt-4 border-t border-swhite/20">
-                <p className="text-sred font-bold text-lg">
+              <div className="mt-auto pt-4 border-t border-swhite/20">
+                <p className="text-sbluel font-bold text-lg mb-3">
                   Hinta {getPrice("SPL")}
                 </p>
+                <Link
+                  href="https://www.varkaudenlentokerho.fi/purjelentokurssi"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center text-sred/80 hover:text-sred font-semibold group hover:translate-x-2 transition-all duration-300"
+                >
+                  <span>Lue lisää</span>
+                  <svg
+                    className="w-5 h-5 ml-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17 8l4 4m0 0l-4 4m4-4H3"
+                    />
+                  </svg>
+                </Link>
               </div>
             </div>
 
             {/* UPL - Ultralight Pilot License */}
-            <div className="bg-sblack/50 rounded-lg p-6 border border-sbluel/20">
+            <div className="bg-sblack/50 rounded-lg p-6 border border-sbluel/20 flex flex-col">
               <h4 className="text-xl font-bold text-sred mb-3">
                 UPL - Ultrakevyt lentäjän lupakirja
               </h4>
@@ -510,7 +537,7 @@ export default function Page() {
                 Mahdollistaa lentämisen yksin tai matkustajan kanssa
                 ultrakevyellä moottorilentokoneella
               </p>
-              <ul className="space-y-2 text-sm text-swhite/80">
+              <ul className="space-y-2 text-sm text-swhite/80 flex-grow mb-4">
                 <li className="flex items-start gap-2">
                   <svg
                     className="w-4 h-4 text-sred flex-shrink-0 mt-0.5"
@@ -570,10 +597,31 @@ export default function Page() {
                   <span>Ikäraja: 17 vuotta</span>
                 </li>
               </ul>
-              <div className="mt-4 pt-4 border-t border-swhite/20">
-                <p className="text-sred font-bold text-lg">
+              <div className="mt-auto pt-4 border-t border-swhite/20">
+                <p className="text-sbluel font-bold text-lg mb-3">
                   Hinta {getPrice("UPL")}
                 </p>
+                <Link
+                  href="https://www.varkaudenlentokerho.fi/copy-of-purjelennon-peruskurssi"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center text-sred/80 hover:text-sred font-semibold group hover:translate-x-2 transition-all duration-300"
+                >
+                  <span>Lue lisää</span>
+                  <svg
+                    className="w-5 h-5 ml-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17 8l4 4m0 0l-4 4m4-4H3"
+                    />
+                  </svg>
+                </Link>
               </div>
             </div>
           </div>

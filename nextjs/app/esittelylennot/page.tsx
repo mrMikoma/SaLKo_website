@@ -147,9 +147,9 @@ export default function Page() {
                     Lentäjä
                   </h3>
                   <p className="text-swhite/70">
-                    Lento tapahtuu aina kerhon oman lentäjän ohjaamana, joka
-                    huolehtii turvallisesta lennosta ja opastaa sinua lennon
-                    aikana.
+                    Lento tapahtuu kokeneen lentokerholaisen tai lennonopettajan
+                    ohjaamana, joka huolehtii turvallisesta lennosta ja opastaa
+                    sinua lennon aikana.
                   </p>
                 </div>
               </div>
@@ -160,8 +160,9 @@ export default function Page() {
                     Mahdollisuus ohjata
                   </h3>
                   <p className="text-swhite/70">
-                    Halutessasi voit kysyä mahdollisuutta kokeilla ohjata
-                    lentokonetta vaakalentovaiheessa lentäjän valvonnassa.
+                    Yksityisellä lentokoulutuksen esittelylennolla pääset
+                    kokeilemaan lentokoneen ohjaamista lennonopettajan
+                    opastuksella.
                   </p>
                 </div>
               </div>

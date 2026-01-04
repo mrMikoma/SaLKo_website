@@ -15,7 +15,7 @@ export default function Footer() {
     { Hinnasto: "/kerho/hinnasto" },
     { Tietosuojaseloste: "/" },
     {
-      "DTO-ilmoitus":
+      "DTO -poikkeamailmoitus":
         "https://docs.google.com/forms/d/e/1FAIpQLScSw5Un81PuQq_cmwmKXVFPFK2IPWo5Bs6uBrrfLUSqyDdIgQ/viewform?pli=1",
     },
   ];
