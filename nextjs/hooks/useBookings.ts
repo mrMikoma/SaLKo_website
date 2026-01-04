@@ -10,7 +10,7 @@ import {
   BookingType,
 } from "@/utilities/bookings";
 
-const PLANES = ["OH-CON", "OH-386", "OH-816", "OH-829", "OH-475", "OH-PDX"];
+const PLANES = ["OH-CON", "OH-386", "OH-816", "OH-829", "OH-475"];
 
 interface UseBookingsOptions {
   date?: string;

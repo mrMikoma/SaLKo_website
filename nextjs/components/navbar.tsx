@@ -324,7 +324,7 @@ const Navbar = ({ session }: { session: Session | null }) => {
         {/* Show User Name or Login if not authenticated */}
         <div className="absolute top-4 right-4">
           <span className="text-swhite text-md font-semibold whitespace-nowrap">
-            {userName ? userName : "Et ole kirjautunut sisään"}
+            {userName ? userName : "Et ole kirjautunut jäsenalueelle"}
           </span>
         </div>
       </nav>

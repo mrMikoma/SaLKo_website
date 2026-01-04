@@ -4,6 +4,7 @@ import { DateTime } from "luxon";
 import { BookingType } from "@/utilities/bookings";
 import { FlightTypeConfig } from "@/types/bookings";
 import { useMemo } from "react";
+import { getPlaneDisplayName } from "@/utilities/planeHelpers";
 
 interface BookingsWeekViewProps {
   bookings: BookingType[];
@@ -14,7 +15,7 @@ interface BookingsWeekViewProps {
   getFlightTypeColor: (type: string) => string;
 }
 
-const PLANES = ["OH-CON", "OH-386", "OH-816", "OH-829", "OH-475", "OH-PDX"];
+const PLANES = ["OH-CON", "OH-386", "OH-816", "OH-829", "OH-475"];
 const START_HOUR = 6;
 const END_HOUR = 23;
 
@@ -109,7 +110,7 @@ export const BookingsWeekView = ({
         {PLANES.map((plane) => (
           <div key={plane} className="border border-gray-200 rounded-lg overflow-hidden">
             <div className="bg-gray-100 p-2 font-bold text-lg text-center border-b border-gray-200">
-              {plane}
+              {getPlaneDisplayName(plane)}
             </div>
 
             <div className="grid grid-cols-7 divide-x divide-gray-200">

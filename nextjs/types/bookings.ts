@@ -29,7 +29,6 @@ export enum Plane {
   OH_816 = "OH-816",
   OH_829 = "OH-829",
   OH_475 = "OH-475",
-  OH_PDX = "OH-PDX",
 }
 
 /**

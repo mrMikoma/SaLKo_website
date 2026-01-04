@@ -3,6 +3,7 @@ import { DateTime } from "luxon";
 import { BookingType } from "@/utilities/bookings";
 import { FlightTypeConfig } from "@/types/bookings";
 import { formatTime } from "@/utilities/bookingHelpers";
+import { getPlaneDisplayName } from "@/utilities/planeHelpers";
 
 interface BookingsMobileViewProps {
   bookings: BookingType[];
@@ -13,7 +14,7 @@ interface BookingsMobileViewProps {
   isLoggedIn?: boolean;
 }
 
-const PLANES = ["OH-CON", "OH-386", "OH-816", "OH-829", "OH-475", "OH-PDX"];
+const PLANES = ["OH-CON", "OH-386", "OH-816", "OH-829", "OH-475"];
 
 /**
  * Mobile-optimized view for bookings
@@ -51,7 +52,7 @@ export const BookingsMobileView = memo(
             className="bg-white rounded-lg shadow-md overflow-hidden"
           >
             <div className="bg-gray-700 text-white px-4 py-3 font-bold text-lg">
-              {plane}
+              {getPlaneDisplayName(plane)}
             </div>
 
             <div className="divide-y divide-gray-200">

@@ -7,6 +7,7 @@ import {
   getShortenedName,
   generateHourLabels,
 } from "@/utilities/bookingHelpers";
+import { getPlaneDisplayName } from "@/utilities/planeHelpers";
 
 interface BookingsDesktopViewProps {
   bookings: BookingType[];
@@ -17,7 +18,7 @@ interface BookingsDesktopViewProps {
   getFlightTypeColor: (type: string) => string;
 }
 
-const PLANES = ["OH-CON", "OH-386", "OH-816", "OH-829", "OH-475", "OH-PDX"];
+const PLANES = ["OH-CON", "OH-386", "OH-816", "OH-829", "OH-475"];
 const START_HOUR = 6;
 const END_HOUR = 23;
 
@@ -195,7 +196,7 @@ export const BookingsDesktopView = memo(
                   className="border border-gray-300 p-2 bg-gray-100"
                   style={{ height: "50px", width: "120px" }}
                 >
-                  {plane}
+                  {getPlaneDisplayName(plane)}
                 </th>
               ))}
             </tr>

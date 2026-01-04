@@ -16,7 +16,6 @@ const allowedFlightTypes: string[] = [
 
 const allowedPlaneTypes: string[] = [
   "OH-CON",
-  "OH-PDX",
   "OH-816",
   "OH-829",
   "OH-475",

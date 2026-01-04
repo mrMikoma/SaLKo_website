@@ -11,7 +11,6 @@ BEGIN
 
   -- Insert diverse bookings with various flight types, durations, and dates
   -- The bookings include:
-  -- - OH-PDX in indefinite maintenance (long-term)
   -- - Local flights (1-2 hours)
   -- - Trip flights (2-4 hours)
   -- - Training sessions (1-3 hours)
@@ -31,17 +30,6 @@ BEGIN
       description
     )
     VALUES
-    -- OH-PDX: Indefinite maintenance (starting 30 days ago, ending 60 days from now)
-    (
-      'OH-PDX',
-      NOW() - INTERVAL '30 days',
-      NOW() + INTERVAL '60 days',
-      admin_user_id,
-      'maintenance',
-      'Huoltoseisakki - Moottorivika',
-      'Kone huoltoseisakissa moottorikorjauksen vuoksi. Arvioitu valmistuminen Q2 2025.'
-    ),
-
     -- TODAY: Various bookings for today
     -- OH-CON: Local flight morning
     (
