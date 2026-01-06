@@ -6,10 +6,12 @@ export const UmamiProvider = () => {
     return <></>;
   }
   return (
-    <Script
-      async
-      src="https://cloud.umami.is/script.js"
-      data-website-id={websiteId}
-    />
+    <>
+      <Script
+        async
+        src="https://cloud.umami.is/script.js"
+        data-website-id={websiteId}
+      />
+    </>
   );
 };

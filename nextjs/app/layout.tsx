@@ -38,9 +38,6 @@ export const metadata = {
 
 const RootLayout = async ({ children }: React.PropsWithChildren) => {
   const session = await auth();
-  const isProduction =
-    process.env.NODE_ENV === "production" &&
-    process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID;
 
   return (
     <html lang="fi" className={`${finlandica.variable}`}>
