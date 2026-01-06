@@ -1,4 +1,4 @@
-name: Deploy non-production branch
+name: Deploy production from main branch
 
 on:
   workflow_dispatch:
@@ -11,15 +11,15 @@ on:
       branch_name:
         description: "Branch to deploy"
         required: true
-        default: "dev"
+        default: "main"
         type: string
 
-  # repository_dispatch: # Uncomment to enable repository_dispatch trigger
-  #   types: [deploy-dev]
+  repository_dispatch:
+    types: [deploy-prod]
 
 env:
   NAME_PREFIX: "salko"
-  SITE_PREFIX: "kehitys"
+  SITE_PREFIX: "www"
   HOST_URL: "savonlinnanlentokerho.fi"
 
 jobs:
@@ -83,7 +83,7 @@ jobs:
   deploy:
     needs: create-runner
     runs-on: ${{ needs.create-runner.outputs.label }}
-    environment: development
+    environment: production
     permissions:
       contents: write
       packages: write
@@ -123,9 +123,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4.2.2
         with:
-          ref: ${{ github.event.inputs.branch_name || github.event.client_payload.branch_name || 'dev' }}
+          ref: ${{ github.event.inputs.branch_name || github.event.client_payload.branch_name || 'main' }}
           sparse-checkout: |
-            postgres/init/init-dev.sql
+            docker-compose.prod.yaml
+            postgres/init/
 
       - name: Setup SSH
         run: |
@@ -136,72 +137,98 @@ jobs:
 
       - name: Transfer configuration files to SERVER
         run: |
-          echo "Transferring docker-compose.dev.yaml..."
-          scp -i ~/.ssh/id_ed25519 ./docker-compose.dev.yaml salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/docker-compose.dev.yaml
+          echo "Transferring docker-compose.prod.yaml..."
+          if ! scp -i ~/.ssh/id_ed25519 ./docker-compose.prod.yaml salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/docker-compose.prod.yaml; then
+            echo "Failed to transfer docker-compose.prod.yaml"
+            exit 1
+          fi
 
-          echo "Creating postgres-dev directory if it doesn't exist..."
-          ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} "mkdir -p /home/salko/postgres-dev"
+          echo "Creating postgres-prod directory if it doesn't exist..."
+          if ! ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} "mkdir -p /home/salko/postgres-prod/init"; then
+            echo "Failed to create directory"
+            exit 1
+          fi
 
-          echo "Transferring postgres init script..."
-          scp -i ~/.ssh/id_ed25519 ./postgres/init/init-dev.sql salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/postgres-dev/init.sql
+          echo "Transferring postgres init scripts..."
+          if ! scp -i ~/.ssh/id_ed25519 ./postgres/init/* salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/postgres-prod/init/; then
+            echo "Failed to transfer init scripts"
+            exit 1
+          fi
 
-          echo "Verifying file transfers..."
-          ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} "ls -la /home/salko/docker-compose.dev.yaml /home/salko/postgres-dev/init.sql"
+          echo "Adjusting permissions on transferred files..."
+          if ! ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} "chmod -R 777 /home/salko/postgres-prod/init/*.sql"; then
+            echo "Failed to adjust file permissions"
+            exit 1
+          fi
+
+          echo "Verifying files were transferred correctly..."
+          ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} "ls -la /home/salko/postgres-prod/init/"
 
       - name: Deploy APP to SERVER
         env:
-          BRANCH_SUFFIX: ${{ github.event.inputs.branch_name || github.event.client_payload.branch_name || 'dev' }}
+          BRANCH_SUFFIX: ${{ github.event.inputs.branch_name || github.event.client_payload.branch_name || 'prod' }}
           NODE_ENV: "production"
           CONTAINER_PORT: "3000"
-          HOST_PORT: "3010"
+          HOST_PORT: "3000"
           HOSTNAME: "0.0.0.0"
+          PGPORT: "5432"
           POSTGRES_USER: "salko_admin"
           POSTGRES_DB: "salko"
-          NEXTAUTH_URL: "https://savonlinnanlentokerho.fi"
+          APP_DB_USER: "salko_app"
+          NEXTAUTH_URL: "https://${{ env.SITE_PREFIX }}.${{ env.HOST_URL }}"
         run: |
-          echo "Deploying to environment..."
+          echo "Deploying to production environment..."
           ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} << "EOF"
-            # Create or clear the .env.dev file
-            > .env.dev
+            # Create or clear the .env.prod file
+            > .env.prod
 
             # Append environment variables one by one
-            echo "NAME_PREFIX=${{ env.NAME_PREFIX }}" > .env.dev
-            echo "SITE_PREFIX=${{ env.SITE_PREFIX }}" >> .env.dev
-            echo "BRANCH_SUFFIX=${{ env.BRANCH_SUFFIX }}" >> .env.dev
-            echo "NODE_ENV=${{ env.NODE_ENV }}" >> .env.dev
-            echo "CONTAINER_PORT=${{ env.CONTAINER_PORT }}" >> .env.dev
-            echo "HOST_PORT=${{ env.HOST_PORT }}" >> .env.dev
-            echo "HOSTNAME=${{ env.HOSTNAME }}" >> .env.dev
-            echo "HOST_URL=${{ env.HOST_URL }}" >> .env.dev
-            echo "IMAGE_TAG_NAME=${{ github.env.IMAGE_TAG_NAME }}" >> .env.dev
-            echo "IMAGE_VERSION=${{ github.env.IMAGE_VERSION }}" >> .env.dev
-            echo "POSTGRES_USER=${{ env.POSTGRES_USER }}" >> .env.dev
-            echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env.dev
-            echo "POSTGRES_DB=${{ env.POSTGRES_DB }}" >> .env.dev
-
-            # NextAuth configuration
-            echo "NEXTAUTH_URL=${{ env.NEXTAUTH_URL }}" >> .env.dev
-            echo "NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET_PROD }}" >> .env.dev
-
-            # Google OAuth configuration
-            echo "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID_PROD }}" >> .env.dev
-            echo "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET_PROD }}" >> .env.dev
+            echo "NAME_PREFIX=${{ env.NAME_PREFIX }}" > .env.prod
+            echo "SITE_PREFIX=${{ env.SITE_PREFIX }}" >> .env.prod
+            echo "BRANCH_SUFFIX=${{ env.BRANCH_SUFFIX }}" >> .env.prod
+            echo "NODE_ENV=${{ env.NODE_ENV }}" >> .env.prod
+            echo "CONTAINER_PORT=${{ env.CONTAINER_PORT }}" >> .env.prod
+            echo "HOST_PORT=${{ env.HOST_PORT }}" >> .env.prod
+            echo "HOSTNAME=${{ env.HOSTNAME }}" >> .env.prod
+            echo "HOST_URL=${{ env.HOST_URL }}" >> .env.prod
+            echo "IMAGE_TAG_NAME=${{ env.IMAGE_TAG_NAME }}" >> .env.prod
+            echo "IMAGE_VERSION=${{ env.IMAGE_VERSION }}" >> .env.prod
+            echo "PGPORT=${{ env.PGPORT }}" >> .env.prod
+            echo "POSTGRES_USER=${{ env.POSTGRES_USER }}" >> .env.prod
+            echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD_PROD }}" >> .env.prod
+            echo "POSTGRES_DB=${{ env.POSTGRES_DB }}" >> .env.prod
+            echo "APP_DB_USER=${{ env.APP_DB_USER }}" >> .env.prod
+            echo "APP_DB_PASSWORD=${{ secrets.APP_DB_PASSWORD_PROD }}" >> .env.prod
+            echo "PGTZ=UTC" >> .env.prod
+            echo "NEXTAUTH_URL=${{ env.NEXTAUTH_URL }}" >> .env.prod
+            echo "NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET_PROD }}" >> .env.prod
+            echo "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID_PROD }}" >> .env.prod
+            echo "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET_PROD }}" >> .env.prod
+            echo "NEXT_PUBLIC_UMAMI_WEBSITE_ID=${{ secrets.UMAMI_WEBSITE_ID_PROD }}" >> .env.prod
+            echo "NEXT_PUBLIC_UMAMI_SCRIPT_URL=https://umami.savonlinnanlentokerho.fi/script.js" >> .env.prod
 
             # Ensure the environment variables are written before proceeding
-            echo ".env.dev file created with environment variables."
+            echo ".env.prod file created with environment variables."
 
-            # Stop the current containers
-            echo "Stopping the current containers..."
-            docker compose --env-file .env.dev -f docker-compose.dev.yaml down || true
+            # Secure the .env.prod file permissions (readable only by owner)
+            chmod 600 .env.prod
+            echo "Secured .env.prod file permissions to 600."
+
+            # Stop the current containers (keep data for production)
+            echo "Stopping containers..."
+            docker compose --env-file .env.prod -f docker-compose.prod.yaml down
 
             # Start the containers using Docker Compose
             echo "Starting containers using Docker Compose..."
-            docker compose --env-file .env.dev -f docker-compose.dev.yaml up -d
+            docker compose --env-file .env.prod -f docker-compose.prod.yaml up -d
+
+            # Wait for services to start
+            sleep 15
 
             # Verify the deployment
             echo "Verifying the deployment..."
-            if docker ps | grep -q "${{ github.env.IMAGE_TAG_NAME }}"; then
-              echo "Deployment successful: ${{ github.env.IMAGE_TAG_NAME }} is running."
+            if docker ps | grep -q "${{ env.IMAGE_TAG_NAME }}"; then
+              echo "Deployment successful: ${{ env.IMAGE_TAG_NAME }} is running."
             elif [ "$(docker ps -q)" == "" ]; then
               echo "Deployment failed: No containers are running."
               exit 1
@@ -214,6 +241,22 @@ jobs:
             docker image prune -f
 
             echo "Deployment complete."
+          EOF
+
+      - name: Update monitoring secrets
+        env:
+          GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
+          POSTGRES_PASSWORD_PROD: ${{ secrets.POSTGRES_PASSWORD_PROD }}
+        run: |
+          echo "Updating monitoring secrets..."
+          ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} << 'EOF'
+            # Update .env.monitoring with prod secrets
+            sed -i "s|^PROD_POSTGRES_EXPORTER_DSN=.*|PROD_POSTGRES_EXPORTER_DSN=postgresql://postgres:${{ env.POSTGRES_PASSWORD_PROD }}@salko-postgres-prod:5432/salko?sslmode=disable|" .env.monitoring || true
+            echo "✅ Monitoring secrets updated"
+
+            # Restart monitoring stack to apply new secrets
+            echo "Restarting monitoring stack..."
+            docker compose --env-file .env.monitoring -f docker-compose.monitoring.yaml restart || true
           EOF
 
       - name: Notify success
@@ -232,7 +275,7 @@ jobs:
           {
             echo "## Deployment Summary"
             echo "- **Environment:** Production"
-            echo "- **Branch:** \`${{ github.event.inputs.branch_name || github.event.client_payload.branch_name || 'dev' }}\`"
+            echo "- **Branch:** \`${{ github.event.inputs.branch_name || github.event.client_payload.branch_name || 'main' }}\`"
             echo "- **Image Version:** \`${{ env.IMAGE_VERSION }}\`"
             echo "- **Image Tag:** \`${{ env.IMAGE_TAG_NAME }}\`"
             echo "- **Site URL:** [https://${{ env.SITE_PREFIX }}.${{ env.HOST_URL }}](https://${{ env.SITE_PREFIX }}.${{ env.HOST_URL }})"
