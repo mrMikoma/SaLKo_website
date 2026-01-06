@@ -209,6 +209,7 @@ jobs:
             echo "NEXT_PUBLIC_UMAMI_SCRIPT_URL=https://umami.savonlinnanlentokerho.fi/script.js" >> .env.prod
             echo "UMAMI_DB_USER=${{ env.UMAMI_DB_USER }}" >> .env.prod
             echo "UMAMI_DB_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env.prod
+            echo "NEXT_PUBLIC_UMAMI_WEBSITE_ID=${{ secrets.NEXT_PUBLIC_UMAMI_WEBSITE_ID }}" >> .env.prod
 
             # Ensure the environment variables are written before proceeding
             echo ".env.prod file created with environment variables."

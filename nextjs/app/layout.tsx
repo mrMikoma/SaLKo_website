@@ -7,6 +7,7 @@ import { auth } from "@/auth";
 import { QueryProvider } from "@/providers/QueryProvider";
 import { NavbarProvider } from "@/providers/NavbarContextProvider";
 import { SessionProvider } from "@/providers/SessionProvider";
+import { UmamiProvider } from "@/providers/UmamiProvider";
 
 const finlandica = Finlandica({
   subsets: ["latin"],
@@ -43,15 +44,6 @@ const RootLayout = async ({ children }: React.PropsWithChildren) => {
 
   return (
     <html lang="fi" className={`${finlandica.variable}`}>
-      <head>
-        {isProduction && (
-          <script
-            defer
-            src={process.env.NEXT_PUBLIC_UMAMI_SCRIPT_URL}
-            data-website-id={process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID}
-          />
-        )}
-      </head>
       <body>
         <SessionProvider session={session}>
           <QueryProvider>
@@ -63,6 +55,7 @@ const RootLayout = async ({ children }: React.PropsWithChildren) => {
                   <Footer />
                 </AntdRegistry>
               </main>
+              <UmamiProvider />
             </NavbarProvider>
           </QueryProvider>
         </SessionProvider>
