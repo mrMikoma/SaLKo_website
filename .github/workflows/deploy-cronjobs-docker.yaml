@@ -304,7 +304,10 @@ jobs:
             # Pull latest images
             docker compose -p salko-cronjobs-${BRANCH_SUFFIX} --env-file .env.${BRANCH_SUFFIX} -f ${COMPOSE_FILE} pull
 
-            # Start/restart containers with Ofelia
+            # Stop and remove existing containers
+            docker compose -p salko-cronjobs-${BRANCH_SUFFIX} --env-file .env.${BRANCH_SUFFIX} -f ${COMPOSE_FILE} down
+
+            # Start containers with Ofelia
             docker compose -p salko-cronjobs-${BRANCH_SUFFIX} --env-file .env.${BRANCH_SUFFIX} -f ${COMPOSE_FILE} up -d
 
             echo "Ofelia cronjob scheduler deployed successfully for ${ENVIRONMENT}"
