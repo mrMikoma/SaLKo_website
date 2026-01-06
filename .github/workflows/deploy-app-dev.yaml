@@ -214,24 +214,22 @@ jobs:
 
             # Stop the current containers and remove volumes (fresh start for dev)
             echo "Stopping containers and removing volumes for fresh dev environment..."
-            docker compose --env-file .env.dev -f docker-compose.dev.yaml down -v
+            docker compose -p salko-dev --env-file .env.dev -f docker-compose.dev.yaml down -v
 
             # Start the containers using Docker Compose
             echo "Starting containers using Docker Compose..."
-            docker compose --env-file .env.dev -f docker-compose.dev.yaml up -d
+            docker compose -p salko-dev --env-file .env.dev -f docker-compose.dev.yaml up -d
 
             # Wait for services to start
             sleep 15
 
             # Verify the deployment
             echo "Verifying the deployment..."
-            if docker ps | grep -q "${{ env.IMAGE_TAG_NAME }}"; then
-              echo "Deployment successful: ${{ env.IMAGE_TAG_NAME }} is running."
-            elif [ "$(docker ps -q)" == "" ]; then
-              echo "Deployment failed: No containers are running."
-              exit 1
+            if docker ps | grep -q "salko-nextjs-${{ env.BRANCH_SUFFIX }}"; then
+              echo "Deployment successful: salko-nextjs-${{ env.BRANCH_SUFFIX }} is running."
             else
-              echo "Deployment failed: $IMAGE_TAG_NAME is not running."
+              echo "Deployment failed: salko-nextjs-${{ env.BRANCH_SUFFIX }} is not running."
+              docker ps
               exit 1
             fi
 
