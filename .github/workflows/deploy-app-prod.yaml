@@ -175,6 +175,7 @@ jobs:
           POSTGRES_USER: "salko_admin"
           POSTGRES_DB: "salko"
           APP_DB_USER: "salko_app"
+          UMAMI_DB_USER: "umami_app"
           NEXTAUTH_URL: "https://${{ env.SITE_PREFIX }}.${{ env.HOST_URL }}"
         run: |
           echo "Deploying to production environment..."
@@ -206,6 +207,8 @@ jobs:
             echo "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" >> .env.prod
             echo "NEXT_PUBLIC_UMAMI_WEBSITE_ID=${{ secrets.UMAMI_WEBSITE_ID }}" >> .env.prod
             echo "NEXT_PUBLIC_UMAMI_SCRIPT_URL=https://umami.savonlinnanlentokerho.fi/script.js" >> .env.prod
+            echo "UMAMI_DB_USER=${{ env.UMAMI_DB_USER }}" >> .env.prod
+            echo "UMAMI_DB_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env.prod
 
             # Ensure the environment variables are written before proceeding
             echo ".env.prod file created with environment variables."
@@ -250,6 +253,7 @@ jobs:
           ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} << 'EOF'
             # Update .env.monitoring with prod secrets
             sed -i "s|^PROD_POSTGRES_EXPORTER_DSN=.*|PROD_POSTGRES_EXPORTER_DSN=postgresql://postgres:${{ env.POSTGRES_PASSWORD }}@salko-postgres-prod:5432/salko?sslmode=disable|" .env.monitoring || true
+            sed -i "s|^UMAMI_DB_PASSWORD=.*|UMAMI_DB_PASSWORD=${{ env.POSTGRES_PASSWORD }}|" .env.monitoring || true
             echo "✅ Monitoring secrets updated"
 
             # Restart monitoring stack to apply new secrets

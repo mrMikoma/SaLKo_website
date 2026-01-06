@@ -191,57 +191,28 @@ services:
       - traefik.http.routers.pgadmin.tls.certresolver=cloudflare
       - traefik.http.routers.pgadmin.middlewares=internal-only@file
       - traefik.http.services.pgadmin.loadbalancer.server.port=80
-    healthcheck:
-      test: ["CMD", "wget", "-O", "-", "http://localhost/misc/ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
 
-#  umami-db:
-#    image: postgres:17.5-alpine
-#    container_name: ${NAME_PREFIX}-umami-db
-#    environment:
-#      - POSTGRES_DB=umami
-#      - POSTGRES_USER=umami
-#      - POSTGRES_PASSWORD=${UMAMI_DB_PASSWORD}
-#    networks:
-#      - monitoring
-#    volumes:
-#      - /home/salko/monitoring/umami-db-data:/var/lib/postgresql/data
-#    restart: unless-stopped
-#    healthcheck:
-#      test: ["CMD-SHELL", "pg_isready -U umami -d umami"]
-#      interval: 30s
-#      timeout: 10s
-#      retries: 5
-#      start_period: 30s
-#    labels:
-#      - logging=promtail
-#
-#  umami:
-#    image: ghcr.io/umami-software/umami:postgresql-latest
-#    container_name: ${NAME_PREFIX}-umami
-#    environment:
-#      - DATABASE_URL=postgresql://umami:${UMAMI_DB_PASSWORD}@${NAME_PREFIX}-umami-db:5432/umami
-#      - DATABASE_TYPE=postgresql
-#      - APP_SECRET=${UMAMI_APP_SECRET}
-#      - DISABLE_TELEMETRY=1
-#    networks:
-#      - monitoring
-#      - global_outgoing
-#    depends_on:
-#      umami-db:
-#        condition: service_healthy
-#    restart: unless-stopped
-#    labels:
-#      - logging=promtail
-#      - traefik.enable=true
-#      - traefik.http.routers.umami.rule=Host(`umami.savonlinnanlentokerho.fi`)
-#      - traefik.http.routers.umami.entrypoints=websecure
-#      - traefik.http.routers.umami.tls.certresolver=cloudflare
-#      - traefik.http.routers.umami.middlewares=internal-only@file
-#      - traefik.http.services.umami.loadbalancer.server.port=3000
+  umami:
+    image: ghcr.io/umami-software/umami:postgresql-latest
+    container_name: ${NAME_PREFIX}-umami
+    environment:
+      - DATABASE_URL=postgresql://${UMAMI_DB_USER}:${UMAMI_DB_PASSWORD}@salko-postgres-main:5432/umami
+      - DATABASE_TYPE=postgresql
+      - APP_SECRET=${UMAMI_APP_SECRET}
+      - DISABLE_TELEMETRY=1
+    networks:
+      - monitoring
+      - global_outgoing
+      - prod_internal
+    restart: unless-stopped
+    labels:
+      - logging=promtail
+      - traefik.enable=true
+      - traefik.http.routers.umami.rule=Host(`umami.savonlinnanlentokerho.fi`)
+      - traefik.http.routers.umami.entrypoints=websecure
+      - traefik.http.routers.umami.tls.certresolver=cloudflare
+      - traefik.http.routers.umami.middlewares=internal-only@file
+      - traefik.http.services.umami.loadbalancer.server.port=3000
 
 networks:
   monitoring:

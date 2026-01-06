@@ -132,6 +132,7 @@ jobs:
           ENVIRONMENT=${{ env.ENVIRONMENT }}
           GRAFANA_ADMIN_PASSWORD=${{ env.GRAFANA_ADMIN_PASSWORD }}
           PROD_POSTGRES_EXPORTER_DSN=postgresql://postgres:${{ env.POSTGRES_PASSWORD }}@salko-postgres-prod:5432/salko?sslmode=disable
+          UMAMI_DB_PASSWORD=${{ env.POSTGRES_PASSWORD }}
           ENVEOF
 
             echo ".env.monitoring file created."
@@ -216,8 +217,8 @@ jobs:
             echo "## Monitoring Stack Deployment Summary"
             echo "- **Environment:** ${{ env.ENVIRONMENT }}"
             echo "- **Branch:** \`main\`"
-            echo "- **Grafana URL:** http://10.1.0.x:3001"
-            echo "- **Prometheus URL:** http://10.1.0.x:9090"
+            echo "- **Grafana URL:** https://grafana.savonlinnanlentokerho.fi"
+            echo "- **Traefik Dashboard:** https://traefik.savonlinnanlentokerho.fi/dashboard/
             echo "- **Deployment Status:** \`${{ job.status }}\`"
             echo ""
             echo "### Services Deployed"
@@ -231,9 +232,6 @@ jobs:
             echo ""
             echo "### Access Information"
             echo "All services are accessible from 10.0.0.0/16 network only"
-            echo "- Grafana: Port 3001"
-            echo "- Prometheus: Port 9090"
-            echo "- Loki: Port 3100"
             echo ""
             echo "**Workflow:** ${{ github.workflow }}"
             echo "**Run:** [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
