@@ -41,6 +41,9 @@ const RootLayout = async ({ children }: React.PropsWithChildren) => {
 
   return (
     <html lang="fi" className={`${finlandica.variable}`}>
+      <head>
+        <UmamiProvider />
+      </head>
       <body>
         <SessionProvider session={session}>
           <QueryProvider>
@@ -52,7 +55,6 @@ const RootLayout = async ({ children }: React.PropsWithChildren) => {
                   <Footer />
                 </AntdRegistry>
               </main>
-              <UmamiProvider />
             </NavbarProvider>
           </QueryProvider>
         </SessionProvider>
