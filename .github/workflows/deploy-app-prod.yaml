@@ -195,16 +195,16 @@ jobs:
             echo "IMAGE_VERSION=${{ env.IMAGE_VERSION }}" >> .env.prod
             echo "PGPORT=${{ env.PGPORT }}" >> .env.prod
             echo "POSTGRES_USER=${{ env.POSTGRES_USER }}" >> .env.prod
-            echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD_PROD }}" >> .env.prod
+            echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env.prod
             echo "POSTGRES_DB=${{ env.POSTGRES_DB }}" >> .env.prod
             echo "APP_DB_USER=${{ env.APP_DB_USER }}" >> .env.prod
-            echo "APP_DB_PASSWORD=${{ secrets.APP_DB_PASSWORD_PROD }}" >> .env.prod
+            echo "APP_DB_PASSWORD=${{ secrets.APP_DB_PASSWORD }}" >> .env.prod
             echo "PGTZ=UTC" >> .env.prod
             echo "NEXTAUTH_URL=${{ env.NEXTAUTH_URL }}" >> .env.prod
-            echo "NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET_PROD }}" >> .env.prod
-            echo "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID_PROD }}" >> .env.prod
-            echo "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET_PROD }}" >> .env.prod
-            echo "NEXT_PUBLIC_UMAMI_WEBSITE_ID=${{ secrets.UMAMI_WEBSITE_ID_PROD }}" >> .env.prod
+            echo "NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET }}" >> .env.prod
+            echo "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}" >> .env.prod
+            echo "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" >> .env.prod
+            echo "NEXT_PUBLIC_UMAMI_WEBSITE_ID=${{ secrets.UMAMI_WEBSITE_ID }}" >> .env.prod
             echo "NEXT_PUBLIC_UMAMI_SCRIPT_URL=https://umami.savonlinnanlentokerho.fi/script.js" >> .env.prod
 
             # Ensure the environment variables are written before proceeding
@@ -246,12 +246,12 @@ jobs:
       - name: Update monitoring secrets
         env:
           GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
-          POSTGRES_PASSWORD_PROD: ${{ secrets.POSTGRES_PASSWORD_PROD }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
         run: |
           echo "Updating monitoring secrets..."
           ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} << 'EOF'
             # Update .env.monitoring with prod secrets
-            sed -i "s|^PROD_POSTGRES_EXPORTER_DSN=.*|PROD_POSTGRES_EXPORTER_DSN=postgresql://postgres:${{ env.POSTGRES_PASSWORD_PROD }}@salko-postgres-prod:5432/salko?sslmode=disable|" .env.monitoring || true
+            sed -i "s|^PROD_POSTGRES_EXPORTER_DSN=.*|PROD_POSTGRES_EXPORTER_DSN=postgresql://postgres:${{ env.POSTGRES_PASSWORD }}@salko-postgres-prod:5432/salko?sslmode=disable|" .env.monitoring || true
             echo "✅ Monitoring secrets updated"
 
             # Restart monitoring stack to apply new secrets
