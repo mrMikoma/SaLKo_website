@@ -166,7 +166,7 @@ jobs:
 
       - name: Deploy APP to SERVER
         env:
-          BRANCH_SUFFIX: "main"
+          BRANCH_SUFFIX: "prod"
           NODE_ENV: "production"
           CONTAINER_PORT: "3000"
           HOST_PORT: "3000"
@@ -253,7 +253,7 @@ jobs:
           ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} << 'EOF'
             # Update .env.monitoring with prod secrets
             sed -i "s|^PROD_POSTGRES_EXPORTER_DSN=.*|PROD_POSTGRES_EXPORTER_DSN=postgresql://postgres:${{ env.POSTGRES_PASSWORD }}@salko-postgres-prod:5432/salko?sslmode=disable|" .env.monitoring || true
-            sed -i "s|^DATABASE_URL=.*|DATABASE_URL=postgresql://umami_app:${{ env.POSTGRES_PASSWORD }}@salko-postgres-main:5432/umami|" .env.monitoring || true
+            sed -i "s|^DATABASE_URL=.*|DATABASE_URL=postgresql://umami_app:${{ env.POSTGRES_PASSWORD }}@salko-postgres-prod:5432/umami|" .env.monitoring || true
             sed -i "s|^APP_SECRET=.*|APP_SECRET=${{ env.UMAMI_APP_SECRET }}|" .env.monitoring || true
             echo "✅ Monitoring secrets updated"
 

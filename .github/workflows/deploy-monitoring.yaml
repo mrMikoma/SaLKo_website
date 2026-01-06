@@ -133,7 +133,7 @@ jobs:
           ENVIRONMENT=${{ env.ENVIRONMENT }}
           GRAFANA_ADMIN_PASSWORD=${{ env.GRAFANA_ADMIN_PASSWORD }}
           PROD_POSTGRES_EXPORTER_DSN=postgresql://postgres:${{ env.POSTGRES_PASSWORD }}@salko-postgres-prod:5432/salko?sslmode=disable
-          DATABASE_URL=postgresql://umami_app:${{ env.POSTGRES_PASSWORD }}@salko-postgres-main:5432/umami
+          DATABASE_URL=postgresql://umami_app:${{ env.POSTGRES_PASSWORD }}@salko-postgres-prod:5432/umami
           APP_SECRET=${{ env.UMAMI_APP_SECRET }}
           ENVEOF
 

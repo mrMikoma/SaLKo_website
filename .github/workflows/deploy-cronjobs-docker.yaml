@@ -269,7 +269,7 @@ jobs:
           ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} "mkdir -p /home/salko/cronjobs"
 
           # Transfer environment-specific docker-compose file
-          if [ "${{ env.BRANCH_SUFFIX }}" = "main" ]; then
+          if [ "${{ env.BRANCH_SUFFIX }}" = "prod" ]; then
             scp -i ~/.ssh/id_ed25519 cronjobs/docker-compose.prod.yaml salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/cronjobs/docker-compose.prod.yaml
             COMPOSE_FILE="docker-compose.prod.yaml"
           else
