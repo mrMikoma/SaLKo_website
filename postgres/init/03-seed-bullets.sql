@@ -15,7 +15,7 @@ BEGIN
   VALUES
     (
       admin_user_id,
-      1767526494,
+      1767692585,
       'Uudet verkkosivut julkaistu',
       'Savonlinnan Lentokerhon uudet verkkosivut on julkaistu! Tervetuloa tutustumaan ja antamaan palautetta.'
     );

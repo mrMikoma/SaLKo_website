@@ -13,7 +13,7 @@ export default function Footer() {
     { Yhteystiedot: "/yhteystiedot" },
     { Varauskalenteri: "/kalusto/varauskalenteri" },
     { Hinnasto: "/kerho/hinnasto" },
-    { Tietosuojaseloste: "/" },
+    { Tietosuojaseloste: "/files/salko_tietosuojaseloste.pdf" },
     {
       "DTO -poikkeamailmoitus":
         "https://docs.google.com/forms/d/e/1FAIpQLScSw5Un81PuQq_cmwmKXVFPFK2IPWo5Bs6uBrrfLUSqyDdIgQ/viewform?pli=1",
@@ -64,6 +64,22 @@ export default function Footer() {
             <div className="flex flex-wrap w-full -mt-2 -ml-3 lg:ml-0 uppercase">
               {secondNavigation.map((item, index) => {
                 const [key, value] = Object.entries(item)[0];
+                const isPDF = value.endsWith(".pdf");
+
+                if (isPDF) {
+                  return (
+                    <a
+                      key={index}
+                      href={value}
+                      className="w-full px-4 py-2"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {key}
+                    </a>
+                  );
+                }
+
                 return (
                   <Link key={index} href={value} className="w-full px-4 py-2">
                     {key}
