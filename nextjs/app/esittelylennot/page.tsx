@@ -35,7 +35,7 @@ export default function Page() {
                 Koe lentämisen ilo ja tutustu ilmailun maailmaan!
               </h2>
               <p className="text-lg md:text-xl text-swhite/90 max-w-3xl mx-auto leading-relaxed mb-6">
-                Haaveileeko sinä lentämisestä? Esittelylento on loistava tapa
+                Haaveiletko sinä lentämisestä? Esittelylento on loistava tapa
                 tutustua ilmailun maailmaan ja kokea lentämisen ilo Savonlinnan
                 lentokentältä käsin.
               </p>

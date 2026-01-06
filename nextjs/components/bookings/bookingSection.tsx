@@ -122,12 +122,18 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
     }
 
     const targetDate = cellDate || dateString;
+    const startHour = parseInt(hour.split(":")[0]);
+    const endHour = startHour + 1;
+
+    // Format hours with leading zero if needed (e.g., 07:00 instead of 7:00)
+    const startTimeStr = `${targetDate}T${startHour.toString().padStart(2, '0')}:00`;
+    const endTimeStr = `${targetDate}T${endHour.toString().padStart(2, '0')}:00`;
 
     // Allow both logged in users and guests to create bookings
     openCreateModal({
       plane,
-      start_time: `${targetDate}T${parseInt(hour.split(":")[0])}:00`,
-      end_time: `${targetDate}T${parseInt(hour.split(":")[0]) + 1}:00`,
+      start_time: startTimeStr,
+      end_time: endTimeStr,
       user_id: userId || "", // Empty string for guests
     });
   };

@@ -49,6 +49,7 @@ const BookingModal = ({
     formState: { errors, isDirty },
     reset,
     getValues,
+    setValue,
   } = useForm<BookingFormValues | GuestBookingFormValues>({
     resolver: zodResolver(isGuestMode ? guestBookingSchema : bookingSchema),
     defaultValues: isGuestMode
@@ -83,6 +84,28 @@ const BookingModal = ({
             : "",
         },
   });
+
+  // Handler to update end_time when start_time changes
+  const handleStartTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newStartTime = e.target.value;
+    if (newStartTime) {
+      // Parse the new start time
+      const startDateTime = DateTime.fromISO(newStartTime);
+
+      // Calculate end time: if start time is on the hour, add 1 hour
+      // If start time has minutes, round up to next hour
+      let endDateTime: DateTime;
+      if (startDateTime.minute === 0) {
+        // Start time is on the hour (e.g., 08:00), end time is next hour (e.g., 09:00)
+        endDateTime = startDateTime.plus({ hours: 1 });
+      } else {
+        // Start time has minutes (e.g., 08:30), round up to next hour (e.g., 09:00)
+        endDateTime = startDateTime.plus({ hours: 1 }).startOf("hour");
+      }
+
+      setValue("end_time", endDateTime.toFormat("yyyy-MM-dd'T'HH:mm"), { shouldDirty: true });
+    }
+  };
 
   // We don't need to sync form values to parent on every keystroke
   // The parent only needs the final values when saving
@@ -285,7 +308,9 @@ const BookingModal = ({
               id="start_time"
               type="datetime-local"
               step="3600"
-              {...register("start_time")}
+              {...register("start_time", {
+                onChange: handleStartTimeChange,
+              })}
               disabled={isReadOnly}
               className={`w-full border rounded p-2 ${
                 errors.start_time
