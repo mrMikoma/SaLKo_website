@@ -248,12 +248,14 @@ jobs:
         env:
           GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          UMAMI_APP_SECRET: ${{ secrets.UMAMI_APP_SECRET }}
         run: |
           echo "Updating monitoring secrets..."
           ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} << 'EOF'
             # Update .env.monitoring with prod secrets
             sed -i "s|^PROD_POSTGRES_EXPORTER_DSN=.*|PROD_POSTGRES_EXPORTER_DSN=postgresql://postgres:${{ env.POSTGRES_PASSWORD }}@salko-postgres-prod:5432/salko?sslmode=disable|" .env.monitoring || true
-            sed -i "s|^UMAMI_DB_PASSWORD=.*|UMAMI_DB_PASSWORD=${{ env.POSTGRES_PASSWORD }}|" .env.monitoring || true
+            sed -i "s|^DATABASE_URL=.*|DATABASE_URL=postgresql://umami_app:${{ env.POSTGRES_PASSWORD }}@salko-postgres-main:5432/umami|" .env.monitoring || true
+            sed -i "s|^APP_SECRET=.*|APP_SECRET=${{ env.UMAMI_APP_SECRET }}|" .env.monitoring || true
             echo "✅ Monitoring secrets updated"
 
             # Restart monitoring stack to apply new secrets

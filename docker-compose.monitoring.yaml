@@ -144,6 +144,7 @@ services:
   postgres-exporter-dev:
     image: prometheuscommunity/postgres-exporter:v0.18.1
     container_name: ${NAME_PREFIX}-postgres-exporter-dev
+    env_file: .env.monitoring
     environment:
       - DATA_SOURCE_NAME=${DEV_POSTGRES_EXPORTER_DSN}
     networks:
@@ -156,6 +157,7 @@ services:
   postgres-exporter-prod:
     image: prometheuscommunity/postgres-exporter:v0.18.1
     container_name: ${NAME_PREFIX}-postgres-exporter-prod
+    env_file: .env.monitoring
     environment:
       - DATA_SOURCE_NAME=${PROD_POSTGRES_EXPORTER_DSN}
     networks:
@@ -195,10 +197,9 @@ services:
   umami:
     image: ghcr.io/umami-software/umami:postgresql-latest
     container_name: ${NAME_PREFIX}-umami
+    env_file: .env.monitoring
     environment:
-      - DATABASE_URL=postgresql://${UMAMI_DB_USER}:${UMAMI_DB_PASSWORD}@salko-postgres-main:5432/umami
       - DATABASE_TYPE=postgresql
-      - APP_SECRET=${UMAMI_APP_SECRET}
       - DISABLE_TELEMETRY=1
     networks:
       - monitoring

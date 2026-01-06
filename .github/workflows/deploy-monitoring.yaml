@@ -123,6 +123,7 @@ jobs:
         env:
           GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          UMAMI_APP_SECRET: ${{ secrets.UMAMI_APP_SECRET }}
         run: |
           echo "Deploying monitoring stack..."
           ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} << 'EOF'
@@ -132,8 +133,8 @@ jobs:
           ENVIRONMENT=${{ env.ENVIRONMENT }}
           GRAFANA_ADMIN_PASSWORD=${{ env.GRAFANA_ADMIN_PASSWORD }}
           PROD_POSTGRES_EXPORTER_DSN=postgresql://postgres:${{ env.POSTGRES_PASSWORD }}@salko-postgres-prod:5432/salko?sslmode=disable
-          UNAMI_DB_USER=umami_app
-          UMAMI_DB_PASSWORD=${{ env.POSTGRES_PASSWORD }}
+          DATABASE_URL=postgresql://umami_app:${{ env.POSTGRES_PASSWORD }}@salko-postgres-main:5432/umami
+          APP_SECRET=${{ env.UMAMI_APP_SECRET }}
           ENVEOF
 
             echo ".env.monitoring file created."
