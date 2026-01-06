@@ -295,11 +295,12 @@ jobs:
             # Secure the .env file permissions (readable only by owner)
             chmod 600 .env.${{ env.BRANCH_SUFFIX }}
             echo ".env.${{ env.BRANCH_SUFFIX }} file created with environment variables."
+            
             # Pull latest images
-            docker compose --env-file .env.${{ env.BRANCH_SUFFIX }} -f docker-compose.${{ env.BRANCH_SUFFIX }}.yaml pull
+            docker compose -p salko-mon-${{ env.BRANCH_SUFFIX }} --env-file .env.${{ env.BRANCH_SUFFIX }} -f docker-compose.${{ env.BRANCH_SUFFIX }}.yaml pull
 
             # Start/restart containers with Ofelia
-            docker compose --env-file .env.${{ env.BRANCH_SUFFIX }} -f docker-compose.${{ env.BRANCH_SUFFIX }}.yaml up -d
+            docker compose -p salko-mon-${{ env.BRANCH_SUFFIX }} --env-file .env.${{ env.BRANCH_SUFFIX }} -f docker-compose.${{ env.BRANCH_SUFFIX }}.yaml up -d
 
             echo "Ofelia cronjob scheduler deployed successfully"
             echo "Jobs are scheduled via Docker labels in docker-compose.${{ env.BRANCH_SUFFIX }}.yaml"

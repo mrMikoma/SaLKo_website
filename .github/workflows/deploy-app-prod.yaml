@@ -205,8 +205,6 @@ jobs:
             echo "NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET }}" >> .env.prod
             echo "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}" >> .env.prod
             echo "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" >> .env.prod
-            echo "NEXT_PUBLIC_UMAMI_WEBSITE_ID=${{ secrets.UMAMI_WEBSITE_ID }}" >> .env.prod
-            echo "NEXT_PUBLIC_UMAMI_SCRIPT_URL=https://umami.savonlinnanlentokerho.fi/script.js" >> .env.prod
             echo "UMAMI_DB_USER=${{ env.UMAMI_DB_USER }}" >> .env.prod
             echo "UMAMI_DB_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env.prod
             echo "NEXT_PUBLIC_UMAMI_WEBSITE_ID=${{ secrets.NEXT_PUBLIC_UMAMI_WEBSITE_ID }}" >> .env.prod
