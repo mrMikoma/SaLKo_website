@@ -166,7 +166,7 @@ jobs:
 
       - name: Deploy APP to SERVER
         env:
-          BRANCH_SUFFIX: ${{ github.event.inputs.branch_name || github.event.client_payload.branch_name || 'prod' }}
+          BRANCH_SUFFIX: "main"
           NODE_ENV: "production"
           CONTAINER_PORT: "3000"
           HOST_PORT: "3000"

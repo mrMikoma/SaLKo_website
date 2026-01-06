@@ -43,7 +43,6 @@ const RootLayout = async ({ children }: React.PropsWithChildren) => {
 
   return (
     <html lang="fi" className={`${finlandica.variable}`}>
-      {/*}
       <head>
         {isProduction && (
           <script
@@ -53,7 +52,6 @@ const RootLayout = async ({ children }: React.PropsWithChildren) => {
           />
         )}
       </head>
-       */}
       <body>
         <SessionProvider session={session}>
           <QueryProvider>
