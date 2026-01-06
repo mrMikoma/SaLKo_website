@@ -14,7 +14,7 @@ export async function getUserData(): Promise<UserData | null> {
     }
 
     const userData = await connectionPool.query(
-      "SELECT name, email, role, full_name, phone, address, postal_code, city FROM users WHERE id = $1",
+      "SELECT name, email, role, full_name, phone, address, postal_code, city, auth_provider FROM users WHERE id = $1",
       [session.user.id]
     );
 
@@ -31,6 +31,7 @@ export async function getUserData(): Promise<UserData | null> {
       address: user.address,
       postalCode: user.postal_code,
       city: user.city,
+      auth_provider: user.auth_provider,
     };
   } catch (error) {
     console.error("Error fetching user info:", error);

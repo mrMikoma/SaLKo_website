@@ -4,6 +4,8 @@ import { auth } from "@/auth";
 import pool from "@/utilities/db";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import * as bcrypt from "bcrypt";
+import { ChangePasswordSchema } from "./definitions";
 
 // Validation schema for profile updates
 const UpdateProfileSchema = z.object({
@@ -116,5 +118,129 @@ export async function isProfileComplete(): Promise<boolean> {
   } catch (error) {
     console.error("Error checking profile completion:", error);
     return false;
+  }
+}
+
+export interface ChangePasswordState {
+  errors?: {
+    currentPassword?: string[];
+    newPassword?: string[];
+    confirmPassword?: string[];
+    general?: string[];
+  };
+  status?: "success" | "error";
+  message?: string;
+}
+
+/**
+ * Server action to change user password
+ * Only works for users with credentials auth provider
+ */
+export async function changePassword(
+  _prevState: ChangePasswordState | undefined,
+  formData: FormData
+): Promise<ChangePasswordState> {
+  try {
+    const session = await auth();
+
+    if (!session?.user?.id) {
+      return {
+        errors: {
+          general: ["Ei oikeuksia. Kirjaudu sisään."],
+        },
+        status: "error",
+      };
+    }
+
+    // Validate form data
+    const validatedFields = ChangePasswordSchema.safeParse({
+      currentPassword: formData.get("currentPassword"),
+      newPassword: formData.get("newPassword"),
+      confirmPassword: formData.get("confirmPassword"),
+    });
+
+    if (!validatedFields.success) {
+      return {
+        errors: validatedFields.error.flatten().fieldErrors,
+        status: "error",
+      };
+    }
+
+    const { currentPassword, newPassword } = validatedFields.data;
+
+    // Get user from database
+    const result = await pool.query(
+      "SELECT password, auth_provider FROM users WHERE id = $1",
+      [session.user.id]
+    );
+
+    if (result.rows.length === 0) {
+      return {
+        errors: {
+          general: ["Käyttäjää ei löytynyt."],
+        },
+        status: "error",
+      };
+    }
+
+    const user = result.rows[0];
+
+    // Check if user has credentials auth provider
+    if (user.auth_provider !== "credentials") {
+      return {
+        errors: {
+          general: [
+            "Salasanan vaihto ei ole mahdollista Google Workspace -tunnuksille.",
+          ],
+        },
+        status: "error",
+      };
+    }
+
+    // Verify current password
+    if (!user.password) {
+      return {
+        errors: {
+          general: ["Käyttäjällä ei ole salasanaa asetettuna."],
+        },
+        status: "error",
+      };
+    }
+
+    const isValidPassword = await bcrypt.compare(
+      currentPassword,
+      user.password
+    );
+
+    if (!isValidPassword) {
+      return {
+        errors: {
+          currentPassword: ["Nykyinen salasana on virheellinen."],
+        },
+        status: "error",
+      };
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password in database
+    await pool.query("UPDATE users SET password = $1 WHERE id = $2", [
+      hashedPassword,
+      session.user.id,
+    ]);
+
+    return {
+      status: "success",
+      message: "Salasana vaihdettu onnistuneesti",
+    };
+  } catch (error) {
+    console.error("Error changing password:", error);
+    return {
+      errors: {
+        general: ["Salasanan vaihto epäonnistui. Yritä uudelleen."],
+      },
+      status: "error",
+    };
   }
 }
