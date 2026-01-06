@@ -9,7 +9,7 @@ export const UmamiProvider = () => {
     <>
       <Script
         async
-        src="https://cloud.umami.is/script.js"
+        src="https://umami.savonlinnanlentokerho.fi/script.js"
         data-website-id={websiteId}
       />
     </>

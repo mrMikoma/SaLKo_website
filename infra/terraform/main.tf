@@ -45,9 +45,9 @@ resource "cloudflare_dns_record" "root" {
 resource "cloudflare_dns_record" "www" {
   zone_id = var.cloudflare_zone_id
   comment = "WWW subdomain"
-  content = var.cloudflare_zone_name
+  content = module.salko.server_public_ips["salko0"]
   name    = "www"
-  type    = "CNAME"
+  type    = "A"
   ttl     = 1
   proxied = true
 }
