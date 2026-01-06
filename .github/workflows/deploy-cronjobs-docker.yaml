@@ -232,7 +232,7 @@ jobs:
 
           # Set branch suffix and environment based on branch
           if [ "$BRANCH_NAME" = "main" ]; then
-            BRANCH_SUFFIX="main"
+            BRANCH_SUFFIX="prod"
             ENVIRONMENT="production"
           else
             BRANCH_SUFFIX="dev"
