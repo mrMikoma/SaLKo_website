@@ -9,7 +9,7 @@ export const UmamiProvider = () => {
     <>
       <Script
         async
-        src="/api/umami/script.js"
+        src="/api/umami/script"
         data-website-id={websiteId}
         data-host-url="/api/umami"
       />
