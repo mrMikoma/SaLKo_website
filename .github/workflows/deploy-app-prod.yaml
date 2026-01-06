@@ -218,6 +218,11 @@ jobs:
             chmod 600 .env.prod
             echo "Secured .env.prod file permissions to 600."
 
+            # Ensure required networks exist
+            echo "Ensuring required Docker networks exist..."
+            docker network create salko_prod_internal 2>/dev/null || echo "Network salko_prod_internal already exists"
+            docker network create global_outgoing 2>/dev/null || echo "Network global_outgoing already exists"
+
             # Stop the current containers (keep data for production)
             echo "Stopping containers..."
             docker compose -p salko-prod --env-file .env.prod -f docker-compose.prod.yaml down
