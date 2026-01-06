@@ -156,7 +156,7 @@ export default function Page() {
           {/* Kenttä Card */}
           <FeatureCard
             title="Savonlinnan Lentoasema"
-            description="Toimintamme sijaitsee Savonlinnan lentoasemalla (EFSA), noin 15 km Savonlinnan keskustasta Enonkoskelle päin. Kenttä on avoinna ympäri vuoden."
+            description="Toimintamme keskitttyy Savonlinnan lentoasemalle (EFSA), noin 15 km Savonlinnan keskustasta Enonkoskelle päin."
             icon={<MapPinIcon size={48} />}
             href="/kerho/kentta"
             imageSrc="/images/EFSA/efsa_1.jpg"
@@ -181,7 +181,7 @@ export default function Page() {
           {/* Quick Info Card */}
           <div className="glass rounded-2xl p-8 border border-sred/20 shadow-xl">
             <h3 className="text-2xl font-bold text-swhite mb-6 pb-3 border-b-2 border-sred">
-              Lentokenttä
+              Kotikenttä
             </h3>
             <div className="space-y-4">
               <div className="flex items-start gap-3">
@@ -207,7 +207,7 @@ export default function Page() {
                 <div>
                   <div className="font-semibold text-swhite">Sijainti</div>
                   <div className="text-swhite/80">
-                    Savonlinnan Lentoasema (EFSA)
+                    Savonlinnan Lentoasema (SVL / EFSA)
                     <br />
                     Lentoasemantie 50, 57310 Savonlinna
                   </div>
@@ -232,7 +232,7 @@ export default function Page() {
                   <div className="text-swhite/80">
                     12/30, 2300m asfaltti
                     <br />
-                    Toimii ympäri vuoden (Varmista NATOM)
+                    Toimii ympäri vuoden (Varmista NOTAM)
                   </div>
                 </div>
               </div>
@@ -258,6 +258,27 @@ export default function Page() {
                     Enonkosken suuntaan
                   </div>
                 </div>
+              </div>
+              <div className="mt-6 pt-4 border-t border-swhite/10">
+                <Link
+                  href="/kerho/kentta"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-sbluel/20 hover:bg-sbluel/30 border-2 border-sbluel text-swhite font-semibold rounded-lg transition-all duration-300 hover:shadow-lg hover:shadow-sbluel/20 hover:-translate-y-0.5 group"
+                >
+                  Tutustu kenttään tarkemmin
+                  <svg
+                    className="w-5 h-5 transition-transform group-hover:translate-x-1"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 7l5 5m0 0l-5 5m5-5H6"
+                    />
+                  </svg>
+                </Link>
               </div>
             </div>
           </div>

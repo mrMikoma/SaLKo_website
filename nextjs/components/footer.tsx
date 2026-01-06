@@ -8,6 +8,7 @@ export default function Footer() {
     { Koulutus: "/koulutus" },
     { Jäsenyys: "/kerho/jasenyys" },
     { Kalusto: "/kalusto" },
+    { Kotikenttä: "/kerho/kentta" },
   ];
   const secondNavigation = [
     { Yhteystiedot: "/yhteystiedot" },

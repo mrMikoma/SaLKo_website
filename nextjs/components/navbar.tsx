@@ -149,9 +149,12 @@ const Navbar = ({ session }: { session: Session | null }) => {
                         </span>
                       </MenuItem>
                       <MenuItem>
-                        <span className="block py-3 px-4 text-swhite/40 cursor-not-allowed">
+                        <Link
+                          href="/kerho/kentta"
+                          className="block py-3 px-4 text-swhite hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
+                        >
                           Kotikenttä
-                        </span>
+                        </Link>
                       </MenuItem>
                       <MenuItem>
                         <span className="block py-3 px-4 text-swhite/40 cursor-not-allowed">
