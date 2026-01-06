@@ -6,27 +6,31 @@ Complete observability solution for the SaLKo website infrastructure using open-
 
 The monitoring stack provides comprehensive observability with:
 
-- **Grafana** - Visualization and dashboards (Port 3001)
+- **Grafana** - Visualization and dashboards (Port 4000)
 - **Prometheus** - Metrics collection and storage (Port 9090)
 - **Loki** - Log aggregation (Port 3100)
 - **Promtail** - Log shipper for Docker containers
 - **Node Exporter** - Host system metrics (Port 9100)
 - **cAdvisor** - Container metrics (Port 8080)
 - **Postgres Exporter** - Database metrics for dev (Port 9187) and prod (Port 9188)
+- **pgAdmin4** - PostgreSQL database management UI (Port 5000)
 
 ## What's Monitored
 
 ### System Metrics
+
 - CPU usage, memory, disk space, network I/O
 - System load averages
 - Filesystem usage
 
 ### Container Metrics
+
 - CPU and memory per container
 - Network traffic per container
 - Container health status
 
 ### Database Metrics
+
 - Active connections
 - Transaction rates (commits/rollbacks)
 - Query performance
@@ -35,6 +39,7 @@ The monitoring stack provides comprehensive observability with:
 - Tuple operations (inserts/updates/deletes)
 
 ### Application Logs
+
 - All Docker container logs collected automatically
 - Searchable and filterable in Grafana
 - Correlated with metrics
@@ -46,12 +51,15 @@ The monitoring stack provides comprehensive observability with:
 1. Add the following secrets to your GitHub repository's **development** environment:
    - `GRAFANA_ADMIN_PASSWORD` - Password for Grafana admin user
    - `POSTGRES_PASSWORD` - PostgreSQL password (used for both dev and prod database monitoring)
+   - `PGADMIN_DEFAULT_EMAIL` - Email for pgAdmin4 login (e.g., admin@example.com)
+   - `PGADMIN_DEFAULT_PASSWORD` - Password for pgAdmin4 login
 
 ### Deployment
 
 The monitoring stack is deployed automatically via GitHub Actions when changes are pushed to the `main` branch affecting monitoring files.
 
 Manual deployment:
+
 ```bash
 # Go to GitHub Actions
 # Run "Deploy Monitoring Stack" workflow
@@ -60,28 +68,33 @@ Manual deployment:
 
 ### Initial Access
 
-1. From your local machine in the 10.0.0.0/16 network:
+1. From your local machine in the 10.1.0.0/16 network:
+
    - Grafana: http://10.1.0.x:4000
    - Prometheus: http://10.1.0.x:9090
    - Loki: http://10.1.0.x:3100
+   - pgAdmin4: http://10.1.0.x:5000
 
-2. Login to Grafana:
-   - Username: `admin`
+2. Login to Grafana and pgAdmin4:
+   - Email: `admin@savonlinnanlentokerho.fi`
    - Password: (from GitHub secret `GRAFANA_ADMIN_PASSWORD`)
 
 ## Pre-configured Dashboards
 
 ### 1. System Overview
+
 - Real-time system metrics
 - CPU, Memory, Disk, Network graphs
 - System load indicators
 
 ### 2. Container Metrics
+
 - Per-container resource usage
 - Network I/O by container
 - Container statistics table
 
 ### 3. PostgreSQL Metrics
+
 - Database connections
 - Transaction rates
 - Query performance
@@ -89,6 +102,7 @@ Manual deployment:
 - Database size tracking
 
 ### 4. Application Logs
+
 - Live log streaming
 - Filter by service
 - Search across all containers
@@ -118,12 +132,15 @@ Both use `salko_admin` username. You'll need to enter the password on first conn
 ### Common Tasks
 
 **Running Queries:**
+
 - Navigate to a server → expand database → Right-click → "Query Tool"
 
 **Viewing Data:**
+
 - Navigate to Tables → Right-click a table → "View/Edit Data" → "All Rows"
 
 **Database Backup:**
+
 - Right-click database → "Backup..." → Choose format and location
 
 ## Configuration
@@ -147,7 +164,7 @@ To enable log collection for a new Docker service, add these labels:
 ```yaml
 labels:
   - logging=promtail
-  - environment=prod  # or dev
+  - environment=prod # or dev
 ```
 
 ### Data Retention
@@ -189,12 +206,14 @@ docker compose --env-file .env.monitoring -f docker-compose.monitoring.yaml ps
 If Grafana/Loki/Prometheus fail with "attempt to write a readonly database" errors:
 
 1. **Run Ansible provisioning** to set correct directory permissions:
+
    ```bash
    cd infra/ansible
    ansible-playbook -i inventory.ini playbook.yml
    ```
 
 2. **Or manually fix permissions on the server**:
+
    ```bash
    sudo chown -R 472:0 /home/salko/monitoring/grafana-data
    sudo chmod -R 775 /home/salko/monitoring/grafana-data
@@ -227,19 +246,23 @@ docker compose --env-file .env.monitoring -f docker-compose.monitoring.yaml rest
 ### Common Issues
 
 **Grafana won't start:**
+
 - Check data directory permissions: `chmod -R 755 /home/salko/monitoring/grafana-data`
 - Check password is set in `.env.monitoring`
 
 **No metrics showing:**
+
 - Verify Prometheus targets: http://10.1.0.x:9090/targets
 - Ensure containers have `logging=promtail` label
 
 **Logs not appearing:**
+
 - Check Promtail is running: `docker logs salko-promtail`
 - Verify containers have the `logging=promtail` label
 - Check Loki datasource in Grafana
 
 **Database metrics missing:**
+
 - Verify postgres exporter can connect to databases
 - Check connection strings in `.env.monitoring`
 - Ensure databases are running
@@ -307,10 +330,11 @@ The monitoring stack is designed to be lightweight:
 - Prometheus: ~200MB RAM, minimal CPU
 - Loki: ~100MB RAM, minimal CPU
 - Grafana: ~100MB RAM, minimal CPU
+- pgAdmin4: ~200-400MB RAM, <5% CPU (mostly idle)
 - Exporters: <50MB RAM each, minimal CPU
 - Promtail: ~50MB RAM, minimal CPU
 
-Total overhead: ~600MB RAM, <5% CPU under normal load
+Total overhead: ~800MB-1GB RAM, <10% CPU under normal load
 
 ## Security
 
@@ -322,6 +346,7 @@ Total overhead: ~600MB RAM, <5% CPU under normal load
 ## Support
 
 For issues or questions:
+
 - Check logs: `docker logs <container-name>`
 - Review workflow runs in GitHub Actions
 - Verify network connectivity from 10.0.0.0/16

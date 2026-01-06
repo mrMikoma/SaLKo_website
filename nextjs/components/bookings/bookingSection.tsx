@@ -1,363 +1,373 @@
 "use client";
 
-import { useState, useMemo, useEffect, use } from "react";
-import { DateTime } from "luxon";
-import BookingCell from "@/components/bookings/bookingCell";
+import { useMemo, lazy, Suspense } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import DatePicker from "@/components/bookings/datePicker";
-import BookingUpdateModal from "@/components/bookings/bookingModal";
-import {
-  fetchDayBookings,
-  addBooking,
-  removeBooking,
-} from "@/utilities/bookings";
+import ViewSelector, { ViewMode } from "@/components/bookings/viewSelector";
 import { BookingType } from "@/utilities/bookings";
-import { useSearchParams, usePathname, useRouter } from "next/navigation";
-import { date } from "zod";
+import { useBookings } from "@/hooks/useBookings";
+import { useDateFromUrl } from "@/hooks/useDateFromUrl";
+import { useBookingModal } from "@/hooks/useBookingModal";
+import { useIsMobile } from "@/hooks/useMediaQuery";
+import { useViewMode } from "@/hooks/useViewMode";
+import { BookingsSkeleton } from "./BookingsSkeleton";
+import { BookingsError } from "./BookingsError";
+import { BookingsMobileView } from "./BookingsMobileView";
+import { BookingsDesktopView } from "./BookingsDesktopView";
+import { BookingsWeekView } from "./BookingsWeekView";
+import { BookingsMonthView } from "./BookingsMonthView";
+import { FLIGHT_TYPE_CONFIGS, FlightTypeConfig } from "@/types/bookings";
+import { DateTime } from "luxon";
+
+// Lazy load modal for better code splitting
+const BookingUpdateModal = lazy(() => import("@/components/bookings/bookingModal"));
 
 /*
  * Types and Constants
  */
 
-const DEFAULT_BOOKING: BookingType = {
-  id: -1,
-  user_id: "",
-  title: "",
-  start_time: "",
-  end_time: "",
-  full_name: "",
-  type: "local",
-  plane: "OH-CON",
-  description: "",
-};
-
-export interface FlightTypes {
-  type: string;
-  label: string;
-  color: string;
-  priority: number;
-}
-
-export const FLIGHT_TYPES: FlightTypes[] = [
-  { type: "local", label: "Paikallislento", color: "#90EE90", priority: 3 }, // Light Green
-  { type: "trip", label: "Matkalento", color: "#87CEEB", priority: 3 }, // Sky Blue
-  { type: "training", label: "Koululento", color: "#ADD8E6", priority: 2 }, // Light Blue
-  { type: "maintenance", label: "Huolto", color: "#FFB6C1", priority: 1 }, // Light Red
-  { type: "fire", label: "Palolento", color: "#FFA500", priority: 1 }, // Orange
-  { type: "other", label: "Muu lento", color: "#D3D3D3", priority: 2 }, // Light Grey
-];
-
-const PLANES = ["OH-CON", "OH-386", "OH-816", "OH-829", "OH-475", "OH-PDX"];
+// Re-export for backward compatibility with existing components
+export type FlightTypes = FlightTypeConfig;
+export const FLIGHT_TYPES = FLIGHT_TYPE_CONFIGS as unknown as FlightTypes[];
 
 interface BookingSectionProps {
-  isLoggedIn: boolean;
+  userContext: {
+    isLoggedIn: boolean;
+    userId: string | null;
+    userName: string | null;
+    userRole: string;
+    userEmail: string | null;
+  };
 }
 
 /*
  * BookingSection Component
- * Displays a booking calendar with date selection, booking cells, and a modal for creating/updating bookings.
  */
 
-// TO-DO:
-// 1. Implement backend logic for adding and updating bookings.
-// 2. Fix issue with booking cells not rendering correctly when lower priority bookings continue after a higher priority booking ends.
-// 3. Ensure that the booking modal correctly handles the creation and updating of bookings.
+const BookingSection = ({ userContext }: BookingSectionProps) => {
+  const { isLoggedIn, userId, userRole } = userContext;
 
-const BookingSection = ({ isLoggedIn }: BookingSectionProps) => {
-  const pathname = usePathname();
-  const now = DateTime.now();
-  const { replace } = useRouter();
-  const [hourInterval] = useState(1);
-  const [modalMode, setModalMode] = useState<
-    "create" | "update" | "view" | null
-  >(null);
-  const [bookingData, setbookingData] = useState<BookingType[]>([]);
-  const [selectedbooking, setSelectedbooking] =
-    useState<BookingType>(DEFAULT_BOOKING);
+  // Custom hooks for state management
+  const queryClient = useQueryClient();
+  const { date, dateString, setDate } = useDateFromUrl();
+  const { viewMode, setViewMode } = useViewMode();
 
-  const fetchBookings = async (newDate: string) => {
-    try {
-      const promises = PLANES.map((plane) => fetchDayBookings(plane, newDate));
-      const results = await Promise.all(promises);
-
-      console.log("FETCHED BOOKINGS:", results);
-
-      const fetchedBookings: BookingType[] = results
-        .filter(
-          (result) =>
-            result.status === "success" &&
-            Array.isArray(result.result) &&
-            result.result.length > 0
-        )
-        .flatMap((result) => result.result as BookingType[]);
-
-      setbookingData(fetchedBookings);
-    } catch (error) {
-      console.error("Error fetching bookings:", error);
+  // Calculate date range based on view mode
+  const dateRange = useMemo(() => {
+    if (viewMode === "week") {
+      const weekStart = date.startOf("week");
+      return Array.from({ length: 7 }, (_, i) =>
+        weekStart.plus({ days: i }).toISODate()
+      ).filter((d): d is string => d !== null);
+    } else if (viewMode === "month") {
+      const monthStart = date.startOf("month");
+      const monthEnd = date.endOf("month");
+      const calendarStart = monthStart.startOf("week");
+      const calendarEnd = monthEnd.endOf("week");
+      const days: string[] = [];
+      let currentDay = calendarStart;
+      while (currentDay <= calendarEnd) {
+        const isoDate = currentDay.toISODate();
+        if (isoDate) days.push(isoDate);
+        currentDay = currentDay.plus({ days: 1 });
+      }
+      return days;
     }
-  };
+    return [dateString];
+  }, [date, dateString, viewMode]);
 
-  const handleDateChange = (date: DateTime) => {
-    if (!date.isValid) {
-      console.error("Invalid date provided:", date);
-      return;
-    } else {
-      const newDate = date.toISODate();
-      replace(`${pathname}?paiva=${newDate}`);
-      fetchBookings(newDate);
-    }
-  };
+  const {
+    bookings,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    addBooking,
+    removeBooking,
+    updateBooking,
+    isAddingBooking,
+    isRemovingBooking,
+    isUpdatingBooking,
+  } = useBookings({ dates: dateRange, userId, userRole });
 
-  const dateParam = useSearchParams().get("paiva");
-  useEffect(() => {
-    handleDateChange(dateParam ? DateTime.fromISO(dateParam) : now);
-  }, [dateParam]);
+  const {
+    modalMode,
+    selectedBooking,
+    isOpen,
+    openCreateModal,
+    openUpdateModal,
+    openViewModal,
+    closeModal,
+    setSelectedBooking,
+  } = useBookingModal();
 
-  //  Get the date from the URL parameters
-  //  if (useSearchParams().has("paiva") === false) {
-  //    handleDateChange(now);
-  //  } else {
-  //    // If a date is provided, parse it and set it as the selected date
-  //    const dateParam = useSearchParams().get("paiva");
-  //    const parsedDate = DateTime.fromISO(dateParam);
-  //    if (parsedDate.isValid) {
-  //      //fetchBookings(dateParam);
-  //    } else {
-  //      console.error("Invalid date format in URL parameter:", dateParam);
-  //      handleDateChange(now);
-  //    }
-  //  }
+  const isMobile = useIsMobile();
 
-  console.log("BOOKING DATA:", bookingData);
-
-  const hours = useMemo(
-    () =>
-      Array.from(
-        { length: (23 - 6 + 1) / hourInterval },
-        (_, i) => `${6 + i * hourInterval}:00`
-      ),
-    [hourInterval]
+  // Helper functions
+  const getFlightTypeColor = useMemo(
+    () => (type: string): string => {
+      const flightType = FLIGHT_TYPES.find((flight) => flight.type === type);
+      return flightType ? flightType.color : "#4A90E2";
+    },
+    []
   );
 
-  const handleCellClick = (plane: string, hour: string) => {
-    setSelectedbooking({
-      ...DEFAULT_BOOKING,
-      id: bookingData.length + 1,
-      plane,
-      start_time:
-        (useSearchParams().get("paiva").toString() ?? "") +
-        "T" +
-        parseInt(hour.split(":")[0]) +
-        ":00",
-      end_time:
-        (useSearchParams().get("paiva").toString() ?? "") +
-        "T" +
-        (parseInt(hour.split(":")[0]) + hourInterval) +
-        ":00",
-    });
-    if (isLoggedIn) {
-      setModalMode("create");
-    } else {
-      setModalMode("create"); // debug: view
-    }
-  };
-
-  const handlebookingClick = (booking: BookingType) => {
-    setSelectedbooking(booking);
-    if (isLoggedIn) {
-      setModalMode("update");
-    } else {
-      setModalMode("update"); // debug: view
-    }
-  };
-
-  const handleSavebooking = () => {
-    if (!isbookingValid(selectedbooking)) return;
-
-    // handle backend save logic here
-
-    setbookingData([...bookingData, selectedbooking]);
-    resetModal();
-  };
-
-  const handleUpdatebooking = () => {
-    if (!isbookingValid(selectedbooking)) return;
-
-    // handle backend update logic here
-
-    setbookingData((prevbookingData) =>
-      prevbookingData.map((booking) =>
-        booking.id === selectedbooking.id ? selectedbooking : booking
-      )
-    );
-    resetModal();
-  };
-
-  const handleDeletebooking = async () => {
-    if (!isbookingValid(selectedbooking)) return;
-    if (selectedbooking.id < 0) return;
-
-    const response = await removeBooking(selectedbooking.id);
-
-    if (response.status !== "success") {
-      console.error("Failed to delete booking:", response.result); // debug
+  // Event handlers
+  const handleCellClick = (plane: string, hour: string, cellDate?: string) => {
+    // For logged-in users, userId must be present
+    if (isLoggedIn && !userId) {
+      console.error("Cannot create booking: logged-in user has no userId");
+      alert("Istunto on vanhentunut. Ole hyvä ja kirjaudu uudelleen.");
       return;
-    } else {
-      console.log("Booking deleted successfully:", response.result); // debug
-      // Remove the booking from the local state
-      setbookingData((prevbookingData) =>
-        prevbookingData.filter((booking) => booking.id !== selectedbooking.id)
-      );
-      resetModal();
+    }
+
+    const targetDate = cellDate || dateString;
+    const startHour = parseInt(hour.split(":")[0]);
+    const endHour = startHour + 1;
+
+    // Format hours with leading zero if needed (e.g., 07:00 instead of 7:00)
+    const startTimeStr = `${targetDate}T${startHour.toString().padStart(2, '0')}:00`;
+    const endTimeStr = `${targetDate}T${endHour.toString().padStart(2, '0')}:00`;
+
+    // Allow both logged in users and guests to create bookings
+    openCreateModal({
+      plane,
+      start_time: startTimeStr,
+      end_time: endTimeStr,
+      user_id: userId || "", // Empty string for guests
+    });
+  };
+
+  const handleDayClick = (targetDate: string) => {
+    const newDate = DateTime.fromISO(targetDate);
+    if (newDate.isValid) {
+      setDate(newDate);
+      setViewMode("day");
     }
   };
 
-  const resetModal = () => {
-    setModalMode(null);
-    setSelectedbooking(DEFAULT_BOOKING);
-  };
+  const handleMobileCreateBooking = (plane: string) => {
+    // For logged-in users, userId must be present
+    if (isLoggedIn && !userId) {
+      console.error("Cannot create booking: logged-in user has no userId");
+      alert("Istunto on vanhentunut. Ole hyvä ja kirjaudu uudelleen.");
+      return;
+    }
 
-  const isbookingValid = (booking: BookingType) => {
-    return (
-      booking.end_time &&
-      booking.id >= 0 &&
-      booking.start_time &&
-      booking.title &&
-      booking.type &&
-      booking.plane
-    );
-  };
-
-  // This function determines the "primary booking" for a specific time slot (hourValue) from a list of bookings (bookingsForCell).
-  // 1. It filters bookings for the specified plane and hour.
-  // 2. It checks if the booking's start and end times overlap with the specified hour.
-  // 3. If there are no bookings, it returns null.
-  // 4. If there are overlapping bookings, it sorts them by priority and returns the one with the highest priority.
-  // 5. If there's only one booking, it returns that booking.
-  // 6. If there are multiple bookings, it sorts them by priority and returns the one with the highest priority.
-  // 7. If there are no overlapping bookings, it returns the first booking that matches the hour criteria.
-  // 8. If there are multiple overlapping bookings, it sorts them by priority and returns the one with the highest priority.
-  const getVisibleBookingForHour = (
-    plane: string,
-    hourValue: number,
-    allBookings: BookingType[]
-  ): BookingType | null => {
-    const bookings = allBookings
-      .filter((booking) => booking.plane === plane)
-      .filter(
-        (booking) =>
-          DateTime.fromISO(booking.start_time).hour <= hourValue &&
-          DateTime.fromISO(booking.end_time).hour > hourValue &&
-          DateTime.fromISO(booking.start_time).hasSame(dateParam, "day")
-      );
-
-    if (bookings.length === 0) return null;
-
-    // Check for overlapping bookings at this hour
-    const overlapping = bookings.filter(
-      (b) =>
-        DateTime.fromISO(b.start_time).hour < hourValue &&
-        DateTime.fromISO(b.end_time).hour > hourValue
-    );
-
-    if (overlapping.length <= 1) return overlapping[0] ?? bookings[0];
-
-    // Sort by priority
-    const sorted = overlapping.sort((a, b) => {
-      const pa = FLIGHT_TYPES.find((t) => t.type === a.type)?.priority ?? 0;
-      const pb = FLIGHT_TYPES.find((t) => t.type === b.type)?.priority ?? 0;
-      return pb - pa;
+    // Allow both logged in users and guests to create bookings
+    openCreateModal({
+      plane,
+      start_time: `${dateString}T09:00`,
+      end_time: `${dateString}T10:00`,
+      user_id: userId || "", // Empty string for guests
     });
+  };
 
-    return sorted[0];
+  const handleBookingClick = (booking: BookingType) => {
+    if (!isLoggedIn) {
+      // Not logged in - view only
+      openViewModal(booking);
+    } else if (userRole === "admin") {
+      // Admin can edit all bookings
+      openUpdateModal(booking);
+    } else if (userId === booking.user_id) {
+      // User can edit their own bookings
+      openUpdateModal(booking);
+    } else {
+      // Logged in but not owner - view only
+      openViewModal(booking);
+    }
+  };
+
+  const handleSaveBooking = async (booking: BookingType, repeatEndDate?: string) => {
+    if (repeatEndDate) {
+      // Handle repeating bookings
+      const { addRepeatingBookings } = await import("@/utilities/bookings");
+      try {
+        const response = await addRepeatingBookings({
+          user_id: booking.user_id,
+          plane: booking.plane,
+          start_time: booking.start_time,
+          end_time: booking.end_time,
+          type: booking.type,
+          title: booking.title,
+          description: booking.description,
+          repeat_end_date: repeatEndDate,
+        });
+
+        if (response.status === "success") {
+          closeModal();
+          // Invalidate ALL bookings cache to refresh all views (day, week, month)
+          queryClient.invalidateQueries({ queryKey: ["bookings"] });
+        }
+      } catch (error) {
+        console.error("Error creating repeating bookings:", error);
+      }
+    } else {
+      // Single booking - use the booking passed from modal
+      addBooking(booking);
+      closeModal();
+    }
+  };
+
+  const handleUpdateBooking = (booking: BookingType) => {
+    updateBooking(booking);
+    closeModal();
+  };
+
+  const handleDeleteBooking = async (deleteFollowing?: boolean): Promise<void> => {
+    if (selectedBooking.id >= 0) {
+      // If deleteFollowing is true and the booking has a repeat_group_id, use the new function
+      if (deleteFollowing && selectedBooking.repeat_group_id) {
+        const { removeBookingWithRepeats } = await import("@/utilities/bookings");
+        try {
+          const response = await removeBookingWithRepeats(
+            selectedBooking.id,
+            userId!,
+            userRole,
+            true
+          );
+
+          if (response.status === "success") {
+            // Invalidate ALL bookings cache to refresh all views
+            queryClient.invalidateQueries({ queryKey: ["bookings"] });
+            closeModal();
+          } else {
+            console.error("Error deleting repeating bookings:", response.result);
+            alert("Virhe poistettaessa toistuvia varauksia");
+            throw new Error("Failed to delete repeating bookings");
+          }
+        } catch (error) {
+          console.error("Error deleting repeating bookings:", error);
+          alert("Virhe poistettaessa toistuvia varauksia");
+          throw error;
+        }
+      } else {
+        // Regular single booking deletion - this uses React Query mutation
+        removeBooking(selectedBooking.id);
+        // Don't close modal here - let the mutation's onSuccess handle it
+        // Wait a bit for the mutation to process
+        await new Promise(resolve => setTimeout(resolve, 100));
+        closeModal();
+      }
+    }
   };
 
   return (
-    <div className="p-4 text-black">
-      {/* Date Picker */}
-      <div className="flex justify-center items-center mb-4 text-swhite">
-        <DatePicker onChange={handleDateChange} />
+    <div className="p-4 text-black" role="main" aria-label="Varauskalenteri">
+      {/* Date Picker and View Selector - side by side on desktop */}
+      <div className="flex flex-col lg:flex-row gap-4 items-center justify-between mb-6">
+        <div className="w-full lg:flex-1">
+          <DatePicker viewMode={viewMode} />
+        </div>
+        {!isMobile && (
+          <div className="flex-shrink-0">
+            <ViewSelector currentView={viewMode} onViewChange={setViewMode} />
+          </div>
+        )}
       </div>
 
+      {/* Guest Booking Info Banner */}
+      {!isLoggedIn && (
+        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-center text-gray-700">
+            <span className="font-medium">Voit varata myös ilman kirjautumista.</span>
+            {" "}
+            <a href="/auth/login" className="text-sblue hover:underline font-medium">
+              Kirjaudu sisään
+            </a>
+            {" "}jos sinulla on käyttäjätunnus.
+          </p>
+        </div>
+      )}
 
-      {/* Booking Table */}
-      <div className="w-full overflow-auto">
-        <table className="w-full border-collapse bg-gray-50 table-fixed">
-          <thead>
-            <tr>
-              <th className="border border-gray-300 p-2 bg-gray-100 overflow-hidden">
-                ALKAVA TUNTI
-              </th>
-              {PLANES.map((plane) => (
-                <th
-                  key={plane}
-                  className="border border-gray-300 p-2 bg-gray-100"
-                  style={{ height: "50px" }}
-                >
-                  {plane}
-                </th>
-              ))}
-            </tr>
-          </thead>
+      {/* Loading State */}
+      {isLoading && <BookingsSkeleton />}
 
-          <tbody>
-            {hours.map((hour) => (
-              <tr key={hour}>
-                <th
-                  className="border border-gray-300 p-2 bg-gray-100"
-                  style={{ height: "50px" }}
-                >
-                  {hour}
-                </th>
-                {PLANES.map((plane) => {
-                  const hourValue = parseInt(hour.split(":")[0]);
-                  const topBooking = getVisibleBookingForHour(
-                    plane,
-                    hourValue,
-                    bookingData
-                  );
+      {/* Error State */}
+      {isError && !isLoading && (
+        <BookingsError error={error} onRetry={() => refetch()} />
+      )}
 
-                  if (!topBooking) {
-                    return (
-                      <td
-                        key={`${plane}-${hour}`}
-                        onClick={() => handleCellClick(plane, hour)}
-                        className="cursor-pointer border border-gray-300 p-2"
-                        style={{ height: "50px" }}
-                      >
-                        <div></div>
-                      </td>
-                    );
-                  }
+      {/* Content - only show when not loading or error */}
+      {!isLoading && !isError && (
+        <>
 
-                  // console.log("TOP BOOKING:", topBooking);
+          {/* Responsive Booking View */}
+          {isMobile ? (
+            <BookingsMobileView
+              bookings={bookings}
+              onBookingClick={handleBookingClick}
+              onCreateBooking={handleMobileCreateBooking}
+              flightTypes={FLIGHT_TYPES}
+              getFlightTypeColor={getFlightTypeColor}
+              isLoggedIn={isLoggedIn}
+            />
+          ) : viewMode === "week" ? (
+            <BookingsWeekView
+              bookings={bookings}
+              selectedDate={date}
+              onCellClick={handleCellClick}
+              onBookingClick={handleBookingClick}
+              flightTypes={FLIGHT_TYPES}
+              getFlightTypeColor={getFlightTypeColor}
+            />
+          ) : viewMode === "month" ? (
+            <BookingsMonthView
+              bookings={bookings}
+              selectedDate={date}
+              onDayClick={handleDayClick}
+              flightTypes={FLIGHT_TYPES}
+              getFlightTypeColor={getFlightTypeColor}
+            />
+          ) : (
+            <BookingsDesktopView
+              bookings={bookings}
+              selectedDate={date}
+              onCellClick={handleCellClick}
+              onBookingClick={handleBookingClick}
+              flightTypes={FLIGHT_TYPES}
+              getFlightTypeColor={getFlightTypeColor}
+            />
+          )}
+        </>
+      )}
 
-                  return (
-                    <BookingCell
-                      key={`${plane}-${hour}-${topBooking.id}`}
-                      booking={topBooking}
-                      hour={hour}
-                      plane={plane}
-                      onClick={() => handlebookingClick(topBooking)}
-                    />
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {/* Loading overlay for mutations */}
+      {(isAddingBooking || isRemovingBooking || isUpdatingBooking) && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="bg-white rounded-lg p-6 shadow-xl">
+            <div className="flex items-center gap-3">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+              <p className="text-gray-900 font-medium">
+                {isAddingBooking && "Lisätään varausta..."}
+                {isRemovingBooking && "Poistetaan varausta..."}
+                {isUpdatingBooking && "Päivitetään varausta..."}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
-      {/* Render Booking Modal */}
+      {/* Booking Modal */}
       {modalMode && (
-        <BookingUpdateModal
-          mode={modalMode}
-          booking={selectedbooking}
-          onSave={handleSavebooking}
-          onUpdate={handleUpdatebooking}
-          onDelete={handleDeletebooking}
-          onCancel={resetModal}
-          onChange={setSelectedbooking}
-        />
+        <Suspense fallback={<div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div></div>}>
+          <BookingUpdateModal
+            mode={modalMode}
+            booking={selectedBooking}
+            onSave={handleSaveBooking}
+            onUpdate={handleUpdateBooking}
+            onDelete={handleDeleteBooking}
+            onCancel={closeModal}
+            onChange={setSelectedBooking}
+            isLoggedIn={isLoggedIn}
+            userRole={userRole}
+          />
+        </Suspense>
       )}
     </div>
   );

@@ -4,20 +4,19 @@ import Container from "./container";
 
 export default function Footer() {
   const firstNavigation = [
-    { Kerho: "/kerho" },
-    { Kalusto: "/kalusto" },
+    { Esittelylennot: "/esittelylennot" },
     { Koulutus: "/koulutus" },
-    { Historiaa: "/kentta/historiaa" },
-    { Hallit: "/kentta/hallit" },
-    { Kenttä: "/kentta" },
+    { Jäsenyys: "/kerho/jasenyys" },
+    { Kalusto: "/kalusto" },
+    { Kotikenttä: "/kerho/kentta" },
   ];
   const secondNavigation = [
-    { Jäsenyys: "/jasenyys" },
     { Yhteystiedot: "/yhteystiedot" },
     { Varauskalenteri: "/kalusto/varauskalenteri" },
-    { Tietosuojaseloste: "/" },
+    { Hinnasto: "/kerho/hinnasto" },
+    { Tietosuojaseloste: "/files/salko_tietosuojaseloste.pdf" },
     {
-      "DTO-ilmoitus":
+      "DTO -poikkeamailmoitus":
         "https://docs.google.com/forms/d/e/1FAIpQLScSw5Un81PuQq_cmwmKXVFPFK2IPWo5Bs6uBrrfLUSqyDdIgQ/viewform?pli=1",
     },
   ];
@@ -41,7 +40,7 @@ export default function Footer() {
               </Link>
             </div>
 
-            <div className="max-w-md mt-4">
+            <div className="mt-4">
               Savonlinnan Lentokerho ry on 1962 perustettu yleisilmailun
               harrastustoimintaan ja koulutukseen keskittynyt ilmailuyhdistys.
               Kerhomme toiminta tukeutuu Savonlinnan Lentoasemalle, 15 km
@@ -60,12 +59,57 @@ export default function Footer() {
                 );
               })}
             </div>
+            <div className="flex gap-4 mt-6">
+              <a
+                href="https://www.facebook.com/savonlinnanlentokerho"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-swhite hover:text-sbluel transition-colors"
+                aria-label="Facebook"
+              >
+                <Facebook size={28} />
+              </a>
+              <a
+                href="https://www.instagram.com/savonlinnanlentokerho/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-swhite hover:text-sbluel transition-colors"
+                aria-label="Instagram"
+              >
+                <Instagram size={28} />
+              </a>
+              <a
+                href="https://youtube.com/@savonlinnanlentokrho"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-swhite hover:text-sbluel transition-colors"
+                aria-label="YouTube"
+              >
+                <Youtube size={28} />
+              </a>
+            </div>
           </div>
 
           <div>
             <div className="flex flex-wrap w-full -mt-2 -ml-3 lg:ml-0 uppercase">
               {secondNavigation.map((item, index) => {
                 const [key, value] = Object.entries(item)[0];
+                const isPDF = value.endsWith(".pdf");
+
+                if (isPDF) {
+                  return (
+                    <a
+                      key={index}
+                      href={value}
+                      className="w-full px-4 py-2"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {key}
+                    </a>
+                  );
+                }
+
                 return (
                   <Link key={index} href={value} className="w-full px-4 py-2">
                     {key}
@@ -78,7 +122,6 @@ export default function Footer() {
 
         <div className="my-10 text-sm text-center">
           Copyright © {new Date().getFullYear()}. Savonlinnan Lentokerho ry.
-          Pictures by ...
         </div>
       </Container>
     </div>
@@ -115,6 +158,6 @@ const Youtube = ({ size = 24 }) => (
     viewBox="0 0 24 24"
     fill="currentColor"
   >
-    <path d="M23.5 5.5a2.5 2.5 0 0 0-2.5-2.5H3a2.5 2.5 0 0 0-2.5 2.5v13a2.5 2.5 0 0 0 2.5 2.5h18a2.5 2.5 0 0 0 2.5-2.5v-13zM9.5 15.5V8.5l6 3zm11-3.5v7a.5.5 0 0 1-.5.5H4a.5.5 0 0 1-.5-.5v-7a.5.5 0 0 1 .5-.5h16a.5.5 0 0 1 .5.5z" />
+    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
   </svg>
 );

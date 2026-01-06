@@ -3,126 +3,157 @@ import {
   Disclosure,
   DisclosureButton,
   DisclosurePanel,
+  Popover,
+  PopoverButton,
+  PopoverPanel,
 } from "@headlessui/react";
 import Link from "next/link";
-import Image from "next/image";
-import { useState, useEffect } from "react";
-import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import ArrowDownIcon from "@/components/icons/arrowDown";
 import XCrossIcon from "@/components/icons/xCross";
 import MenuIcon from "@/components/icons/menu";
+import { useNavbar } from "@/providers/NavbarContextProvider";
+import Login from "@/components/auth/login";
+import Logout from "@/components/auth/logout";
+import { useSession } from "next-auth/react";
 
 const NavbarMobile = () => {
-  const [isOpen, setIsOpen] = useState(false);
+  const { isMobileMenuOpen, setIsMobileMenuOpen } = useNavbar();
   const pathName = usePathname();
+  const { data: session } = useSession();
+  const router = useRouter();
+  const [authenticated, setAuthenticated] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    if (session?.user) {
+      setAuthenticated(true);
+      setIsAdmin(session.user.role === "admin");
+    } else {
+      setAuthenticated(false);
+      setIsAdmin(false);
+    }
+  }, [session]);
 
   // Toggle menu visibility
   const handleToggle = () => {
-    setIsOpen(!isOpen);
+    setIsMobileMenuOpen(!isMobileMenuOpen);
   };
 
   // Close the menu
   const handleClose = () => {
-    setIsOpen(false);
+    setIsMobileMenuOpen(false);
+  };
+
+  const handleLogout = async () => {
+    router.refresh();
+    setAuthenticated(false);
+    handleClose();
   };
 
   // Close menu on navigation
   useEffect(() => {
-    setIsOpen(false);
-  }, [pathName]);
+    setIsMobileMenuOpen(false);
+  }, [pathName, setIsMobileMenuOpen]);
+
+  // Disable body scroll when menu is open
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [isMobileMenuOpen]);
 
   return (
     <div>
       {/* Mobile Menu Button (Hamburger) */}
-      <Disclosure>
-        {({ open }) => (
-          <DisclosureButton
-            aria-label="Toggle Menu"
-            onClick={handleToggle}
-            className="px-2 py-1 ml-auto rounded-md lg:hidden hover:text-indigo-500 focus:text-indigo-500"
-          >
-            <MenuIcon size={60}/>
-          </DisclosureButton>
-        )}
-      </Disclosure>
+      <button
+        aria-label="Toggle Menu"
+        onClick={handleToggle}
+        className="px-2 pt-4 ml-auto rounded-md lg:hidden hover:text-sbluel focus:text-sbluel transition-colors duration-200"
+      >
+        <MenuIcon size={48} />
+      </button>
 
       {/* Full-Screen Menu */}
-      {isOpen && (
+      {isMobileMenuOpen && (
         <div
-          className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-70 z-50 transform transition-transform text-2xl uppercase"
+          className="fixed inset-0 w-screen h-screen bg-gradient-to-br from-sblued/75 via-sblued/65 to-sblue/70 backdrop-blur-lg z-[60] transform transition-all duration-300 animate-fade-in overflow-y-auto"
           onClick={handleClose}
         >
-          <div
-            className="flex flex-col items-center justify-center h-full space-y-6"
-            onClick={(e) => e.stopPropagation()} // Prevents close when clicking inside the menu
+          {/* Decorative gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-sblue/5 to-sblued/20 pointer-events-none"></div>
+
+          {/* Close Button - Fixed at top */}
+          <button
+            aria-label="Close Menu"
+            onClick={handleClose}
+            className="fixed top-4 right-4 text-swhite hover:text-sred hover:rotate-90 transition-all duration-300 z-[70] bg-sblued/40 backdrop-blur-md p-2 border border-swhite/20 hover:border-sred/70 shadow-lg"
           >
-            {/* Close Button */}
-            <button
-              aria-label="Close Menu"
-              onClick={handleClose}
-              className="absolute top-4 right-4 text-white"
-            >
-              <XCrossIcon size={40} />
-            </button>
+            <XCrossIcon size={32} />
+          </button>
 
-            {/* Logo */}
-            <Link href="/">
-              <span className="flex justify-center mx-auto">
-                <Image
-                  src="/images/SaLKon Logo_vaakunaversio.png"
-                  alt="SaLKo"
-                  width={120}
-                  height={40}
-                />
-              </span>
-            </Link>
-
+          <div
+            className="relative flex flex-col items-stretch justify-start min-h-screen pt-16 pb-6 px-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Kerho (Club) */}
             <Disclosure>
               {({ open }) => (
-                <div className="w-full">
-                  <DisclosureButton className="w-full px-6 py-4 text-center">
-                    <div className="flex flex-row items-center justify-center">
-                      <span className="uppercase">Kerho</span>
-                      {/* Arrow Icon */}
+                <div className="w-full my-2">
+                  <DisclosureButton className="w-full py-3 text-left text-swhite text-xl font-bold hover:text-sbluel transition-all duration-300 hover:bg-sblue/30 backdrop-blur-sm border-b border-swhite/20">
+                    <div className="flex flex-row items-center justify-between px-3">
+                      <span>Kerho</span>
                       <span
-                        className={`transition-transform ${
+                        className={`transition-transform duration-300 ${
                           open ? "rotate-180" : ""
-                        } mt-1`}
+                        }`}
                       >
-                        <ArrowDownIcon size={30} />
+                        <ArrowDownIcon size={24} />
                       </span>
                     </div>
                   </DisclosureButton>
-                  <DisclosurePanel className="w-full text-xl text-center grid grid-cols-2 gap-2">
-                    <Link
-                      href="/kerho"
-                      className="w-full px-6 py-4 hover:bg-indigo-600"
-                      onClick={handleClose}
-                    >
+                  <DisclosurePanel className="w-full bg-sblue/20 backdrop-blur-md mt-1 overflow-hidden border-l-2 border-sred/60 shadow-lg">
+                    <span className="block w-full py-2.5 px-8 text-base text-swhite/40 cursor-not-allowed border-l-2 border-transparent backdrop-blur-sm">
                       Kerho
-                    </Link>
+                    </span>
                     <Link
                       href="/kerho/jasenyys"
-                      className="w-full px-6 py-4 hover:bg-indigo-600"
+                      className="block w-full py-2.5 px-8 text-base text-swhite/95 hover:bg-sblue/40 hover:text-swhite hover:pl-10 transition-all duration-200 border-l-2 border-transparent hover:border-sred backdrop-blur-sm"
                       onClick={handleClose}
                     >
                       Jäsenyys
                     </Link>
                     <Link
-                      href="/kerho/historiaa"
-                      className="w-full px-6 py-4 hover:bg-indigo-600"
+                      href="/kerho/hinnasto"
+                      className="block w-full py-2.5 px-8 text-base text-swhite/95 hover:bg-sblue/40 hover:text-swhite hover:pl-10 transition-all duration-200 border-l-2 border-transparent hover:border-sred backdrop-blur-sm"
                       onClick={handleClose}
                     >
-                      Historiaa
+                      Hinnasto
                     </Link>
+                    <span className="block w-full py-2.5 px-8 text-base text-swhite/40 cursor-not-allowed border-l-2 border-transparent backdrop-blur-sm">
+                      Kuvagalleria
+                    </span>
                     <Link
-                      href="/kerho/hallit"
-                      className="w-full px-6 py-4 hover:bg-indigo-600"
+                      href="/kerho/kentta"
+                      className="block w-full py-2.5 px-8 text-base text-swhite/95 hover:bg-sblue/40 hover:text-swhite hover:pl-10 transition-all duration-200 border-l-2 border-transparent hover:border-sred backdrop-blur-sm"
                       onClick={handleClose}
                     >
-                      Hallit
+                      {" "}
+                      Kotikenttä
                     </Link>
+                    <span className="block w-full py-2.5 px-8 text-base text-swhite/40 cursor-not-allowed border-l-2 border-transparent backdrop-blur-sm">
+                      Hallit
+                    </span>
+                    <span className="block w-full py-2.5 px-8 text-base text-swhite/40 cursor-not-allowed border-l-2 border-transparent backdrop-blur-sm">
+                      Historiaa
+                    </span>
                   </DisclosurePanel>
                 </div>
               )}
@@ -131,31 +162,30 @@ const NavbarMobile = () => {
             {/* Kalusto (Planes) */}
             <Disclosure>
               {({ open }) => (
-                <div className="w-full">
-                  <DisclosureButton className="w-full px-6 py-4 text-center">
-                    <div className="flex flex-row items-center justify-center">
-                      <span className="uppercase">Kalusto</span>
-                      {/* Arrow Icon */}
+                <div className="w-full mb-1">
+                  <DisclosureButton className="w-full py-3 text-left text-swhite text-xl font-bold hover:text-sbluel transition-all duration-300 hover:bg-sblue/30 backdrop-blur-sm border-b border-swhite/20">
+                    <div className="flex flex-row items-center justify-between px-3">
+                      <span>Kalusto</span>
                       <span
-                        className={`transition-transform ${
+                        className={`transition-transform duration-300 ${
                           open ? "rotate-180" : ""
-                        } mt-1`}
+                        }`}
                       >
-                        <ArrowDownIcon size={30} />
+                        <ArrowDownIcon size={24} />
                       </span>
                     </div>
                   </DisclosureButton>
-                  <DisclosurePanel className="w-full text-xl text-center grid grid-cols-2 gap-2">
+                  <DisclosurePanel className="w-full bg-sblue/20 backdrop-blur-md mt-1 overflow-hidden border-l-2 border-sred/60 shadow-lg">
                     <Link
                       href="/kalusto"
-                      className="w-full px-6 py-4 hover:bg-indigo-600"
+                      className="block w-full py-2.5 px-8 text-base text-swhite/95 hover:bg-sblue/40 hover:text-swhite hover:pl-10 transition-all duration-200 border-l-2 border-transparent hover:border-sred backdrop-blur-sm"
                       onClick={handleClose}
                     >
                       Kalusto
                     </Link>
                     <Link
                       href="/kalusto/varauskalenteri"
-                      className="w-full px-6 py-4 hover:bg-indigo-600"
+                      className="block w-full py-2.5 px-8 text-base text-swhite/95 hover:bg-sblue/40 hover:text-swhite hover:pl-10 transition-all duration-200 border-l-2 border-transparent hover:border-sred backdrop-blur-sm"
                       onClick={handleClose}
                     >
                       Varauskalenteri
@@ -168,29 +198,97 @@ const NavbarMobile = () => {
             {/* Koulutus (Training) */}
             <Link
               href="/koulutus"
-              className="w-full px-6 py-4 hover:bg-indigo-600 text-center"
-              onClick={handleClose} // Close menu on link click
+              className="w-full py-3 px-3 text-left text-swhite text-xl font-bold hover:text-sbluel hover:bg-sblue/30 transition-all duration-300 border-b border-swhite/20 mb-1 backdrop-blur-sm"
+              onClick={handleClose}
             >
               Koulutus
             </Link>
 
-            {/* Kenttä (Field) */}
+            {/* Esittelylennot (Demo Flights) */}
             <Link
-              href="/kentta"
-              className="w-full px-6 py-4 hover:bg-indigo-600 text-center"
-              onClick={handleClose} // Close menu on link click
+              href="/esittelylennot"
+              className="w-full py-3 px-3 text-left text-swhite text-xl font-bold hover:text-sbluel hover:bg-sblue/30 transition-all duration-300 border-b border-swhite/20 mb-1 backdrop-blur-sm"
+              onClick={handleClose}
             >
-              Kenttä
+              Esittelylennot
             </Link>
 
             {/* Yhteystiedot (Contact) */}
             <Link
               href="/yhteystiedot"
-              className="w-full px-6 py-4 hover:bg-indigo-600 text-center"
-              onClick={handleClose} // Close menu on link click
+              className="w-full py-3 px-3 text-left text-swhite text-xl font-bold hover:text-sbluel hover:bg-sblue/30 transition-all duration-300 border-b border-swhite/20 mb-1 backdrop-blur-sm"
+              onClick={handleClose}
             >
               Yhteystiedot
             </Link>
+
+            {/* Jäsenalue (Member Area) - Conditional based on authentication */}
+            {authenticated ? (
+              <Disclosure>
+                {({ open }) => (
+                  <div className="w-full mb-1">
+                    <DisclosureButton className="w-full py-3 text-left text-swhite text-xl font-bold hover:text-sbluel transition-all duration-300 hover:bg-sblue/30 backdrop-blur-sm border-b border-sred/80">
+                      <div className="flex flex-row items-center justify-between px-3">
+                        <span>Jäsenalue</span>
+                        <span
+                          className={`transition-transform duration-300 ${
+                            open ? "rotate-180" : ""
+                          }`}
+                        >
+                          <ArrowDownIcon size={24} />
+                        </span>
+                      </div>
+                    </DisclosureButton>
+                    <DisclosurePanel className="w-full bg-sblue/20 backdrop-blur-md mt-1 overflow-hidden border-l-2 border-sred/60 shadow-lg">
+                      <Link
+                        href="/jasenalue/profiili"
+                        className="block w-full py-2.5 px-8 text-base text-swhite/95 hover:bg-sblue/40 hover:text-swhite hover:pl-10 transition-all duration-200 border-l-2 border-transparent hover:border-sred backdrop-blur-sm"
+                        onClick={handleClose}
+                      >
+                        Omat tiedot
+                      </Link>
+                      {isAdmin && (
+                        <Link
+                          href="/admin"
+                          className="block w-full py-2.5 px-8 text-base text-purple-300 hover:bg-sblue/40 hover:text-purple-200 hover:pl-10 transition-all duration-200 border-l-2 border-transparent hover:border-purple-400 backdrop-blur-sm"
+                          onClick={handleClose}
+                        >
+                          Admin sivut
+                        </Link>
+                      )}
+                      <div
+                        className="block w-full py-2.5 px-8 text-base text-sred/95 hover:bg-sblue/40 hover:text-sred hover:pl-10 transition-all duration-200 border-l-2 border-transparent hover:border-sred backdrop-blur-sm cursor-pointer"
+                        onClick={handleLogout}
+                      >
+                        Kirjaudu ulos
+                      </div>
+                    </DisclosurePanel>
+                  </div>
+                )}
+              </Disclosure>
+            ) : (
+              <Popover className="relative">
+                {({ close: closePopover }) => (
+                  <>
+                    <PopoverButton className="w-full py-3 px-3 text-left text-swhite text-xl font-bold hover:text-sbluel hover:bg-sblue/30 transition-all duration-300 border-b border-sred/80 mb-1 backdrop-blur-sm">
+                      Jäsenalue
+                    </PopoverButton>
+                    <PopoverPanel className="absolute left-0 right-0 top-full mt-1 glass rounded-xl shadow-2xl border-2 border-sred/30 transition-all duration-200 ease-out origin-top data-[closed]:scale-95 data-[closed]:opacity-0 z-[70]">
+                      <div className="relative p-4">
+                        <button
+                          onClick={() => closePopover()}
+                          className="absolute top-2 right-2 text-swhite hover:text-sred focus:outline-none transition-colors duration-200 z-10"
+                          aria-label="Close"
+                        >
+                          <XCrossIcon size={28} />
+                        </button>
+                        <Login />
+                      </div>
+                    </PopoverPanel>
+                  </>
+                )}
+              </Popover>
+            )}
           </div>
         </div>
       )}

@@ -1,11 +1,12 @@
 import "../styles/tailwind.css";
-import "@ant-design/v5-patch-for-react-19";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
 import { Finlandica } from "next/font/google";
-import { verifySession } from "@/utilities/sessions";
-import { SessionPayload } from "@/utilities/definitions";
+import { auth } from "@/auth";
+import { QueryProvider } from "@/providers/QueryProvider";
+import { NavbarProvider } from "@/providers/NavbarContextProvider";
+import { SessionProvider } from "@/providers/SessionProvider";
 
 const finlandica = Finlandica({
   subsets: ["latin"],
@@ -35,18 +36,38 @@ export const metadata = {
 };
 
 const RootLayout = async ({ children }: React.PropsWithChildren) => {
-  const session = (await verifySession()) as SessionPayload | null;
+  const session = await auth();
+  const isProduction =
+    process.env.NODE_ENV === "production" &&
+    process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID;
 
   return (
     <html lang="fi" className={`${finlandica.variable}`}>
+      {/*}
+      <head>
+        {isProduction && (
+          <script
+            defer
+            src={process.env.NEXT_PUBLIC_UMAMI_SCRIPT_URL}
+            data-website-id={process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID}
+          />
+        )}
+      </head>
+       */}
       <body>
-        <main className="max-w-screen min-h-screen flex flex-col overflow-x-hidden relative bg-background bg-sblued text-white font-finlandica">
-          <AntdRegistry>
-            <Navbar payload={session} />
-            {children}
-            <Footer />
-          </AntdRegistry>
-        </main>
+        <SessionProvider session={session}>
+          <QueryProvider>
+            <NavbarProvider>
+              <main className="max-w-screen min-h-screen flex flex-col overflow-x-hidden relative bg-background bg-sblued text-white font-finlandica">
+                <AntdRegistry>
+                  <Navbar session={session} />
+                  {children}
+                  <Footer />
+                </AntdRegistry>
+              </main>
+            </NavbarProvider>
+          </QueryProvider>
+        </SessionProvider>
       </body>
     </html>
   );

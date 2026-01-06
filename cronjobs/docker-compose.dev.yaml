@@ -1,0 +1,34 @@
+services:
+  ofelia:
+    image: mcuadros/ofelia:0.3.19
+    container_name: ${NAME_PREFIX:-salko}-ofelia-${BRANCH_SUFFIX:-dev}
+    depends_on:
+      - cronjob-update-metar
+    command: daemon --docker
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    labels:
+      ofelia.enabled: "true"
+    networks:
+      - internal_dev
+    restart: unless-stopped
+
+  cronjob-update-metar:
+    image: ${IMAGE_TAG_NAME}:${IMAGE_VERSION}
+    container_name: ${NAME_PREFIX:-salko}-cronjob-update-metar-${BRANCH_SUFFIX:-dev}
+    networks:
+      - internal_dev
+    env_file: .env.dev
+    environment:
+      - DATABASE_CONNECTION_STRING=postgresql://${APP_DB_USER}:${APP_DB_PASSWORD}@${NAME_PREFIX}-postgres-${BRANCH_SUFFIX}:${PGPORT}/${POSTGRES_DB}
+    command: tail -f /dev/null
+    labels:
+      ofelia.enabled: "true"
+      ofelia.job-exec.update-metar.schedule: "@every 2m"
+      ofelia.job-exec.update-metar.command: "npm start"
+    restart: unless-stopped
+
+networks:
+  internal_dev:
+    external: true
+    name: salko_dev_internal

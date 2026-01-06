@@ -2,6 +2,7 @@
   {
     "registeration": "OH-CON",
     "name": "Cessna 172N Skyhawk 100 II",
+    "nickname": null,
     "description": "Cessna 172N Skyhawk on amerikkalaisvalmisteinen kokometallinen ylätasoinen yleisilmailukone. Cessna 172:ssa on istuinpaikat ohjaajalle ja kolmelle matkustajalle. Konemalli lensi ensilentonsa 1955 ja se on tuotannossa edelleen. Yli 43000 koneyksilöllä Cessna 172 on maailman eniten valmistettu lentokone.",
     "specs": {
       "length": "8,21 m",
@@ -27,55 +28,63 @@
       {
         "text": "Wikipedian artikkeli Cessna 172:sesta",
         "url": "https://fi.wikipedia.org/wiki/Cessna_172"
-      },
-      {
-        "text": "Konetyypin kuvia Airliners.netissä",
-        "url": "https://www.airliners.net"
       }
     ],
     "images": [
       {
+        "src": "/images/OH-CON/ohcon_2.jpg",
+        "alt": "OH-CON vaakalennossa."
+      },
+      {
         "src": "/images/OH-CON/ohcon_1.jpg",
-        "alt": "OH-CON"
+        "alt": "OH-CON Savonlinnan lentokentällä valmiina lennolle lähtöön."
+      },
+      {
+        "src": "/images/OH-CON/ohcon_3.jpg",
+        "alt": "OH-CON vaakalennossa."
+      },
+      {
+        "src": "/images/OH-CON/ohcon_4.jpg",
+        "alt": "OH-CON rullaamassa jääkiitotiellä."
       }
     ]
   },
   {
-    "registeration": "OH-SEE",
-    "name": "Socata M.S. 893E Rallye 180GT",
-    "description": "Socata M.S.893E Rallye 180GT on ranskalaisvalmisteinen alatasoinen nelipaikkainen kokometallirakenteinen yleisilmailukone. Savonlinnan lentokerho hankki Rallyen Vaasasta helmikuussa 1982 korvaamaan aiemmin mahalaskussa tuhoutuneen F.8L Falcon. SaLKon Rallye on valmistettu 1974. Rallyen pääasiallinen käyttötarkoitus on ollut purjekoneiden hinaaminen, johon se soveltuukin hyvin tehokkaan moottorinsa ja hyvien hidaslento-ominaisuuksiensa ansiosta. Konetta on käytetty myös matkalentoihin, kouluttamiseen ja palolentotoimintaan. Rallye peruskorjattiin kerhon omin voimin 1990-luvun alussa, jolloin se sai uuden moottorin ja maalipinnan.",
+    "registeration": "OH-386",
+    "name": "Fournier RF-5",
+    "nickname": "Tuulia",
+    "description": "TBA",
     "specs": {
-      "length": "7,24 m",
-      "wingspan": "9,61 m",
-      "height": "2,8 m",
-      "wingArea": "12,28 m²",
-      "emptyWeight": "634 kg",
-      "maxTakeoffWeight": "1050 kg",
-      "engine": "Lycoming O-360-A3A 180 hp 5,9 litrainen ilmajäähdytteinen 4-syl. bokseri",
-      "maxSpeed": "156 kt (290 km/h)",
-      "maxCruiseSpeed": "114 kt (212 km/h)",
-      "economyCruiseSpeed": "106 kt (197 km/h), kulutus noin 34 l/h",
-      "stallSpeed": "~54 kt (100 km/h), 1050 kg",
-      "bestClimbRate": "4,00 m/s (788 fpm, 79 kt / 1050 kg)",
-      "serviceCeiling": "3600 m",
-      "maxRange": "1000 km (540 nm, 5h / 170 l)"
+      "length": "-",
+      "wingspan": "-",
+      "height": "-",
+      "wingArea": "-",
+      "emptyWeight": "-",
+      "maxTakeoffWeight": "-",
+      "engine": "-",
+      "maxSpeedCalm": "-",
+      "maxSpeedGusts": "-",
+      "stallSpeed": "-",
+      "bestGlideRatio": "-",
+      "minSinkRate": "-"
     },
     "links": [
       {
-        "text": "Wikipedian artikkeli Socata Rallyesta",
-        "url": "https://fi.wikipedia.org/wiki/Socata_M.S._893E_Rallye_180GT"
+        "text": "Fournier RF-5 - Wikipedia",
+        "url": "https://en.wikipedia.org/wiki/Fournier_RF-5"
       }
     ],
     "images": [
       {
-        "src": "/images/OH-SEE/socata_rallye.jpg",
-        "alt": "Socata M.S. 893E Rallye 180GT"
+        "src": "/images/OH-386/oh386_1.jpg",
+        "alt": "Fournier RF-5"
       }
     ]
   },
   {
     "registeration": "OH-PDX",
     "name": "Piper J-3C-85 Cub",
+    "nickname": null,
     "description": "Piper J-3 Cub on yksi kaikkien aikojen tunnetuimmista pienkoneista. Sitä valmistettiin vuosina 1938 - 1947 hieman yli 20000 kappaletta. Koneen suuri valmistusmäärä juontaa juurensa Yhdysvaltojen Toisen maailmansodan aikaiseen siviilien lentäjäkoulutusohjelmaan. Tuolloin yli 320000 siviililentäjää ja 80% Yhdysvaltojen sotilaslentäjistä saivat peruslentokoulutuksensa J-3 Cubeilla. Savonlinnan Lentokerhon J-3 on valmistunut vuonna 1945 ja on sarjanumeroltaan 15179. J-3 hankittiin Saksasta kesällä 1974 SaLKon ensimmäiseksi moottorilentokoneeksi. Koneen aiemmat rekisteritunnukset ovat N42857 ja D-EFIB. Konetta on käytetty kerhossa kouluttamiseen, hinauslentoihin ja paikallislentoihin. J-3 on ollut poissa lentokäytöstä vuodesta 2007 alkaen, experimental rekisteröinnin ja hitaasti edistyneiden kunnostustöiden takia.",
     "specs": {
       "length": "6,83 m",
@@ -95,32 +104,20 @@
     },
     "links": [
       {
-        "text": "J-3 Cub lentokäsikirja (pdf)",
-        "url": "/files/j3_cub_manual.pdf"
-      },
-      {
-        "text": "J-3 Cub - Life on the Slow Lane",
-        "url": "https://example.com/j3-life-slow-lane"
+        "text": "Piper J-3 Cub Lentokäsikirja (pdf)",
+        "url": "/files/j3cub poh.pdf"
       },
       {
         "text": "Wikipedian artikkeli J-3 Cubista",
-        "url": "https://fi.wikipedia.org/wiki/Piper_J-3_Cub"
-      },
-      {
-        "text": "Konetyypin kuvia Airliners.netissä",
-        "url": "https://www.airliners.net"
+        "url": "https://en.wikipedia.org/wiki/Piper_J-3_Cub"
       }
     ],
-    "images": [
-      {
-        "src": "/images/OH-PDX/piper_j3c_85_cub.jpg",
-        "alt": "Piper J-3C-85 Cub"
-      }
-    ]
+    "images": []
   },
   {
     "registeration": "OH-816",
     "name": "SZD-50-3 Puchacz",
+    "nickname": "Puchacz",
     "description": "SZD-50-3 Puchacz on puolalaisvalmisteinen kaksipaikkainen peruskoulukone. Puchaczin suunnitteli Adam Meus perustuen SZD-50-1 Dromader prototyyppiin. Puchacz on legendaarisen SZD-9 Bocianin (Kurki) seuraaja ja konetyyppi lensi ensilentonsa 13.4.1979.\n\nPuolalaisen lentokoneenrakennusperinteen mukaisesti purjekoneet on nimetty lintujen mukaan ja näin SZD-50-3 sai nimekseen Puchacz eli Huuhkaja. Puchaczia valmistettiin Allstar PZL Bielskon tehtailla yli 300 kappaletta. Koneen seuraajaksi suunniteltu SZD-54-2 Perkoz eli Silkkiuikku korvasi Puchaczin sarjatuotannossa vuodesta 2014 alkaen. Savonlinnan Lentokerhon koneyksilö on valmistettu keväällä 1989.\n\nRakenteeltaan kone on pääosin lasikuitukomposiitti puolikuorirakennetta vaneri- ja metallivahvisteilla. Rakenne on suojattu valkoisella polyuretaanimaalilla, lukuunottamatta siipien kärkiä ja nokkaa, jotka on maalattu punaisella huomiovärillä. Koneessa on kiinteä päälaskuteline, sekä nokkapyörä ja kannuspyörä. Siivessä on negatiivinen nuolimuoto ja tehokkaat molemmin puolin aukeavat lentojarrut. Ohjaamo on hyvin tilava ja näkyvyys ulos on erinomainen suuren yksiosaisen kuomun ansiosta.\n\nPuchacz on suosittu peruskoulutuskone ympäri maailmaa hyvien ohjausominaisuuksiensa ja monikäyttöisyytensä ansiosta. Koneen ominaisuudet ja varustelu mahdollistavat myös perustaitolennon kouluttamisen. Puchaczilla sallittuja taitolentoliikkeita ovat syöksykierre, silmukka, vaakakierre, nopea vaakakierre, selkälento, sekä edellisten yhdistelmät. Ulkopuoliset taitolentoliikkeet eivät ole sallittuja.",
     "specs": {
       "length": "8,38 m",
@@ -140,44 +137,28 @@
     },
     "links": [
       {
-        "text": "Valmistajan sivut",
-        "url": "https://example.com"
-      },
-      {
-        "text": "Koneen esite (pdf)",
-        "url": "/files/szd50-3_puchacz_brochure.pdf"
-      },
-      {
-        "text": "Dick Johnssonin testiartikeli (pdf)",
-        "url": "/files/dick_johnsson_test_article.pdf"
-      },
-      {
-        "text": "Lentokäsikirja englanniksi (pdf)",
-        "url": "/files/puchacz_english_manual.pdf"
-      },
-      {
-        "text": "Lentokäsikirja suomeksi (pdf)",
-        "url": "/files/puchacz_finnish_manual.pdf"
-      },
-      {
-        "text": "Konetyypin kuvia Airliners.netissä",
-        "url": "https://www.airliners.net"
+        "text": "Puchacz lentokäsikirja (pdf)",
+        "url": "/files/puchacz lentokasikirja.pdf"
       },
       {
         "text": "Tyyppilento Ilmailu-lehdessä 6/1978 (pdf)",
-        "url": "/files/ilmailu_1978_6_puchacz.pdf"
+        "url": "/files/puchacz tyypit ilmailu 6-1978.pdf"
+      },
+      {
+        "text": "Puchacz koelentoarvio (pdf)",
+        "url": "/files/70-1994-04.pdf"
+      },
+      {
+        "text": "Wikipedian artikkeli Puchaczista",
+        "url": "https://en.wikipedia.org/wiki/PZL_Bielsko_SZD-50_Puchacz"
       }
     ],
-    "images": [
-      {
-        "src": "/images/OH-816/puchacz_image.jpg",
-        "alt": "SZD-50-3 Puchacz"
-      }
-    ]
+    "images": []
   },
   {
     "registeration": "OH-829",
     "name": "SZD-51-1 Junior",
+    "nickname": "Junior",
     "description": "SZD-51-1 Junior on Puolalaisvalmisteinen lasikuiturakenteinen yksipaikkainen harjoituspurjelentokone. Konetyyppi on joka puolella maailmaa suosittu ensimmäisenä yksipaikkaisena konetyyppinä purjelentokurssin jälkeen. Juniorin ohjausominaisuudet ovat helpot ja sen liitokyky riittää matkalentojen harjoitteluun. Kone on myös rajoitetusti taitolentokelpoinen. Juniorilla sallittuja taitolentoliikkeita ovat: syöksykierre, silmukka, pystykäännös, sekä nopea puolivaakakierre-puolisilmukka.\n\nJuniorin on suunnitellut Stanislaw Zientek ja se lensi ensilentonsa 1980. Junior on edelleen tuotannossa ja tähän mennessä sitä on ehditty valmistaa yli 260 kappaletta. SZD-51-1 Juniorin valmistus tapahtui ennen PZL Bielskon tehtailla, mutta nykyään koneen edustus on Allstar PZL Glider nimisellä organisaatiolla.",
     "specs": {
       "length": "6,69 m",
@@ -196,40 +177,20 @@
     },
     "links": [
       {
-        "text": "Valmistajan sivut",
-        "url": "https://example.com"
-      },
-      {
-        "text": "Koneen esite (pdf)",
-        "url": "/files/szd51-1_junior_brochure.pdf"
+        "text": "Lentokäsikirja (pdf)",
+        "url": "/files/junior lentokasikirja.pdf"
       },
       {
         "text": "Wikipedian artikkeli Juniorista",
-        "url": "https://fi.wikipedia.org/wiki/SZD-51"
-      },
-      {
-        "text": "Lentokäsikirja englanniksi (pdf)",
-        "url": "/files/junior_english_manual.pdf"
-      },
-      {
-        "text": "Lentokäsikirja suomeksi (pdf)",
-        "url": "/files/junior_finnish_manual.pdf"
-      },
-      {
-        "text": "Jäältälentovideo kerhon Juniorilla",
-        "url": "/files/junior_ice_flying_video.mp4"
+        "url": "https://en.wikipedia.org/wiki/SZD-51_Junior"
       }
     ],
-    "images": [
-      {
-        "src": "/images/OH-829/junior_image.jpg",
-        "alt": "SZD-51-1 Junior"
-      }
-    ]
+    "images": []
   },
   {
     "registeration": "OH-475",
     "name": "SZD-41A Jantar Standard",
+    "nickname": "Jantar",
     "description": "SZD-41A Jantar Standard on Puolalainen lasikuiturakenteinen vakioluokan kilpapurjelentokone. SZD-41A:n kehitti W. Okarmus avoimenluokan SZD-38 Jantar 1 (kärkiväli 19m) purjelentokoneesta, jonka suunnittelija oli Adam Kurbiel. Prototyyppi SZD-41 lensi ensilentonsa 3.10.1973 ja ohjaajana oli A. Zientek.\n\nPuolalaiset sijoittuivat prototyypeillä SZD-41-1 ja SZD-41-2 sijoille 3. ja 7. vuoden 1974 purjelennon MM-kilpailuissa. Vuoden 1976 MM-kilpailuissa Räyskälässä Jantarit sijoittuivat sijoille 4. 6. ja 18. Kaikkiaan 159 SZD-41A ja B –mallia valmistui PZL Bielskon tehtailla vuosien 1973-1978 välisenä aikana. Vuoden 1978 alusta tuotantoon tuli SZD-48 Jantar Standard 2, joka oli kehitetty SZD-41B mallista.",
     "specs": {
       "length": "7,11 m",
@@ -248,31 +209,23 @@
     },
     "links": [
       {
-        "text": "Koelentovideo Youtubessa",
-        "url": "https://www.youtube.com"
-      },
-      {
-        "text": "Lentokäsikirja suomeksi (pdf)",
-        "url": "/files/jantar_standard_finnish_manual.pdf"
-      },
-      {
-        "text": "Wikipedian artikkeli Jantar Standardista",
-        "url": "https://fi.wikipedia.org/wiki/SZD-41_Jantar"
+        "text": "Lentokäsikirja (pdf)",
+        "url": "/files/szd-41a flight manual.pdf"
       },
       {
         "text": "Tyyppilento Ilmailu-lehdessä 12/1975 (pdf)",
-        "url": "/files/jantar_standard_ilmailu_12_1975.pdf"
+        "url": "/files/jantar1 tyypit ilmailu 12-1975.pdf"
       },
       {
-        "text": "Jantar SaLKon purjelentosanomissa (pdf)",
-        "url": "/files/jantar_salko_purjelentosanomissa.pdf"
+        "text": "Jantar SaLKon purjelentosanomissa -91 (pdf)",
+        "url": "/files/salkon purjelentosanomat-91.pdf"
+      },
+
+      {
+        "text": "Wikipedian artikkeli Jantar Standardista",
+        "url": "https://fi.wikipedia.org/wiki/SZD-41_Jantar"
       }
     ],
-    "images": [
-      {
-        "src": "/images/OH-475/jantar_image.jpg",
-        "alt": "SZD-41A Jantar Standard"
-      }
-    ]
+    "images": []
   }
 ]

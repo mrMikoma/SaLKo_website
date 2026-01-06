@@ -1,0 +1,141 @@
+{
+  "date": "1.1.2026",
+  "membershipFees": [
+    {
+      "type": "Varsinainen jäsen",
+      "description": "Aikuisjäsenyys",
+      "price": "60",
+      "unit": "€/vuosi"
+    },
+    {
+      "type": "Nuorisojäsen",
+      "description": "Alle 18-vuotiaat",
+      "price": "30",
+      "unit": "€/vuosi"
+    },
+    {
+      "type": "Kannatusjäsen",
+      "description": "Kannatusjäsenyys",
+      "price": "10",
+      "unit": "€/vuosi"
+    }
+  ],
+  "aircraftRentalRates": [
+    {
+      "category": "Kalustomaksu",
+      "description": "Vuosittainen kalustomaksu (vaaditaan alennushintoihin)",
+      "price": "350",
+      "unit": "€/kausi",
+      "isEquipmentFee": true
+    },
+    {
+      "registration": "OH-CON",
+      "model": "Cessna 172N Skyhawk 100 II",
+      "type": "moottori",
+      "pricePerMinuteWithEquipmentFee": "3.1",
+      "pricePerMinuteWithoutEquipmentFee": "5",
+      "pricePerHourWithEquipmentFee": "186",
+      "pricePerHourWithoutEquipmentFee": "300",
+      "notes": "katso huomio 1*"
+    },
+    {
+      "registration": "OH-386",
+      "model": "Fournier RF-5 (Tuulia)",
+      "type": "moottoripurje (mopu)",
+      "pricePerMinuteWithEquipmentFee": "~1.67",
+      "pricePerMinuteWithoutEquipmentFee": "-",
+      "pricePerHourWithEquipmentFee": "100",
+      "pricePerHourWithoutEquipmentFee": "-",
+      "notes": "katso huomio 1*"
+    }
+  ],
+  "demonstrationFlights": [
+    {
+      "type": "Esittelylento",
+      "description": "Tutustumislento lentokoneella",
+      "price": "80",
+      "unit": "€/20min",
+      "notes": ""
+    },
+    {
+      "type": "Kustannusjakoperusteinen lennätys",
+      "description": "Lennätys kustannusjakoperiaatteella yhdistyksen kautta (katso huomio 2*)",
+      "price": "4",
+      "unit": "€/min",
+      "notes": ""
+    }
+  ],
+  "disclaimers": [
+    {
+      "id": 1,
+      "text": "Yksittäisillä paikallislennoilla minimi laskutus 30 minuuttia. Moottorin säästämiseksi tulee noudattaa huolellista moottorin esilämmitystä kylmillä keleillä."
+    },
+    {
+      "id": 2,
+      "text": "Kustannusten jakaminen yhdistyksen kautta vastaanotetuilla tilauslennoilla (esim. polttarilennot). Lennon välittömät kustannukset jaetaan kaikkien ilma-aluksessa olevien henkilöiden kesken, ohjaaja mukaan lukien. EASA:n määrittelemät suorat kustannukset ovat: polttoaine, laskeutumismaksut, lentokenttämaksut ja lentokoneen vuokra. Kustannusten jakamisessa käytetään Savonlinnassa tuntihintaa 240 €/h, joka jaetaan kyyditettävien ja pilotin kesken. Pilotille lähetetään lasku jälkikäteen hänen kaluston käyttömaksunsa mukaisella tuntihinnalla. Lisäksi pilotilta laskutetaan lennolle kohdistuneet laskeutumis- ja lentokenttämaksut."
+    },
+    {
+      "id": 3,
+      "text": "Kaluston käyttö ja hallipaikat edellyttävät yhdistyksen jäsenyyttä. Hallipaikan hintaan sisältyy kannatusjäsenmaksu, mutta kaluston käyttöön se tulee maksaa erikseen."
+    }
+  ],
+  "hangarSpaces": [
+    {
+      "type": "Moottoripyörä",
+      "description": "Hallipaikka moottoripyörälle (katso huomio 3*)",
+      "price": "100",
+      "unit": "€/talvi"
+    },
+    {
+      "type": "Henkilöauto",
+      "description": "Hallipaikka henkilöautolle (katso huomio 3*)",
+      "price": "300",
+      "unit": "€/talvi"
+    },
+    {
+      "type": "Matkailuauto tai asuntovaunu",
+      "description": "Hallipaikka matkailuautolle tai asuntovaunulle (katso huomio 3*)",
+      "price": "400",
+      "unit": "€/talvi"
+    },
+    {
+      "type": "Vene",
+      "description": "Hallipaikka veneelle (katso huomio 3*)",
+      "price": "400",
+      "unit": "€/talvi"
+    },
+    {
+      "type": "Purjekone",
+      "description": "Hallipaikka purjekoneelle putkessa tai purettuna (katso huomio 3*)",
+      "price": "400",
+      "unit": "€/vuosi"
+    },
+    {
+      "type": "Lentokone tai muu ilma-alus (kärkiyli <7.5 m)",
+      "description": "Hallipaikka lentokoneelle, jonka kärkiylitys on alle 7.5 metriä (katso huomio 3*)",
+      "price": "400",
+      "unit": "€/vuosi"
+    },
+    {
+      "type": "Lentokone (kärkiyli 7.5-15 m)",
+      "description": "Hallipaikka lentokoneelle, jonka kärkiylitys on 7.5-15 metriä (katso huomio 3*)",
+      "price": "600",
+      "unit": "€/vuosi"
+    },
+    {
+      "type": "Lentokone tai muu ilma-alus (kärkiyli >15 m)",
+      "description": "Hallipaikka lentokoneelle, jonka kärkiylitys on yli 15 metriä (katso huomio 3*)",
+      "price": "800",
+      "unit": "€/vuosi"
+    }
+  ],
+  "trainingPrices": {
+    "LAPL": "9000",
+    "PPL": "13000",
+    "TMG": "TBA",
+    "NF": "TBA",
+    "TOW": "TBA",
+    "SPL": "3000",
+    "UPL": "4500"
+  }
+}

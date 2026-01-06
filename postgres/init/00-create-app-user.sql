@@ -2,7 +2,7 @@
 -- Note: Environment variables APP_DB_USER and APP_DB_PASSWORD must be set as environment variables
 
 -- Use environment variables directly in SQL
-\set app_user `echo "${APP_DB_USER:-salko_app}"`
+\set app_user `echo "${APP_DB_USER}"`
 \set app_pass `echo "$APP_DB_PASSWORD"`
 
 -- Create the user with dynamic values

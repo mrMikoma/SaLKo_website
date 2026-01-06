@@ -15,32 +15,8 @@ BEGIN
   VALUES
     (
       admin_user_id,
-      1737194400,
-      'Lorem ipsum',
-      'Dolore laborum ex officia aliqua proident esse officia veniam id eu aliquip qui incididunt.'
-    ),
-    (
-      admin_user_id,
-      1737280800,
-      'Lorem ipsum',
-      'Culpa deserunt consequat ut exercitation irure elit occaecat cillum.'
-    ),
-    (
-      admin_user_id,
-      1737367200,
-      'Lorem ipsum',
-      'Dolor irure cupidatat aliqua eu labore velit elit id nostrud.'
-    ),
-    (
-      admin_user_id,
-      1737453600,
-      'Lorem ipsum',
-      'Dolor irure cupidatat aliqua eu labore velit elit id nostrud.'
-    ),
-    (
-      admin_user_id,
-      1737194400,
-      'ipsum Lorem',
-      'Dolore laborum ex officia aliqua proident esse officia veniam id eu aliquip qui incididunt.'
+      1767692585,
+      'Uudet verkkosivut julkaistu',
+      'Savonlinnan Lentokerhon uudet verkkosivut on julkaistu! Tervetuloa tutustumaan ja antamaan palautetta.'
     );
 END $$;

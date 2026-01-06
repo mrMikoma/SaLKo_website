@@ -1,91 +1,179 @@
 "use client";
 
 import { DateTime } from "luxon";
-import { useSearchParams } from "next/navigation";
-import ArrowRightIcon from "@/components/icons/arrowRight";
-import { on } from "events";
+import {
+  CalendarOutlined,
+  LeftOutlined,
+  RightOutlined,
+} from "@ant-design/icons";
+import { useDateFromUrl } from "@/hooks/useDateFromUrl";
+import { ViewMode } from "./viewSelector";
 
-const DatePicker = ({
-  onChange,
-}: {
-  onChange: (date: DateTime | null) => void;
-}) => {
-  const dateParamDate = useSearchParams().get("paiva");
-  console.log("DatePicker dateParamDate:", dateParamDate);
+interface DatePickerProps {
+  viewMode?: ViewMode;
+}
+
+const DatePicker = ({ viewMode = "day" }: DatePickerProps) => {
+  const { date, setDate, goToToday, isToday } = useDateFromUrl();
+
+  // Navigation functions based on view mode
+  const handlePrevious = () => {
+    if (viewMode === "week") {
+      setDate(date.minus({ weeks: 1 }));
+    } else if (viewMode === "month") {
+      setDate(date.minus({ months: 1 }));
+    } else {
+      setDate(date.minus({ days: 1 }));
+    }
+  };
+
+  const handleNext = () => {
+    if (viewMode === "week") {
+      setDate(date.plus({ weeks: 1 }));
+    } else if (viewMode === "month") {
+      setDate(date.plus({ months: 1 }));
+    } else {
+      setDate(date.plus({ days: 1 }));
+    }
+  };
+
+  // Get display text based on view mode
+  const getDisplayText = () => {
+    if (viewMode === "week") {
+      const weekStart = date.startOf("week");
+      const weekEnd = date.endOf("week");
+      return (
+        <div className="text-center">
+          <div className="text-2xl font-bold text-white">
+            Viikko {date.weekNumber}
+          </div>
+          <div className="text-sm text-white/90 mt-1">
+            {weekStart.setLocale("fi").toFormat("dd.MM")} -{" "}
+            {weekEnd.setLocale("fi").toFormat("dd.MM.yyyy")}
+          </div>
+        </div>
+      );
+    } else if (viewMode === "month") {
+      return (
+        <div className="text-center">
+          <div className="text-2xl font-bold text-white capitalize">
+            {date.setLocale("fi").toFormat("LLLL yyyy")}
+          </div>
+          <div className="text-sm text-white/90 mt-1">
+            {date.daysInMonth} päivää
+          </div>
+        </div>
+      );
+    } else {
+      return (
+        <div className="text-center">
+          <div className="text-2xl font-bold text-white capitalize">
+            {date.setLocale("fi").toFormat("cccc")}
+          </div>
+          <div className="text-sm text-white/90 mt-1">
+            {date.setLocale("fi").toFormat("d. MMMM yyyy")}
+          </div>
+        </div>
+      );
+    }
+  };
+
+  // Get aria labels based on view mode
+  const getPreviousLabel = () => {
+    if (viewMode === "week") return "Edellinen viikko";
+    if (viewMode === "month") return "Edellinen kuukausi";
+    return "Edellinen päivä";
+  };
+
+  const getNextLabel = () => {
+    if (viewMode === "week") return "Seuraava viikko";
+    if (viewMode === "month") return "Seuraava kuukausi";
+    return "Seuraava päivä";
+  };
+
   return (
-    <div className="flex flex-col w-full min-h-[100px] mx-auto">
-      <div className="flex flex-row justify-center items-center p-4 w-full">
-        {/* Previous day button */}
-        <button
-          type="button"
-          className="p-2 transform rotate-180 w-16"
-          onClick={() => {
-            const prevDate = DateTime.fromISO(dateParamDate).minus({ days: 1 });
-            onChange(prevDate);
-          }}
-        >
-          <ArrowRightIcon size={30} />
-        </button>
+    <div className="lg:w-1/2 mx-auto">
+      <div className="bg-sblued/80 rounded-2xl shadow-xl p-6 border border-swhite/10">
+        {/* Main navigation row */}
+        <div className="flex items-center justify-between gap-3">
+          {/* Previous button */}
+          <button
+            type="button"
+            onClick={handlePrevious}
+            className="flex items-center justify-center w-11 h-11 rounded-xl bg-swhite/15 hover:bg-swhite/25 active:bg-swhite/35 text-swhite transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-swhite/60 focus:ring-offset-2 focus:ring-offset-sblue backdrop-blur-sm hover:scale-105 active:scale-95 shadow-md"
+            aria-label={getPreviousLabel()}
+          >
+            <LeftOutlined className="text-lg" />
+          </button>
 
-        {/* Date input */}
-        <input
-          type="date"
-          value={dateParamDate.toString()}
-          onChange={(e) => {
-            const newDate = DateTime.fromISO(e.target.value);
-            if (newDate.isValid) {
-              onChange(onChange(newDate));
-            }
-          }}
-          className="w-48 p-2 border rounded text-sred font-semibold text-center text-lg mx-4"
-        />
-        {/* Next day button */}
-        <button
-          type="button"
-          className="p-2 w-16"
-          onClick={() => {
-            const nextDate = DateTime.fromISO(dateParamDate).plus({ days: 1 });
-            onChange(nextDate);
-          }}
-        >
-          <ArrowRightIcon size={30} />
-        </button>
-      </div>
-      <div className="text-center text-xl mt-2" suppressHydrationWarning>
-        <span className="font-semibold">Valittu päivä: </span>
-        <span>
-          {DateTime.fromISO(dateParamDate).setLocale("fi").toFormat("cccc")}{" "}
-        </span>
-        <span>
-          {DateTime.fromISO(dateParamDate).setLocale("fi").toFormat("DDD")}
-        </span>
+          {/* Date display and picker */}
+          <div className="flex-1 flex items-center justify-center gap-3">
+            <div className="flex-1">{getDisplayText()}</div>
+            {/* Date picker input (hidden by default, shown as calendar icon) */}
+            <div className="relative group">
+              <input
+                type="date"
+                value={date.toFormat("yyyy-MM-dd")}
+                onChange={(e) => {
+                  const newDate = DateTime.fromISO(e.target.value);
+                  if (newDate.isValid) {
+                    setDate(newDate);
+                  }
+                }}
+                className="absolute inset-0 opacity-0 cursor-pointer w-11 h-11 z-10"
+                aria-label="Valitse päivämäärä"
+              />
+              <div className="flex items-center justify-center w-11 h-11 rounded-xl bg-swhite/15 group-hover:bg-swhite/25 active:bg-swhite/35 text-swhite transition-all duration-200 group-hover:scale-105 active:scale-95 shadow-md">
+                <CalendarOutlined className="text-lg" />
+              </div>
+            </div>
+          </div>
+
+          {/* Next button */}
+          <button
+            type="button"
+            onClick={handleNext}
+            className="flex items-center justify-center w-11 h-11 rounded-xl bg-swhite/15 hover:bg-swhite/25 active:bg-swhite/35 text-swhite transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-swhite/60 focus:ring-offset-2 focus:ring-offset-sblue backdrop-blur-sm hover:scale-105 active:scale-95 shadow-md"
+            aria-label={getNextLabel()}
+          >
+            <RightOutlined className="text-lg" />
+          </button>
+
+          {/* Today button - hidden on mobile, shown on desktop */}
+          <button
+            type="button"
+            onClick={goToToday}
+            disabled={isToday}
+            className={`hidden lg:flex items-center justify-center px-5 py-2.5 font-semibold rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 shadow-lg whitespace-nowrap ${
+              isToday
+                ? "bg-swhite/20 text-swhite/50 cursor-not-allowed"
+                : "bg-swhite text-sblue hover:bg-swhite/95 hover:shadow-xl hover:scale-105 active:scale-95 focus:ring-swhite/60 focus:ring-offset-2 focus:ring-offset-sblue"
+            }`}
+            aria-label="Siirry tähän päivään"
+          >
+            Tänään
+          </button>
+        </div>
+
+        {/* Today button for mobile - centered below navigation */}
+        <div className="lg:hidden mt-4 flex justify-center">
+          <button
+            type="button"
+            onClick={goToToday}
+            disabled={isToday}
+            className={`px-6 py-2.5 font-semibold rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 shadow-lg ${
+              isToday
+                ? "bg-swhite/20 text-swhite/50 cursor-not-allowed"
+                : "bg-swhite text-sblue hover:bg-swhite/95 hover:shadow-xl hover:scale-105 active:scale-95 focus:ring-swhite/60 focus:ring-offset-2 focus:ring-offset-sblue"
+            }`}
+            aria-label="Siirry tähän päivään"
+          >
+            Tänään
+          </button>
+        </div>
       </div>
     </div>
   );
 };
 
 export default DatePicker;
-
-/*
-const LuxonDatePicker = ({
-  value,
-  onChange,
-}: {
-  value: DateTime;
-  onChange: (date: DateTime | null) => void;
-}) => {
-  return (
-    <input
-      type="date"
-      value={value.toFormat("yyyy-MM-dd")}
-      onChange={(e) => {
-        const newDate = DateTime.fromISO(e.target.value);
-        if (newDate.isValid) {
-          onChange(newDate);
-        }
-      }}
-      className="w-48 p-2 border rounded"
-    />
-  );
-};
-*/

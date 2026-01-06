@@ -1,7 +1,9 @@
 import PlaneInfo from "@/components/planes/planeInfo";
-import PlanePhoto from "@/components/planes/planeGallery";
+import PlaneGallery from "@/components/planes/planeGallery";
 import planeData from "@/data/planes.json";
-import Image from "next/image";
+import Link from "next/link";
+import PageHero from "@/components/pageHero";
+import ContentSection from "@/components/contentSection";
 
 export async function generateMetadata({ params }) {
   const { planes } = await params;
@@ -9,6 +11,9 @@ export async function generateMetadata({ params }) {
 
   return {
     title: plane ? `${planes} / SaLKo` : "Plane Not Found / SaLKo",
+    description: plane
+      ? `${plane.name} - ${plane.registeration}`
+      : "Lentokonetta ei löytynyt",
   };
 }
 
@@ -24,22 +29,54 @@ const Page = async ({ params }) => {
 
   if (!plane) {
     return (
-      <div className="min-h-screen w-screen flex justify-center items-center bg-red-200">
-        <h1 className="text-2xl font-bold">Lentokonetta ei löytynyt</h1>
+      <div className="min-h-screen flex flex-col w-full">
+        <PageHero
+          title="Lentokonetta ei löytynyt"
+          breadcrumbs={["Kalusto"]}
+          compact={false}
+          backgroundImage="bg-efsa-one"
+          showScrollIndicator={false}
+          children={
+            <div className="max-w-[1600px] mx-auto px-6 pb-20 lg:pb-32">
+              <div className="max-w-4xl mx-auto">
+                <div className="glass rounded-lg p-8 md:p-12 border border-sred/20 text-center">
+                  <p className="text-lg text-swhite/80 mb-8">
+                    Etsimääsi lentokonetta ei löytynyt kalustostamme.
+                  </p>
+                  <Link
+                    href="/kalusto"
+                    className="inline-block px-8 py-4 bg-sred text-swhite font-semibold rounded-lg shadow-xl hover:bg-sred/90 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300"
+                  >
+                    Palaa kalustoon
+                  </Link>
+                </div>
+              </div>
+            </div>
+          }
+        />
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen w-screen flex flex-col items-center bg-gradient-to-b from-blue-200 to-blue-100">
-      <header className="w-full bg-blue-600 text-white py-4 shadow-md">
-        <h1 className="text-center text-3xl font-bold">{plane.name}</h1>
-        <p className="text-center text-sm mt-1">{plane.registeration}</p>
-      </header>
+  const hasImage = plane.images && plane.images.length > 0;
 
-      <main className="flex flex-col items-center w-full px-4 py-8">
-        <section className="max-w-4xl bg-white shadow-lg rounded-lg p-6 mb-8 flex flex-col md:flex-row gap-8 items-center">
-          <div className="flex-1">
+  return (
+    <div className="min-h-screen flex flex-col w-full">
+      <PageHero
+        title={plane.name}
+        subtitle={plane.registeration}
+        breadcrumbs={["Kalusto", plane.registeration]}
+        compact={true}
+        backgroundImage="bg-efsa-one"
+        showScrollIndicator={false}
+        children={
+          <div className="space-y-8 max-w-7xl mx-auto p-6 w-full">
+            {/* Image Gallery */}
+            {hasImage && (
+              <PlaneGallery images={plane.images} planeName={plane.name} />
+            )}
+
+            {/* Plane Info */}
             <PlaneInfo
               name={plane.name}
               identifier={plane.registeration}
@@ -47,21 +84,20 @@ const Page = async ({ params }) => {
               specs={plane.specs}
               links={plane.links}
             />
-          </div>
 
-          <div className="flex-1 relative w-full max-w-8xl h-[500px] rounded overflow-hidden shadow-lg">
-            {plane.images && plane.images.length > 0 && (
-              <Image
-                src={plane.images[0].src}
-                alt={plane.images[0].alt || "Plane photo"}
-                layout="fill"
-                objectFit="cover"
-                className="rounded"
-              />
-            )}
+            {/* Back Button */}
+            <div className="text-center pt-4">
+              <Link
+                href="/kalusto"
+                className="inline-flex items-center gap-2 px-8 py-4 bg-sbluel text-swhite font-semibold rounded-lg shadow-xl hover:bg-sbluel/90 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300"
+              >
+                <span>←</span>
+                <span>Takaisin kalustoon</span>
+              </Link>
+            </div>
           </div>
-        </section>
-      </main>
+        }
+      />
     </div>
   );
 };

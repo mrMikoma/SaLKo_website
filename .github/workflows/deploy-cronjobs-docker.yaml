@@ -25,7 +25,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/salko_website/cronjob
+  IMAGE_PREFIX: ghcr.io/mrmikoma/salko_website/cronjob
 
 jobs:
   detect-changes:
@@ -49,14 +49,11 @@ jobs:
             echo "deploy_all=false" >> $GITHUB_OUTPUT
             exit 0
           fi
-
           # Detect all available cronjobs (those with Dockerfiles)
           ALL_JOBS=$(find cronjobs -mindepth 1 -maxdepth 1 -type d -exec test -f {}/Dockerfile \; -exec basename {} \; | jq -R -s -c 'split("\n") | map(select(length > 0))')
-
           # On push, detect changed jobs
           if [ "${{ github.event_name }}" = "push" ]; then
             CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep '^cronjobs/' || true)
-
             if [ -z "$CHANGED_FILES" ]; then
               # No cronjob changes, but workflow file changed - deploy all
               echo "jobs=$ALL_JOBS" >> $GITHUB_OUTPUT
@@ -77,7 +74,6 @@ jobs:
             echo "jobs=$ALL_JOBS" >> $GITHUB_OUTPUT
             echo "deploy_all=true" >> $GITHUB_OUTPUT
           fi
-
   build-and-push:
     name: Build ${{ matrix.job }}
     needs: [detect-changes]
@@ -90,6 +86,9 @@ jobs:
       matrix:
         job: ${{ fromJson(needs.detect-changes.outputs.jobs) }}
       fail-fast: false
+    outputs:
+      image_tag: ${{ steps.image-info.outputs.image_tag }}
+      image_name: ${{ steps.image-info.outputs.image_name }}
 
     steps:
       - name: Checkout code
@@ -116,6 +115,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Determine image tag
+        id: image-info
+        run: |
+          IMAGE_TAG="${GITHUB_REF_NAME}-${GITHUB_SHA::7}"
+          IMAGE_NAME="${{ env.IMAGE_PREFIX }}-${{ matrix.job }}"
+          echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
+          echo "Building image: $IMAGE_NAME:$IMAGE_TAG"
+
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5.9.0
@@ -126,6 +134,7 @@ jobs:
             type=ref,event=branch
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
+            ${{ steps.image-info.outputs.image_tag }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6.18.0
@@ -195,12 +204,12 @@ jobs:
             netplan apply
             echo "Network configuration applied successfully"
             ip route show
-
   deploy:
     name: Deploy ${{ matrix.job }}
-    needs: [detect-changes, create-runner]
+    needs: [detect-changes, build-and-push, create-runner]
     if: ${{ needs.detect-changes.outputs.jobs != '[]' }}
     runs-on: ${{ needs.create-runner.outputs.label }}
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
     strategy:
       matrix:
         job: ${{ fromJson(needs.detect-changes.outputs.jobs) }}
@@ -210,37 +219,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5.0.0
 
-      - name: Read cronjob configuration
-        id: config
-        run: |
-          # Default configuration
-          CONFIG_JSON='{"name":"${{ matrix.job }}","version":"1.0.0","schedule":"*/15 * * * *"}'
-
-          # Try to read config from package.json if it exists
-          if [ -f "cronjobs/${{ matrix.job }}/package.json" ]; then
-            SCHEDULE=$(grep -Po '"schedule":\s*"\K[^"]*' cronjobs/${{ matrix.job }}/index.ts 2>/dev/null || echo "*/15 * * * *")
-            CONFIG_JSON="{\"name\":\"${{ matrix.job }}\",\"version\":\"1.0.0\",\"schedule\":\"$SCHEDULE\"}"
-          fi
-
-          echo "config=$CONFIG_JSON" >> $GITHUB_OUTPUT
-          SCHEDULE=$(echo $CONFIG_JSON | jq -r '.schedule')
-          echo "schedule=$SCHEDULE" >> $GITHUB_OUTPUT
-
-      - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh
-          if [ "${{ github.event.inputs.environment || 'production' }}" = "production" ]; then
-            echo "${{ secrets.VPS_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/id_ed25519
-            ssh-keyscan -H ${{ vars.SERVER_IP_SALKO0 }} >> ~/.ssh/known_hosts
-          else
-            echo "${{ secrets.VPS_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/id_ed25519
-            ssh-keyscan -H ${{ vars.SERVER_IP_SALKO0 }} >> ~/.ssh/known_hosts
-          fi
-          chmod 600 ~/.ssh/id_ed25519
-
-      - name: Deploy to server
-        env:
-          SCHEDULE: ${{ steps.config.outputs.schedule }}
+      - name: Define deployment variables
+        id: vars
         run: |
           # Determine environment from branch or manual input
           if [ "${{ github.event_name }}" = "push" ]; then
@@ -258,87 +238,89 @@ jobs:
           # Set branch suffix based on environment
           if [ "$ENVIRONMENT" = "production" ]; then
             BRANCH_SUFFIX="prod"
-            SERVER_IP="${{ vars.SERVER_IP_SALKO0 }}"
           else
             BRANCH_SUFFIX="dev"
-            SERVER_IP="${{ vars.SERVER_IP_SALKO0 }}"
           fi
 
           # Get image tag (use branch name or sha)
           IMAGE_TAG="${GITHUB_REF_NAME}-${GITHUB_SHA::7}"
+          IMAGE_NAME="${{ env.IMAGE_PREFIX }}-${{ matrix.job }}"
 
+          # Export all variables to GITHUB_ENV for use in subsequent steps
+          echo "ENVIRONMENT=${ENVIRONMENT}" >> $GITHUB_ENV
+          echo "BRANCH_SUFFIX=${BRANCH_SUFFIX}" >> $GITHUB_ENV
+          echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_ENV
+          echo "IMAGE_NAME=${IMAGE_NAME}" >> $GITHUB_ENV
+          echo "SERVER_IP=${{ vars.SERVER_IP_SALKO0 }}" >> $GITHUB_ENV
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ vars.SERVER_IP_SALKO0 }} >> ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_ed25519
+
+      - name: Deploy to server
+        env:
+          NAME_PREFIX: "salko"
+          PGPORT: "5432"
+          POSTGRES_DB: "salko"
+          APP_DB_USER: "salko_app"
+        run: |
           # Transfer environment-specific docker-compose file
-          if [ "$ENVIRONMENT" = "production" ]; then
-            scp -i ~/.ssh/id_ed25519 cronjobs/docker-compose.prod.yaml salko@$SERVER_IP:/home/salko/cronjobs/docker-compose.yaml
+          if [ "${{ env.ENVIRONMENT }}" = "production" ]; then
+            scp -i ~/.ssh/id_ed25519 cronjobs/docker-compose.prod.yaml salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/cronjobs/docker-compose.prod.yaml
           else
-            scp -i ~/.ssh/id_ed25519 cronjobs/docker-compose.dev.yaml salko@$SERVER_IP:/home/salko/cronjobs/docker-compose.yaml
+            scp -i ~/.ssh/id_ed25519 cronjobs/docker-compose.dev.yaml salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/cronjobs/docker-compose.dev.yaml
           fi
 
-          # Deploy via SSH
-          ssh -i ~/.ssh/id_ed25519 salko@$SERVER_IP <<REMOTE_EOF
+          # Create .env file and deploy with Ofelia
+          ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} << EOF
             set -e
-            cd /home/salko
+            cd /home/salko/cronjobs
 
-            # Pull latest image
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            docker pull ${{ env.IMAGE_PREFIX }}-${{ matrix.job }}:$IMAGE_TAG
+            # Create or clear the .env file
+            > .env.${{ env.BRANCH_SUFFIX }}
 
-            # Convert cron schedule to systemd timer format
-            TIMER_SPEC="*:0/15"  # Default: every 15 minutes
-            if [ "$SCHEDULE" = "*/5 * * * *" ]; then TIMER_SPEC="*:0/5"; fi
-            if [ "$SCHEDULE" = "*/15 * * * *" ]; then TIMER_SPEC="*:0/15"; fi
-            if [ "$SCHEDULE" = "*/30 * * * *" ]; then TIMER_SPEC="*:0/30"; fi
-            if [ "$SCHEDULE" = "0 * * * *" ]; then TIMER_SPEC="*:00"; fi
+            # Append environment variables one by one
+            echo "NAME_PREFIX=${{ env.NAME_PREFIX }}" > .env.${{ env.BRANCH_SUFFIX }}
+            echo "BRANCH_SUFFIX=${{ env.BRANCH_SUFFIX }}" >> .env.${{ env.BRANCH_SUFFIX }}
+            echo "IMAGE_TAG_NAME=${{ env.IMAGE_NAME }}" >> .env.${{ env.BRANCH_SUFFIX }}
+            echo "IMAGE_VERSION=${{ env.IMAGE_TAG }}" >> .env.${{ env.BRANCH_SUFFIX }}
+            echo "PGPORT=${{ env.PGPORT }}" >> .env.${{ env.BRANCH_SUFFIX }}
+            echo "POSTGRES_DB=${{ env.POSTGRES_DB }}" >> .env.${{ env.BRANCH_SUFFIX }}
+            echo "APP_DB_USER=${{ env.APP_DB_USER }}" >> .env.${{ env.BRANCH_SUFFIX }}
+            echo "APP_DB_PASSWORD=${{ secrets.APP_DB_PASSWORD }}" >> .env.${{ env.BRANCH_SUFFIX }}
 
-            # Create systemd service file in home directory (will be moved by Ansible/manual setup)
-            mkdir -p ~/systemd
-            cat > ~/systemd/salko-cronjob-${{ matrix.job }}.service <<SERVICE_EOF
-          [Unit]
-          Description=SaLKo Cronjob: ${{ matrix.job }}
-          After=network.target docker.service
-          Requires=docker.service
+            # Secure the .env file permissions (readable only by owner)
+            chmod 600 .env.${{ env.BRANCH_SUFFIX }}
+            echo ".env.${{ env.BRANCH_SUFFIX }} file created with environment variables."
+            # Pull latest images
+            docker compose --env-file .env.${{ env.BRANCH_SUFFIX }} -f docker-compose.${{ env.BRANCH_SUFFIX }}.yaml pull
 
-          [Service]
-          Type=oneshot
-          User=salko
-          WorkingDirectory=/home/salko
-          Environment="NAME_PREFIX=salko"
-          Environment="BRANCH_SUFFIX=$BRANCH_SUFFIX"
-          ExecStart=/usr/bin/docker compose -f cronjobs/docker-compose.yaml run --rm cronjob-${{ matrix.job }}
-          StandardOutput=append:/var/log/salko/cronjobs/${{ matrix.job }}.log
-          StandardError=append:/var/log/salko/cronjobs/${{ matrix.job }}.error.log
-          SERVICE_EOF
+            # Start/restart containers with Ofelia
+            docker compose --env-file .env.${{ env.BRANCH_SUFFIX }} -f docker-compose.${{ env.BRANCH_SUFFIX }}.yaml up -d
 
-            # Create systemd timer file
-            cat > ~/systemd/salko-cronjob-${{ matrix.job }}.timer <<TIMER_EOF
-          [Unit]
-          Description=SaLKo Cronjob Timer: ${{ matrix.job }}
+            echo "Ofelia cronjob scheduler deployed successfully"
+            echo "Jobs are scheduled via Docker labels in docker-compose.${{ env.BRANCH_SUFFIX }}.yaml"
+            docker ps | grep ofelia
+          EOF
 
-          [Timer]
-          OnCalendar=$TIMER_SPEC
-          Persistent=true
-
-          [Install]
-          WantedBy=timers.target
-          TIMER_EOF
-
-            echo "Systemd files created in ~/systemd/"
-            echo "Please run Ansible playbook or manually install systemd files with sudo privileges"
-            ls -la ~/systemd/
-          REMOTE_EOF
-
-  cleanup-runner:
-    name: Cleanup Hetzner Cloud runner
-    needs: [create-runner, deploy]
-    if: always()
+  delete-runner:
+    name: Delete Hetzner Cloud runner
+    needs:
+      - create-runner
+      - deploy
     runs-on: ubuntu-24.04
+    if: ${{ always() }}
     steps:
-      - name: Cleanup runner
+      - name: Delete runner
         uses: Cyclenerd/hcloud-github-runner@v1.3.0
         with:
           mode: delete
           github_token: ${{ secrets.HETZNER_GHA_RUNNER_PAT }}
           hcloud_token: ${{ secrets.HETZNER_API_TOKEN }}
+          name: ${{ needs.create-runner.outputs.label }}
           server_id: ${{ needs.create-runner.outputs.server_id }}
 
   summary:
@@ -354,7 +336,6 @@ jobs:
           echo "**Environment:** ${{ github.event.inputs.environment || 'production' }}" >> $GITHUB_STEP_SUMMARY
           echo "**Deployed Jobs:** ${{ needs.detect-changes.outputs.jobs }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-
           if [ "${{ needs.deploy.result }}" = "success" ]; then
             echo "✅ All cronjobs deployed successfully" >> $GITHUB_STEP_SUMMARY
           else

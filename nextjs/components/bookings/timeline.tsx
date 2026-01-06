@@ -1,9 +1,6 @@
 "use client";
 
-import type React from "react";
 import { useEffect, useState } from "react";
-import TrashIcon from "../icons/trash";
-import XCrossIcon from "../icons/xCross";
 import { arrangeBookingsColumns, BookingType } from "@/utilities/bookings";
 
 type Booking = BookingType;
@@ -71,11 +68,6 @@ const Timeline = ({
 
   const startTime = fullHours[0].getTime();
   const endTime = fullHours[fullHours.length - 1].getTime();
-  const totalDuration = endTime - startTime;
-
-  console.log("Start time:", new Date(startTime));
-  console.log("End time:", new Date(endTime));
-  console.log("Total duration (ms):", totalDuration);
 
   // Print the bookings by columns
   bookingsByColumns.forEach((column, colIndex) => {
@@ -111,76 +103,8 @@ const Timeline = ({
         })}
       </div>
       {/* Render 0th Column */}
-   
     </div>
   );
 };
 
 export default Timeline;
-
-/*
-    <div className="flex flex-row w-full h-full">
-
-      <div className="flex flex-col w-[72px] h-full">
-        {fullHours.map((hour) => {
-          const hourLabel = new Date(hour).toLocaleTimeString("fi-FI", {
-            hour: "2-digit",
-            minute: "2-digit",
-          });
-          return (
-            <div
-              key={hour.toISOString()}
-              className="w-[72px] row-span-1 border-b border-black text-sblack bg-sbluel text-sm grid grid-cols-[max-content] items-center justify-start pl-2"
-            >
-              {hourLabel}
-            </div>
-          );
-        })}
-      </div>
-
-
-      <div className="flex-1 relative bg-swhite">
-        <div
-          className="grid w-full h-[400px] grid-cols-[repeat(auto-fill,minmax(72px,1fr))] grid-rows-[repeat(auto-fill,minmax(40px,1fr))]"
-        >
-          {bookingsByColumns.map((column, colIndex) => (
-            <div
-              key={colIndex}
-              className="relative border-l border-black"
-              style={{ height: "100%" }}
-            >
-              {column.map((booking) => {
-                const start = new Date(booking.start_time).getTime();
-                const end = new Date(booking.end_time).getTime();
-
-                const topPercent = ((start - startTime) / totalDuration) * 100;
-                const heightPercent = ((end - start) / totalDuration) * 100;
-
-                const flightType = flightTypes.find(
-                  (ft) => ft.value === booking.type
-                );
-
-                return (
-                  <div
-                    key={booking.id}
-                    className="absolute left-1 right-1 px-1 py-0.5 cursor-pointer rounded-md shadow-sm text-sblack hover:opacity-90"
-                    style={{
-                      top: `${topPercent}%`,
-                      height: `${heightPercent}%`,
-                      backgroundColor: flightType?.color || "#ccc",
-                    }}
-                  >
-                    <div className="font-semibold text-xs truncate">
-                      {booking.title} {booking.start_time.toString()}
-                      {" - "}
-                      {booking.end_time.toString()}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-*/
