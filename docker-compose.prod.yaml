@@ -44,7 +44,7 @@ services:
       - logging=promtail
       - environment=prod
       - traefik.enable=true
-      - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.rule=Host(`${SITE_PREFIX}.${HOST_URL}`)
+      - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.rule=Host(`${HOST_URL}`) || Host(`${SITE_PREFIX}.${HOST_URL}`)
       - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.entrypoints=websecure
       - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.tls.certresolver=cloudflare
       - traefik.http.services.nextjs-${BRANCH_SUFFIX}.loadbalancer.server.port=${CONTAINER_PORT}

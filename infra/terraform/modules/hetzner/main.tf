@@ -23,7 +23,7 @@ resource "hcloud_server" "salko" {
   ssh_keys     = [hcloud_ssh_key.vps_ssh_key.id, var.hetzner_gha_runner_ssh_key_id]
   firewall_ids = [hcloud_firewall.default.id]
 
-  backups = false
+  backups = true
 
   delete_protection  = true
   rebuild_protection = true

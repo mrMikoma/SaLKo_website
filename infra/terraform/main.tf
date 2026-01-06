@@ -32,29 +32,25 @@ module "salko" {
 # Cloudflare
 #################################################################
 
-# TO-DO: Create a Cloudflare API token with permissions to manage DNS records for traefik
+resource "cloudflare_dns_record" "root" {
+  zone_id = var.cloudflare_zone_id
+  comment = "Apex domain"
+  content = module.salko.server_public_ips["salko0"]
+  name    = "@"
+  type    = "A"
+  ttl     = 1
+  proxied = true
+}
 
-# resource "cloudflare_record" "root" {
-#   zone_id = data.cloudflare_zones.main.zones[0].id
-#   name    = "@"
-#   type    = "A"
-#   value   = "YOUR_VPS_PUBLIC_IP"
-#   ttl     = 120
-#   proxied = true
-# }
-
-# resource "cloudflare_record" "www" {
-#   zone_id = data.cloudflare_zones.main.zones[0].id
-#   name    = "www"
-#   type    = "CNAME"
-#   value   = "@"
-#   ttl     = 120
-#   proxied = true
-# 
-#   depends_on = [
-#     data.cloudflare_zones.main
-#   ]
-# }
+resource "cloudflare_dns_record" "www" {
+  zone_id = var.cloudflare_zone_id
+  comment = "WWW subdomain"
+  content = var.cloudflare_zone_name
+  name    = "www"
+  type    = "CNAME"
+  ttl     = 1
+  proxied = true
+}
 
 resource "cloudflare_dns_record" "dev" {
   zone_id = var.cloudflare_zone_id
