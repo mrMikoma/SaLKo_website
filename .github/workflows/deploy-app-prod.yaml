@@ -176,6 +176,7 @@ jobs:
           POSTGRES_DB: "salko"
           APP_DB_USER: "salko_app"
           UMAMI_DB_USER: "umami_app"
+          UMAMI_INTERNAL_URL: "http://salko-umami:3000"
           NEXTAUTH_URL: "https://${{ env.SITE_PREFIX }}.${{ env.HOST_URL }}"
         run: |
           echo "Deploying to production environment..."
@@ -207,6 +208,7 @@ jobs:
             echo "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" >> .env.prod
             echo "UMAMI_DB_USER=${{ env.UMAMI_DB_USER }}" >> .env.prod
             echo "UMAMI_DB_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env.prod
+            echo "UMAMI_INTERNAL_URL=${{ env.UMAMI_INTERNAL_URL }}" >> .env.prod
             echo "NEXT_PUBLIC_UMAMI_WEBSITE_ID=${{ secrets.NEXT_PUBLIC_UMAMI_WEBSITE_ID }}" >> .env.prod
 
             # Ensure the environment variables are written before proceeding
