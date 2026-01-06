@@ -3,21 +3,20 @@ name: Deploy Background Cronjobs
 on:
   workflow_dispatch:
     inputs:
-      environment:
-        description: 'Deployment environment'
+      branch_name:
+        description: 'Branch to deploy (main for production, dev for development)'
         required: true
-        default: 'production'
+        default: 'main'
         type: choice
         options:
-          - production
-          - development
+          - main
+          - dev
       specific_job:
         description: 'Specific cronjob to deploy (leave empty for all)'
         required: false
         type: string
   push:
     branches:
-      - main
       - dev
     paths:
       - 'cronjobs/**'
@@ -209,7 +208,7 @@ jobs:
     needs: [detect-changes, build-and-push, create-runner]
     if: ${{ needs.detect-changes.outputs.jobs != '[]' }}
     runs-on: ${{ needs.create-runner.outputs.label }}
-    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
+    environment: ${{ (github.event.inputs.branch_name == 'main' || github.ref == 'refs/heads/main') && 'production' || 'development' }}
     strategy:
       matrix:
         job: ${{ fromJson(needs.detect-changes.outputs.jobs) }}
@@ -222,31 +221,30 @@ jobs:
       - name: Define deployment variables
         id: vars
         run: |
-          # Determine environment from branch or manual input
+          # Determine branch and environment
           if [ "${{ github.event_name }}" = "push" ]; then
-            # Auto-detect from branch
-            if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-              ENVIRONMENT="production"
-            else
-              ENVIRONMENT="dev"
-            fi
+            # Auto-deploy from push (only dev branch)
+            BRANCH_NAME="${{ github.ref_name }}"
           else
-            # Use manual input
-            ENVIRONMENT="${{ github.event.inputs.environment || 'production' }}"
+            # Manual workflow_dispatch
+            BRANCH_NAME="${{ github.event.inputs.branch_name }}"
           fi
 
-          # Set branch suffix based on environment
-          if [ "$ENVIRONMENT" = "production" ]; then
-            BRANCH_SUFFIX="prod"
+          # Set branch suffix and environment based on branch
+          if [ "$BRANCH_NAME" = "main" ]; then
+            BRANCH_SUFFIX="main"
+            ENVIRONMENT="production"
           else
             BRANCH_SUFFIX="dev"
+            ENVIRONMENT="development"
           fi
 
           # Get image tag (use branch name or sha)
-          IMAGE_TAG="${GITHUB_REF_NAME}-${GITHUB_SHA::7}"
+          IMAGE_TAG="${BRANCH_NAME}-${GITHUB_SHA::7}"
           IMAGE_NAME="${{ env.IMAGE_PREFIX }}-${{ matrix.job }}"
 
           # Export all variables to GITHUB_ENV for use in subsequent steps
+          echo "BRANCH_NAME=${BRANCH_NAME}" >> $GITHUB_ENV
           echo "ENVIRONMENT=${ENVIRONMENT}" >> $GITHUB_ENV
           echo "BRANCH_SUFFIX=${BRANCH_SUFFIX}" >> $GITHUB_ENV
           echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_ENV
@@ -267,44 +265,52 @@ jobs:
           POSTGRES_DB: "salko"
           APP_DB_USER: "salko_app"
         run: |
+          # Create cronjobs directory if it doesn't exist
+          ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} "mkdir -p /home/salko/cronjobs"
+
           # Transfer environment-specific docker-compose file
-          if [ "${{ env.ENVIRONMENT }}" = "production" ]; then
+          if [ "${{ env.BRANCH_SUFFIX }}" = "main" ]; then
             scp -i ~/.ssh/id_ed25519 cronjobs/docker-compose.prod.yaml salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/cronjobs/docker-compose.prod.yaml
+            COMPOSE_FILE="docker-compose.prod.yaml"
           else
             scp -i ~/.ssh/id_ed25519 cronjobs/docker-compose.dev.yaml salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/cronjobs/docker-compose.dev.yaml
+            COMPOSE_FILE="docker-compose.dev.yaml"
           fi
 
           # Create .env file and deploy with Ofelia
+          BRANCH_SUFFIX="${{ env.BRANCH_SUFFIX }}"
+          ENVIRONMENT="${{ env.ENVIRONMENT }}"
           ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} << EOF
             set -e
             cd /home/salko/cronjobs
 
             # Create or clear the .env file
-            > .env.${{ env.BRANCH_SUFFIX }}
+            > .env.${BRANCH_SUFFIX}
 
             # Append environment variables one by one
-            echo "NAME_PREFIX=${{ env.NAME_PREFIX }}" > .env.${{ env.BRANCH_SUFFIX }}
-            echo "BRANCH_SUFFIX=${{ env.BRANCH_SUFFIX }}" >> .env.${{ env.BRANCH_SUFFIX }}
-            echo "IMAGE_TAG_NAME=${{ env.IMAGE_NAME }}" >> .env.${{ env.BRANCH_SUFFIX }}
-            echo "IMAGE_VERSION=${{ env.IMAGE_TAG }}" >> .env.${{ env.BRANCH_SUFFIX }}
-            echo "PGPORT=${{ env.PGPORT }}" >> .env.${{ env.BRANCH_SUFFIX }}
-            echo "POSTGRES_DB=${{ env.POSTGRES_DB }}" >> .env.${{ env.BRANCH_SUFFIX }}
-            echo "APP_DB_USER=${{ env.APP_DB_USER }}" >> .env.${{ env.BRANCH_SUFFIX }}
-            echo "APP_DB_PASSWORD=${{ secrets.APP_DB_PASSWORD }}" >> .env.${{ env.BRANCH_SUFFIX }}
+            echo "NAME_PREFIX=${{ env.NAME_PREFIX }}" > .env.${BRANCH_SUFFIX}
+            echo "BRANCH_SUFFIX=${BRANCH_SUFFIX}" >> .env.${BRANCH_SUFFIX}
+            echo "IMAGE_TAG_NAME=${{ env.IMAGE_NAME }}" >> .env.${BRANCH_SUFFIX}
+            echo "IMAGE_VERSION=${{ env.IMAGE_TAG }}" >> .env.${BRANCH_SUFFIX}
+            echo "PGPORT=${{ env.PGPORT }}" >> .env.${BRANCH_SUFFIX}
+            echo "POSTGRES_DB=${{ env.POSTGRES_DB }}" >> .env.${BRANCH_SUFFIX}
+            echo "APP_DB_USER=${{ env.APP_DB_USER }}" >> .env.${BRANCH_SUFFIX}
+            echo "APP_DB_PASSWORD=${{ secrets.APP_DB_PASSWORD }}" >> .env.${BRANCH_SUFFIX}
 
             # Secure the .env file permissions (readable only by owner)
-            chmod 600 .env.${{ env.BRANCH_SUFFIX }}
-            echo ".env.${{ env.BRANCH_SUFFIX }} file created with environment variables."
-            
+            chmod 600 .env.${BRANCH_SUFFIX}
+            echo ".env.${BRANCH_SUFFIX} file created with environment variables."
+
             # Pull latest images
-            docker compose -p salko-mon-${{ env.BRANCH_SUFFIX }} --env-file .env.${{ env.BRANCH_SUFFIX }} -f docker-compose.${{ env.BRANCH_SUFFIX }}.yaml pull
+            docker compose -p salko-cronjobs-${BRANCH_SUFFIX} --env-file .env.${BRANCH_SUFFIX} -f ${COMPOSE_FILE} pull
 
             # Start/restart containers with Ofelia
-            docker compose -p salko-mon-${{ env.BRANCH_SUFFIX }} --env-file .env.${{ env.BRANCH_SUFFIX }} -f docker-compose.${{ env.BRANCH_SUFFIX }}.yaml up -d
+            docker compose -p salko-cronjobs-${BRANCH_SUFFIX} --env-file .env.${BRANCH_SUFFIX} -f ${COMPOSE_FILE} up -d
 
-            echo "Ofelia cronjob scheduler deployed successfully"
-            echo "Jobs are scheduled via Docker labels in docker-compose.${{ env.BRANCH_SUFFIX }}.yaml"
-            docker ps | grep ofelia
+            echo "Ofelia cronjob scheduler deployed successfully for ${ENVIRONMENT}"
+            echo "Project: salko-cronjobs-${BRANCH_SUFFIX}"
+            echo "Jobs are scheduled via Docker labels in ${COMPOSE_FILE}"
+            docker ps | grep "salko.*${BRANCH_SUFFIX}"
           EOF
 
   delete-runner:
@@ -332,9 +338,19 @@ jobs:
     steps:
       - name: Summary
         run: |
-          echo "## Cronjob Deployment Summary (Docker)" >> $GITHUB_STEP_SUMMARY
+          # Determine environment
+          if [ "${{ github.event.inputs.branch_name }}" = "main" ] || [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            ENVIRONMENT="Production"
+            BRANCH="main"
+          else
+            ENVIRONMENT="Development"
+            BRANCH="dev"
+          fi
+
+          echo "## Cronjob Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Environment:** ${{ github.event.inputs.environment || 'production' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** $ENVIRONMENT" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** $BRANCH" >> $GITHUB_STEP_SUMMARY
           echo "**Deployed Jobs:** ${{ needs.detect-changes.outputs.jobs }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           if [ "${{ needs.deploy.result }}" = "success" ]; then
