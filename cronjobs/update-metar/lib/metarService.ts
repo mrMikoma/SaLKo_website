@@ -4,7 +4,7 @@
  * and storing it in the database
  */
 
-import connectionPool from "./db";
+import { getConnectionPool } from "./db";
 import { parseMETAR } from "./metarParser";
 
 const AVIATION_WEATHER_API = "https://aviationweather.gov/api/data/metar";
@@ -50,6 +50,8 @@ export async function storeMETARInDB(
   rawMetar: string,
   stationCode: string = STATION_CODE
 ): Promise<void> {
+  const connectionPool = getConnectionPool();
+
   if (!connectionPool) {
     throw new Error("Database connection pool not available");
   }
@@ -153,6 +155,8 @@ export async function updateMetarData(
  * Clean up old METAR data (keep last N days)
  */
 export async function cleanupOldMETARData(daysToKeep: number = 7): Promise<void> {
+  const connectionPool = getConnectionPool();
+
   if (!connectionPool) {
     throw new Error("Database connection pool not available");
   }
