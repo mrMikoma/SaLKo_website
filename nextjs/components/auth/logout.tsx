@@ -1,5 +1,5 @@
 "use client";
-import { useActionState, startTransition } from "react";
+import { useActionState } from "react";
 import { logout } from "@/utilities/authActions";
 
 const Logout = ({ onHandleLogout }: { onHandleLogout: () => void }) => {
@@ -7,16 +7,13 @@ const Logout = ({ onHandleLogout }: { onHandleLogout: () => void }) => {
 
   return (
     <form
-      onClick={(e) => {
-        e.preventDefault();
-        startTransition(() => {
-          action();
-        });
+      action={action}
+      onSubmit={() => {
         onHandleLogout();
       }}
     >
       <div>
-        <button disabled={pending} type="button">
+        <button disabled={pending} type="submit">
           Kirjaudu ulos
         </button>
       </div>
