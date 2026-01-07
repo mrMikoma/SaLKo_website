@@ -99,8 +99,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           if (result.rows.length === 0) {
             // Auto-create user on first Google login
             await pool.query(
-              `INSERT INTO users (email, name, full_name, role, auth_provider, google_id, email_verified, avatar_url, phone, address, city, postal_code)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, '', '', '', '')`,
+              `INSERT INTO users (email, name, full_name, role, auth_provider, google_id, email_verified, avatar_url, phone, address, city, postal_code, last_login)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, '', '', '', '', NOW())`,
               [
                 email,
                 profile?.name || email.split("@")[0],

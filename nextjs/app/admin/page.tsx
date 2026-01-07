@@ -28,7 +28,7 @@ async function getStats() {
       ),
       // Recent users
       pool.query(
-        `SELECT id, name, email, role, created_at
+        `SELECT id, name, email, role, created_at, last_login
         FROM users
         ORDER BY created_at DESC
         LIMIT 5`
@@ -230,6 +230,9 @@ export default async function AdminDashboard() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Liittynyt
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Viimeisin kirjautuminen
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -256,6 +259,18 @@ export default async function AdminDashboard() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                     {new Date(user.created_at).toLocaleDateString("fi-FI")}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                    {user.last_login ? (
+                      <div>
+                        <div>{new Date(user.last_login).toLocaleDateString('fi-FI')}</div>
+                        <div className="text-xs text-gray-400">
+                          {new Date(user.last_login).toLocaleTimeString('fi-FI', { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-gray-400 italic">Ei vielä</span>
+                    )}
                   </td>
                 </tr>
               ))}
