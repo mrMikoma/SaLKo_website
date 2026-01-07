@@ -58,9 +58,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           }
 
           // Update last login
-          await pool.query("UPDATE users SET last_login = NOW() WHERE id = $1", [
-            user.id,
-          ]);
+          await pool.query(
+            "UPDATE users SET last_login = NOW() WHERE id = $1",
+            [user.id]
+          );
 
           return {
             id: user.id,
@@ -98,8 +99,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           if (result.rows.length === 0) {
             // Auto-create user on first Google login
             await pool.query(
-              `INSERT INTO users (email, name, full_name, role, auth_provider, google_id, email_verified, avatar_url, phone, address, city, postal_code)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, '', '', '', '')`,
+              `INSERT INTO users (email, name, full_name, role, auth_provider, google_id, email_verified, avatar_url, phone, address, city, postal_code, last_login)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, '', '', '', '', NOW())`,
               [
                 email,
                 profile?.name || email.split("@")[0],
@@ -134,7 +135,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.accessToken = account.access_token;
         token.idToken = account.id_token;
 
-        console.log("[JWT] Google OAuth - Fetching user data for email:", user.email);
+        console.log(
+          "[JWT] Google OAuth - Fetching user data for email:",
+          user.email
+        );
         try {
           const result = await pool.query(
             "SELECT id, role, full_name FROM users WHERE email = $1",
@@ -146,10 +150,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             token.fullName = result.rows[0].full_name;
             console.log("[JWT] Google OAuth - User found, ID:", token.id);
           } else {
-            console.error("[JWT] Google OAuth - No user found in database for email:", user.email);
+            console.error(
+              "[JWT] Google OAuth - No user found in database for email:",
+              user.email
+            );
           }
         } catch (error) {
-          console.error("[JWT] Error fetching user data for Google OAuth:", error);
+          console.error(
+            "[JWT] Error fetching user data for Google OAuth:",
+            error
+          );
         }
       }
       // For credentials provider, user object contains our database fields
@@ -184,15 +194,26 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             session.user.image = user.avatar_url;
             console.log("[SESSION] User found by ID:", user.id);
           } else {
-            console.error("[SESSION] No user found for ID:", token.id);
-            // This should not happen if JWT callback works correctly
-            console.error("[SESSION] Token has invalid ID - user may have been deleted");
+            // User not found - this can happen during logout or if user was deleted
+            // Return null to invalidate the session
+            console.log(
+              "[SESSION] No user found for ID:",
+              token.id,
+              "- session will be invalidated"
+            );
+            return null as any;
           }
         } else {
-          console.error("[SESSION] Token missing user ID");
+          // No token ID - session is invalid
+          console.log(
+            "[SESSION] Token missing user ID - session will be invalidated"
+          );
+          return null as any;
         }
       } catch (error) {
         console.error("[SESSION] Error in session callback:", error);
+        // On database error, invalidate the session
+        return null as any;
       }
 
       console.log("[SESSION] Final session.user.id:", session.user?.id);

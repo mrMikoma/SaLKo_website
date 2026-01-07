@@ -50,7 +50,7 @@ const RootLayout = async ({ children }: React.PropsWithChildren) => {
             <NavbarProvider>
               <main className="max-w-screen min-h-screen flex flex-col overflow-x-hidden relative bg-background bg-sblued text-white font-finlandica">
                 <AntdRegistry>
-                  <Navbar session={session} />
+                  <Navbar />
                   {children}
                   <Footer />
                 </AntdRegistry>

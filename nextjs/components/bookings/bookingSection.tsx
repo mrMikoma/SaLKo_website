@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, lazy, Suspense } from "react";
+import { useMemo, lazy, Suspense, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import DatePicker from "@/components/bookings/datePicker";
 import ViewSelector, { ViewMode } from "@/components/bookings/viewSelector";
 import { BookingType } from "@/utilities/bookings";
@@ -20,7 +21,9 @@ import { FLIGHT_TYPE_CONFIGS, FlightTypeConfig } from "@/types/bookings";
 import { DateTime } from "luxon";
 
 // Lazy load modal for better code splitting
-const BookingUpdateModal = lazy(() => import("@/components/bookings/bookingModal"));
+const BookingUpdateModal = lazy(
+  () => import("@/components/bookings/bookingModal")
+);
 
 /*
  * Types and Constants
@@ -49,6 +52,9 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
 
   // Custom hooks for state management
   const queryClient = useQueryClient();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { date, dateString, setDate } = useDateFromUrl();
   const { viewMode, setViewMode } = useViewMode();
 
@@ -105,10 +111,11 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
 
   // Helper functions
   const getFlightTypeColor = useMemo(
-    () => (type: string): string => {
-      const flightType = FLIGHT_TYPES.find((flight) => flight.type === type);
-      return flightType ? flightType.color : "#4A90E2";
-    },
+    () =>
+      (type: string): string => {
+        const flightType = FLIGHT_TYPES.find((flight) => flight.type === type);
+        return flightType ? flightType.color : "#4A90E2";
+      },
     []
   );
 
@@ -126,8 +133,12 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
     const endHour = startHour + 1;
 
     // Format hours with leading zero if needed (e.g., 07:00 instead of 7:00)
-    const startTimeStr = `${targetDate}T${startHour.toString().padStart(2, '0')}:00`;
-    const endTimeStr = `${targetDate}T${endHour.toString().padStart(2, '0')}:00`;
+    const startTimeStr = `${targetDate}T${startHour
+      .toString()
+      .padStart(2, "0")}:00`;
+    const endTimeStr = `${targetDate}T${endHour
+      .toString()
+      .padStart(2, "0")}:00`;
 
     // Allow both logged in users and guests to create bookings
     openCreateModal({
@@ -140,9 +151,16 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
 
   const handleDayClick = (targetDate: string) => {
     const newDate = DateTime.fromISO(targetDate);
-    if (newDate.isValid) {
-      setDate(newDate);
-      setViewMode("day");
+    if (!newDate.isValid) return;
+
+    // When using separate setDate() and setViewMode() calls, they each trigger
+    // router.replace() which can cause one to overwrite the other
+    const params = new URLSearchParams(searchParams.toString());
+    const isoDate = newDate.toISODate();
+    if (isoDate) {
+      params.set("paiva", isoDate);
+      params.set("view", "day");
+      router.push(`${pathname}?${params.toString()}`);
     }
   };
 
@@ -179,7 +197,10 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
     }
   };
 
-  const handleSaveBooking = async (booking: BookingType, repeatEndDate?: string) => {
+  const handleSaveBooking = async (
+    booking: BookingType,
+    repeatEndDate?: string
+  ) => {
     if (repeatEndDate) {
       // Handle repeating bookings
       const { addRepeatingBookings } = await import("@/utilities/bookings");
@@ -215,11 +236,15 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
     closeModal();
   };
 
-  const handleDeleteBooking = async (deleteFollowing?: boolean): Promise<void> => {
+  const handleDeleteBooking = async (
+    deleteFollowing?: boolean
+  ): Promise<void> => {
     if (selectedBooking.id >= 0) {
       // If deleteFollowing is true and the booking has a repeat_group_id, use the new function
       if (deleteFollowing && selectedBooking.repeat_group_id) {
-        const { removeBookingWithRepeats } = await import("@/utilities/bookings");
+        const { removeBookingWithRepeats } = await import(
+          "@/utilities/bookings"
+        );
         try {
           const response = await removeBookingWithRepeats(
             selectedBooking.id,
@@ -233,7 +258,10 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
             queryClient.invalidateQueries({ queryKey: ["bookings"] });
             closeModal();
           } else {
-            console.error("Error deleting repeating bookings:", response.result);
+            console.error(
+              "Error deleting repeating bookings:",
+              response.result
+            );
             alert("Virhe poistettaessa toistuvia varauksia");
             throw new Error("Failed to delete repeating bookings");
           }
@@ -247,7 +275,7 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
         removeBooking(selectedBooking.id);
         // Don't close modal here - let the mutation's onSuccess handle it
         // Wait a bit for the mutation to process
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
         closeModal();
       }
     }
@@ -271,12 +299,16 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
       {!isLoggedIn && (
         <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
           <p className="text-center text-gray-700">
-            <span className="font-medium">Voit varata myös ilman kirjautumista.</span>
-            {" "}
-            <a href="/auth/login" className="text-sblue hover:underline font-medium">
+            <span className="font-medium">
+              Voit varata myös ilman kirjautumista.
+            </span>{" "}
+            <a
+              href="/auth/login"
+              className="text-sblue hover:underline font-medium"
+            >
               Kirjaudu sisään
-            </a>
-            {" "}jos sinulla on käyttäjätunnus.
+            </a>{" "}
+            jos sinulla on käyttäjätunnus.
           </p>
         </div>
       )}
@@ -292,7 +324,6 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
       {/* Content - only show when not loading or error */}
       {!isLoading && !isError && (
         <>
-
           {/* Responsive Booking View */}
           {isMobile ? (
             <BookingsMobileView
@@ -355,7 +386,13 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
 
       {/* Booking Modal */}
       {modalMode && (
-        <Suspense fallback={<div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div></div>}>
+        <Suspense
+          fallback={
+            <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+            </div>
+          }
+        >
           <BookingUpdateModal
             mode={modalMode}
             booking={selectedBooking}

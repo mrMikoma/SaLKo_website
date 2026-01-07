@@ -43,8 +43,8 @@ const WeatherWidget = () => {
     // Fetch immediately
     fetchWeather();
 
-    // Refresh every 5 minutes
-    const interval = setInterval(fetchWeather, 5 * 60 * 1000);
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchWeather, 1 * 30 * 1000);
 
     return () => clearInterval(interval);
   }, []);

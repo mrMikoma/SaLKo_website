@@ -1,6 +1,7 @@
 import PageHero from "@/components/pageHero";
 import ContentSection from "@/components/contentSection";
 import ImageGallery from "@/components/imageGallery";
+import WeatherWidget from "@/components/weatherWidget";
 
 export const metadata = {
   title: "Kenttä | SaLKo",
@@ -110,8 +111,9 @@ export default function Page() {
                 <div className="space-y-3 text-swhite/90">
                   <p>
                     Savonlinnan Lentokerho on toiminut Savonlinnan lentoasemalla
-                    vuodesta 1962 lähtien. Lentoasema tarjoaa erinomaiset
-                    puitteet sekä moottori- että purjelentotoiminnalle.
+                    sen käyttöönotosta vuodesta 1974 alkaen. Lentoasema tarjoaa
+                    erinomaiset puitteet sekä moottori- että
+                    purjelentotoiminnalle.
                   </p>
                   <p>
                     Kenttä on avoinna ympäri vuoden, ja rauhallinen ilmatila
@@ -124,6 +126,15 @@ export default function Page() {
           </div>
         }
       />
+
+      <ContentSection variant="light" backgroundImage="bg-punkaharju-one">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-3xl md:text-4xl font-bold text-sred mb-8 text-center">
+            Säätiedot
+          </h2>
+          <WeatherWidget />
+        </div>
+      </ContentSection>
 
       <ContentSection variant="dark">
         <div className="max-w-6xl mx-auto">

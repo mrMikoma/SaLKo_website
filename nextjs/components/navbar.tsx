@@ -4,6 +4,7 @@ import Image from "next/image";
 import NavbarMobile from "@/components/navbarMobile";
 import ArrowDownIcon from "@/components/icons/arrowDown";
 import Login from "@/components/auth/login";
+import Logout from "@/components/auth/logout";
 import {
   Menu,
   MenuButton,
@@ -16,18 +17,18 @@ import {
 import XCrossIcon from "./icons/xCross";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Logout from "./auth/logout";
-import type { Session } from "next-auth";
+import { useSession } from "next-auth/react";
 import { useNavbar } from "@/providers/NavbarContextProvider";
 
-const Navbar = ({ session }: { session: Session | null }) => {
+const Navbar = () => {
+  const { data: session, status } = useSession();
   const [authenticated, setAuthenticated] = useState(false);
   const [userName, setUserName] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
-  const router = useRouter();
   const { isFullscreenMode } = useNavbar();
+  const router = useRouter();
 
   useEffect(() => {
     if (session?.user) {
@@ -39,7 +40,7 @@ const Navbar = ({ session }: { session: Session | null }) => {
       setUserName("");
       setIsAdmin(false);
     }
-  }, [session]);
+  }, [session, status]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -89,7 +90,7 @@ const Navbar = ({ session }: { session: Session | null }) => {
             </span>
           </Link>{" "}
           {/* Mobile menu toggle button */}
-          <NavbarMobile />
+          <NavbarMobile handleLogout={handleLogout} />
         </div>
 
         {/* Desktop Navigation Menu */}

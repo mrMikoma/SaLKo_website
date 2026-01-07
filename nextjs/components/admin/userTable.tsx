@@ -1,7 +1,13 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { User, updateUserRole, deleteUser, createCredentialUser, resetUserPassword } from "@/utilities/adminUserActions";
+import {
+  User,
+  updateUserRole,
+  deleteUser,
+  createCredentialUser,
+  resetUserPassword,
+} from "@/utilities/adminUserActions";
 import { getRoleDisplayName } from "@/utilities/roles";
 
 interface UserTableProps {
@@ -10,12 +16,16 @@ interface UserTableProps {
 
 const UserTable = ({ users }: UserTableProps) => {
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
-  const [selectedRole, setSelectedRole] = useState<"admin" | "user" | "guest">("user");
+  const [selectedRole, setSelectedRole] = useState<"admin" | "user" | "guest">(
+    "user"
+  );
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [resettingPasswordUserId, setResettingPasswordUserId] = useState<string | null>(null);
+  const [resettingPasswordUserId, setResettingPasswordUserId] = useState<
+    string | null
+  >(null);
   const [newPassword, setNewPassword] = useState("");
 
   // New user form state
@@ -27,7 +37,10 @@ const UserTable = ({ users }: UserTableProps) => {
     role: "user" as "admin" | "user" | "guest",
   });
 
-  const handleRoleEdit = (userId: string, currentRole: "admin" | "user" | "guest") => {
+  const handleRoleEdit = (
+    userId: string,
+    currentRole: "admin" | "user" | "guest"
+  ) => {
     setEditingUserId(userId);
     setSelectedRole(currentRole);
     setError(null);
@@ -127,7 +140,9 @@ const UserTable = ({ users }: UserTableProps) => {
           </button>
         ) : (
           <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-            <h3 className="text-lg font-semibold mb-4 text-gray-900">Luo uusi käyttäjä</h3>
+            <h3 className="text-lg font-semibold mb-4 text-gray-900">
+              Luo uusi käyttäjä
+            </h3>
             <form onSubmit={handleCreateUser} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -137,7 +152,9 @@ const UserTable = ({ users }: UserTableProps) => {
                   <input
                     type="email"
                     value={newUser.email}
-                    onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                    onChange={(e) =>
+                      setNewUser({ ...newUser, email: e.target.value })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
                     required
                     disabled={isPending}
@@ -150,7 +167,9 @@ const UserTable = ({ users }: UserTableProps) => {
                   <input
                     type="password"
                     value={newUser.password}
-                    onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                    onChange={(e) =>
+                      setNewUser({ ...newUser, password: e.target.value })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
                     required
                     minLength={8}
@@ -164,7 +183,9 @@ const UserTable = ({ users }: UserTableProps) => {
                   <input
                     type="text"
                     value={newUser.name}
-                    onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                    onChange={(e) =>
+                      setNewUser({ ...newUser, name: e.target.value })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
                     required
                     disabled={isPending}
@@ -177,7 +198,9 @@ const UserTable = ({ users }: UserTableProps) => {
                   <input
                     type="text"
                     value={newUser.full_name}
-                    onChange={(e) => setNewUser({ ...newUser, full_name: e.target.value })}
+                    onChange={(e) =>
+                      setNewUser({ ...newUser, full_name: e.target.value })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
                     required
                     disabled={isPending}
@@ -189,7 +212,12 @@ const UserTable = ({ users }: UserTableProps) => {
                   </label>
                   <select
                     value={newUser.role}
-                    onChange={(e) => setNewUser({ ...newUser, role: e.target.value as "admin" | "user" | "guest" })}
+                    onChange={(e) =>
+                      setNewUser({
+                        ...newUser,
+                        role: e.target.value as "admin" | "user" | "guest",
+                      })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
                     disabled={isPending}
                   >
@@ -211,7 +239,13 @@ const UserTable = ({ users }: UserTableProps) => {
                   type="button"
                   onClick={() => {
                     setShowCreateForm(false);
-                    setNewUser({ email: "", password: "", name: "", full_name: "", role: "user" });
+                    setNewUser({
+                      email: "",
+                      password: "",
+                      name: "",
+                      full_name: "",
+                      role: "user",
+                    });
                   }}
                   disabled={isPending}
                   className="bg-gray-300 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-400 disabled:bg-gray-200"
@@ -228,28 +262,53 @@ const UserTable = ({ users }: UserTableProps) => {
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nimi</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sähköposti</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rooli</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Auth</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Puhelin</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Liittynyt</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Toiminnot</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Nimi
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Sähköposti
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Rooli
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Auth
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Puhelin
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Liittynyt
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Viimeisin kirjautuminen
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Toiminnot
+              </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {users.map((user) => (
               <tr key={user.id} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                  <div className="text-sm font-medium text-gray-900">
+                    {user.name}
+                  </div>
                   <div className="text-sm text-gray-500">{user.full_name}</div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{user.email}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                  {user.email}
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   {editingUserId === user.id ? (
                     <select
                       value={selectedRole}
-                      onChange={(e) => setSelectedRole(e.target.value as "admin" | "user" | "guest")}
+                      onChange={(e) =>
+                        setSelectedRole(
+                          e.target.value as "admin" | "user" | "guest"
+                        )
+                      }
                       className="text-sm border border-gray-300 rounded px-2 py-1 text-gray-900"
                       disabled={isPending}
                     >
@@ -258,31 +317,60 @@ const UserTable = ({ users }: UserTableProps) => {
                       <option value="guest">Vieras</option>
                     </select>
                   ) : (
-                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      user.role === 'admin' ? 'bg-purple-100 text-purple-800' :
-                      user.role === 'user' ? 'bg-green-100 text-green-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
+                    <span
+                      className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        user.role === "admin"
+                          ? "bg-purple-100 text-purple-800"
+                          : user.role === "user"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-gray-100 text-gray-800"
+                      }`}
+                    >
                       {getRoleDisplayName(user.role)}
                     </span>
                   )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                    user.auth_provider === 'google' ? 'bg-blue-100 text-blue-800' :
-                    user.auth_provider === 'credentials' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {user.auth_provider === 'google' ? 'Google' :
-                     user.auth_provider === 'credentials' ? 'Salasana' :
-                     user.auth_provider}
+                  <span
+                    className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                      user.auth_provider === "google"
+                        ? "bg-blue-100 text-blue-800"
+                        : user.auth_provider === "credentials"
+                        ? "bg-yellow-100 text-yellow-800"
+                        : "bg-gray-100 text-gray-800"
+                    }`}
+                  >
+                    {user.auth_provider === "google"
+                      ? "Google"
+                      : user.auth_provider === "credentials"
+                      ? "Salasana"
+                      : user.auth_provider}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                  {user.phone || <span className="text-gray-400 italic">-</span>}
+                  {user.phone || (
+                    <span className="text-gray-400 italic">-</span>
+                  )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                  {new Date(user.created_at).toLocaleDateString('fi-FI')}
+                  {new Date(user.created_at).toLocaleDateString("fi-FI")}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                  {user.last_login ? (
+                    <div>
+                      <div>
+                        {new Date(user.last_login).toLocaleDateString("fi-FI")}
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        {new Date(user.last_login).toLocaleTimeString("fi-FI", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="text-gray-400 italic">- </span>
+                  )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   {editingUserId === user.id ? (
@@ -351,9 +439,18 @@ const UserTable = ({ users }: UserTableProps) => {
                       )}
                       <button
                         onClick={() => handleDelete(user.id, user.name)}
-                        disabled={isPending || user.auth_provider === "system" || user.email === "vieras@savonlinnanlentokerho.fi"}
+                        disabled={
+                          isPending ||
+                          user.auth_provider === "system" ||
+                          user.email === "vieras@savonlinnanlentokerho.fi"
+                        }
                         className="text-red-600 hover:text-red-900 disabled:text-gray-400"
-                        title={user.auth_provider === "system" || user.email === "vieras@savonlinnanlentokerho.fi" ? "Järjestelmäkäyttäjää ei voi poistaa" : ""}
+                        title={
+                          user.auth_provider === "system" ||
+                          user.email === "vieras@savonlinnanlentokerho.fi"
+                            ? "Järjestelmäkäyttäjää ei voi poistaa"
+                            : ""
+                        }
                       >
                         Poista
                       </button>
@@ -365,9 +462,7 @@ const UserTable = ({ users }: UserTableProps) => {
           </tbody>
         </table>
         {users.length === 0 && (
-          <div className="text-center py-8 text-gray-500">
-            Ei käyttäjiä
-          </div>
+          <div className="text-center py-8 text-gray-500">Ei käyttäjiä</div>
         )}
       </div>
     </div>

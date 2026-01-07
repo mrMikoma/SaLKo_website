@@ -9,20 +9,19 @@ import {
 } from "@headlessui/react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import ArrowDownIcon from "@/components/icons/arrowDown";
 import XCrossIcon from "@/components/icons/xCross";
 import MenuIcon from "@/components/icons/menu";
 import { useNavbar } from "@/providers/NavbarContextProvider";
 import Login from "@/components/auth/login";
 import Logout from "@/components/auth/logout";
-import { useSession } from "next-auth/react";
 
-const NavbarMobile = () => {
+const NavbarMobile = (handleLogoutProp: { handleLogout: () => void }) => {
+  const { data: session, status } = useSession();
   const { isMobileMenuOpen, setIsMobileMenuOpen } = useNavbar();
   const pathName = usePathname();
-  const { data: session } = useSession();
-  const router = useRouter();
   const [authenticated, setAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -34,7 +33,7 @@ const NavbarMobile = () => {
       setAuthenticated(false);
       setIsAdmin(false);
     }
-  }, [session]);
+  }, [session, status]);
 
   // Toggle menu visibility
   const handleToggle = () => {
@@ -44,12 +43,6 @@ const NavbarMobile = () => {
   // Close the menu
   const handleClose = () => {
     setIsMobileMenuOpen(false);
-  };
-
-  const handleLogout = async () => {
-    router.refresh();
-    setAuthenticated(false);
-    handleClose();
   };
 
   // Close menu on navigation
@@ -256,11 +249,10 @@ const NavbarMobile = () => {
                           Admin sivut
                         </Link>
                       )}
-                      <div
-                        className="block w-full py-2.5 px-8 text-base text-sred/95 hover:bg-sblue/40 hover:text-sred hover:pl-10 transition-all duration-200 border-l-2 border-transparent hover:border-sred backdrop-blur-sm cursor-pointer"
-                        onClick={handleLogout}
-                      >
-                        Kirjaudu ulos
+                      <div className="block w-full py-2.5 px-8 text-base text-sred/95 hover:bg-sblue/40 hover:text-sred hover:pl-10 transition-all duration-200 border-l-2 border-transparent hover:border-sred backdrop-blur-sm">
+                        <Logout
+                          onHandleLogout={handleLogoutProp.handleLogout}
+                        />
                       </div>
                     </DisclosurePanel>
                   </div>

@@ -16,7 +16,7 @@
  */
 
 import { updateMetarData, cleanupOldMETARData } from "./lib/metarService";
-import connectionPool from "./lib/db";
+import { closeConnectionPool } from "./lib/db";
 
 interface CronjobConfig {
   name: string;
@@ -70,7 +70,7 @@ async function main() {
     );
 
     // Close database connection pool
-    await connectionPool.end();
+    await closeConnectionPool();
     process.exit(0);
   } catch (error) {
     const duration = Date.now() - startTime;
@@ -82,7 +82,7 @@ async function main() {
     );
 
     // Close database connection pool
-    await connectionPool.end();
+    await closeConnectionPool();
     process.exit(1);
   }
 }
