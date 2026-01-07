@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, memo } from "react";
+import { useEffect, useState, memo, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { DateTime } from "luxon";
@@ -48,6 +48,55 @@ const BookingModal = memo(
     const isGuestMode = !isLoggedIn && mode === "create";
     const hasRepeatGroup = !!booking.repeat_group_id;
 
+    // OPTIMIZATION: Memoize the schema selector to avoid recreating on every render
+    const schema = useMemo(
+      () => (isGuestMode ? guestBookingSchema : bookingSchema),
+      [isGuestMode]
+    );
+
+    // OPTIMIZATION: Memoize default values to avoid recreating object on every render
+    const defaultFormValues = useMemo(() => {
+      const baseValues = {
+        plane: booking.plane as any,
+        type: booking.type as any,
+        title: booking.title,
+        description: booking.description || "",
+        start_time: booking.start_time
+          ? DateTime.fromISO(booking.start_time).toFormat("yyyy-MM-dd'T'HH:mm")
+          : "",
+        end_time: booking.end_time
+          ? DateTime.fromISO(booking.end_time).toFormat("yyyy-MM-dd'T'HH:mm")
+          : "",
+      };
+
+      if (isGuestMode) {
+        return {
+          ...baseValues,
+          contactName: "",
+          contactEmail: "",
+          contactPhone: "",
+        };
+      }
+
+      return {
+        ...baseValues,
+        id: booking.id,
+        user_id: booking.user_id,
+        full_name: booking.full_name,
+      };
+    }, [
+      booking.id,
+      booking.plane,
+      booking.type,
+      booking.title,
+      booking.description,
+      booking.start_time,
+      booking.end_time,
+      booking.user_id,
+      booking.full_name,
+      isGuestMode,
+    ]);
+
     // Use different schema and form type based on login status
     const {
       register,
@@ -57,46 +106,8 @@ const BookingModal = memo(
       getValues,
       setValue,
     } = useForm<BookingFormValues | GuestBookingFormValues>({
-      resolver: zodResolver(isGuestMode ? guestBookingSchema : bookingSchema),
-      defaultValues: isGuestMode
-        ? {
-            plane: booking.plane as any,
-            type: booking.type as any,
-            title: booking.title,
-            description: booking.description || "",
-            start_time: booking.start_time
-              ? DateTime.fromISO(booking.start_time).toFormat(
-                  "yyyy-MM-dd'T'HH:mm"
-                )
-              : "",
-            end_time: booking.end_time
-              ? DateTime.fromISO(booking.end_time).toFormat(
-                  "yyyy-MM-dd'T'HH:mm"
-                )
-              : "",
-            contactName: "",
-            contactEmail: "",
-            contactPhone: "",
-          }
-        : {
-            id: booking.id,
-            user_id: booking.user_id,
-            plane: booking.plane as any,
-            type: booking.type as any,
-            title: booking.title,
-            description: booking.description || "",
-            full_name: booking.full_name,
-            start_time: booking.start_time
-              ? DateTime.fromISO(booking.start_time).toFormat(
-                  "yyyy-MM-dd'T'HH:mm"
-                )
-              : "",
-            end_time: booking.end_time
-              ? DateTime.fromISO(booking.end_time).toFormat(
-                  "yyyy-MM-dd'T'HH:mm"
-                )
-              : "",
-          },
+      resolver: zodResolver(schema),
+      defaultValues: defaultFormValues,
     });
 
     // Handler to update end_time when start_time changes
