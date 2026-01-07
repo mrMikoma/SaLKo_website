@@ -58,9 +58,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           }
 
           // Update last login
-          await pool.query("UPDATE users SET last_login = NOW() WHERE id = $1", [
-            user.id,
-          ]);
+          await pool.query(
+            "UPDATE users SET last_login = NOW() WHERE id = $1",
+            [user.id]
+          );
 
           return {
             id: user.id,
@@ -134,7 +135,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.accessToken = account.access_token;
         token.idToken = account.id_token;
 
-        console.log("[JWT] Google OAuth - Fetching user data for email:", user.email);
+        console.log(
+          "[JWT] Google OAuth - Fetching user data for email:",
+          user.email
+        );
         try {
           const result = await pool.query(
             "SELECT id, role, full_name FROM users WHERE email = $1",
@@ -146,10 +150,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             token.fullName = result.rows[0].full_name;
             console.log("[JWT] Google OAuth - User found, ID:", token.id);
           } else {
-            console.error("[JWT] Google OAuth - No user found in database for email:", user.email);
+            console.error(
+              "[JWT] Google OAuth - No user found in database for email:",
+              user.email
+            );
           }
         } catch (error) {
-          console.error("[JWT] Error fetching user data for Google OAuth:", error);
+          console.error(
+            "[JWT] Error fetching user data for Google OAuth:",
+            error
+          );
         }
       }
       // For credentials provider, user object contains our database fields
@@ -186,12 +196,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           } else {
             // User not found - this can happen during logout or if user was deleted
             // Return null to invalidate the session
-            console.log("[SESSION] No user found for ID:", token.id, "- session will be invalidated");
+            console.log(
+              "[SESSION] No user found for ID:",
+              token.id,
+              "- session will be invalidated"
+            );
             return null as any;
           }
         } else {
           // No token ID - session is invalid
-          console.log("[SESSION] Token missing user ID - session will be invalidated");
+          console.log(
+            "[SESSION] Token missing user ID - session will be invalidated"
+          );
           return null as any;
         }
       } catch (error) {

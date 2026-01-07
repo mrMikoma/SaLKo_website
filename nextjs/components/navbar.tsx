@@ -4,6 +4,7 @@ import Image from "next/image";
 import NavbarMobile from "@/components/navbarMobile";
 import ArrowDownIcon from "@/components/icons/arrowDown";
 import Login from "@/components/auth/login";
+import Logout from "@/components/auth/logout";
 import {
   Menu,
   MenuButton,
@@ -15,17 +16,19 @@ import {
 } from "@headlessui/react";
 import XCrossIcon from "./icons/xCross";
 import { useState, useEffect } from "react";
-import Logout from "./auth/logout";
-import type { Session } from "next-auth";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { useNavbar } from "@/providers/NavbarContextProvider";
 
-const Navbar = ({ session }: { session: Session | null }) => {
+const Navbar = () => {
+  const { data: session, status } = useSession();
   const [authenticated, setAuthenticated] = useState(false);
   const [userName, setUserName] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
   const { isFullscreenMode } = useNavbar();
+  const router = useRouter();
 
   useEffect(() => {
     if (session?.user) {
@@ -37,7 +40,7 @@ const Navbar = ({ session }: { session: Session | null }) => {
       setUserName("");
       setIsAdmin(false);
     }
-  }, [session]);
+  }, [session, status]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -60,6 +63,11 @@ const Navbar = ({ session }: { session: Session | null }) => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [lastScrollY]);
 
+  const handleLogout = async () => {
+    router.refresh();
+    setAuthenticated(false);
+    setUserName("");
+  };
 
   return (
     <div
@@ -82,7 +90,7 @@ const Navbar = ({ session }: { session: Session | null }) => {
             </span>
           </Link>{" "}
           {/* Mobile menu toggle button */}
-          <NavbarMobile session={session} />
+          <NavbarMobile handleLogout={handleLogout} />
         </div>
 
         {/* Desktop Navigation Menu */}
@@ -285,7 +293,7 @@ const Navbar = ({ session }: { session: Session | null }) => {
                   )}
                   <MenuItem>
                     <div className="block px-4 py-3 text-swhite font-semibold hover:bg-sblue/50 hover:text-sbluel transition-all duration-200">
-                      <Logout />
+                      <Logout onHandleLogout={handleLogout} />
                     </div>
                   </MenuItem>
                 </MenuItems>

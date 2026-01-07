@@ -10,15 +10,16 @@ import {
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import ArrowDownIcon from "@/components/icons/arrowDown";
 import XCrossIcon from "@/components/icons/xCross";
 import MenuIcon from "@/components/icons/menu";
 import { useNavbar } from "@/providers/NavbarContextProvider";
 import Login from "@/components/auth/login";
 import Logout from "@/components/auth/logout";
-import type { Session } from "next-auth";
 
-const NavbarMobile = ({ session }: { session: Session | null }) => {
+const NavbarMobile = (handleLogoutProp: { handleLogout: () => void }) => {
+  const { data: session, status } = useSession();
   const { isMobileMenuOpen, setIsMobileMenuOpen } = useNavbar();
   const pathName = usePathname();
   const [authenticated, setAuthenticated] = useState(false);
@@ -32,7 +33,7 @@ const NavbarMobile = ({ session }: { session: Session | null }) => {
       setAuthenticated(false);
       setIsAdmin(false);
     }
-  }, [session]);
+  }, [session, status]);
 
   // Toggle menu visibility
   const handleToggle = () => {
@@ -43,7 +44,6 @@ const NavbarMobile = ({ session }: { session: Session | null }) => {
   const handleClose = () => {
     setIsMobileMenuOpen(false);
   };
-
 
   // Close menu on navigation
   useEffect(() => {
@@ -250,7 +250,9 @@ const NavbarMobile = ({ session }: { session: Session | null }) => {
                         </Link>
                       )}
                       <div className="block w-full py-2.5 px-8 text-base text-sred/95 hover:bg-sblue/40 hover:text-sred hover:pl-10 transition-all duration-200 border-l-2 border-transparent hover:border-sred backdrop-blur-sm">
-                        <Logout onLogoutClick={handleClose} />
+                        <Logout
+                          onHandleLogout={handleLogoutProp.handleLogout}
+                        />
                       </div>
                     </DisclosurePanel>
                   </div>
