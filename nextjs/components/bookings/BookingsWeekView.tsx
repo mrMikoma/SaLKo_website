@@ -3,7 +3,7 @@
 import { DateTime } from "luxon";
 import { BookingType } from "@/utilities/bookings";
 import { FlightTypeConfig } from "@/types/bookings";
-import { useMemo } from "react";
+import { useMemo, memo } from "react";
 import { getPlaneDisplayName } from "@/utilities/planeHelpers";
 
 interface BookingsWeekViewProps {
@@ -19,7 +19,23 @@ const PLANES = ["OH-CON", "OH-386", "OH-816", "OH-829", "OH-475"];
 const START_HOUR = 6;
 const END_HOUR = 23;
 
-export const BookingsWeekView = ({
+// Helper function to get all dates a booking spans (moved outside component for reusability)
+const getBookingDates = (booking: BookingType): string[] => {
+  const start = DateTime.fromISO(booking.start_time).startOf("day");
+  const end = DateTime.fromISO(booking.end_time).startOf("day");
+  const dates: string[] = [];
+
+  let current = start;
+  while (current <= end) {
+    const dateStr = current.toISODate();
+    if (dateStr) dates.push(dateStr);
+    current = current.plus({ days: 1 });
+  }
+
+  return dates;
+};
+
+export const BookingsWeekView = memo(({
   bookings,
   selectedDate,
   onCellClick,
@@ -38,23 +54,7 @@ export const BookingsWeekView = ({
     []
   );
 
-  // Helper function to get all dates a booking spans
-  const getBookingDates = (booking: BookingType): string[] => {
-    const start = DateTime.fromISO(booking.start_time).startOf("day");
-    const end = DateTime.fromISO(booking.end_time).startOf("day");
-    const dates: string[] = [];
-
-    let current = start;
-    while (current <= end) {
-      const dateStr = current.toISODate();
-      if (dateStr) dates.push(dateStr);
-      current = current.plus({ days: 1 });
-    }
-
-    return dates;
-  };
-
-  // Group bookings by date (including multiday bookings)
+  // Group bookings by date (including multiday bookings) - OPTIMIZED with memoization
   const bookingsByDate = useMemo(() => {
     const result: Record<string, BookingType[]> = {};
 
@@ -208,4 +208,6 @@ export const BookingsWeekView = ({
       </div>
     </div>
   );
-};
+});
+
+BookingsWeekView.displayName = "BookingsWeekView";

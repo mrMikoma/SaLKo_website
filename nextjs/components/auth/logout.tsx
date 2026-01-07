@@ -1,23 +1,18 @@
 "use client";
-import { useActionState } from "react";
-import { logout } from "@/utilities/authActions";
+import { signOut } from "next-auth/react";
 
-const Logout = ({ onHandleLogout }: { onHandleLogout: () => void }) => {
-  const [, action, pending] = useActionState(logout, undefined);
+const Logout = ({ onLogoutClick }: { onLogoutClick?: () => void }) => {
+  const handleLogout = async () => {
+    await signOut({ callbackUrl: "/" });
+    if (onLogoutClick) {
+      onLogoutClick();
+    }
+  };
 
   return (
-    <form
-      action={action}
-      onSubmit={() => {
-        onHandleLogout();
-      }}
-    >
-      <div>
-        <button disabled={pending} type="submit">
-          Kirjaudu ulos
-        </button>
-      </div>
-    </form>
+    <button onClick={handleLogout} type="button">
+      Kirjaudu ulos
+    </button>
   );
 };
 

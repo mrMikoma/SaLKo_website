@@ -184,15 +184,20 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             session.user.image = user.avatar_url;
             console.log("[SESSION] User found by ID:", user.id);
           } else {
-            console.error("[SESSION] No user found for ID:", token.id);
-            // This should not happen if JWT callback works correctly
-            console.error("[SESSION] Token has invalid ID - user may have been deleted");
+            // User not found - this can happen during logout or if user was deleted
+            // Return null to invalidate the session
+            console.log("[SESSION] No user found for ID:", token.id, "- session will be invalidated");
+            return null as any;
           }
         } else {
-          console.error("[SESSION] Token missing user ID");
+          // No token ID - session is invalid
+          console.log("[SESSION] Token missing user ID - session will be invalidated");
+          return null as any;
         }
       } catch (error) {
         console.error("[SESSION] Error in session callback:", error);
+        // On database error, invalidate the session
+        return null as any;
       }
 
       console.log("[SESSION] Final session.user.id:", session.user?.id);

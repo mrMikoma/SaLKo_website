@@ -15,7 +15,6 @@ import {
 } from "@headlessui/react";
 import XCrossIcon from "./icons/xCross";
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import Logout from "./auth/logout";
 import type { Session } from "next-auth";
 import { useNavbar } from "@/providers/NavbarContextProvider";
@@ -26,7 +25,6 @@ const Navbar = ({ session }: { session: Session | null }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
-  const router = useRouter();
   const { isFullscreenMode } = useNavbar();
 
   useEffect(() => {
@@ -62,11 +60,6 @@ const Navbar = ({ session }: { session: Session | null }) => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [lastScrollY]);
 
-  const handleLogout = async () => {
-    router.refresh();
-    setAuthenticated(false);
-    setUserName("");
-  };
 
   return (
     <div
@@ -89,7 +82,7 @@ const Navbar = ({ session }: { session: Session | null }) => {
             </span>
           </Link>{" "}
           {/* Mobile menu toggle button */}
-          <NavbarMobile />
+          <NavbarMobile session={session} />
         </div>
 
         {/* Desktop Navigation Menu */}
@@ -292,7 +285,7 @@ const Navbar = ({ session }: { session: Session | null }) => {
                   )}
                   <MenuItem>
                     <div className="block px-4 py-3 text-swhite font-semibold hover:bg-sblue/50 hover:text-sbluel transition-all duration-200">
-                      <Logout onHandleLogout={handleLogout} />
+                      <Logout />
                     </div>
                   </MenuItem>
                 </MenuItems>

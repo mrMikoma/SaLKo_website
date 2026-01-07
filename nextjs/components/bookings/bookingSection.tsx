@@ -141,6 +141,13 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
   const handleDayClick = (targetDate: string) => {
     const newDate = DateTime.fromISO(targetDate);
     if (newDate.isValid) {
+      // Update both date and view mode in a single navigation to avoid race conditions
+      const params = new URLSearchParams(window.location.search);
+      params.set("paiva", targetDate);
+      params.set("view", "day");
+      window.history.replaceState({}, "", `${window.location.pathname}?${params.toString()}`);
+
+      // Trigger React Router navigation to update the UI
       setDate(newDate);
       setViewMode("day");
     }

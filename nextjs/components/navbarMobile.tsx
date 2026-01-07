@@ -9,20 +9,18 @@ import {
 } from "@headlessui/react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import ArrowDownIcon from "@/components/icons/arrowDown";
 import XCrossIcon from "@/components/icons/xCross";
 import MenuIcon from "@/components/icons/menu";
 import { useNavbar } from "@/providers/NavbarContextProvider";
 import Login from "@/components/auth/login";
 import Logout from "@/components/auth/logout";
-import { useSession } from "next-auth/react";
+import type { Session } from "next-auth";
 
-const NavbarMobile = () => {
+const NavbarMobile = ({ session }: { session: Session | null }) => {
   const { isMobileMenuOpen, setIsMobileMenuOpen } = useNavbar();
   const pathName = usePathname();
-  const { data: session } = useSession();
-  const router = useRouter();
   const [authenticated, setAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -46,11 +44,6 @@ const NavbarMobile = () => {
     setIsMobileMenuOpen(false);
   };
 
-  const handleLogout = async () => {
-    router.refresh();
-    setAuthenticated(false);
-    handleClose();
-  };
 
   // Close menu on navigation
   useEffect(() => {
@@ -257,7 +250,7 @@ const NavbarMobile = () => {
                         </Link>
                       )}
                       <div className="block w-full py-2.5 px-8 text-base text-sred/95 hover:bg-sblue/40 hover:text-sred hover:pl-10 transition-all duration-200 border-l-2 border-transparent hover:border-sred backdrop-blur-sm">
-                        <Logout onHandleLogout={handleLogout} />
+                        <Logout onLogoutClick={handleClose} />
                       </div>
                     </DisclosurePanel>
                   </div>
