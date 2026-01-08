@@ -16,7 +16,7 @@
  */
 
 import { updateMetarData, cleanupOldMETARData } from "./lib/metarService";
-import { closeConnectionPool } from "./lib/db";
+import { createConnectionPool, closeConnectionPool } from "./lib/db";
 
 interface CronjobConfig {
   name: string;
@@ -45,6 +45,9 @@ async function main() {
   );
 
   try {
+    // Create a fresh database connection pool for this run
+    createConnectionPool();
+
     // Update METAR data
     console.log("Fetching and storing METAR data...");
     await updateMetarData();
