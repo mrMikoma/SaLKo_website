@@ -55,6 +55,3 @@ export async function closeConnectionPool(): Promise<void> {
     console.log("Database connection pool closed successfully");
   }
 }
-
-// Export the getter function as default for backwards compatibility
-export default getConnectionPool();
