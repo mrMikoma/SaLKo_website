@@ -46,7 +46,7 @@ export async function createGuestBooking({
 
     // Get system guest user (should always exist from seed data)
     const guestResult = await client.query(
-      "SELECT id FROM users WHERE email = $1 AND role = 'guest' LIMIT 1",
+      "SELECT id FROM users WHERE email = $1 AND 'guest' = ANY(roles) LIMIT 1",
       [GUEST_USER_EMAIL]
     );
 

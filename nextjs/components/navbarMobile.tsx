@@ -28,7 +28,7 @@ const NavbarMobile = (handleLogoutProp: { handleLogout: () => void }) => {
   useEffect(() => {
     if (session?.user) {
       setAuthenticated(true);
-      setIsAdmin(session.user.role === "admin");
+      setIsAdmin(session.user.roles?.includes("admin") || false);
     } else {
       setAuthenticated(false);
       setIsAdmin(false);

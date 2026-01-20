@@ -13,7 +13,7 @@ interface PageProps {
 export default async function UsersPage({ searchParams }: PageProps) {
   const session = await auth();
 
-  if (!session?.user?.role || !hasPermission(session.user.role, "ACCESS_ADMIN_SITE")) {
+  if (!session?.user?.roles || !hasPermission(session.user.roles, "ACCESS_ADMIN_SITE")) {
     redirect("/");
   }
 

@@ -22,7 +22,7 @@ export default auth((req) => {
     if (!session) {
       return NextResponse.redirect(new URL(`/`, req.url));
     }
-    if (session.user.role !== "admin") {
+    if (!session.user.roles?.includes("admin")) {
       return NextResponse.redirect(new URL("/", req.url));
     }
   }

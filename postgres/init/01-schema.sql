@@ -2,7 +2,7 @@
 CREATE TABLE
   users (
     id TEXT PRIMARY KEY DEFAULT gen_random_uuid (),
-    role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'user', 'guest')), -- 'admin', 'user', or 'guest'
+    roles TEXT[] NOT NULL DEFAULT ARRAY['user']::TEXT[], -- Array of roles: 'admin', 'user', 'guest', etc.
     name TEXT NOT NULL,
     full_name TEXT NOT NULL,
     phone TEXT, -- Optional for OAuth users

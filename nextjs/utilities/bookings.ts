@@ -577,13 +577,13 @@ export async function updateBooking({
     try {
       // Check if user is admin to determine if they can edit any booking
       const userRoleResult = await connectionPool.query(
-        "SELECT role FROM users WHERE id = $1",
+        "SELECT roles FROM users WHERE id = $1",
         [user_id]
       );
 
       const isAdmin =
         userRoleResult.rows.length > 0 &&
-        userRoleResult.rows[0].role === "admin";
+        userRoleResult.rows[0].roles?.includes("admin");
 
       // Admin can update any booking, regular users can only update their own
       const updateQuery = isAdmin
@@ -648,7 +648,7 @@ export async function updateBooking({
 export async function removeBooking(
   bookingId: number,
   userId: string,
-  userRole?: string
+  userRole?: string | string[]
 ): Promise<{ status: string; result: null | Error }> {
   try {
     if (typeof bookingId !== "number") {
@@ -659,14 +659,18 @@ export async function removeBooking(
       throw new Error("Invalid user ID");
     }
 
+    // Check if user is admin (support both string and array format)
+    const isAdmin = Array.isArray(userRole)
+      ? userRole.includes("admin")
+      : userRole === "admin";
+
     try {
       // Admin can delete any booking, regular users can only delete their own
-      const query =
-        userRole === "admin"
-          ? "DELETE FROM bookings WHERE id = $1"
-          : "DELETE FROM bookings WHERE id = $1 AND user_id = $2";
+      const query = isAdmin
+        ? "DELETE FROM bookings WHERE id = $1"
+        : "DELETE FROM bookings WHERE id = $1 AND user_id = $2";
 
-      const params = userRole === "admin" ? [bookingId] : [bookingId, userId];
+      const params = isAdmin ? [bookingId] : [bookingId, userId];
 
       const result = await connectionPool.query(query, params);
 
@@ -698,14 +702,14 @@ export async function removeBooking(
  *
  * @param bookingId - The ID of the booking to delete
  * @param userId - The ID of the user attempting the deletion
- * @param userRole - The role of the user (admin can delete any booking)
+ * @param userRole - The role(s) of the user (admin can delete any booking)
  * @param deleteFollowing - If true, deletes all bookings in the same repeat group that start on or after this booking
  * @returns Promise with status and result
  */
 export async function removeBookingWithRepeats(
   bookingId: number,
   userId: string,
-  userRole?: string,
+  userRole?: string | string[],
   deleteFollowing: boolean = false
 ): Promise<{ status: string; result: null | Error; deletedCount?: number }> {
   try {
@@ -716,6 +720,11 @@ export async function removeBookingWithRepeats(
     if (typeof userId !== "string") {
       throw new Error("Invalid user ID");
     }
+
+    // Check if user is admin (support both string and array format)
+    const isAdmin = Array.isArray(userRole)
+      ? userRole.includes("admin")
+      : userRole === "admin";
 
     // First, get the booking to check if it has a repeat_group_id and get its start_time
     const bookingQuery = await connectionPool.query(
@@ -733,7 +742,7 @@ export async function removeBookingWithRepeats(
     const booking = bookingQuery.rows[0];
 
     // Check authorization
-    if (userRole !== "admin" && booking.user_id !== userId) {
+    if (!isAdmin && booking.user_id !== userId) {
       return {
         status: "error",
         result: new Error("Unauthorized to delete this booking"),
@@ -745,25 +754,22 @@ export async function removeBookingWithRepeats(
 
       if (deleteFollowing && booking.repeat_group_id) {
         // Delete this booking and all following bookings in the same repeat group
-        const query =
-          userRole === "admin"
-            ? "DELETE FROM bookings WHERE repeat_group_id = $1 AND start_time >= $2"
-            : "DELETE FROM bookings WHERE repeat_group_id = $1 AND start_time >= $2 AND user_id = $3";
+        const query = isAdmin
+          ? "DELETE FROM bookings WHERE repeat_group_id = $1 AND start_time >= $2"
+          : "DELETE FROM bookings WHERE repeat_group_id = $1 AND start_time >= $2 AND user_id = $3";
 
-        const params =
-          userRole === "admin"
-            ? [booking.repeat_group_id, booking.start_time]
-            : [booking.repeat_group_id, booking.start_time, userId];
+        const params = isAdmin
+          ? [booking.repeat_group_id, booking.start_time]
+          : [booking.repeat_group_id, booking.start_time, userId];
 
         result = await connectionPool.query(query, params);
       } else {
         // Just delete the single booking
-        const query =
-          userRole === "admin"
-            ? "DELETE FROM bookings WHERE id = $1"
-            : "DELETE FROM bookings WHERE id = $1 AND user_id = $2";
+        const query = isAdmin
+          ? "DELETE FROM bookings WHERE id = $1"
+          : "DELETE FROM bookings WHERE id = $1 AND user_id = $2";
 
-        const params = userRole === "admin" ? [bookingId] : [bookingId, userId];
+        const params = isAdmin ? [bookingId] : [bookingId, userId];
 
         result = await connectionPool.query(query, params);
       }
@@ -816,7 +822,7 @@ export async function fetchGuestContactInfo(
 
     // Check if user is admin
     const userRoleResult = await connectionPool.query(
-      "SELECT role FROM users WHERE id = $1",
+      "SELECT roles FROM users WHERE id = $1",
       [userId]
     );
 
@@ -827,7 +833,7 @@ export async function fetchGuestContactInfo(
       };
     }
 
-    if (userRoleResult.rows[0].role !== "admin") {
+    if (!userRoleResult.rows[0].roles?.includes("admin")) {
       return {
         status: "error",
         result: new Error(

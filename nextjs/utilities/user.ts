@@ -14,7 +14,7 @@ export async function getUserData(): Promise<UserData | null> {
     }
 
     const userData = await connectionPool.query(
-      "SELECT name, email, role, full_name, phone, address, postal_code, city, auth_provider FROM users WHERE id = $1",
+      "SELECT name, email, roles, full_name, phone, address, postal_code, city, auth_provider FROM users WHERE id = $1",
       [session.user.id]
     );
 
@@ -25,7 +25,7 @@ export async function getUserData(): Promise<UserData | null> {
     return {
       name: user.name,
       email: user.email,
-      role: user.role,
+      roles: user.roles,
       full_name: user.full_name,
       phone: user.phone,
       address: user.address,
@@ -40,18 +40,18 @@ export async function getUserData(): Promise<UserData | null> {
 }
 
 /**
- * Get user role from NextAuth session
+ * Get user roles from NextAuth session
  * This is more efficient than querying the database
  */
-export async function getUserRole(): Promise<string | null> {
+export async function getUserRoles(): Promise<string[] | null> {
   try {
     const session = await auth();
-    if (!session?.user?.role) {
+    if (!session?.user?.roles) {
       return null;
     }
-    return session.user.role;
+    return session.user.roles;
   } catch (error) {
-    console.error("Error fetching user role:", error);
+    console.error("Error fetching user roles:", error);
     return null;
   }
 }

@@ -24,7 +24,7 @@ interface BookingModalProps {
   onCancel: () => void;
   onChange: (updatedBooking: BookingType) => void;
   isLoggedIn?: boolean;
-  userRole?: string;
+  userRole?: string | string[];
 }
 
 const BookingModal = memo(
@@ -37,7 +37,7 @@ const BookingModal = memo(
     onCancel,
     onChange,
     isLoggedIn = false,
-    userRole = "guest",
+    userRole = ["guest"],
   }: BookingModalProps) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -47,6 +47,11 @@ const BookingModal = memo(
     const isReadOnly = mode === "view";
     const isGuestMode = !isLoggedIn && mode === "create";
     const hasRepeatGroup = !!booking.repeat_group_id;
+
+    // Helper to check if user has admin role
+    const isAdmin = Array.isArray(userRole)
+      ? userRole.includes("admin")
+      : userRole === "admin";
 
     // OPTIMIZATION: Memoize the schema selector to avoid recreating on every render
     const schema = useMemo(
@@ -774,7 +779,7 @@ const BookingModal = memo(
                 </div>
 
                 {/* Show guest contact info if this is a guest booking and user is admin */}
-                {booking.is_guest && userRole === "admin" && (
+                {booking.is_guest && isAdmin && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {booking.guest_contact_name && (
                       <div>

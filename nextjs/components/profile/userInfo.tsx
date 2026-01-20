@@ -5,7 +5,7 @@ interface UserInfoProps {
   name: string;
   full_name: string;
   email: string;
-  role: string;
+  roles: string[];
   address?: string;
   city?: string;
   postalCode?: string;
@@ -15,7 +15,7 @@ interface UserInfoProps {
 const UserInfo = ({
   name,
   email,
-  role,
+  roles,
   address,
   city,
   postalCode,
@@ -28,7 +28,7 @@ const UserInfo = ({
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-swhite/70">{label}</p>
-        <p className="text-base text-swhite break-words font-medium">{value}</p>
+        <div className="text-base text-swhite break-words font-medium">{value}</div>
       </div>
     </div>
   );
@@ -62,10 +62,16 @@ const UserInfo = ({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
               </svg>
             }
-            label="Rooli"
-            value={<span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-sblue/50 text-swhite border border-sbluel/30">
-              {getRoleDisplayName(role as any)}
-            </span>}
+            label={roles.length > 1 ? "Roolit" : "Rooli"}
+            value={
+              <div className="flex flex-wrap gap-1">
+                {roles.map((role) => (
+                  <span key={role} className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-sblue/50 text-swhite border border-sbluel/30">
+                    {getRoleDisplayName(role)}
+                  </span>
+                ))}
+              </div>
+            }
           />
           <InfoRow
             icon={

@@ -12,9 +12,9 @@ async function getStats() {
       pool.query(
         `SELECT
           COUNT(*) as total,
-          COUNT(*) FILTER (WHERE role = 'admin') as admins,
-          COUNT(*) FILTER (WHERE role = 'user') as users,
-          COUNT(*) FILTER (WHERE role = 'guest') as guests,
+          COUNT(*) FILTER (WHERE 'admin' = ANY(roles)) as admins,
+          COUNT(*) FILTER (WHERE 'user' = ANY(roles)) as users,
+          COUNT(*) FILTER (WHERE 'guest' = ANY(roles)) as guests,
           COUNT(*) FILTER (WHERE auth_provider = 'google') as google_users
         FROM users`
       ),
@@ -28,7 +28,7 @@ async function getStats() {
       ),
       // Recent users
       pool.query(
-        `SELECT id, name, email, role, created_at, last_login
+        `SELECT id, name, email, roles, created_at, last_login
         FROM users
         ORDER BY created_at DESC
         LIMIT 5`
@@ -50,8 +50,8 @@ export default async function AdminDashboard() {
   const session = await auth();
 
   if (
-    !session?.user?.role ||
-    !hasPermission(session.user.role, "ACCESS_ADMIN_SITE")
+    !session?.user?.roles ||
+    !hasPermission(session.user.roles, "ACCESS_ADMIN_SITE")
   ) {
     redirect("/");
   }
@@ -245,17 +245,22 @@ export default async function AdminDashboard() {
                     {user.email}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        user.role === "admin"
-                          ? "bg-purple-100 text-purple-800"
-                          : user.role === "user"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {user.role}
-                    </span>
+                    <div className="flex flex-wrap gap-1">
+                      {user.roles?.map((role: string) => (
+                        <span
+                          key={role}
+                          className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            role === "admin"
+                              ? "bg-purple-100 text-purple-800"
+                              : role === "user"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {role}
+                        </span>
+                      ))}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                     {new Date(user.created_at).toLocaleDateString("fi-FI")}

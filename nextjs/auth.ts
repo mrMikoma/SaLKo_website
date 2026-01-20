@@ -57,6 +57,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             return null;
           }
 
+          // Block users who only have the "guest" role (data-only entries)
+          const roles: string[] = user.roles || [];
+          const isGuestOnly = roles.length === 1 && roles[0] === "guest";
+          if (isGuestOnly) {
+            console.log("Login blocked for guest-only user:", email);
+            return null;
+          }
+
           // Update last login
           await pool.query(
             "UPDATE users SET last_login = NOW() WHERE id = $1",
@@ -67,7 +75,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             id: user.id,
             email: user.email,
             name: user.name,
-            role: user.role,
+            roles: user.roles,
             fullName: user.full_name,
             image: user.avatar_url,
           };
@@ -99,13 +107,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           if (result.rows.length === 0) {
             // Auto-create user on first Google login
             await pool.query(
-              `INSERT INTO users (email, name, full_name, role, auth_provider, google_id, email_verified, avatar_url, phone, address, city, postal_code, last_login)
+              `INSERT INTO users (email, name, full_name, roles, auth_provider, google_id, email_verified, avatar_url, phone, address, city, postal_code, last_login)
                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, '', '', '', '', NOW())`,
               [
                 email,
                 profile?.name || email.split("@")[0],
                 profile?.name || email.split("@")[0],
-                "user", // Default role
+                ["user"], // Default roles array
                 "google",
                 profile?.sub,
                 true,
@@ -141,12 +149,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         );
         try {
           const result = await pool.query(
-            "SELECT id, role, full_name FROM users WHERE email = $1",
+            "SELECT id, roles, full_name FROM users WHERE email = $1",
             [user.email]
           );
           if (result.rows.length > 0) {
             token.id = result.rows[0].id;
-            token.role = result.rows[0].role;
+            token.roles = result.rows[0].roles;
             token.fullName = result.rows[0].full_name;
             console.log("[JWT] Google OAuth - User found, ID:", token.id);
           } else {
@@ -165,7 +173,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       // For credentials provider, user object contains our database fields
       else if (user && account?.provider === "credentials") {
         token.id = user.id;
-        token.role = (user as any).role;
+        token.roles = (user as any).roles;
         token.fullName = (user as any).fullName;
       }
 
@@ -178,16 +186,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
       try {
         if (token.id) {
-          // Fetch fresh user data from database to ensure we have latest role/info
+          // Fetch fresh user data from database to ensure we have latest roles/info
           const result = await pool.query(
-            "SELECT id, email, name, full_name, role, avatar_url FROM users WHERE id = $1",
+            "SELECT id, email, name, full_name, roles, avatar_url FROM users WHERE id = $1",
             [token.id]
           );
 
           if (result.rows.length > 0) {
             const user = result.rows[0];
             session.user.id = user.id;
-            session.user.role = user.role;
+            session.user.roles = user.roles;
             session.user.name = user.name;
             session.user.fullName = user.full_name;
             session.user.email = user.email;
