@@ -21,7 +21,7 @@ export const metadata = {
     template: "%s | SaLKo",
   },
   description:
-    "Savonlinnan Lentokerho ry (SaLKo) - Lentokoulutusta ja ilmailua Savonlinnassa vuodesta 1975. Tule mukaan lentokerhoon!",
+    "Savonlinnan Lentokerho ry (SaLKo) - Lentokoulutusta ja ilmailua Savonlinnassa vuodesta 1962. Tule mukaan lentokerhoon!",
   keywords: [
     "Savonlinna",
     "SaLKo",
@@ -51,7 +51,7 @@ export const metadata = {
     siteName: "Savonlinnan Lentokerho",
     title: "SaLKo - Savonlinnan Lentokerho ry",
     description:
-      "Savonlinnan Lentokerho ry (SaLKo) - Lentokoulutusta ja ilmailua Savonlinnassa vuodesta 1975. Tule mukaan lentokerhoon!",
+      "Savonlinnan Lentokerho ry (SaLKo) - Lentokoulutusta ja ilmailua Savonlinnassa vuodesta 1962. Tule mukaan lentokerhoon!",
     images: [
       {
         url: "/images/SaLKon Logo_vaakunaversio.png",
@@ -65,7 +65,7 @@ export const metadata = {
     card: "summary_large_image",
     title: "SaLKo - Savonlinnan Lentokerho ry",
     description:
-      "Lentokoulutusta ja ilmailua Savonlinnassa vuodesta 1975. Tule mukaan lentokerhoon!",
+      "Lentokoulutusta ja ilmailua Savonlinnassa vuodesta 1962. Tule mukaan lentokerhoon!",
     images: ["/images/SaLKon Logo_vaakunaversio.png"],
   },
   icons: {
