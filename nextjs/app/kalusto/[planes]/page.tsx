@@ -10,7 +10,7 @@ export async function generateMetadata({ params }) {
   const plane = planeData.find((p) => p.registeration === planes);
 
   return {
-    title: plane ? `${planes} / SaLKo` : "Plane Not Found / SaLKo",
+    title: plane ? `${planes}` : "Koekonetta ei löytynyt",
     description: plane
       ? `${plane.name} - ${plane.registeration}`
       : "Lentokonetta ei löytynyt",

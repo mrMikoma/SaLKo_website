@@ -3,7 +3,7 @@ import { auth } from "@/auth";
 import PageHero from "@/components/pageHero";
 
 export const metadata = {
-  title: "Varauskalenteri | SaLKo",
+  title: "Varauskalenteri",
   description: "SaLKo ry - Varauskalenteri",
   keywords: [
     "Savonlinnan Lentokerho",

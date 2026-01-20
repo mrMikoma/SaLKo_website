@@ -30,6 +30,7 @@ services:
       - PORT=${CONTAINER_PORT}
       - HOSTNAME=${HOSTNAME}
       - DATABASE_CONNECTION_STRING=postgresql://${APP_DB_USER}:${APP_DB_PASSWORD}@${NAME_PREFIX}-postgres-${BRANCH_SUFFIX}:${PGPORT}/${POSTGRES_DB}
+      - ALLOW_INDEXING=true
     depends_on:
       postgres:
         condition: service_healthy

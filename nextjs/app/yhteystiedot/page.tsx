@@ -25,19 +25,20 @@ type Person = {
 };
 
 export const metadata = {
-  title: "Yhteystiedot | SaLKo",
+  title: "Yhteystiedot",
   description: "Savonlinnan Lentokerho ry:n yhteystiedot",
   keywords: [
     "Savonlinnan Lentokerho",
     "yhteystiedot",
     "hallitus",
-    "lennonopettajat",
+    "lennonopettaja",
     "puheenjohtaja",
     "laskutus",
     "Savonlinna",
     "lentokerho",
     "puhelinnumero",
     "sähköpostiosoite",
+    "laskutusosoite",
   ],
 };
 

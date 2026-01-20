@@ -5,7 +5,7 @@ import ContentSection from "@/components/contentSection";
 import CallToAction from "@/components/callToAction";
 
 export const metadata = {
-  title: "Jäsenyys | SaLKo",
+  title: "Jäsenyys",
   description: "Liity Savonlinnan Lentokerhon jäseneksi ja koe lentämisen ilo",
   keywords: [
     "Savonlinnan Lentokerho",

@@ -5,7 +5,7 @@ import PageHero from "@/components/pageHero";
 import ContentSection from "@/components/contentSection";
 
 export const metadata = {
-  title: "Kalusto | SaLKo",
+  title: "Kalusto",
   description: "Savonlinnan Lentokerhon lentokonekalusto",
   keywords: [
     "Savonlinnan Lentokerho",
@@ -41,7 +41,7 @@ const Page = () => {
                     .filter(
                       (plane: any) =>
                         plane.registeration === "OH-CON" ||
-                        plane.registeration === "OH-PDX"
+                        plane.registeration === "OH-PDX",
                     )
                     .map((plane: any) => (
                       <PlanePreviewCard
@@ -65,7 +65,7 @@ const Page = () => {
                         plane.registeration === "OH-386" ||
                         plane.registeration === "OH-816" ||
                         plane.registeration === "OH-829" ||
-                        plane.registeration === "OH-475"
+                        plane.registeration === "OH-475",
                     )
                     .map((plane: any) => (
                       <PlanePreviewCard

@@ -302,13 +302,9 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
             <span className="font-medium">
               Voit varata myös ilman kirjautumista.
             </span>{" "}
-            <a
-              href="/auth/login"
-              className="text-sblue hover:underline font-medium"
-            >
-              Kirjaudu sisään
-            </a>{" "}
-            jos sinulla on käyttäjätunnus.
+            Jos sinulla on käyttäjätunnus, kirjaudu sisään{" "}
+            <span className="font-medium text-sblue">Jäsenalue</span>-valikon
+            kautta.
           </p>
         </div>
       )}

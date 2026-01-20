@@ -4,7 +4,7 @@ import PageHero from "@/components/pageHero";
 import ContentSection from "@/components/contentSection";
 
 export const metadata = {
-  title: "Hinnasto | SaLKo",
+  title: "Hinnasto",
   description: "Savonlinnan Lentokerhon hinnasto ja jäsenmaksut",
   keywords: [
     "Savonlinnan Lentokerho",

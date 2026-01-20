@@ -9,7 +9,7 @@ import Link from "next/link";
 import pricesData from "@/data/prices.json";
 
 export const metadata = {
-  title: "Koulutus / SaLKo",
+  title: "Koulutus",
   description: "Lentokoulutus Savonlinnan Lentokerholla",
 };
 

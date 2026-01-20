@@ -4,7 +4,7 @@ import ImageGallery from "@/components/imageGallery";
 import WeatherWidget from "@/components/weatherWidget";
 
 export const metadata = {
-  title: "Kenttä | SaLKo",
+  title: "Kenttä",
   description: "Savonlinnan lentoasema - Savonlinnan Lentokerhon kotikenttä",
   keywords: [
     "Savonlinnan lentoasema",
