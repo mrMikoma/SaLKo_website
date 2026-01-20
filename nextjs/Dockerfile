@@ -27,6 +27,10 @@ COPY . .
 ARG NEXT_PUBLIC_UMAMI_WEBSITE_ID
 ENV NEXT_PUBLIC_UMAMI_WEBSITE_ID=$NEXT_PUBLIC_UMAMI_WEBSITE_ID
 
+# Accept build argument for SEO indexing (only true for production)
+ARG ALLOW_INDEXING=false
+ENV ALLOW_INDEXING=$ALLOW_INDEXING
+
 # Next.js collects completely anonymous telemetry data about general usage.
 # Learn more here: https://nextjs.org/telemetry
 # Uncomment the following line in case you want to disable telemetry during the build.
