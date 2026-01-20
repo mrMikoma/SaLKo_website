@@ -212,6 +212,10 @@ jobs:
             chmod 600 .env.dev
             echo "Secured .env.dev file permissions to 600."
 
+            # Pull the latest images
+            echo "Pulling the latest Docker images..."
+            docker compose -p salko-dev --env-file .env.dev -f docker-compose.dev.yaml pull
+
             # Stop the current containers and remove volumes (fresh start for dev)
             echo "Stopping containers and removing volumes for fresh dev environment..."
             docker compose -p salko-dev --env-file .env.dev -f docker-compose.dev.yaml down -v
