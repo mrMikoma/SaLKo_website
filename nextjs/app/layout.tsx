@@ -16,8 +16,12 @@ const finlandica = Finlandica({
 });
 
 export const metadata = {
-  title: "SaLKo",
-  description: "SaLKo - Savonlinnan Lentokerho ry",
+  title: {
+    default: "SaLKo - Savonlinnan Lentokerho ry",
+    template: "%s | SaLKo",
+  },
+  description:
+    "Savonlinnan Lentokerho ry (SaLKo) - Lentokoulutusta ja ilmailua Savonlinnassa vuodesta 1962.",
   keywords: [
     "Savonlinna",
     "SaLKo",
@@ -30,9 +34,45 @@ export const metadata = {
     "lentokoulutus",
     "ilmailuopetus",
     "lennonopetus",
+    "Savonlinnan Lentokerho",
+    "PPL koulutus",
+    "yksityislentäjä",
   ],
+  authors: [{ name: "Savonlinnan Lentokerho ry" }],
+  creator: "Savonlinnan Lentokerho ry",
+  publisher: "Savonlinnan Lentokerho ry",
+  metadataBase: new URL("https://savonlinnanlentokerho.fi"),
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    locale: "fi_FI",
+    siteName: "Savonlinnan Lentokerho",
+    title: "SaLKo - Savonlinnan Lentokerho ry",
+    description:
+      "Savonlinnan Lentokerho ry (SaLKo) - Lentokoulutusta ja ilmailua Savonlinnassa vuodesta 1962.",
+    images: [
+      {
+        url: "/images/SaLKon Logo_vaakunaversio.png",
+        width: 800,
+        height: 600,
+        alt: "Savonlinnan Lentokerho logo",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "SaLKo - Savonlinnan Lentokerho ry",
+    description: "Lentokoulutusta ja ilmailua Savonlinnassa vuodesta 1962.",
+    images: ["/images/SaLKon Logo_vaakunaversio.png"],
+  },
   icons: {
     icon: "/favicon.ico",
+  },
+  robots: {
+    index: true,
+    follow: true,
   },
 };
 

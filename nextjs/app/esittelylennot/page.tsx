@@ -4,7 +4,7 @@ import CallToAction from "@/components/callToAction";
 import Link from "next/link";
 
 export const metadata = {
-  title: "Esittelylennot | SaLKo",
+  title: "Esittelylennot",
   description: "Koe lentämisen ilo Savonlinnan Lentokerhon esittelylennoilla",
   keywords: [
     "Savonlinnan Lentokerho",
