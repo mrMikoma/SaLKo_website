@@ -4,8 +4,13 @@ import {
   DisclosureButton,
   DisclosurePanel,
 } from "@headlessui/react";
+import { Bulletin } from "@/utilities/bulletings";
 
-const Bullet = ({ item }) => {
+interface BulletProps {
+  item: Bulletin;
+}
+
+const Bullet = ({ item }: BulletProps) => {
   const formattedDate = new Date(item.date * 1000).toLocaleDateString("fi-FI", {
     day: "numeric",
     month: "short",
@@ -53,7 +58,7 @@ const Bullet = ({ item }) => {
               <span className="text-sm font-semibold text-sbluel">
                 Kirjoittaja:{" "}
               </span>
-              <span className="text-sm">{item.username}</span>
+              <span className="text-sm">{item.username || "Tuntematon"}</span>
             </div>
             <div className="text-base leading-relaxed">{item.content}</div>
           </DisclosurePanel>

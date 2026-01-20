@@ -9,9 +9,9 @@ const Bulletings = async () => {
       <h3 className="text-2xl text-center font-bold text-swhite mb-6 pb-3 border-b-2 border-sred">
         Kerhotiedotteet
       </h3>
-      {status === "success" ? (
+      {status === "success" && result && result.length > 0 ? (
         <div className="space-y-3">
-          {result.map((item, index) => <Bullet key={index} item={item} />)}
+          {result.map((item) => <Bullet key={item.id} item={item} />)}
         </div>
       ) : (
         <div className="text-center py-8">

@@ -27,11 +27,16 @@ export interface User {
 /**
  * Get all users (admin only)
  */
-export async function getAllUsers(searchQuery?: string): Promise<User[] | null> {
+export async function getAllUsers(
+  searchQuery?: string,
+): Promise<User[] | null> {
   try {
     const session = await auth();
 
-    if (!session?.user?.roles || !hasPermission(session.user.roles, "VIEW_USER_LIST")) {
+    if (
+      !session?.user?.roles ||
+      !hasPermission(session.user.roles, "VIEW_USER_LIST")
+    ) {
       throw new Error("Ei oikeuksia");
     }
 
@@ -48,7 +53,7 @@ export async function getAllUsers(searchQuery?: string): Promise<User[] | null> 
           full_name ILIKE $1 OR
           email ILIKE $1
         ORDER BY created_at DESC`,
-        [query]
+        [query],
       );
     } else {
       users = await pool.query(
@@ -56,7 +61,7 @@ export async function getAllUsers(searchQuery?: string): Promise<User[] | null> 
           id, name, full_name, email, roles, phone, address, city, postal_code,
           auth_provider, google_id, avatar_url, email_verified, last_login, created_at
         FROM users
-        ORDER BY created_at DESC`
+        ORDER BY created_at DESC`,
       );
     }
 
@@ -72,12 +77,15 @@ export async function getAllUsers(searchQuery?: string): Promise<User[] | null> 
  */
 export async function updateUserRoles(
   userId: string,
-  newRoles: string[]
+  newRoles: string[],
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const session = await auth();
 
-    if (!session?.user?.roles || !hasPermission(session.user.roles, "CHANGE_USER_ROLE")) {
+    if (
+      !session?.user?.roles ||
+      !hasPermission(session.user.roles, "CHANGE_USER_ROLE")
+    ) {
       return { success: false, error: "Ei oikeuksia" };
     }
 
@@ -90,13 +98,16 @@ export async function updateUserRoles(
     const validRoles = ["admin", "user", "guest"];
     const filteredRoles = newRoles.filter((role) => validRoles.includes(role));
     if (filteredRoles.length === 0) {
-      return { success: false, error: "Käyttäjällä täytyy olla vähintään yksi rooli" };
+      return {
+        success: false,
+        error: "Käyttäjällä täytyy olla vähintään yksi rooli",
+      };
     }
 
-    await pool.query(
-      "UPDATE users SET roles = $1 WHERE id = $2",
-      [filteredRoles, userId]
-    );
+    await pool.query("UPDATE users SET roles = $1 WHERE id = $2", [
+      filteredRoles,
+      userId,
+    ]);
 
     revalidatePath("/admin/users");
     return { success: true };
@@ -109,11 +120,16 @@ export async function updateUserRoles(
 /**
  * Delete user (admin only)
  */
-export async function deleteUser(userId: string): Promise<{ success: boolean; error?: string }> {
+export async function deleteUser(
+  userId: string,
+): Promise<{ success: boolean; error?: string }> {
   try {
     const session = await auth();
 
-    if (!session?.user?.roles || !hasPermission(session.user.roles, "DELETE_USER")) {
+    if (
+      !session?.user?.roles ||
+      !hasPermission(session.user.roles, "DELETE_USER")
+    ) {
       return { success: false, error: "Ei oikeuksia" };
     }
 
@@ -125,20 +141,20 @@ export async function deleteUser(userId: string): Promise<{ success: boolean; er
     // Check if user is a system user (e.g., vieras@savonlinnanlentokerho.fi)
     const userResult = await pool.query(
       "SELECT email, auth_provider FROM users WHERE id = $1",
-      [userId]
+      [userId],
     );
 
     if (userResult.rows.length > 0) {
       const user = userResult.rows[0];
-      if (user.auth_provider === "system" || user.email === "vieras@savonlinnanlentokerho.fi") {
+      if (
+        user.auth_provider === "system" ||
+        user.email === "vieras@savonlinnanlentokerho.fi"
+      ) {
         return { success: false, error: "Järjestelmäkäyttäjää ei voi poistaa" };
       }
     }
 
-    await pool.query(
-      "DELETE FROM users WHERE id = $1",
-      [userId]
-    );
+    await pool.query("DELETE FROM users WHERE id = $1", [userId]);
 
     revalidatePath("/admin/users");
     return { success: true };
@@ -155,7 +171,10 @@ export async function getUserById(userId: string): Promise<User | null> {
   try {
     const session = await auth();
 
-    if (!session?.user?.roles || !hasPermission(session.user.roles, "VIEW_USER_LIST")) {
+    if (
+      !session?.user?.roles ||
+      !hasPermission(session.user.roles, "VIEW_USER_LIST")
+    ) {
       throw new Error("Ei oikeuksia");
     }
 
@@ -165,7 +184,7 @@ export async function getUserById(userId: string): Promise<User | null> {
         auth_provider, google_id, avatar_url, email_verified, last_login, created_at
       FROM users
       WHERE id = $1`,
-      [userId]
+      [userId],
     );
 
     if (result.rows.length === 0) {
@@ -193,40 +212,58 @@ export async function createCredentialUser(formData: {
   try {
     const session = await auth();
 
-    if (!session?.user?.roles || !hasPermission(session.user.roles, "CREATE_USER")) {
+    if (
+      !session?.user?.roles ||
+      !hasPermission(session.user.roles, "CREATE_USER")
+    ) {
       return { success: false, error: "Ei oikeuksia" };
     }
 
     // Validate roles first
     const validRoles = ["admin", "user", "guest"];
-    const filteredRoles = formData.roles.filter((role) => validRoles.includes(role));
+    const filteredRoles = formData.roles.filter((role) =>
+      validRoles.includes(role),
+    );
     if (filteredRoles.length === 0) {
-      return { success: false, error: "Käyttäjällä täytyy olla vähintään yksi rooli" };
+      return {
+        success: false,
+        error: "Käyttäjällä täytyy olla vähintään yksi rooli",
+      };
     }
 
     // Check if this is a guest-only user (cannot log in, password not needed)
-    const isGuestOnly = filteredRoles.length === 1 && filteredRoles[0] === "guest";
+    const isGuestOnly =
+      filteredRoles.length === 1 && filteredRoles[0] === "guest";
 
     // Validate inputs
     if (!formData.email || !formData.name || !formData.full_name) {
-      return { success: false, error: "Sähköposti, nimi ja koko nimi ovat pakollisia" };
+      return {
+        success: false,
+        error: "Sähköposti, nimi ja koko nimi ovat pakollisia",
+      };
     }
 
     // Password is required for users who can log in (not guest-only)
     if (!isGuestOnly) {
       if (!formData.password || formData.password.length < 8) {
-        return { success: false, error: "Salasanan tulee olla vähintään 8 merkkiä pitkä" };
+        return {
+          success: false,
+          error: "Salasanan tulee olla vähintään 8 merkkiä pitkä",
+        };
       }
     }
 
     // Check if user already exists
     const existingUser = await pool.query(
       "SELECT id FROM users WHERE email = $1",
-      [formData.email]
+      [formData.email],
     );
 
     if (existingUser.rows.length > 0) {
-      return { success: false, error: "Käyttäjä tällä sähköpostilla on jo olemassa" };
+      return {
+        success: false,
+        error: "Käyttäjä tällä sähköpostilla on jo olemassa",
+      };
     }
 
     // Hash password if provided, otherwise null for guest-only users
@@ -246,7 +283,7 @@ export async function createCredentialUser(formData: {
         filteredRoles,
         "credentials",
         true,
-      ]
+      ],
     );
 
     revalidatePath("/admin/users");
@@ -262,23 +299,29 @@ export async function createCredentialUser(formData: {
  */
 export async function resetUserPassword(
   userId: string,
-  newPassword: string
+  newPassword: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const session = await auth();
 
-    if (!session?.user?.roles || !hasPermission(session.user.roles, "EDIT_USER")) {
+    if (
+      !session?.user?.roles ||
+      !hasPermission(session.user.roles, "EDIT_USER")
+    ) {
       return { success: false, error: "Ei oikeuksia" };
     }
 
     if (!newPassword || newPassword.length < 8) {
-      return { success: false, error: "Salasanan tulee olla vähintään 8 merkkiä pitkä" };
+      return {
+        success: false,
+        error: "Salasanan tulee olla vähintään 8 merkkiä pitkä",
+      };
     }
 
     // Verify user exists and uses credentials auth
     const userResult = await pool.query(
       "SELECT auth_provider FROM users WHERE id = $1",
-      [userId]
+      [userId],
     );
 
     if (userResult.rows.length === 0) {
@@ -286,17 +329,20 @@ export async function resetUserPassword(
     }
 
     if (userResult.rows[0].auth_provider !== "credentials") {
-      return { success: false, error: "Salasanan voi vaihtaa vain salasanakäyttäjille" };
+      return {
+        success: false,
+        error: "Salasanan voi vaihtaa vain salasanakäyttäjille",
+      };
     }
 
     // Hash new password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
     // Update password
-    await pool.query(
-      "UPDATE users SET password = $1 WHERE id = $2",
-      [hashedPassword, userId]
-    );
+    await pool.query("UPDATE users SET password = $1 WHERE id = $2", [
+      hashedPassword,
+      userId,
+    ]);
 
     return { success: true };
   } catch (error) {
@@ -319,19 +365,22 @@ export async function updateGuestUserInfo(
     address?: string;
     city?: string;
     postal_code?: string;
-  }
+  },
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const session = await auth();
 
-    if (!session?.user?.roles || !hasPermission(session.user.roles, "EDIT_USER")) {
+    if (
+      !session?.user?.roles ||
+      !hasPermission(session.user.roles, "EDIT_USER")
+    ) {
       return { success: false, error: "Ei oikeuksia" };
     }
 
     // Verify user exists and has guest role
     const userResult = await pool.query(
       "SELECT roles, email, auth_provider FROM users WHERE id = $1",
-      [userId]
+      [userId],
     );
 
     if (userResult.rows.length === 0) {
@@ -342,19 +391,28 @@ export async function updateGuestUserInfo(
 
     // Only allow editing guest role users
     if (!user.roles.includes("guest")) {
-      return { success: false, error: "Vain vieraskäyttäjien tietoja voi muokata" };
+      return {
+        success: false,
+        error: "Vain vieraskäyttäjien tietoja voi muokata",
+      };
     }
 
     // Prevent editing system guest user
-    if (user.auth_provider === "system" || user.email === "vieras@savonlinnanlentokerho.fi") {
-      return { success: false, error: "Järjestelmäkäyttäjän tietoja ei voi muokata" };
+    if (
+      user.auth_provider === "system" ||
+      user.email === "vieras@savonlinnanlentokerho.fi"
+    ) {
+      return {
+        success: false,
+        error: "Järjestelmäkäyttäjän tietoja ei voi muokata",
+      };
     }
 
     // If email is being changed, check for uniqueness
     if (data.email && data.email !== user.email) {
       const existingUser = await pool.query(
         "SELECT id FROM users WHERE email = $1 AND id != $2",
-        [data.email, userId]
+        [data.email, userId],
       );
       if (existingUser.rows.length > 0) {
         return { success: false, error: "Sähköpostiosoite on jo käytössä" };
@@ -402,7 +460,7 @@ export async function updateGuestUserInfo(
     values.push(userId);
     await pool.query(
       `UPDATE users SET ${updates.join(", ")} WHERE id = $${paramIndex}`,
-      values
+      values,
     );
 
     revalidatePath("/admin/users");
