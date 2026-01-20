@@ -97,11 +97,6 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
 
-      - name: Remove robots.txt for non-production preventing SEO
-        run: |
-          echo "Removing robots.txt for non-production environment..."
-          rm -f nextjs/public/robots.txt
-
       - name: Build and push Docker image
         uses: docker/build-push-action@v6.18.0
         with:
