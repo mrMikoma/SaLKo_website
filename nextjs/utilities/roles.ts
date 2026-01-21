@@ -44,37 +44,42 @@ export const PERMISSIONS = {
 };
 
 /**
- * Check if a user role has a specific permission
- * @param userRole - The role of the user
+ * Check if a user role (or any of their roles) has a specific permission
+ * @param userRoles - The role(s) of the user (single role or array of roles)
  * @param permission - The permission to check
- * @returns true if the role has the permission, false otherwise
+ * @returns true if any of the roles has the permission, false otherwise
  */
 export function hasPermission(
-  userRole: Role,
+  userRoles: Role | Role[] | string | string[],
   permission: keyof typeof PERMISSIONS,
 ): boolean {
-  return PERMISSIONS[permission].includes(userRole);
+  const rolesArray = Array.isArray(userRoles) ? userRoles : [userRoles];
+  return rolesArray.some((role) =>
+    PERMISSIONS[permission].includes(role as Role),
+  );
 }
 
 /**
  * Check if a user can manage a booking
- * @param userRole - The role of the user
+ * @param userRoles - The role(s) of the user (single role or array of roles)
  * @param userId - The ID of the user
  * @param bookingUserId - The ID of the user who created the booking
  * @returns true if the user can manage the booking, false otherwise
  */
 export function canManageBooking(
-  userRole: Role,
+  userRoles: Role | Role[] | string | string[],
   userId: string,
   bookingUserId: string,
 ): boolean {
+  const rolesArray = Array.isArray(userRoles) ? userRoles : [userRoles];
+
   // Admin can manage any booking
-  if (userRole === ROLES.ADMIN) {
+  if (rolesArray.includes(ROLES.ADMIN)) {
     return true;
   }
 
   // Users can only manage their own bookings
-  if (userRole === ROLES.USER && userId === bookingUserId) {
+  if (rolesArray.includes(ROLES.USER) && userId === bookingUserId) {
     return true;
   }
 
@@ -84,23 +89,25 @@ export function canManageBooking(
 
 /**
  * Check if a user can delete a booking
- * @param userRole - The role of the user
+ * @param userRoles - The role(s) of the user (single role or array of roles)
  * @param userId - The ID of the user
  * @param bookingUserId - The ID of the user who created the booking
  * @returns true if the user can delete the booking, false otherwise
  */
 export function canDeleteBooking(
-  userRole: Role,
+  userRoles: Role | Role[] | string | string[],
   userId: string,
   bookingUserId: string,
 ): boolean {
+  const rolesArray = Array.isArray(userRoles) ? userRoles : [userRoles];
+
   // Admin can delete any booking
-  if (userRole === ROLES.ADMIN) {
+  if (rolesArray.includes(ROLES.ADMIN)) {
     return true;
   }
 
   // Users can only delete their own bookings
-  if (userRole === ROLES.USER && userId === bookingUserId) {
+  if (rolesArray.includes(ROLES.USER) && userId === bookingUserId) {
     return true;
   }
 
@@ -113,8 +120,8 @@ export function canDeleteBooking(
  * @param role - The role to get the display name for
  * @returns The display name of the role
  */
-export function getRoleDisplayName(role: Role): string {
-  const displayNames: Record<Role, string> = {
+export function getRoleDisplayName(role: Role | string): string {
+  const displayNames: Record<string, string> = {
     admin: "Järjestelmänvalvoja",
     user: "Käyttäjä",
     guest: "Vieras",
