@@ -1,7 +1,7 @@
 -- Insert system admin user (always created in all environments)
 INSERT INTO
   users (
-    role,
+    roles,
     name,
     full_name,
     phone,
@@ -15,7 +15,7 @@ INSERT INTO
   )
 VALUES
   (
-    'admin',
+    ARRAY['admin']::TEXT[],
     'Admin',
     'Järjestelmän Valvoja',
     '1234567890',
@@ -32,7 +32,7 @@ ON CONFLICT (email) DO NOTHING;
 -- Insert development test user (for testing purposes)
 INSERT INTO
   users (
-    role,
+    roles,
     name,
     full_name,
     phone,
@@ -46,7 +46,7 @@ INSERT INTO
   )
 VALUES
   (
-    'user',
+    ARRAY['user']::TEXT[],
     'Käyttäjä',
     'SaLKo Käyttäjä',
     '0987654321',
@@ -63,7 +63,7 @@ ON CONFLICT (email) DO NOTHING;
 -- Insert system guest user (for unauthenticated bookings)
 INSERT INTO
   users (
-    role,
+    roles,
     name,
     full_name,
     phone,
@@ -77,7 +77,7 @@ INSERT INTO
   )
 VALUES
   (
-    'guest',
+    ARRAY['guest']::TEXT[],
     'Vieras',
     'Järjestelmän Vieras',
     '',

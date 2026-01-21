@@ -6,7 +6,7 @@ BEGIN
   -- Assign the admin user ID to the variable
   SELECT id INTO admin_user_id
   FROM users
-  WHERE role = 'admin'
+  WHERE 'admin' = ANY(roles)
   LIMIT 1;
 
   -- Insert diverse bookings with various flight types, durations, and dates

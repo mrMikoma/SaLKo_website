@@ -34,7 +34,7 @@ const Navbar = () => {
     if (session?.user) {
       setAuthenticated(true);
       setUserName(session.user.name || "");
-      setIsAdmin(session.user.role === "admin");
+      setIsAdmin(session.user.roles?.includes("admin") || false);
     } else {
       setAuthenticated(false);
       setUserName("");

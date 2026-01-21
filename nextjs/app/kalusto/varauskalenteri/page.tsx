@@ -23,7 +23,7 @@ export default async function Page() {
     isLoggedIn: !!session,
     userId: session?.user?.id || null,
     userName: session?.user?.name || null,
-    userRole: session?.user?.role || "guest", // Default to guest for unauthenticated users
+    userRole: session?.user?.roles || ["guest"], // Default to guest for unauthenticated users
     userEmail: session?.user?.email || null,
   };
 

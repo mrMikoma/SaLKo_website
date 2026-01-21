@@ -38,7 +38,7 @@ interface BookingSectionProps {
     isLoggedIn: boolean;
     userId: string | null;
     userName: string | null;
-    userRole: string;
+    userRole: string | string[];
     userEmail: string | null;
   };
 }
@@ -181,11 +181,16 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
     });
   };
 
+  // Helper to check if user has admin role
+  const isAdmin = Array.isArray(userRole)
+    ? userRole.includes("admin")
+    : userRole === "admin";
+
   const handleBookingClick = (booking: BookingType) => {
     if (!isLoggedIn) {
       // Not logged in - view only
       openViewModal(booking);
-    } else if (userRole === "admin") {
+    } else if (isAdmin) {
       // Admin can edit all bookings
       openUpdateModal(booking);
     } else if (userId === booking.user_id) {

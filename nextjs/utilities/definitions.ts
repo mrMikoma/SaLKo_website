@@ -40,7 +40,7 @@ export type UserData = {
   name: string;
   full_name: string;
   email: string;
-  role: string;
+  roles: string[];
   address: string;
   city: string;
   postalCode: string;
