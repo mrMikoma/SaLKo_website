@@ -291,9 +291,9 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
                         </button>
                       </div>
                     </div>
-                    <p className="text-gray-700 whitespace-pre-wrap mt-3 border-t border-gray-100 pt-3">
+                    <div className="text-gray-700 whitespace-pre-wrap mt-3 border-t border-gray-100 pt-3">
                       {bulletin.content}
-                    </p>
+                    </div>
                   </div>
                 )}
               </div>

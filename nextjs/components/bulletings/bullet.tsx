@@ -60,7 +60,7 @@ const Bullet = ({ item }: BulletProps) => {
               </span>
               <span className="text-sm">{item.username || "Tuntematon"}</span>
             </div>
-            <div className="text-base leading-relaxed">{item.content}</div>
+            <div className="text-base leading-relaxed whitespace-pre-wrap">{item.content}</div>
           </DisclosurePanel>
         </div>
       )}
