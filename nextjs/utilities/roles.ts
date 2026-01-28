@@ -41,6 +41,18 @@ export const PERMISSIONS = {
   ACCESS_ADMIN_SITE: ["admin"] as Role[],
   VIEW_ANALYTICS: ["admin"] as Role[],
   MANAGE_SETTINGS: ["admin"] as Role[],
+
+  // Flight logging
+  LOG_OWN_FLIGHT: ["admin", "user"] as Role[],
+  VIEW_OWN_FLIGHTS: ["admin", "user"] as Role[],
+  VIEW_ALL_FLIGHTS: ["admin"] as Role[],
+  EDIT_ANY_FLIGHT: ["admin"] as Role[],
+
+  // Billing
+  VIEW_OWN_BILLING: ["admin", "user"] as Role[],
+  VIEW_ALL_BILLING: ["admin"] as Role[],
+  CREATE_BILLING_ITEM: ["admin"] as Role[],
+  UPDATE_PAYMENT_STATUS: ["admin"] as Role[],
 };
 
 /**
