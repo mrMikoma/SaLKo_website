@@ -220,12 +220,9 @@ jobs:
             echo "Stopping containers and removing volumes for fresh dev environment..."
             docker compose -p salko-dev --env-file .env.dev -f docker-compose.dev.yaml down -v
 
-            # Start the containers using Docker Compose
+            # Start the containers using Docker Compose and wait for healthy state
             echo "Starting containers using Docker Compose..."
-            docker compose -p salko-dev --env-file .env.dev -f docker-compose.dev.yaml up -d
-
-            # Wait for services to start
-            sleep 15
+            docker compose -p salko-dev --env-file .env.dev -f docker-compose.dev.yaml up -d --wait --wait-timeout 120
 
             # Verify the deployment
             echo "Verifying the deployment..."
