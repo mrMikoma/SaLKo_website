@@ -57,15 +57,18 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
   const searchParams = useSearchParams();
   const { date, dateString, setDate } = useDateFromUrl();
   const { viewMode, setViewMode } = useViewMode();
+  const isMobile = useIsMobile();
+  // On mobile, treat "week" as "day" since week grid doesn't fit
+  const effectiveViewMode: ViewMode = isMobile && viewMode === "week" ? "day" : viewMode;
 
   // Calculate date range based on view mode
   const dateRange = useMemo(() => {
-    if (viewMode === "week") {
+    if (effectiveViewMode === "week") {
       const weekStart = date.startOf("week");
       return Array.from({ length: 7 }, (_, i) =>
         weekStart.plus({ days: i }).toISODate()
       ).filter((d): d is string => d !== null);
-    } else if (viewMode === "month") {
+    } else if (effectiveViewMode === "month") {
       const monthStart = date.startOf("month");
       const monthEnd = date.endOf("month");
       const calendarStart = monthStart.startOf("week");
@@ -80,7 +83,7 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
       return days;
     }
     return [dateString];
-  }, [date, dateString, viewMode]);
+  }, [date, dateString, effectiveViewMode]);
 
   const {
     bookings,
@@ -106,8 +109,6 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
     closeModal,
     setSelectedBooking,
   } = useBookingModal();
-
-  const isMobile = useIsMobile();
 
   // Helper functions
   const getFlightTypeColor = useMemo(
@@ -163,6 +164,9 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
       router.push(`${pathname}?${params.toString()}`);
     }
   };
+
+  const handlePrevMonth = () => setDate(date.minus({ months: 1 }));
+  const handleNextMonth = () => setDate(date.plus({ months: 1 }));
 
   const handleMobileCreateBooking = (plane: string) => {
     // For logged-in users, userId must be present
@@ -282,32 +286,33 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
   };
 
   return (
-    <div className="p-4 text-black" role="main" aria-label="Varauskalenteri">
-      {/* Date Picker and View Selector - side by side on desktop */}
-      <div className="flex flex-col lg:flex-row gap-4 items-center justify-between mb-6">
-        <div className="w-full lg:flex-1">
-          <DatePicker viewMode={viewMode} />
-        </div>
-        {!isMobile && (
-          <div className="flex-shrink-0">
-            <ViewSelector currentView={viewMode} onViewChange={setViewMode} />
-          </div>
-        )}
-      </div>
-
+    <div className="px-2 py-3 lg:p-4 text-black" role="main" aria-label="Varauskalenteri">
       {/* Guest Booking Info Banner */}
       {!isLoggedIn && (
-        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-center text-gray-700">
-            <span className="font-medium">
-              Voit varata myös ilman kirjautumista.
-            </span>{" "}
-            Jos sinulla on käyttäjätunnus, kirjaudu sisään{" "}
-            <span className="font-medium text-sblue">Jäsenalue</span>-valikon
-            kautta.
+        <div className="mb-3 lg:w-1/2 lg:mx-auto px-4 py-2.5 bg-white/95 border border-sblue/30 rounded-xl shadow-sm text-center">
+          <p className="text-sm text-gray-700">
+            Voit varata ilman kirjautumista.{" "}
+            <span className="font-semibold text-sblue">Jäsenalue</span>
+            -valikon kautta voit kirjautua sisään varataksesi käyttäjänä.
           </p>
         </div>
       )}
+      
+      {/* Date Picker and View Selector - side by side on desktop */}
+      <div className="flex flex-col lg:flex-row gap-3 items-center justify-between mb-3 lg:mb-6">
+        <div className="w-full lg:flex-1">
+          <DatePicker viewMode={effectiveViewMode} />
+        </div>
+        <div className="flex-shrink-0">
+          <ViewSelector
+            currentView={effectiveViewMode}
+            onViewChange={setViewMode}
+            availableViews={isMobile ? ["day", "month"] : undefined}
+          />
+        </div>
+      </div>
+
+
 
       {/* Loading State */}
       {isLoading && <BookingsSkeleton />}
@@ -322,15 +327,26 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
         <>
           {/* Responsive Booking View */}
           {isMobile ? (
-            <BookingsMobileView
-              bookings={bookings}
-              onBookingClick={handleBookingClick}
-              onCreateBooking={handleMobileCreateBooking}
-              flightTypes={FLIGHT_TYPES}
-              getFlightTypeColor={getFlightTypeColor}
-              isLoggedIn={isLoggedIn}
-            />
-          ) : viewMode === "week" ? (
+            effectiveViewMode === "month" ? (
+              <BookingsMonthView
+                bookings={bookings}
+                selectedDate={date}
+                onDayClick={handleDayClick}
+                onPrevMonth={handlePrevMonth}
+                onNextMonth={handleNextMonth}
+                flightTypes={FLIGHT_TYPES}
+                getFlightTypeColor={getFlightTypeColor}
+              />
+            ) : (
+              <BookingsMobileView
+                bookings={bookings}
+                onBookingClick={handleBookingClick}
+                onCreateBooking={handleMobileCreateBooking}
+                flightTypes={FLIGHT_TYPES}
+                getFlightTypeColor={getFlightTypeColor}
+              />
+            )
+          ) : effectiveViewMode === "week" ? (
             <BookingsWeekView
               bookings={bookings}
               selectedDate={date}
@@ -339,7 +355,7 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
               flightTypes={FLIGHT_TYPES}
               getFlightTypeColor={getFlightTypeColor}
             />
-          ) : viewMode === "month" ? (
+          ) : effectiveViewMode === "month" ? (
             <BookingsMonthView
               bookings={bookings}
               selectedDate={date}

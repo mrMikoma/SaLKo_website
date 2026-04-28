@@ -44,7 +44,7 @@ const DatePicker = ({ viewMode = "day" }: DatePickerProps) => {
       const weekEnd = date.endOf("week");
       return (
         <div className="text-center">
-          <div className="text-2xl font-bold text-white">
+          <div className="text-xl sm:text-2xl font-bold text-white">
             Viikko {date.weekNumber}
           </div>
           <div className="text-sm text-white/90 mt-1">
@@ -56,7 +56,7 @@ const DatePicker = ({ viewMode = "day" }: DatePickerProps) => {
     } else if (viewMode === "month") {
       return (
         <div className="text-center">
-          <div className="text-2xl font-bold text-white capitalize">
+          <div className="text-xl sm:text-2xl font-bold text-white capitalize">
             {date.setLocale("fi").toFormat("LLLL yyyy")}
           </div>
           <div className="text-sm text-white/90 mt-1">
@@ -67,7 +67,7 @@ const DatePicker = ({ viewMode = "day" }: DatePickerProps) => {
     } else {
       return (
         <div className="text-center">
-          <div className="text-2xl font-bold text-white capitalize">
+          <div className="text-xl sm:text-2xl font-bold text-white capitalize">
             {date.setLocale("fi").toFormat("cccc")}
           </div>
           <div className="text-sm text-white/90 mt-1">
@@ -93,7 +93,7 @@ const DatePicker = ({ viewMode = "day" }: DatePickerProps) => {
 
   return (
     <div className="lg:w-1/2 mx-auto">
-      <div className="bg-sblued/80 rounded-2xl shadow-xl p-6 border border-swhite/10">
+      <div className="bg-sblued/80 rounded-2xl shadow-xl p-3 sm:p-6 border border-swhite/10">
         {/* Main navigation row */}
         <div className="flex items-center justify-between gap-3">
           {/* Previous button */}
@@ -139,7 +139,7 @@ const DatePicker = ({ viewMode = "day" }: DatePickerProps) => {
             <RightOutlined className="text-lg" />
           </button>
 
-          {/* Today button - hidden on mobile, shown on desktop */}
+          {/* Today button — inline on desktop */}
           <button
             type="button"
             onClick={goToToday}
@@ -155,22 +155,20 @@ const DatePicker = ({ viewMode = "day" }: DatePickerProps) => {
           </button>
         </div>
 
-        {/* Today button for mobile - centered below navigation */}
-        <div className="lg:hidden mt-4 flex justify-center">
-          <button
-            type="button"
-            onClick={goToToday}
-            disabled={isToday}
-            className={`px-6 py-2.5 font-semibold rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 shadow-lg ${
-              isToday
-                ? "bg-swhite/20 text-swhite/50 cursor-not-allowed"
-                : "bg-swhite text-sblue hover:bg-swhite/95 hover:shadow-xl hover:scale-105 active:scale-95 focus:ring-swhite/60 focus:ring-offset-2 focus:ring-offset-sblue"
-            }`}
-            aria-label="Siirry tähän päivään"
-          >
-            Tänään
-          </button>
-        </div>
+        {/* Today button — full width below nav, mobile only */}
+        <button
+          type="button"
+          onClick={goToToday}
+          disabled={isToday}
+          className={`lg:hidden mt-2.5 w-full py-2 font-semibold rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 shadow-md text-sm ${
+            isToday
+              ? "bg-swhite/20 text-swhite/50 cursor-not-allowed"
+              : "bg-swhite text-sblue hover:bg-swhite/95 hover:shadow-xl hover:scale-[1.01] active:scale-95 focus:ring-swhite/60 focus:ring-offset-2 focus:ring-offset-sblue"
+          }`}
+          aria-label="Siirry tähän päivään"
+        >
+          Tänään
+        </button>
       </div>
     </div>
   );

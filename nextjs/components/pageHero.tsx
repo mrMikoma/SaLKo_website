@@ -37,31 +37,38 @@ const PageHero = ({
       {/* Hero Content */}
       <div className="relative z-10 w-full">
         {/* Top Section - Breadcrumbs and Title */}
-        <div className={`max-w-[1600px] mx-auto px-6 pt-44 lg:pt-48 pb-12`}>
-          <div className="space-y-4">
+        <div className={`max-w-[1600px] mx-auto px-6 pt-36 lg:pt-48 pb-4`}>
+          <div className="space-y-2">
             {/* Breadcrumbs */}
             {breadcrumbs && breadcrumbs.length > 0 && (
               <div className="flex items-center gap-2 text-xs md:text-sm text-swhite/60">
-                <Link
-                  className="hover:text-swhite/90 transition-colors"
-                  href="/"
-                >
+                <Link className="hover:text-swhite/90 transition-colors" href="/">
                   Etusivu
                 </Link>
-                {breadcrumbs.map((crumb, index) => (
-                  <React.Fragment key={index}>
-                    <span>/</span>
-                    <span
-                      className={
-                        index === breadcrumbs.length - 1
-                          ? "text-swhite font-medium"
-                          : "hover:text-swhite/90 transition-colors"
-                      }
-                    >
-                      {crumb}
-                    </span>
-                  </React.Fragment>
-                ))}
+                {breadcrumbs.map((crumb, index) => {
+                  const isLast = index === breadcrumbs.length - 1;
+                  const href =
+                    "/" +
+                    breadcrumbs
+                      .slice(0, index + 1)
+                      .map((c) => c.toLowerCase())
+                      .join("/");
+                  return (
+                    <React.Fragment key={index}>
+                      <span>/</span>
+                      {isLast ? (
+                        <span className="text-swhite font-medium">{crumb}</span>
+                      ) : (
+                        <Link
+                          href={href}
+                          className="hover:text-swhite/90 transition-colors"
+                        >
+                          {crumb}
+                        </Link>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
               </div>
             )}
 
