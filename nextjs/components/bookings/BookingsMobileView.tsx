@@ -2,7 +2,7 @@ import { memo, useState } from "react";
 import { DateTime } from "luxon";
 import { BookingType } from "@/utilities/bookings";
 import { FlightTypeConfig } from "@/types/bookings";
-import { formatTime } from "@/utilities/bookingHelpers";
+import { formatTime, getBookingDisplayName } from "@/utilities/bookingHelpers";
 import { getPlaneDisplayName } from "@/utilities/planeHelpers";
 
 interface BookingsMobileViewProps {
@@ -127,11 +127,7 @@ export const BookingsMobileView = memo(
                           borderLeftWidth: "4px",
                           borderLeftColor: getFlightTypeColor(booking.type),
                         }}
-                        aria-label={`Varaus: ${booking.title}, ${
-                          booking.full_name
-                        }, ${formatTime(booking.start_time)} - ${formatTime(
-                          booking.end_time
-                        )}`}
+                        aria-label={`Varaus: ${booking.title}, ${getBookingDisplayName(booking)}, ${formatTime(booking.start_time)} - ${formatTime(booking.end_time)}`}
                       >
                         {/* Time — most prominent */}
                         <p className="text-sm text-gray-600 mb-1.5">
@@ -158,7 +154,7 @@ export const BookingsMobileView = memo(
                         </div>
 
                         <p className="text-sm text-gray-700">
-                          {booking.full_name}
+                          {getBookingDisplayName(booking)}
                         </p>
 
                         {booking.description && (

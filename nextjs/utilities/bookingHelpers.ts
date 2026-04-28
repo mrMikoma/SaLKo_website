@@ -8,6 +8,17 @@ import { BookingType } from "@/utilities/bookings";
 import { FlightTypeConfig } from "@/types/bookings";
 
 /**
+ * Returns the display name for a booking, using guest contact name for guest bookings
+ * instead of the system placeholder "Järjestelmän Vieras".
+ */
+export const getBookingDisplayName = (booking: BookingType): string => {
+  if (booking.is_guest) {
+    return booking.guest_contact_name || "Vieras";
+  }
+  return booking.full_name;
+};
+
+/**
  * Shortens a full name to "FirstName L."
  */
 export const getShortenedName = (name: string): string => {
