@@ -115,14 +115,14 @@ export default function Page() {
                       €/min
                       <br />
                       <span className="text-xs font-normal text-swhite/60">
-                        (ilman kalustomaksua)
+                        (vierailevat lentäjät)
                       </span>
                     </th>
                     <th className="text-right py-4 px-4 text-sbluel font-semibold">
                       €/h
                       <br />
                       <span className="text-xs font-normal text-swhite/60">
-                        (ilman kalustomaksua)
+                        (vierailevat lentäjät)
                       </span>
                     </th>
                   </tr>
@@ -153,10 +153,15 @@ export default function Page() {
                         </tr>
                       );
                     }
+                    const isOutOfService = aircraft.outOfService === true;
                     return (
                       <tr
                         key={index}
-                        className="border-b border-swhite/10 hover:bg-sblack/30 transition-colors"
+                        className={`border-b border-swhite/10 transition-colors ${
+                          isOutOfService
+                            ? "opacity-50"
+                            : "hover:bg-sblack/30"
+                        }`}
                       >
                         <td className="py-4 px-4 text-swhite font-medium">
                           {aircraft.registration}
@@ -264,6 +269,45 @@ export default function Page() {
                       </td>
                       <td className="py-4 px-4 text-right text-swhite font-semibold whitespace-nowrap">
                         {space.price} {space.unit}
+                        {"additionalFee" in space && space.additionalFee && (
+                          <div className="text-sm font-normal text-swhite/60 mt-0.5">
+                            {space.additionalFee}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Muut maksut */}
+          <div className="glass rounded-lg p-8 border border-sred/20 overflow-hidden">
+            <h2 className="text-3xl font-bold text-sred mb-6">Muut maksut</h2>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-sbluel/30">
+                    <th className="text-left py-4 px-4 text-sbluel font-semibold">
+                      Tuote
+                    </th>
+                    <th className="text-right py-4 px-4 text-sbluel font-semibold">
+                      Hinta
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pricesData.otherFees.map((fee, index) => (
+                    <tr
+                      key={index}
+                      className="border-b border-swhite/10 hover:bg-sblack/30 transition-colors"
+                    >
+                      <td className="py-4 px-4 text-swhite font-medium">
+                        {fee.type}
+                      </td>
+                      <td className="py-4 px-4 text-right text-swhite font-semibold whitespace-nowrap">
+                        {fee.price} {fee.unit}
                       </td>
                     </tr>
                   ))}

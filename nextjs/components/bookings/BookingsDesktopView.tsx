@@ -5,6 +5,7 @@ import { useMemo, memo } from "react";
 import {
   getVisibleBookingsForHour,
   getShortenedName,
+  getBookingDisplayName,
   generateHourLabels,
 } from "@/utilities/bookingHelpers";
 import { getPlaneDisplayName } from "@/utilities/planeHelpers";
@@ -114,7 +115,7 @@ const BookingCell = memo(
                     : "none",
                 fontSize: maxBookings > 2 ? "10px" : "12px",
               }}
-              title={`${booking.title} - ${booking.full_name} (${
+              title={`${booking.title} - ${getBookingDisplayName(booking)} (${
                 booking.type
               })${
                 isMultiday
@@ -125,7 +126,7 @@ const BookingCell = memo(
                     )} (Monipäiväinen)`
                   : ""
               }`}
-              aria-label={`Varaus: ${booking.title}, ${booking.full_name}, tyyppi ${booking.type}`}
+              aria-label={`Varaus: ${booking.title}, ${getBookingDisplayName(booking)}, tyyppi ${booking.type}`}
             >
               <p className="font-bold text-center text-ellipsis whitespace-nowrap overflow-hidden leading-tight flex items-center justify-center gap-0.5">
                 {isMultiday && (
@@ -141,7 +142,7 @@ const BookingCell = memo(
               </p>
               {maxBookings <= 2 && (
                 <p className="font-medium text-center text-ellipsis whitespace-nowrap overflow-hidden leading-tight">
-                  {getShortenedName(booking.full_name)}
+                  {getShortenedName(getBookingDisplayName(booking))}
                 </p>
               )}
             </button>

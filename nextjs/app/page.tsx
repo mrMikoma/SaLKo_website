@@ -10,7 +10,7 @@ import CallToAction from "@/components/callToAction";
 import Link from "next/link";
 
 export const metadata = {
-  title: "SaLKo",
+  title: "Savonlinnan Lentokerho",
   description: "Savonlinnan Lentokerho ry",
 };
 

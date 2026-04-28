@@ -764,7 +764,9 @@ const BookingModal = memo(
                     Varaaja
                   </label>
                   <p className="text-lg font-semibold text-gray-900">
-                    {booking.full_name}
+                    {booking.is_guest
+                      ? booking.guest_contact_name || "Vieras"
+                      : booking.full_name}
                   </p>
                   {booking.is_guest && (
                     <span className="inline-block mt-2 px-3 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
@@ -776,16 +778,6 @@ const BookingModal = memo(
                 {/* Show guest contact info if this is a guest booking and user is admin */}
                 {booking.is_guest && userRole === "admin" && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {booking.guest_contact_name && (
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-600 mb-1">
-                          Vieraan nimi
-                        </label>
-                        <p className="text-gray-900">
-                          {booking.guest_contact_name}
-                        </p>
-                      </div>
-                    )}
                     {booking.guest_contact_email && (
                       <div>
                         <label className="block text-sm font-semibold text-gray-600 mb-1">
