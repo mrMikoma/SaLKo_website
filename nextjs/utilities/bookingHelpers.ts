@@ -8,6 +8,22 @@ import { BookingType } from "@/utilities/bookings";
 import { FlightTypeConfig } from "@/types/bookings";
 
 /**
+ * Returns true if a booking is a "full day" booking.
+ * Full-day bookings are stored with local midnight as start and the next day's
+ * local midnight as end (i.e., both start and end are exactly at 00:00 local time
+ * and the booking spans whole days).
+ */
+export const isFullDayBooking = (booking: BookingType): boolean => {
+  if (!booking.start_time || !booking.end_time) return false;
+  const start = DateTime.fromISO(booking.start_time).toLocal();
+  const end = DateTime.fromISO(booking.end_time).toLocal();
+  return (
+    start.hour === 0 && start.minute === 0 && start.second === 0 &&
+    end.hour === 0 && end.minute === 0 && end.second === 0
+  );
+};
+
+/**
  * Returns the display name for a booking, using guest contact name for guest bookings
  * instead of the system placeholder "Järjestelmän Vieras".
  */
@@ -77,14 +93,47 @@ export const isBookingOnDate = (
 };
 
 /**
- * Checks if a booking covers a specific hour
+ * Checks if a booking covers a specific hour on a given date.
+ * For multi-day bookings: start day covers from start hour to end of day,
+ * middle days cover all hours, end day covers from start of day to end hour.
  */
 export const doesBookingCoverHour = (
   booking: BookingType,
-  hourValue: number
+  hourValue: number,
+  selectedDate?: DateTime
 ): boolean => {
   const startTime = DateTime.fromISO(booking.start_time).toLocal();
   const endTime = DateTime.fromISO(booking.end_time).toLocal();
+
+  // Full-day bookings cover all hours. End is stored as midnight of the day AFTER
+  // the last booked day (exclusive), so the "end day" itself is not covered.
+  if (isFullDayBooking(booking)) {
+    if (selectedDate) {
+      const checkDay = selectedDate.startOf("day").toISODate();
+      const endDay = endTime.startOf("day").toISODate();
+      return checkDay !== endDay;
+    }
+    return true;
+  }
+
+  if (selectedDate) {
+    const checkDay = selectedDate.startOf("day").toISODate();
+    const startDay = startTime.startOf("day").toISODate();
+    const endDay = endTime.startOf("day").toISODate();
+
+    const isStartDay = checkDay === startDay;
+    const isEndDay = checkDay === endDay;
+
+    if (isStartDay && isEndDay) {
+      return startTime.hour <= hourValue && endTime.hour > hourValue;
+    } else if (isStartDay) {
+      return startTime.hour <= hourValue;
+    } else if (isEndDay) {
+      return endTime.hour > hourValue;
+    } else {
+      return true;
+    }
+  }
 
   return startTime.hour <= hourValue && endTime.hour > hourValue;
 };
@@ -125,7 +174,7 @@ export const filterActiveBookings = (
     }
 
     // Check if the booking covers this hour
-    return doesBookingCoverHour(booking, hourValue);
+    return doesBookingCoverHour(booking, hourValue, selectedDate);
   });
 };
 

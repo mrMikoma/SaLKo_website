@@ -7,6 +7,7 @@ import {
   getShortenedName,
   getBookingDisplayName,
   generateHourLabels,
+  isFullDayBooking,
 } from "@/utilities/bookingHelpers";
 import { getPlaneDisplayName } from "@/utilities/planeHelpers";
 
@@ -87,13 +88,15 @@ const BookingCell = memo(
         style={{ height: "50px", width: "120px" }}
       >
         {bookings.slice(0, maxBookings).map((booking, index) => {
+          const fullDay = isFullDayBooking(booking);
           const isMultiday =
-            DateTime.fromISO(booking.start_time).toISODate() !==
-            DateTime.fromISO(booking.end_time).toISODate();
-          const bookingStartDate = DateTime.fromISO(
-            booking.start_time
-          ).toISODate();
-          const bookingEndDate = DateTime.fromISO(booking.end_time).toISODate();
+            DateTime.fromISO(booking.start_time).toLocal().toISODate() !==
+            DateTime.fromISO(booking.end_time).toLocal().minus(fullDay ? { days: 1 } : { seconds: 0 }).toISODate();
+          const bookingStartDate = DateTime.fromISO(booking.start_time).toLocal().toISODate();
+          // For full-day bookings, end is stored as next-day midnight; adjust for display
+          const bookingEndDate = fullDay
+            ? DateTime.fromISO(booking.end_time).toLocal().minus({ days: 1 }).toISODate()
+            : DateTime.fromISO(booking.end_time).toLocal().toISODate();
           const currentDate = selectedDate.toISODate();
           const isStartDay = bookingStartDate === currentDate;
           const isEndDay = bookingEndDate === currentDate;
@@ -114,22 +117,20 @@ const BookingCell = memo(
                     ? "1px solid rgba(255,255,255,0.5)"
                     : "none",
                 fontSize: maxBookings > 2 ? "10px" : "12px",
+                opacity: fullDay ? 0.9 : 1,
               }}
-              title={`${booking.title} - ${getBookingDisplayName(booking)} (${
-                booking.type
-              })${
-                isMultiday
-                  ? `\n${DateTime.fromISO(booking.start_time).toFormat(
-                      "dd.MM HH:mm"
-                    )} - ${DateTime.fromISO(booking.end_time).toFormat(
-                      "dd.MM HH:mm"
-                    )} (Monipäiväinen)`
+              title={`${booking.title} - ${getBookingDisplayName(booking)} (${booking.type})${
+                fullDay
+                  ? `\nKoko päivä: ${DateTime.fromISO(booking.start_time).toLocal().toFormat("dd.MM")}${isMultiday ? ` - ${bookingEndDate ? DateTime.fromISO(bookingEndDate).toFormat("dd.MM") : ""}` : ""}`
+                  : isMultiday
+                  ? `\n${DateTime.fromISO(booking.start_time).toFormat("dd.MM HH:mm")} - ${DateTime.fromISO(booking.end_time).toFormat("dd.MM HH:mm")} (Monipäiväinen)`
                   : ""
               }`}
               aria-label={`Varaus: ${booking.title}, ${getBookingDisplayName(booking)}, tyyppi ${booking.type}`}
             >
               <p className="font-bold text-center text-ellipsis whitespace-nowrap overflow-hidden leading-tight flex items-center justify-center gap-0.5">
-                {isMultiday && (
+                {fullDay && <span className="text-[8px] opacity-75">◼</span>}
+                {!fullDay && isMultiday && (
                   <span className="text-[8px] opacity-75">
                     {isStartDay ? "▶" : isEndDay ? "◀" : "◆"}
                   </span>

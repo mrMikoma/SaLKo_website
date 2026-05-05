@@ -338,10 +338,11 @@ export async function addRepeatingBookings({
       throw new Error("Repeat end date must be after start date");
     }
 
-    // Get the time of day for the booking
+    // Get the time of day for the booking (local hours/minutes, same for every repeated day)
     const bookingStartHour = startDate.getHours();
     const bookingStartMinute = startDate.getMinutes();
-    const bookingDurationMs = endDate.getTime() - startDate.getTime();
+    const bookingEndHour = endDate.getHours();
+    const bookingEndMinute = endDate.getMinutes();
 
     let currentDate = new Date(startDate);
     currentDate.setHours(0, 0, 0, 0); // Normalize to start of day for comparison
@@ -360,7 +361,15 @@ export async function addRepeatingBookings({
         const dayStart = new Date(currentDate);
         dayStart.setHours(bookingStartHour, bookingStartMinute, 0, 0);
 
-        const dayEnd = new Date(dayStart.getTime() + bookingDurationMs);
+        // Compute per-day end using only the time-of-day from the original end_time.
+        // This ensures each repeated booking spans one day regardless of whether the
+        // user entered start and end on different dates.
+        const dayEnd = new Date(currentDate);
+        dayEnd.setHours(bookingEndHour, bookingEndMinute, 0, 0);
+        if (dayEnd <= dayStart) {
+          // End time is before or equal to start time on the same day (e.g. crosses midnight)
+          dayEnd.setDate(dayEnd.getDate() + 1);
+        }
 
         await connectionPool.query(
           "INSERT INTO bookings (user_id, plane, start_time, end_time, type, title, description, repeat_group_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
