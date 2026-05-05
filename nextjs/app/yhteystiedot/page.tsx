@@ -195,7 +195,7 @@ export default function Page() {
       <ContentSection variant="dark" backgroundImage="bg-savonlinna-one">
         <div className="space-y-12">
           {/* Board Members */}
-          <ContactCardGrid title="Hallitus 2025" board={board} />
+          <ContactCardGrid title="Hallitus 2026" board={board} />
 
           {/* Other Contacts */}
           <ContactCardGrid title="Muut yhteystiedot" board={other} />
