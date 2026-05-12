@@ -40,6 +40,7 @@ export const metadata = {
     "sähköpostiosoite",
     "laskutusosoite",
   ],
+  alternates: { canonical: "/yhteystiedot" },
 };
 
 export default function Page() {

@@ -15,6 +15,7 @@ export const metadata = {
     "Savonlinna",
     "lentäminen",
   ],
+  alternates: { canonical: "/esittelylennot" },
 };
 
 export default function Page() {

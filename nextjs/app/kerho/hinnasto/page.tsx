@@ -13,6 +13,7 @@ export const metadata = {
     "lentokerho",
     "Savonlinna",
   ],
+  alternates: { canonical: "/kerho/hinnasto" },
 };
 
 export default function Page() {
