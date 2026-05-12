@@ -133,16 +133,16 @@
       "additionalFee": "+ jäsenmaksu 60 €/v"
     },
     {
-      "type": "Ilma-alus (kärkiväli 7,5–15 m)",
+      "type": "Ilma-alus (kärkiväli 7,5 - 15 m)",
       "description": "Edellyttää varsinaista jäsenyyttä.",
-      "price": "500",
+      "price": "600",
       "unit": "€/vuosi",
       "additionalFee": "+ jäsenmaksu 60 €/v"
     },
     {
       "type": "Ilma-alus (kärkiväli > 15 m)",
       "description": "Edellyttää varsinaista jäsenyyttä.",
-      "price": "600",
+      "price": "800",
       "unit": "€/vuosi",
       "additionalFee": "+ jäsenmaksu 60 €/v"
     }
