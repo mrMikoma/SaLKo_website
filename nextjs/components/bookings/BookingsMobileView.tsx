@@ -2,11 +2,12 @@ import { memo, useState } from "react";
 import { DateTime } from "luxon";
 import { BookingType } from "@/utilities/bookings";
 import { FlightTypeConfig } from "@/types/bookings";
-import { formatTime, getBookingDisplayName } from "@/utilities/bookingHelpers";
+import { getBookingDisplayName, getDisplayTimesForDay } from "@/utilities/bookingHelpers";
 import { getPlaneDisplayName } from "@/utilities/planeHelpers";
 
 interface BookingsMobileViewProps {
   bookings: BookingType[];
+  selectedDate: DateTime;
   onBookingClick: (booking: BookingType) => void;
   onCreateBooking?: (plane: string) => void;
   flightTypes: readonly FlightTypeConfig[];
@@ -18,6 +19,7 @@ const PLANES = ["OH-CON", "OH-386", "OH-816", "OH-829", "OH-475"];
 export const BookingsMobileView = memo(
   ({
     bookings,
+    selectedDate,
     onBookingClick,
     onCreateBooking,
     flightTypes,
@@ -127,16 +129,23 @@ export const BookingsMobileView = memo(
                           borderLeftWidth: "4px",
                           borderLeftColor: getFlightTypeColor(booking.type),
                         }}
-                        aria-label={`Varaus: ${booking.title}, ${getBookingDisplayName(booking)}, ${formatTime(booking.start_time)} - ${formatTime(booking.end_time)}`}
+                        aria-label={(() => {
+                          const { displayStart, displayEnd } = getDisplayTimesForDay(booking, selectedDate);
+                          return `Varaus: ${booking.title}, ${getBookingDisplayName(booking)}, ${displayStart} - ${displayEnd}`;
+                        })()}
                       >
                         {/* Time — most prominent */}
-                        <p className="text-sm text-gray-600 mb-1.5">
-                          <span className="font-medium">Aika:</span>{" "}
-                          <span className="font-bold text-gray-900 text-base">
-                            {formatTime(booking.start_time)} –{" "}
-                            {formatTime(booking.end_time)}
-                          </span>
-                        </p>
+                        {(() => {
+                          const { displayStart, displayEnd } = getDisplayTimesForDay(booking, selectedDate);
+                          return (
+                            <p className="text-sm text-gray-600 mb-1.5">
+                              <span className="font-medium">Aika:</span>{" "}
+                              <span className="font-bold text-gray-900 text-base">
+                                {displayStart} – {displayEnd}
+                              </span>
+                            </p>
+                          );
+                        })()}
 
                         {/* Title and flight type badge */}
                         <div className="flex justify-between items-start mb-1">

@@ -224,6 +224,28 @@ export const formatTime = (isoTime: string): string => {
 };
 
 /**
+ * Returns clipped display times for a booking on a specific day.
+ * For multi-day bookings the start is shown as 00:00 on continuation days
+ * and the end is shown as 00:00 on days where the booking continues past midnight.
+ */
+export const getDisplayTimesForDay = (
+  booking: BookingType,
+  selectedDate: DateTime
+): { displayStart: string; displayEnd: string } => {
+  const start = DateTime.fromISO(booking.start_time).toLocal();
+  const end = DateTime.fromISO(booking.end_time).toLocal();
+  const dayIso = selectedDate.startOf("day").toISODate();
+
+  const isStartDay = start.startOf("day").toISODate() === dayIso;
+  const isEndDay = end.startOf("day").toISODate() === dayIso;
+
+  return {
+    displayStart: isStartDay ? start.toFormat("HH:mm") : "00:00",
+    displayEnd: isEndDay ? end.toFormat("HH:mm") : "00:00",
+  };
+};
+
+/**
  * Generates hour labels for the booking table
  */
 export const generateHourLabels = (

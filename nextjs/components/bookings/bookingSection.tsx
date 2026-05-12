@@ -340,6 +340,7 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
             ) : (
               <BookingsMobileView
                 bookings={bookings}
+                selectedDate={date}
                 onBookingClick={handleBookingClick}
                 onCreateBooking={handleMobileCreateBooking}
                 flightTypes={FLIGHT_TYPES}
