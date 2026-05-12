@@ -241,7 +241,7 @@ export const getDisplayTimesForDay = (
 
   return {
     displayStart: isStartDay ? start.toFormat("HH:mm") : "00:00",
-    displayEnd: isEndDay ? end.toFormat("HH:mm") : "00:00",
+    displayEnd: isEndDay ? end.toFormat("HH:mm") : "23:59",
   };
 };
 
