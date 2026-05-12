@@ -17,6 +17,7 @@ export const metadata = {
     "Junior",
     "Savonlinna",
   ],
+  alternates: { canonical: "/kalusto" },
 };
 
 const Page = () => {

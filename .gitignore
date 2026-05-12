@@ -4,6 +4,7 @@
 !.env.monitoring.template
 lentokerho.sql
 SaLKo nettisivut sisältö 12-2024.pdf
+TODO.md
 
 /letsencrypt
 /postgres/postgres-data

@@ -10,7 +10,26 @@ import pricesData from "@/data/prices.json";
 
 export const metadata = {
   title: "Koulutus",
-  description: "Lentokoulutus Savonlinnan Lentokerholla",
+  description:
+    "Aloita lentokoulutus Savonlinnan Lentokerholla. Tarjoamme PPL-, TMG- ja purjelentokirjakoulutusta sekä lisäkelpuutuksia Savonlinnan lentoasemalla (EFSA).",
+  keywords: [
+    "lentokoulutus",
+    "PPL koulutus",
+    "yksityislentäjä",
+    "lentolupakirja",
+    "purjelentokoulutus",
+    "TMG koulutus",
+    "LAPL koulutus",
+    "NF koulutus",
+    "yölentokelpuutus",
+    "TOW koulutus",
+    "hinauslentokelpuutus",
+    "Savonlinnan Lentokerho",
+    "EFSA",
+    "Savonlinna",
+    "ilmailukoulutus",
+  ],
+  alternates: { canonical: "/koulutus" },
 };
 
 const getPrice = (courseCode: string): string => {

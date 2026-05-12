@@ -16,6 +16,7 @@ export const metadata = {
     "kiitotie",
     "Savonlinna",
   ],
+  alternates: { canonical: "/kerho/kentta" },
 };
 
 export default function Page() {

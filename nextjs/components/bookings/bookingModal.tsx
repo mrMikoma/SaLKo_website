@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, memo, useMemo } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { DateTime } from "luxon";
 import { Modal, Button } from "antd";
@@ -14,6 +14,7 @@ import {
   GuestBookingFormValues,
 } from "@/schemas/bookingSchema";
 import { downloadICalEvent } from "@/utilities/calendarExport";
+import { isFullDayBooking } from "@/utilities/bookingHelpers";
 
 interface BookingModalProps {
   mode: "create" | "update" | "view";
@@ -44,6 +45,21 @@ const BookingModal = memo(
     const [deleteFollowing, setDeleteFollowing] = useState(false);
     const [isRepeating, setIsRepeating] = useState(false);
     const [repeatEndDate, setRepeatEndDate] = useState("");
+    // Full-day booking state: when true, show date-only pickers and store midnight times
+    const [isFullDay, setIsFullDay] = useState(() => isFullDayBooking(booking));
+    const [fullDayStart, setFullDayStart] = useState(() =>
+      booking.start_time
+        ? DateTime.fromISO(booking.start_time).toLocal().toISODate() || ""
+        : ""
+    );
+    const [fullDayEnd, setFullDayEnd] = useState(() => {
+      if (!booking.end_time) return "";
+      const end = DateTime.fromISO(booking.end_time).toLocal();
+      // End is stored as midnight of the day AFTER the last booked day
+      return isFullDayBooking(booking)
+        ? end.minus({ days: 1 }).toISODate() || ""
+        : end.toISODate() || "";
+    });
     const isReadOnly = mode === "view";
     const isGuestMode = !isLoggedIn && mode === "create";
     const hasRepeatGroup = !!booking.repeat_group_id;
@@ -105,6 +121,7 @@ const BookingModal = memo(
       reset,
       getValues,
       setValue,
+      control,
     } = useForm<BookingFormValues | GuestBookingFormValues>({
       resolver: zodResolver(schema),
       defaultValues: defaultFormValues,
@@ -114,23 +131,103 @@ const BookingModal = memo(
     const handleStartTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const newStartTime = e.target.value;
       if (newStartTime) {
-        // Parse the new start time
         const startDateTime = DateTime.fromISO(newStartTime);
+        const currentEndTime = getValues("end_time");
 
-        // Calculate end time: if start time is on the hour, add 1 hour
-        // If start time has minutes, round up to next hour
-        let endDateTime: DateTime;
-        if (startDateTime.minute === 0) {
-          // Start time is on the hour (e.g., 08:00), end time is next hour (e.g., 09:00)
-          endDateTime = startDateTime.plus({ hours: 1 });
-        } else {
-          // Start time has minutes (e.g., 08:30), round up to next hour (e.g., 09:00)
-          endDateTime = startDateTime.plus({ hours: 1 }).startOf("hour");
+        // Only auto-update end_time if it's before or equal to the new start_time
+        // This avoids clobbering a multi-day end_time the user intentionally set
+        if (!currentEndTime || DateTime.fromISO(currentEndTime) <= startDateTime) {
+          const endDateTime = startDateTime.minute === 0
+            ? startDateTime.plus({ hours: 1 })
+            : startDateTime.plus({ hours: 1 }).startOf("hour");
+          setValue("end_time", endDateTime.toFormat("yyyy-MM-dd'T'HH:mm"), {
+            shouldDirty: true,
+          });
         }
+      }
+    };
 
-        setValue("end_time", endDateTime.toFormat("yyyy-MM-dd'T'HH:mm"), {
-          shouldDirty: true,
-        });
+    // Handler to auto-populate repeat_end_date when end_time is on a different day
+    const handleEndTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const newEndTime = e.target.value;
+      if (newEndTime && isRepeating) {
+        const endDate = DateTime.fromISO(newEndTime);
+        const startTime = getValues("start_time");
+        const startDate = startTime ? DateTime.fromISO(startTime) : null;
+        if (startDate && endDate.toISODate() !== startDate.toISODate()) {
+          const endDateStr = endDate.toFormat("yyyy-MM-dd");
+          if (endDateStr) setRepeatEndDate(endDateStr);
+        }
+      }
+    };
+
+    // When "Toistuva varaus" is enabled, auto-populate repeat_end_date from
+    // end_time's date if end_time is on a different day than start_time.
+    // This handles the case where the user sets the dates before enabling repeat.
+    useEffect(() => {
+      if (isRepeating && !repeatEndDate) {
+        const endTime = getValues("end_time");
+        const startTime = getValues("start_time");
+        if (endTime && startTime) {
+          const endDate = DateTime.fromISO(endTime);
+          const startDate = DateTime.fromISO(startTime);
+          if (endDate.toISODate() !== startDate.toISODate()) {
+            const endDateStr = endDate.toFormat("yyyy-MM-dd");
+            if (endDateStr) setRepeatEndDate(endDateStr);
+          }
+        }
+      }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isRepeating]);
+
+    // Full-day booking handlers
+    const handleFullDayToggle = () => {
+      const newIsFullDay = !isFullDay;
+      setIsFullDay(newIsFullDay);
+
+      if (newIsFullDay) {
+        const currentStart = getValues("start_time");
+        const startDate = currentStart
+          ? DateTime.fromISO(currentStart).toISODate()
+          : DateTime.now().toISODate();
+        const nextDay = startDate
+          ? DateTime.fromISO(startDate).plus({ days: 1 }).toISODate()
+          : null;
+        setFullDayStart(startDate || "");
+        setFullDayEnd(startDate || "");
+        setValue("start_time", `${startDate}T00:00`, { shouldDirty: true });
+        if (nextDay) setValue("end_time", `${nextDay}T00:00`, { shouldDirty: true });
+        // Full-day and repeating are mutually exclusive
+        setIsRepeating(false);
+      } else {
+        // Restore to default hourly times on the same start date
+        const startDate = fullDayStart || DateTime.now().toISODate();
+        setValue("start_time", `${startDate}T09:00`, { shouldDirty: true });
+        setValue("end_time", `${startDate}T10:00`, { shouldDirty: true });
+      }
+    };
+
+    const handleFullDayStartChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const newStart = e.target.value;
+      setFullDayStart(newStart);
+      if (newStart) {
+        setValue("start_time", `${newStart}T00:00`, { shouldDirty: true });
+        // If end date is before new start date, push it forward
+        if (fullDayEnd < newStart) {
+          setFullDayEnd(newStart);
+          const nextDay = DateTime.fromISO(newStart).plus({ days: 1 }).toISODate();
+          if (nextDay) setValue("end_time", `${nextDay}T00:00`, { shouldDirty: true });
+        }
+      }
+    };
+
+    const handleFullDayEndChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const newEnd = e.target.value; // "last day" the plane is booked
+      setFullDayEnd(newEnd);
+      if (newEnd) {
+        // Store end as midnight of the day AFTER the last booked day
+        const nextDay = DateTime.fromISO(newEnd).plus({ days: 1 }).toISODate();
+        if (nextDay) setValue("end_time", `${nextDay}T00:00`, { shouldDirty: true });
       }
     };
 
@@ -364,87 +461,140 @@ const BookingModal = memo(
               <p className="text-2xl font-bold text-sblued">{booking.plane}</p>
             </div>
 
-            {/* Start Time */}
+            {/* View mode: show full-day badge */}
+            {isReadOnly && isFullDayBooking(booking) && (
+              <div className="flex items-center gap-2 px-3 py-2 bg-orange-50 rounded-lg border border-orange-200">
+                <span className="text-orange-600 font-semibold text-sm">Koko päivä -varaus</span>
+              </div>
+            )}
+
+            {/* Start Date/Time */}
             <div>
               <label
-                htmlFor="start_time"
+                htmlFor={isFullDay ? "full_day_start" : "start_time"}
                 className="block text-sm font-semibold text-gray-700 mb-2"
               >
-                Aloitusaika *
+                {isFullDay ? "Aloituspäivä *" : "Aloitusaika *"}
               </label>
-              <input
-                id="start_time"
-                type="datetime-local"
-                step="3600"
-                {...register("start_time", {
-                  onChange: handleStartTimeChange,
-                })}
-                disabled={isReadOnly}
-                className={`w-full border rounded-lg px-4 py-3 text-base transition-all ${
-                  errors.start_time
-                    ? "border-red-500 focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                    : "border-gray-300 focus:ring-2 focus:ring-sblue focus:border-sblue"
-                } ${
-                  isReadOnly
-                    ? "bg-gray-100 cursor-not-allowed"
-                    : "bg-white hover:border-sbluel"
-                }`}
-                aria-invalid={errors.start_time ? "true" : "false"}
-                aria-describedby={
-                  errors.start_time ? "start_time-error" : undefined
-                }
-              />
-              {errors.start_time && (
-                <p
-                  id="start_time-error"
-                  className="mt-2 text-sm text-red-600 flex items-center gap-1"
-                  role="alert"
-                >
-                  <span className="text-red-500">⚠</span>{" "}
-                  {errors.start_time.message}
-                </p>
+              {isFullDay ? (
+                <input
+                  id="full_day_start"
+                  type="date"
+                  value={fullDayStart}
+                  onChange={handleFullDayStartChange}
+                  disabled={isReadOnly}
+                  className={`w-full border rounded-lg px-4 py-3 text-base transition-all border-gray-300 focus:ring-2 focus:ring-sblue focus:border-sblue ${isReadOnly ? "bg-gray-100 cursor-not-allowed" : "bg-white hover:border-sbluel"}`}
+                />
+              ) : (
+                <>
+                  <Controller
+                    name="start_time"
+                    control={control}
+                    render={({ field }) => (
+                      <input
+                        {...field}
+                        id="start_time"
+                        type="datetime-local"
+                        step="3600"
+                        value={field.value ?? ""}
+                        onChange={(e) => {
+                          field.onChange(e.target.value);
+                          handleStartTimeChange(e);
+                        }}
+                        disabled={isReadOnly}
+                        className={`w-full border rounded-lg px-4 py-3 text-base transition-all ${
+                          errors.start_time
+                            ? "border-red-500 focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                            : "border-gray-300 focus:ring-2 focus:ring-sblue focus:border-sblue"
+                        } ${isReadOnly ? "bg-gray-100 cursor-not-allowed" : "bg-white hover:border-sbluel"}`}
+                        aria-invalid={errors.start_time ? "true" : "false"}
+                        aria-describedby={errors.start_time ? "start_time-error" : undefined}
+                      />
+                    )}
+                  />
+                  {errors.start_time && (
+                    <p id="start_time-error" className="mt-2 text-sm text-red-600 flex items-center gap-1" role="alert">
+                      <span className="text-red-500">⚠</span> {errors.start_time.message}
+                    </p>
+                  )}
+                </>
               )}
             </div>
 
-            {/* End Time */}
+            {/* End Date/Time */}
             <div>
               <label
-                htmlFor="end_time"
+                htmlFor={isFullDay ? "full_day_end" : "end_time"}
                 className="block text-sm font-semibold text-gray-700 mb-2"
               >
-                Lopetusaika *
+                {isFullDay ? "Lopetuspäivä *" : "Lopetusaika *"}
               </label>
-              <input
-                id="end_time"
-                type="datetime-local"
-                step="3600"
-                {...register("end_time")}
-                disabled={isReadOnly}
-                className={`w-full border rounded-lg px-4 py-3 text-base transition-all ${
-                  errors.end_time
-                    ? "border-red-500 focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                    : "border-gray-300 focus:ring-2 focus:ring-sblue focus:border-sblue"
-                } ${
-                  isReadOnly
-                    ? "bg-gray-100 cursor-not-allowed"
-                    : "bg-white hover:border-sbluel"
-                }`}
-                aria-invalid={errors.end_time ? "true" : "false"}
-                aria-describedby={
-                  errors.end_time ? "end_time-error" : undefined
-                }
-              />
-              {errors.end_time && (
-                <p
-                  id="end_time-error"
-                  className="mt-2 text-sm text-red-600 flex items-center gap-1"
-                  role="alert"
-                >
-                  <span className="text-red-500">⚠</span>{" "}
-                  {errors.end_time.message}
-                </p>
+              {isFullDay ? (
+                <>
+                  <input
+                    id="full_day_end"
+                    type="date"
+                    value={fullDayEnd}
+                    min={fullDayStart}
+                    onChange={handleFullDayEndChange}
+                    disabled={isReadOnly}
+                    className={`w-full border rounded-lg px-4 py-3 text-base transition-all border-gray-300 focus:ring-2 focus:ring-sblue focus:border-sblue ${isReadOnly ? "bg-gray-100 cursor-not-allowed" : "bg-white hover:border-sbluel"}`}
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Kone on varattuna koko tämä päivä mukaan lukien.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <Controller
+                    name="end_time"
+                    control={control}
+                    render={({ field }) => (
+                      <input
+                        {...field}
+                        id="end_time"
+                        type="datetime-local"
+                        step="3600"
+                        value={field.value ?? ""}
+                        onChange={(e) => {
+                          field.onChange(e.target.value);
+                          handleEndTimeChange(e);
+                        }}
+                        disabled={isReadOnly}
+                        className={`w-full border rounded-lg px-4 py-3 text-base transition-all ${
+                          errors.end_time
+                            ? "border-red-500 focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                            : "border-gray-300 focus:ring-2 focus:ring-sblue focus:border-sblue"
+                        } ${isReadOnly ? "bg-gray-100 cursor-not-allowed" : "bg-white hover:border-sbluel"}`}
+                        aria-invalid={errors.end_time ? "true" : "false"}
+                        aria-describedby={errors.end_time ? "end_time-error" : undefined}
+                      />
+                    )}
+                  />
+                  {errors.end_time && (
+                    <p id="end_time-error" className="mt-2 text-sm text-red-600 flex items-center gap-1" role="alert">
+                      <span className="text-red-500">⚠</span> {errors.end_time.message}
+                    </p>
+                  )}
+                </>
               )}
             </div>
+
+            {/* Full Day Checkbox (not available in view mode or guest mode) */}
+            {!isReadOnly && !isGuestMode && (
+              <label className="flex items-center gap-2 cursor-pointer w-fit">
+                <input
+                  id="is_full_day"
+                  type="checkbox"
+                  checked={isFullDay}
+                  onChange={handleFullDayToggle}
+                  className="w-4 h-4 text-orange-500 border-gray-300 rounded focus:ring-2 focus:ring-orange-400 cursor-pointer"
+                />
+                <span className="text-sm text-gray-700 select-none">
+                  Koko päivä
+                </span>
+              </label>
+            )}
 
             {/* Flight Type */}
             <div>
@@ -696,8 +846,8 @@ const BookingModal = memo(
               </div>
             )}
 
-            {/* Repeating Bookings (only in create mode) */}
-            {mode === "create" && (
+            {/* Repeating Bookings (only in create mode, hidden when full-day is active) */}
+            {mode === "create" && !isFullDay && (
               <div className="space-y-4 pt-5 mt-5 border-t-2 border-gray-200">
                 <div
                   className="flex items-start gap-3 p-4 bg-purple-50 rounded-lg border border-purple-200 hover:bg-purple-100 transition-colors cursor-pointer"
@@ -735,7 +885,23 @@ const BookingModal = memo(
                       id="repeat_end_date"
                       type="date"
                       value={repeatEndDate}
-                      onChange={(e) => setRepeatEndDate(e.target.value)}
+                      onChange={(e) => {
+                        const newRepeatEndDate = e.target.value;
+                        setRepeatEndDate(newRepeatEndDate);
+                        // Sync the date portion of end_time to match the repeat end date,
+                        // keeping the same time-of-day
+                        if (newRepeatEndDate) {
+                          const currentEndTime = getValues("end_time");
+                          const endTimeOfDay = currentEndTime
+                            ? DateTime.fromISO(currentEndTime).toFormat("HH:mm")
+                            : "10:00";
+                          setValue(
+                            "end_time",
+                            `${newRepeatEndDate}T${endTimeOfDay}`,
+                            { shouldDirty: true }
+                          );
+                        }
+                      }}
                       min={
                         booking.start_time
                           ? DateTime.fromISO(booking.start_time)
@@ -764,7 +930,9 @@ const BookingModal = memo(
                     Varaaja
                   </label>
                   <p className="text-lg font-semibold text-gray-900">
-                    {booking.full_name}
+                    {booking.is_guest
+                      ? booking.guest_contact_name || "Vieras"
+                      : booking.full_name}
                   </p>
                   {booking.is_guest && (
                     <span className="inline-block mt-2 px-3 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
@@ -776,16 +944,6 @@ const BookingModal = memo(
                 {/* Show guest contact info if this is a guest booking and user is admin */}
                 {booking.is_guest && userRole === "admin" && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {booking.guest_contact_name && (
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-600 mb-1">
-                          Vieraan nimi
-                        </label>
-                        <p className="text-gray-900">
-                          {booking.guest_contact_name}
-                        </p>
-                      </div>
-                    )}
                     {booking.guest_contact_email && (
                       <div>
                         <label className="block text-sm font-semibold text-gray-600 mb-1">

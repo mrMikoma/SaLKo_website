@@ -1,6 +1,7 @@
 "use client";
 
 import { DateTime } from "luxon";
+import { LeftOutlined, RightOutlined } from "@ant-design/icons";
 import { BookingType } from "@/utilities/bookings";
 import { FlightTypeConfig } from "@/types/bookings";
 import { useMemo, memo } from "react";
@@ -9,6 +10,8 @@ interface BookingsMonthViewProps {
   bookings: BookingType[];
   selectedDate: DateTime;
   onDayClick: (date: string) => void;
+  onPrevMonth?: () => void;
+  onNextMonth?: () => void;
   flightTypes: FlightTypeConfig[];
   getFlightTypeColor: (type: string) => string;
 }
@@ -34,6 +37,8 @@ export const BookingsMonthView = memo(
     bookings,
     selectedDate,
     onDayClick,
+    onPrevMonth,
+    onNextMonth,
     getFlightTypeColor,
   }: BookingsMonthViewProps) => {
     // Get first day of month and calculate calendar grid
@@ -75,10 +80,32 @@ export const BookingsMonthView = memo(
     return (
       <div className="bg-swhite rounded-lg shadow overflow-hidden">
         {/* Month header */}
-        <div className="bg-gradient-to-r from-sblue to-sblued p-4 text-center">
-          <h2 className="text-2xl font-bold text-swhite capitalize">
+        <div className="bg-gradient-to-r from-sblue to-sblued p-4 flex items-center justify-between">
+          {onPrevMonth ? (
+            <button
+              onClick={onPrevMonth}
+              className="flex items-center justify-center w-9 h-9 rounded-xl bg-swhite/15 hover:bg-swhite/25 active:bg-swhite/35 text-swhite transition-all focus:outline-none focus:ring-2 focus:ring-swhite/60"
+              aria-label="Edellinen kuukausi"
+            >
+              <LeftOutlined />
+            </button>
+          ) : (
+            <div className="w-9" />
+          )}
+          <h2 className="text-xl sm:text-2xl font-bold text-swhite capitalize">
             {selectedDate.setLocale("fi").toFormat("LLLL yyyy")}
           </h2>
+          {onNextMonth ? (
+            <button
+              onClick={onNextMonth}
+              className="flex items-center justify-center w-9 h-9 rounded-xl bg-swhite/15 hover:bg-swhite/25 active:bg-swhite/35 text-swhite transition-all focus:outline-none focus:ring-2 focus:ring-swhite/60"
+              aria-label="Seuraava kuukausi"
+            >
+              <RightOutlined />
+            </button>
+          ) : (
+            <div className="w-9" />
+          )}
         </div>
 
         {/* Calendar grid */}
@@ -107,7 +134,7 @@ export const BookingsMonthView = memo(
               <div
                 key={dateString}
                 className={`
-                border border-gray-200 min-h-[100px] p-2 cursor-pointer
+                border border-gray-200 min-h-[52px] sm:min-h-[100px] p-1 sm:p-2 cursor-pointer
                 transition-colors hover:bg-sbluel/10
                 ${!isCurrentMonth ? "bg-sgrey opacity-50" : "bg-swhite"}
                 ${isToday ? "ring-2 ring-sblue" : ""}
@@ -131,14 +158,14 @@ export const BookingsMonthView = memo(
                     {day.day}
                   </span>
                   {dayBookings.length > 0 && (
-                    <span className="text-xs bg-sred text-swhite rounded-full px-2 py-0.5">
+                    <span className="text-xs bg-sred text-swhite rounded-full px-1.5 sm:px-2 py-0.5">
                       {dayBookings.length}
                     </span>
                   )}
                 </div>
 
-                {/* Booking indicators */}
-                <div className="space-y-1">
+                {/* Booking indicators — hidden on mobile, day number + count is enough */}
+                <div className="hidden sm:block space-y-1">
                   {dayBookings.slice(0, 3).map((booking, idx) => {
                     const isMultiday =
                       DateTime.fromISO(booking.start_time).toISODate() !==

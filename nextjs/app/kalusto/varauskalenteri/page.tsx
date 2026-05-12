@@ -13,6 +13,7 @@ export const metadata = {
     "SaLKo",
     "Savonlinna",
   ],
+  alternates: { canonical: "/kalusto/varauskalenteri" },
 };
 
 export default async function Page() {

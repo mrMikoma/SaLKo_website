@@ -13,13 +13,13 @@ export const useViewMode = () => {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // Get current view mode from URL, default to "day"
+  // Get current view mode from URL, default to "month"
   const viewMode = useMemo<ViewMode>(() => {
     const view = searchParams.get("view");
     if (view === "week" || view === "month" || view === "day") {
       return view;
     }
-    return "day";
+    return "month";
   }, [searchParams]);
 
   // Update view mode in URL
