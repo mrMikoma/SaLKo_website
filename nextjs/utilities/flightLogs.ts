@@ -331,7 +331,7 @@ export async function editFlightLog(
     }
 
     const row = existing.rows[0]
-    const isAdmin = hasPermission(session.user.roles, "ADMIN")
+    const isAdmin = hasPermission(session.user.roles, "EDIT_ANY_FLIGHT")
 
     if (row.member_id !== session.user.id && !isAdmin) {
       return { status: "error", error: "Ei oikeuksia muokata tätä kirjausta" }
@@ -423,7 +423,7 @@ export async function deleteFlightLog(
     }
 
     const row = existing.rows[0]
-    const isAdmin = hasPermission(session.user.roles, "ADMIN")
+    const isAdmin = hasPermission(session.user.roles, "EDIT_ANY_FLIGHT")
 
     if (row.member_id !== session.user.id && !isAdmin) {
       return { status: "error", error: "Ei oikeuksia poistaa tätä kirjausta" }
