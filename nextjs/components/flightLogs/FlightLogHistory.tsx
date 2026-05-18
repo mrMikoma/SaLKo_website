@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Tag, Card, Statistic, Row, Col, Empty, Spin, Popconfirm } from "antd"
+import { Tag, Card, Statistic, Row, Col, Empty, Spin, Popconfirm, Alert } from "antd"
 import { getMyFlightLogs, getMyFlightSummary, deleteFlightLog } from "@/utilities/flightLogs"
 import type { FlightWithBilling, MemberFlightSummary, PaymentStatus } from "@/types/flightLog"
 import {
@@ -132,11 +132,13 @@ export default function FlightLogHistory() {
   const [flights, setFlights] = useState<FlightWithBilling[]>([])
   const [summary, setSummary] = useState<MemberFlightSummary | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [editingFlight, setEditingFlight] = useState<FlightWithBilling | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const loadData = useCallback(async () => {
     setLoading(true)
+    setLoadError(null)
     try {
       const [flightsData, summaryData] = await Promise.all([
         getMyFlightLogs(),
@@ -146,6 +148,7 @@ export default function FlightLogHistory() {
       setSummary(summaryData)
     } catch (error) {
       console.error("Error loading flight data:", error)
+      setLoadError("Lentohistorian lataus epäonnistui. Yritä uudelleen.")
     } finally {
       setLoading(false)
     }
@@ -172,6 +175,24 @@ export default function FlightLogHistory() {
       <div className="flex justify-center items-center py-12">
         <Spin size="large" />
       </div>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <Alert
+        message={loadError}
+        type="error"
+        showIcon
+        action={
+          <button
+            onClick={loadData}
+            className="text-sm font-medium text-red-600 underline ml-2"
+          >
+            Yritä uudelleen
+          </button>
+        }
+      />
     )
   }
 

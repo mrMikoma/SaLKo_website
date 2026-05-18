@@ -6,7 +6,10 @@
 ALTER TABLE billable_items
   ADD COLUMN hobbs_start    DECIMAL(8,1),
   ADD COLUMN hobbs_end      DECIMAL(8,1),
-  ADD COLUMN flight_type    VARCHAR(20),
+  ADD COLUMN flight_type    VARCHAR(20)
+    CHECK (flight_type IS NULL OR flight_type IN (
+      'training','solo','checkout','cross_country','local','maintenance','other'
+    )),
   ADD COLUMN departure_icao VARCHAR(10),
   ADD COLUMN arrival_icao   VARCHAR(10),
   ADD COLUMN landings       SMALLINT,

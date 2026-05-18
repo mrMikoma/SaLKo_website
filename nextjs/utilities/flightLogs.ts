@@ -74,7 +74,7 @@ function rowToFlightWithBilling(
     pilotName: "",
     hobbsStart: row.hobbs_start != null ? parseFloat(row.hobbs_start as string) : 0,
     hobbsEnd: row.hobbs_end != null ? parseFloat(row.hobbs_end as string) : 0,
-    flightMinutes: parseFloat(row.quantity as string),
+    flightMinutes: Math.round(parseFloat(row.quantity as string)),
     flightType: (row.flight_type as FlightLogEntry["flightType"]) || "local",
     departureIcao: (row.departure_icao as string) || undefined,
     arrivalIcao: (row.arrival_icao as string) || undefined,

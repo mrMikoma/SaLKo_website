@@ -243,7 +243,19 @@ CREATE TABLE billable_items (
   item_date DATE NOT NULL,
   notes TEXT,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+
+  -- Flight-specific fields (populated only when billable_type = 'flight')
+  hobbs_start    DECIMAL(8,1),
+  hobbs_end      DECIMAL(8,1),
+  flight_type    VARCHAR(20)
+    CHECK (flight_type IS NULL OR flight_type IN (
+      'training','solo','checkout','cross_country','local','maintenance','other'
+    )),
+  departure_icao VARCHAR(7),
+  arrival_icao   VARCHAR(7),
+  landings       SMALLINT,
+  deleted_at     TIMESTAMP
 );
 
 -- Indexes for efficient querying
@@ -254,6 +266,10 @@ CREATE INDEX idx_billable_items_external_ref ON billable_items(external_ref);
 CREATE INDEX idx_billable_items_date ON billable_items(item_date);
 CREATE INDEX idx_billable_items_aircraft ON billable_items(aircraft_registration)
   WHERE aircraft_registration IS NOT NULL;
+
+-- Partial index for the common "my active flights" query pattern
+CREATE INDEX idx_billable_items_not_deleted ON billable_items(member_id, billable_type)
+  WHERE deleted_at IS NULL;
 
 -- Unique constraint on external_ref when present
 CREATE UNIQUE INDEX idx_billable_items_unique_external_ref
@@ -278,3 +294,10 @@ CREATE TRIGGER update_billable_items_updated_at
 COMMENT ON TABLE billable_items IS 'All billable items: flights, memberships, hangar fees, etc.';
 COMMENT ON COLUMN billable_items.external_ref IS 'Links to Google Sheet log_id for flights';
 COMMENT ON COLUMN billable_items.aircraft_registration IS 'Aircraft registration (e.g., OH-CON) - references planes.json';
+COMMENT ON COLUMN billable_items.hobbs_start    IS 'Hobbs meter reading at takeoff (flight entries only)';
+COMMENT ON COLUMN billable_items.hobbs_end      IS 'Hobbs meter reading after landing (flight entries only)';
+COMMENT ON COLUMN billable_items.flight_type    IS 'Flight category: training|solo|checkout|cross_country|local|maintenance|other';
+COMMENT ON COLUMN billable_items.departure_icao IS 'Departure airfield ICAO/local code (e.g. EFSA)';
+COMMENT ON COLUMN billable_items.arrival_icao   IS 'Arrival airfield ICAO/local code';
+COMMENT ON COLUMN billable_items.landings       IS 'Number of landings during the flight';
+COMMENT ON COLUMN billable_items.deleted_at     IS 'Soft-delete timestamp; NULL means active';

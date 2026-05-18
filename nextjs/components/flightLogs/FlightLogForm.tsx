@@ -173,6 +173,7 @@ export default function FlightLogForm({ onSuccess }: Props) {
     setValue,
     getValues,
     trigger,
+    reset,
     formState: { errors },
   } = useForm<FlightLogFormData>({
     resolver: zodResolver(flightLogSchema),
@@ -190,7 +191,7 @@ export default function FlightLogForm({ onSuccess }: Props) {
   const hobbsEnd = watch("hobbsEnd")
 
   const flightMinutes =
-    hobbsStart && hobbsEnd && hobbsEnd > hobbsStart
+    hobbsEnd != null && hobbsEnd > hobbsStart
       ? Math.round((hobbsEnd - hobbsStart) * 60)
       : 0
 
@@ -254,6 +255,13 @@ export default function FlightLogForm({ onSuccess }: Props) {
     }
   }
 
+  const onSubmitValidationError = (errs: typeof errors) => {
+    if (errs.aircraftRegistration) setStep(1)
+    else if (errs.hobbsStart || errs.hobbsEnd) setStep(2)
+    else if (errs.date || errs.flightType) setStep(3)
+  }
+
+
   if (success) {
     return (
       <div className="flex flex-col items-center gap-4 py-10 text-center">
@@ -269,6 +277,13 @@ export default function FlightLogForm({ onSuccess }: Props) {
             setSuccess(false)
             setStep(1)
             setLatestHobbs(null)
+            reset({
+              date: new Date().toISOString().split("T")[0],
+              flightType: "local",
+              hobbsStart: 0,
+              hobbsEnd: 0,
+              landings: 1,
+            })
           }}
           className="mt-2 px-6 py-3 bg-sblue text-white rounded-xl hover:bg-sblued transition-colors font-medium"
         >
@@ -279,7 +294,7 @@ export default function FlightLogForm({ onSuccess }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
+    <form onSubmit={handleSubmit(onSubmit, onSubmitValidationError)} className="flex flex-col gap-6">
       {/* Step indicator */}
       <div className="flex items-center">
         {STEPS.map((label, i) => {
