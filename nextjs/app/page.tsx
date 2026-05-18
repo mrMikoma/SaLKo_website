@@ -10,8 +10,24 @@ import CallToAction from "@/components/callToAction";
 import Link from "next/link";
 
 export const metadata = {
-  title: "SaLKo",
-  description: "Savonlinnan Lentokerho ry",
+  title: "Savonlinnan Lentokerho",
+  description:
+    "Savonlinnan Lentokerho ry (SaLKo) - yleisilmailua ja lentokoulutusta Savonlinnassa vuodesta 1962. Tervetuloa mukaan lentämään!",
+  keywords: [
+    "Savonlinnan Lentokerho",
+    "SaLKo",
+    "lentokerho Savonlinna",
+    "lentokoulutus",
+    "esittelylennot",
+    "ilmailu Savonlinna",
+    "EFSA",
+    "yksityislentäjä",
+    "PPL koulutus",
+    "LAPL koulutus",
+    "ilmailukerho",
+    "lentokerho",
+  ],
+  alternates: { canonical: "/" },
 };
 
 export default function Page() {

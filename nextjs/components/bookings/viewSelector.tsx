@@ -7,14 +7,19 @@ export type ViewMode = "day" | "week" | "month";
 interface ViewSelectorProps {
   currentView: ViewMode;
   onViewChange: (view: ViewMode) => void;
+  availableViews?: ViewMode[];
 }
 
-const ViewSelector = ({ currentView, onViewChange }: ViewSelectorProps) => {
-  const views: Array<{ mode: ViewMode; label: string; icon: React.ReactNode }> = [
+const ViewSelector = ({ currentView, onViewChange, availableViews }: ViewSelectorProps) => {
+  const allViews: Array<{ mode: ViewMode; label: string; icon: React.ReactNode }> = [
     { mode: "day", label: "Päivä", icon: <UnorderedListOutlined /> },
     { mode: "week", label: "Viikko", icon: <TableOutlined /> },
     { mode: "month", label: "Kuukausi", icon: <CalendarOutlined /> },
   ];
+
+  const views = availableViews
+    ? allViews.filter((v) => availableViews.includes(v.mode))
+    : allViews;
 
   return (
     <div className="flex gap-2 justify-center" role="tablist" aria-label="Näkymän valinta">
