@@ -14,6 +14,7 @@ GRANT SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO :app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON users TO :app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON bullets TO :app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON bookings TO :app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON billable_items TO :app_user;
 
 -- Grant usage on sequences for the IDENTITY columns
 GRANT USAGE, SELECT ON SEQUENCE bullets_id_seq TO :app_user;
