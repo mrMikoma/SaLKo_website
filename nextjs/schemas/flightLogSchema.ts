@@ -1,5 +1,7 @@
 import { z } from "zod"
 
+const icaoRegex = /^[A-Z0-9]{2,7}$/
+
 // Schema for creating a new flight log
 export const flightLogSchema = z
   .object({
@@ -39,8 +41,26 @@ export const flightLogSchema = z
       .max(99999.9, "Hobbs-arvo liian suuri"),
     flightType: z.enum(
       ["training", "solo", "checkout", "cross_country", "local", "maintenance", "other"],
-      "Valitse lentotyyppi"
+      { message: "Valitse lentotyyppi" }
     ),
+    departureIcao: z
+      .string()
+      .toUpperCase()
+      .regex(icaoRegex, "Virheellinen kenttätunnus (esim. EFSA)")
+      .optional()
+      .or(z.literal("")),
+    arrivalIcao: z
+      .string()
+      .toUpperCase()
+      .regex(icaoRegex, "Virheellinen kenttätunnus (esim. EFSA)")
+      .optional()
+      .or(z.literal("")),
+    landings: z
+      .number()
+      .int("Laskeutumisten määrä on kokonaisluku")
+      .min(0, "Laskeutumisia ei voi olla negatiivisesti")
+      .max(99, "Laskeutumisten määrä liian suuri")
+      .optional(),
     remarks: z
       .string()
       .max(500, "Huomautukset voivat olla enintään 500 merkkiä")
@@ -71,12 +91,46 @@ export const flightLogSchema = z
     }
   )
 
+// Schema for editing an existing flight log (only allowed fields)
+export const flightLogEditSchema = z.object({
+  hobbsEnd: z
+    .number()
+    .min(0, "Hobbs-lopetus ei voi olla negatiivinen")
+    .max(99999.9, "Hobbs-arvo liian suuri")
+    .optional(),
+  flightType: z
+    .enum(["training", "solo", "checkout", "cross_country", "local", "maintenance", "other"])
+    .optional(),
+  departureIcao: z
+    .string()
+    .toUpperCase()
+    .regex(icaoRegex, "Virheellinen kenttätunnus")
+    .optional()
+    .or(z.literal("")),
+  arrivalIcao: z
+    .string()
+    .toUpperCase()
+    .regex(icaoRegex, "Virheellinen kenttätunnus")
+    .optional()
+    .or(z.literal("")),
+  landings: z
+    .number()
+    .int()
+    .min(0)
+    .max(99)
+    .optional(),
+  remarks: z
+    .string()
+    .max(500, "Huomautukset voivat olla enintään 500 merkkiä")
+    .optional(),
+})
+
 // Schema for creating non-flight billable items
 export const billableItemSchema = z
   .object({
     billableType: z.enum(
       ["membership", "hangar", "instruction", "other"],
-      "Valitse laskutustyyppi"
+      { message: "Valitse laskutustyyppi" }
     ),
     memberId: z.string().min(1, "Jäsen-ID vaaditaan"),
     description: z
@@ -85,7 +139,7 @@ export const billableItemSchema = z
       .max(255, "Kuvaus voi olla enintään 255 merkkiä"),
     billingPeriod: z.enum(
       ["one_time", "monthly", "quarterly", "yearly"],
-      "Valitse laskutusjakso"
+      { message: "Valitse laskutusjakso" }
     ),
     periodStart: z.string().optional(),
     periodEnd: z.string().optional(),
@@ -109,7 +163,6 @@ export const billableItemSchema = z
   })
   .refine(
     (data) => {
-      // If billing period is not one_time, require periodStart
       if (data.billingPeriod !== "one_time" && !data.periodStart) {
         return false
       }
@@ -122,7 +175,6 @@ export const billableItemSchema = z
   )
   .refine(
     (data) => {
-      // If periodStart is provided, periodEnd must be >= periodStart
       if (data.periodStart && data.periodEnd) {
         return new Date(data.periodEnd) >= new Date(data.periodStart)
       }
@@ -139,7 +191,7 @@ export const paymentStatusUpdateSchema = z.object({
   billableItemId: z.string().min(1, "Laskutuserä-ID vaaditaan"),
   newStatus: z.enum(
     ["recorded", "checked", "invoiced", "paid"],
-    "Virheellinen maksun tila"
+    { message: "Virheellinen maksun tila" }
   ),
   invoiceRef: z
     .string()
@@ -149,6 +201,7 @@ export const paymentStatusUpdateSchema = z.object({
 
 // Inferred types from schemas
 export type FlightLogFormData = z.infer<typeof flightLogSchema>
+export type FlightLogEditFormData = z.infer<typeof flightLogEditSchema>
 export type BillableItemFormData = z.infer<typeof billableItemSchema>
 export type PaymentStatusUpdateFormData = z.infer<
   typeof paymentStatusUpdateSchema

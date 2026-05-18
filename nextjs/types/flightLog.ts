@@ -75,7 +75,7 @@ export interface BillableItem {
   updatedAt: string
 }
 
-// Flight log entry for Google Sheets
+// Flight log entry
 export interface FlightLogEntry {
   logId: string
   date: string
@@ -85,6 +85,9 @@ export interface FlightLogEntry {
   hobbsEnd: number
   flightMinutes: number
   flightType: FlightLogType
+  departureIcao?: string
+  arrivalIcao?: string
+  landings?: number
   remarks?: string
   createdAt: string
   createdBy: string
@@ -103,6 +106,19 @@ export interface FlightLogFormData {
   hobbsStart: number
   hobbsEnd: number
   flightType: FlightLogType
+  departureIcao?: string
+  arrivalIcao?: string
+  landings?: number
+  remarks?: string
+}
+
+// Form data for editing an existing flight log (only editable fields)
+export interface FlightLogEditData {
+  hobbsEnd?: number
+  flightType?: FlightLogType
+  departureIcao?: string
+  arrivalIcao?: string
+  landings?: number
   remarks?: string
 }
 
@@ -166,6 +182,13 @@ export interface MemberFlightSummary {
   totalCost: number
   unpaidAmount: number
   lastFlightDate?: string
+}
+
+// Nearby airfield for quick selection
+export interface Airfield {
+  code: string
+  name: string
+  home?: boolean
 }
 
 // Type guards

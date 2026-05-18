@@ -1,0 +1,10 @@
+[
+  { "code": "EFSA", "name": "Savonlinna", "home": true },
+  { "code": "EFVR", "name": "Varkaus" },
+  { "code": "EFMI", "name": "Mikkeli" },
+  { "code": "EFJO", "name": "Joensuu" },
+  { "code": "EFKU", "name": "Kuopio" },
+  { "code": "EFJY", "name": "Jyväskylä" },
+  { "code": "EFTP", "name": "Tampere-Pirkkala" },
+  { "code": "EFHF", "name": "Helsinki-Malmi" }
+]
