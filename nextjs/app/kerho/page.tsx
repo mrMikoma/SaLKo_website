@@ -1,3 +1,18 @@
+export const metadata = {
+  title: "Kerho",
+  description:
+    "Tutustu Savonlinnan Lentokerhoon – historiamme, jäsenyys, hinnasto ja kotikenttämme Savonlinnan lentoasema.",
+  keywords: [
+    "Savonlinnan Lentokerho",
+    "lentokerho",
+    "ilmailukerho",
+    "Savonlinna",
+    "SaLKo",
+    "ilmailu",
+  ],
+  alternates: { canonical: "/kerho" },
+};
+
 export default function Page() {
   return (
     <div className="min-h-screen flex flex-col w-full">

@@ -219,13 +219,22 @@ jobs:
             # Stop the current containers and remove volumes (fresh start for dev)
             echo "Stopping containers and removing volumes for fresh dev environment..."
             docker compose -p salko-dev --env-file .env.dev -f docker-compose.dev.yaml down -v
+            sleep 5
 
-            # Start the containers using Docker Compose
+            # Start the containers using Docker Compose and wait for healthy state
             echo "Starting containers using Docker Compose..."
-            docker compose -p salko-dev --env-file .env.dev -f docker-compose.dev.yaml up -d
-
-            # Wait for services to start
-            sleep 15
+            for attempt in 1 2 3; do
+              if docker compose -p salko-dev --env-file .env.dev -f docker-compose.dev.yaml up -d --wait --wait-timeout 120; then
+                echo "Containers started successfully on attempt $attempt."
+                break
+              elif [ "$attempt" -eq 3 ]; then
+                echo "Failed to start containers after 3 attempts."
+                exit 1
+              else
+                echo "Attempt $attempt failed, retrying in 15s..."
+                sleep 15
+              fi
+            done
 
             # Verify the deployment
             echo "Verifying the deployment..."

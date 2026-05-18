@@ -42,9 +42,6 @@ export const metadata = {
   creator: "Savonlinnan Lentokerho ry",
   publisher: "Savonlinnan Lentokerho ry",
   metadataBase: new URL("https://savonlinnanlentokerho.fi"),
-  alternates: {
-    canonical: "/",
-  },
   openGraph: {
     type: "website",
     locale: "fi_FI",

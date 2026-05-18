@@ -5,6 +5,7 @@ import { BookingType } from "@/utilities/bookings";
 import { FlightTypeConfig } from "@/types/bookings";
 import { useMemo, memo } from "react";
 import { getPlaneDisplayName } from "@/utilities/planeHelpers";
+import { getBookingDisplayName } from "@/utilities/bookingHelpers";
 
 interface BookingsWeekViewProps {
   bookings: BookingType[];
@@ -167,7 +168,7 @@ export const BookingsWeekView = memo(({
                             }}
                             title={
                               hasBooking && booking
-                                ? `${booking.title} - ${booking.full_name}\n${DateTime.fromISO(booking.start_time).toFormat("dd.MM HH:mm")} - ${DateTime.fromISO(booking.end_time).toFormat("dd.MM HH:mm")}${isMultiday ? " (Monipäiväinen)" : ""}`
+                                ? `${booking.title} - ${getBookingDisplayName(booking)}\n${DateTime.fromISO(booking.start_time).toFormat("dd.MM HH:mm")} - ${DateTime.fromISO(booking.end_time).toFormat("dd.MM HH:mm")}${isMultiday ? " (Monipäiväinen)" : ""}`
                                 : `Luo varaus klo ${hour}:00`
                             }
                           >

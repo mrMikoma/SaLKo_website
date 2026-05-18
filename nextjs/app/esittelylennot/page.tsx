@@ -15,6 +15,7 @@ export const metadata = {
     "Savonlinna",
     "lentäminen",
   ],
+  alternates: { canonical: "/esittelylennot" },
 };
 
 export default function Page() {
@@ -184,7 +185,7 @@ export default function Page() {
                     Varaa lento etukäteen
                   </h3>
                   <p className="text-base">
-                    Ota yhteyttä sopivaan yhteyshenkilln sähköpostitse tai
+                    Ota yhteyttä sopivaan yhteyshenkillöön sähköpostitse tai
                     puhelimitse ja varaa sopiva ajankohta. Lennot toteutetaan
                     aikataulujen ja sääolosuhteiden salliessa.
                   </p>
