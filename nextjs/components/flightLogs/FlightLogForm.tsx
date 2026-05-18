@@ -261,6 +261,7 @@ export default function FlightLogForm({ onSuccess }: Props) {
     else if (errs.date || errs.flightType) setStep(3)
   }
 
+
   if (success) {
     return (
       <div className="flex flex-col items-center gap-4 py-10 text-center">

@@ -10,8 +10,8 @@ ALTER TABLE billable_items
     CHECK (flight_type IS NULL OR flight_type IN (
       'training','solo','checkout','cross_country','local','maintenance','other'
     )),
-  ADD COLUMN departure_icao VARCHAR(7),
-  ADD COLUMN arrival_icao   VARCHAR(7),
+  ADD COLUMN departure_icao VARCHAR(10),
+  ADD COLUMN arrival_icao   VARCHAR(10),
   ADD COLUMN landings       SMALLINT,
   ADD COLUMN deleted_at     TIMESTAMP;
 
