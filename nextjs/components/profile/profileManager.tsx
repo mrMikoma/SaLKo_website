@@ -76,7 +76,7 @@ const ProfileManager = ({ user }: ProfileManagerProps) => {
           name={user.name}
           full_name={user.full_name}
           email={user.email}
-          role={user.role}
+          roles={user.roles}
           address={user.address || ""}
           city={user.city || ""}
           postalCode={user.postalCode || ""}

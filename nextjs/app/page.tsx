@@ -105,8 +105,8 @@ export default function Page() {
           </div>
 
           {/* Bulletin Sidebar - Right Side (Desktop) */}
-          <div className="hidden lg:block w-full lg:w-[40%] lg:max-w-[500px] flex-shrink-0 lg:mt-20">
-            <div className="glass rounded-2xl p-6 shadow-2xl border border-sred/20 max-h-[65vh] overflow-y-auto">
+          <div className="hidden lg:flex lg:w-[40%] lg:max-w-[500px] flex-shrink-0 lg:mt-20 h-[65vh] self-start">
+            <div className="glass rounded-2xl p-6 shadow-2xl border border-sred/20 w-full h-full flex flex-col overflow-hidden">
               <Bulletings />
             </div>
           </div>

@@ -17,7 +17,7 @@ interface UseBookingsOptions {
   dates?: string[];
   enabled?: boolean;
   userId?: string;
-  userRole?: string;
+  userRole?: string | string[];
 }
 
 /**
