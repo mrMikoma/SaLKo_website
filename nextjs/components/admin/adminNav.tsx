@@ -9,6 +9,7 @@ const AdminNav = () => {
   const navItems = [
     { href: "/admin", label: "Etusivu", exact: true },
     { href: "/admin/users", label: "Käyttäjät" },
+    { href: "/admin/bulletins", label: "Tiedotteet" },
     { href: "/admin/settings", label: "Asetukset" },
   ];
 

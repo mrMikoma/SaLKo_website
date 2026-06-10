@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 export default async function SettingsPage() {
   const session = await auth();
 
-  if (!session?.user?.role || !hasPermission(session.user.role, "ACCESS_ADMIN_SITE")) {
+  if (!session?.user?.roles || !hasPermission(session.user.roles, "ACCESS_ADMIN_SITE")) {
     redirect("/");
   }
   return (

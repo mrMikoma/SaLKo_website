@@ -1,5 +1,6 @@
 .env
 .env.*
+.claude/
 !.env.template
 !.env.monitoring.template
 lentokerho.sql
