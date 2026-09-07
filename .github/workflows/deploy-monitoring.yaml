@@ -7,6 +7,7 @@ on:
     paths:
       - 'monitoring/**'
       - 'docker-compose.monitoring.yaml'
+      - 'postgres/migrations/003_create_wiki_db.sql'
       - '.github/workflows/deploy-monitoring.yaml'
   workflow_dispatch:
     inputs:
@@ -119,11 +120,45 @@ jobs:
           echo "Verifying file transfers..."
           ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} "ls -la /home/salko/docker-compose.monitoring.yaml /home/salko/monitoring/"
 
+      - name: Provision Wiki.js database
+        env:
+          POSTGRES_USER: "salko_admin"
+          POSTGRES_DB: "salko"
+          WIKI_DB_USER: "wiki_app"
+          WIKI_DB_PASSWORD: ${{ secrets.WIKI_DB_PASSWORD }}
+        run: |
+          echo "Transferring Wiki.js database migration..."
+          scp -i ~/.ssh/id_ed25519 ./postgres/migrations/003_create_wiki_db.sql salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/003_create_wiki_db.sql
+
+          echo "Applying Wiki.js database migration..."
+          ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} << 'EOF'
+            set -e
+
+            # The wiki shares the production cluster, so it has to be up already
+            if ! docker ps --format '{{.Names}}' | grep -qx 'salko-postgres-prod'; then
+              echo "❌ salko-postgres-prod is not running; cannot provision the wiki database"
+              exit 1
+            fi
+
+            # Idempotent: creates the role/database on first run, syncs the password afterwards
+            docker exec -i salko-postgres-prod psql \
+              -v ON_ERROR_STOP=1 \
+              -U "${{ env.POSTGRES_USER }}" \
+              -d "${{ env.POSTGRES_DB }}" \
+              -v wiki_user="${{ env.WIKI_DB_USER }}" \
+              -v wiki_pass="${{ env.WIKI_DB_PASSWORD }}" \
+              < /home/salko/003_create_wiki_db.sql
+
+            echo "✅ Wiki.js database and user provisioned"
+          EOF
+
       - name: Deploy monitoring stack
         env:
           GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           UMAMI_APP_SECRET: ${{ secrets.UMAMI_APP_SECRET }}
+          WIKI_DB_USER: "wiki_app"
+          WIKI_DB_PASSWORD: ${{ secrets.WIKI_DB_PASSWORD }}
         run: |
           echo "Deploying monitoring stack..."
           ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} << 'EOF'
@@ -135,6 +170,8 @@ jobs:
           PROD_POSTGRES_EXPORTER_DSN=postgresql://postgres:${{ env.POSTGRES_PASSWORD }}@salko-postgres-prod:5432/salko?sslmode=disable
           DATABASE_URL=postgresql://umami_app:${{ env.POSTGRES_PASSWORD }}@salko-postgres-prod:5432/umami
           APP_SECRET=${{ env.UMAMI_APP_SECRET }}
+          WIKI_DB_USER=${{ env.WIKI_DB_USER }}
+          WIKI_DB_PASSWORD=${{ env.WIKI_DB_PASSWORD }}
           ENVEOF
 
             echo ".env.monitoring file created."
@@ -195,6 +232,15 @@ jobs:
               echo "⚠️  pgAdmin4 not running"
             fi
 
+            # Check if Wiki.js is running
+            if docker ps | grep -q "salko-wikijs"; then
+              echo "✅ Wiki.js is running"
+            else
+              echo "❌ Wiki.js failed to start"
+              docker compose --env-file .env.monitoring -f docker-compose.monitoring.yaml logs --tail 50 wikijs || true
+              exit 1
+            fi
+
             echo "Cleaning up old images..."
             docker image prune -f
 
@@ -220,6 +266,7 @@ jobs:
             echo "- **Environment:** ${{ env.ENVIRONMENT }}"
             echo "- **Branch:** \`main\`"
             echo "- **Grafana URL:** https://grafana.savonlinnanlentokerho.fi"
+            echo "- **Wiki URL:** https://wiki.savonlinnanlentokerho.fi"
             echo "- **Traefik Dashboard:** https://traefik.savonlinnanlentokerho.fi/dashboard/"
             echo "- **Deployment Status:** \`${{ job.status }}\`"
             echo ""
@@ -231,9 +278,11 @@ jobs:
             echo "- Node Exporter (Host Metrics)"
             echo "- cAdvisor (Container Metrics)"
             echo "- Postgres Exporters (DB Metrics)"
+            echo "- Wiki.js (Club Wiki, publicly reachable)"
             echo ""
             echo "### Access Information"
-            echo "All services are accessible from 10.0.0.0/16 network only"
+            echo "All services are accessible from 10.0.0.0/16 network only,"
+            echo "except Wiki.js, which is public and gated by its own login."
             echo ""
             echo "**Workflow:** ${{ github.workflow }}"
             echo "**Run:** [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"

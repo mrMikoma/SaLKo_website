@@ -215,6 +215,30 @@ services:
       - traefik.http.routers.umami.middlewares=internal-only@file
       - traefik.http.services.umami.loadbalancer.server.port=3000
 
+  wikijs:
+    image: ghcr.io/requarks/wiki:2.5.314
+    container_name: ${NAME_PREFIX}-wikijs
+    environment:
+      - DB_TYPE=postgres
+      - DB_HOST=${NAME_PREFIX}-postgres-prod
+      - DB_PORT=5432
+      - DB_NAME=wiki
+      - DB_USER=${WIKI_DB_USER}
+      - DB_PASS=${WIKI_DB_PASSWORD}
+      - HA_ACTIVE=false
+    networks:
+      - monitoring
+      - global_outgoing
+      - prod_internal
+    restart: unless-stopped
+    labels:
+      - logging=promtail
+      - traefik.enable=true
+      - traefik.http.routers.wikijs.rule=Host(`wiki.savonlinnanlentokerho.fi`)
+      - traefik.http.routers.wikijs.entrypoints=websecure
+      - traefik.http.routers.wikijs.tls.certresolver=cloudflare
+      - traefik.http.services.wikijs.loadbalancer.server.port=3000
+
 networks:
   monitoring:
     driver: bridge
