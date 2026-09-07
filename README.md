@@ -71,6 +71,16 @@ The project includes a full observability stack in the `monitoring/` directory:
 
 Pre-configured dashboards include system overview, container metrics, PostgreSQL performance, and application logs. All services are accessible only from the private network. See [monitoring/README.md](monitoring/README.md) for detailed setup and configuration.
 
+## Wiki
+
+**Wiki.js** is deployed alongside the monitoring stack and serves the club wiki at
+`https://wiki.savonlinnanlentokerho.fi`. Unlike the monitoring services it is
+publicly reachable, with access controlled by Wiki.js' own authentication.
+
+It stores its content in a dedicated `wiki` database inside the production
+PostgreSQL cluster, owned by the `wiki_app` role, so wiki content is covered by
+the same database backups as the rest of the site.
+
 ## Deployment
 
 Deployments are automated via GitHub Actions:

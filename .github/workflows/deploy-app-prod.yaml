@@ -177,6 +177,7 @@ jobs:
           APP_DB_USER: "salko_app"
           UMAMI_DB_USER: "umami_app"
           UMAMI_INTERNAL_URL: "http://salko-umami:3000"
+          WIKI_DB_USER: "wiki_app"
           NEXTAUTH_URL: "https://${{ env.SITE_PREFIX }}.${{ env.HOST_URL }}"
         run: |
           echo "Deploying to production environment..."
@@ -210,6 +211,8 @@ jobs:
             echo "UMAMI_DB_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env.prod
             echo "UMAMI_INTERNAL_URL=${{ env.UMAMI_INTERNAL_URL }}" >> .env.prod
             echo "NEXT_PUBLIC_UMAMI_WEBSITE_ID=${{ secrets.NEXT_PUBLIC_UMAMI_WEBSITE_ID }}" >> .env.prod
+            echo "WIKI_DB_USER=${{ env.WIKI_DB_USER }}" >> .env.prod
+            echo "WIKI_DB_PASSWORD=${{ secrets.WIKI_DB_PASSWORD }}" >> .env.prod
 
             # Ensure the environment variables are written before proceeding
             echo ".env.prod file created with environment variables."
@@ -254,6 +257,7 @@ jobs:
           GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           UMAMI_APP_SECRET: ${{ secrets.UMAMI_APP_SECRET }}
+          WIKI_DB_PASSWORD: ${{ secrets.WIKI_DB_PASSWORD }}
         run: |
           echo "Updating monitoring secrets..."
           ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} << 'EOF'
@@ -261,6 +265,7 @@ jobs:
             sed -i "s|^PROD_POSTGRES_EXPORTER_DSN=.*|PROD_POSTGRES_EXPORTER_DSN=postgresql://postgres:${{ env.POSTGRES_PASSWORD }}@salko-postgres-prod:5432/salko?sslmode=disable|" .env.monitoring || true
             sed -i "s|^DATABASE_URL=.*|DATABASE_URL=postgresql://umami_app:${{ env.POSTGRES_PASSWORD }}@salko-postgres-prod:5432/umami|" .env.monitoring || true
             sed -i "s|^APP_SECRET=.*|APP_SECRET=${{ env.UMAMI_APP_SECRET }}|" .env.monitoring || true
+            sed -i "s|^WIKI_DB_PASSWORD=.*|WIKI_DB_PASSWORD=${{ env.WIKI_DB_PASSWORD }}|" .env.monitoring || true
             echo "✅ Monitoring secrets updated"
 
             # Restart monitoring stack to apply new secrets

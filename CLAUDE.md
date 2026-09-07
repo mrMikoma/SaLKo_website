@@ -95,6 +95,19 @@ Copy `.env.example` to `.env`:
 CI/CD runs on GitHub Actions with self-hosted Hetzner Cloud runners. Workflows are manually triggered (`workflow_dispatch`) or via `repository_dispatch`:
 - `build-and-publish-prod.yaml` → builds Docker image, tags and pushes to GHCR
 - `deploy-app-prod.yaml` → SSH into server, `docker compose pull && up`
+- `deploy-monitoring.yaml` → SSH into server, deploys the monitoring stack **and Wiki.js**
 - `main` branch = production; `dev` branch = development environment
 
 The Next.js build uses `output: "standalone"` and runs behind Traefik with TLS via Cloudflare.
+
+### Wiki.js
+
+The club wiki (`wiki.savonlinnanlentokerho.fi`) is a Wiki.js container defined in
+`docker-compose.monitoring.yaml` and deployed by `deploy-monitoring.yaml`. It is the only
+service in that stack without the `internal-only@file` middleware — it is public, and access
+is gated by Wiki.js' own authentication.
+
+Its data lives in a `wiki` database in the production PostgreSQL cluster, owned by `wiki_app`.
+`postgres/init/07-create-wiki-db.sql` provisions it on a fresh data directory;
+`postgres/migrations/003_create_wiki_db.sql` does the same idempotently on an existing cluster
+and is applied by the deploy workflow on every run.
