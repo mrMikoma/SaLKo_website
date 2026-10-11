@@ -107,6 +107,11 @@ updates:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 3
+    ignore:
+      # 5.26.0+ plans a spurious update on every existing cloudflare_dns_record
+      # (cloudflare/terraform-provider-cloudflare#7387). Remove once fixed.
+      - dependency-name: "cloudflare/cloudflare"
+        versions: [">= 5.26.0"]
     groups:
       minor-and-patch:
         patterns:
