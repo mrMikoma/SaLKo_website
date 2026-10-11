@@ -4,7 +4,7 @@ on:
   push:
     paths:
       - "infra/terraform/**"
-      - ".github/workflows/terraform-plan-apply.yaml"
+      - ".github/workflows/terraform-plan-and-apply.yaml"
     branches:
       - main
 
