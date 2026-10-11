@@ -1,8 +1,8 @@
 services:
   traefik:
-    image: traefik:v3.6.1
-    # Specifies the image to use for Traefik. Using v3.6 tag ensures we get
-    # the latest v3.6.x patch release which includes the Docker API 1.44 compatibility fix.
+    image: traefik:v3.7.14
+    # Specifies the image to use for Traefik, pinned to an exact patch release.
+    # v3.6.1 or newer is required for the Docker API 1.44 compatibility fix.
 
     container_name: traefik
     # Names the container 'traefik' for easier identification.

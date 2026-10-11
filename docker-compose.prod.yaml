@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:17.5
+    image: postgres:17.11
     container_name: ${NAME_PREFIX}-postgres-${BRANCH_SUFFIX}
     networks:
       - internal
