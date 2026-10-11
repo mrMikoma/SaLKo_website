@@ -4,7 +4,7 @@ on:
   push:
     paths:
       - "infra/terraform/**"
-      - ".github/workflows/terraform-plan-apply.yaml"
+      - ".github/workflows/terraform-plan-and-apply.yaml"
     branches:
       - main
 
@@ -22,13 +22,13 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5.0.0
+        uses: actions/checkout@v7.0.1
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3.1.2
+        uses: hashicorp/setup-terraform@v4.0.1
         with:
           terraform_wrapper: false
-          terraform_version: 1.13.1
+          terraform_version: 1.16.5
 
       - name: Terraform Init
         env:
@@ -72,12 +72,8 @@ jobs:
             echo "✅ Terraform is up to date. No changes."
           fi
 
-      - name: Publish Terraform Plan
-        uses: actions/upload-artifact@v4.6.2
-        with:
-          name: tfplan
-          path: infra/terraform/tfplan
-
+      # The plan file stays on the runner: it holds the input variables and the
+      # state in cleartext, so it must not be uploaded as an artifact.
       - name: Create String Output
         id: tf-plan-string
         run: |
@@ -113,12 +109,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5.0.0
+        uses: actions/checkout@v7.0.1
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3.1.2
+        uses: hashicorp/setup-terraform@v4.0.1
         with:
-          terraform_version: 1.13.1
+          terraform_version: 1.16.5
 
       - name: Terraform Init
         env:
@@ -126,14 +122,19 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.CF_BUCKET_SECRET_KEY }}
         run: terraform -chdir=infra/terraform init
 
-      - name: Download Terraform Plan
-        uses: actions/download-artifact@v4.3.0
-        with:
-          name: tfplan
-          path: infra/terraform
-
+      # Plans again instead of reusing the plan job's file, see the note there.
       - name: Terraform Apply
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.CF_BUCKET_ACCESS_KEY }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.CF_BUCKET_SECRET_KEY }}
-        run: terraform -chdir=infra/terraform apply -auto-approve tfplan
+        run: |
+          terraform -chdir=infra/terraform apply -auto-approve -input=false \
+            -var="hetzner_api_token=${{ secrets.HETZNER_API_TOKEN }}" \
+            -var="hetzner_network_id=${{ secrets.HETZNER_NETWORK_ID }}" \
+            -var="hetzner_gha_runner_ssh_key_id=${{ secrets.HETZNER_GHA_RUNNER_SSH_KEY_ID }}" \
+            -var="vps_ssh_public_key=${{ secrets.VPS_PUBLIC_KEY }}" \
+            -var="cloudflare_token=${{ secrets.CF_API_TOKEN }}" \
+            -var="cloudflare_zone_id=${{ secrets.CF_ZONE_ID }}" \
+            -var="github_app_id=${{ secrets.GH_APP_ID }}" \
+            -var="github_app_installation_id=${{ secrets.GH_APP_INSTALLATION_ID }}" \
+            -var="github_app_private_key_pem=${{ secrets.GH_APP_PRIVATE_KEY_PEM }}"
