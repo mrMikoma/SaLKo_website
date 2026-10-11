@@ -13,6 +13,7 @@ const finlandica = Finlandica_Headline({
   subsets: ["latin"],
   variable: "--font-finlandica",
   display: "swap",
+  fallback: ["Arial", "sans-serif"],
 });
 
 export const metadata = {
