@@ -32,7 +32,7 @@ jobs:
     steps:
       - name: Create runner
         id: create-hcloud-runner
-        uses: Cyclenerd/hcloud-github-runner@v1.3.0
+        uses: Cyclenerd/hcloud-github-runner@v1.4.1
         with:
           mode: create
           github_token: ${{ secrets.HETZNER_GHA_RUNNER_PAT }}
@@ -121,7 +121,7 @@ jobs:
           echo "Payload extracted successfully."
 
       - name: Checkout repository
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v7.0.1
         with:
           ref: ${{ github.event.inputs.branch_name || github.event.client_payload.branch_name || 'main' }}
           sparse-checkout: |
@@ -302,7 +302,7 @@ jobs:
     if: ${{ always() }}
     steps:
       - name: Delete runner
-        uses: Cyclenerd/hcloud-github-runner@v1.3.0
+        uses: Cyclenerd/hcloud-github-runner@v1.4.1
         with:
           mode: delete
           github_token: ${{ secrets.HETZNER_GHA_RUNNER_PAT }}
