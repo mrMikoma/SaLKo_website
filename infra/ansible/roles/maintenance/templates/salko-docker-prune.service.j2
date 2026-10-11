@@ -1,0 +1,12 @@
+# Managed by Ansible (infra/ansible/roles/maintenance). Local changes are overwritten.
+[Unit]
+Description=SaLKo Docker cleanup (stopped containers, unused images, build cache)
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+# Volumes are never pruned: no "volume prune", no "system prune --volumes".
+ExecStart=/usr/bin/docker container prune -f --filter until={{ maintenance_docker_prune_container_until }}
+ExecStart=/usr/bin/docker image prune -af --filter until={{ maintenance_docker_prune_image_until }}
+ExecStart=/usr/bin/docker builder prune -af --filter until={{ maintenance_docker_prune_build_cache_until }}

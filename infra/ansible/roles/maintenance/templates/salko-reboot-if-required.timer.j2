@@ -1,0 +1,11 @@
+# Managed by Ansible (infra/ansible/roles/maintenance). Local changes are overwritten.
+[Unit]
+Description=SaLKo weekly reboot window
+
+[Timer]
+OnCalendar={{ maintenance_reboot_on_calendar }} {{ maintenance_timezone }}
+# A missed window is skipped, never caught up at some other time.
+Persistent=false
+
+[Install]
+WantedBy=timers.target
