@@ -1,0 +1,46 @@
+---
+# The host clock is UTC, so every OnCalendar expression carries the site timezone.
+maintenance_timezone: Europe/Helsinki
+
+# OS patching: unattended-upgrades, run by the stock apt-daily-upgrade.timer.
+maintenance_apt_upgrade_on_calendar: "*-*-* 03:30:00"
+maintenance_apt_upgrade_randomized_delay: 10m
+maintenance_apt_autoclean_interval_days: 7
+# origin:archive pairs, same set as the stock Ubuntu 24.04 50unattended-upgrades:
+# the release pocket (frozen, only there for new dependencies) and the security pockets.
+maintenance_unattended_allowed_origins:
+  - "${distro_id}:${distro_codename}"
+  - "${distro_id}:${distro_codename}-security"
+  - "${distro_id}ESMApps:${distro_codename}-apps-security"
+  - "${distro_id}ESM:${distro_codename}-infra-security"
+# Python regular expressions matched against the start of the package name.
+maintenance_unattended_package_blacklist:
+  - "docker-ce$"
+  - "docker-ce-cli$"
+  - "docker-ce-rootless-extras$"
+  - "containerd\\.io$"
+  - "docker-buildx-plugin$"
+  - "docker-compose-plugin$"
+
+# Reboot window, used only when /run/reboot-required exists.
+maintenance_reboot_on_calendar: "Sun *-*-* 04:30:00"
+
+# Docker cleanup. Volumes are never pruned.
+maintenance_docker_prune_on_calendar: "Sun *-*-* 03:00:00"
+maintenance_docker_prune_randomized_delay: 5m
+maintenance_docker_prune_container_until: 24h
+maintenance_docker_prune_image_until: 168h
+maintenance_docker_prune_build_cache_until: 168h
+
+# Log size caps.
+maintenance_docker_log_max_size: 10m
+maintenance_docker_log_max_file: 3
+maintenance_journald_system_max_use: 500M
+
+# Keys this role owns in /etc/docker/daemon.json. Other keys already in the file are kept.
+maintenance_docker_daemon_settings:
+  log-driver: json-file
+  log-opts:
+    max-size: "{{ maintenance_docker_log_max_size }}"
+    max-file: "{{ maintenance_docker_log_max_file | string }}"
+  live-restore: true

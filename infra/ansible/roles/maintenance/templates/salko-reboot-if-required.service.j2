@@ -1,0 +1,10 @@
+# Managed by Ansible (infra/ansible/roles/maintenance). Local changes are overwritten.
+[Unit]
+Description=SaLKo reboot when a package upgrade requires it
+ConditionPathExists=/run/reboot-required
+# Wait for a running unattended upgrade to finish before checking and rebooting.
+After=apt-daily-upgrade.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/systemctl reboot

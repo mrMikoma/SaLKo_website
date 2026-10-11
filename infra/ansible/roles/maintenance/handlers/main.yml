@@ -1,0 +1,25 @@
+---
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Restart maintenance timers
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: restarted
+  loop:
+    - apt-daily-upgrade.timer
+    - salko-docker-prune.timer
+    - salko-reboot-if-required.timer
+  when: not ansible_check_mode
+
+# Reload, never restart: until live-restore is active a restart stops every container.
+- name: Reload Docker
+  ansible.builtin.systemd:
+    name: docker
+    state: reloaded
+
+- name: Restart journald
+  ansible.builtin.systemd:
+    name: systemd-journald
+    state: restarted
