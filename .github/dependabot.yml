@@ -1,0 +1,116 @@
+# Dependabot version updates.
+#
+# Dependabot only reads this file from the default branch (main). A copy on
+# dev does nothing until it has been merged to main. The update pull requests
+# themselves are opened against dev (target-branch).
+#
+# For every ecosystem below: minor and patch updates arrive as one grouped
+# pull request per week, major updates arrive as individual pull requests.
+#
+# Because target-branch is set, none of these settings apply to Dependabot
+# security updates; those always target the default branch.
+
+version: 2
+
+updates:
+  # Next.js app: nextjs/package.json + nextjs/bun.lock
+  - package-ecosystem: "bun"
+    directory: "/nextjs"
+    target-branch: "dev"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    groups:
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # METAR cronjob: cronjobs/update-metar/package.json (no lockfile)
+  - package-ecosystem: "npm"
+    directory: "/cronjobs/update-metar"
+    target-branch: "dev"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    groups:
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Base images in the Dockerfiles
+  - package-ecosystem: "docker"
+    directories:
+      - "/nextjs"
+      - "/cronjobs/update-metar"
+    target-branch: "dev"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    groups:
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Images in the docker-compose.*.yaml files
+  - package-ecosystem: "docker-compose"
+    directories:
+      - "/"
+      - "/cronjobs"
+      - "/traefik"
+      - "/postgres"
+    target-branch: "dev"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    groups:
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Actions pinned in .github/workflows
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    target-branch: "dev"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    groups:
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Terraform providers and modules
+  - package-ecosystem: "terraform"
+    directory: "/infra/terraform"
+    target-branch: "dev"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    groups:
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
