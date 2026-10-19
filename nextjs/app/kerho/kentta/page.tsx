@@ -27,106 +27,105 @@ export default function Page() {
         breadcrumbs={["Kerho", "Kenttä"]}
         backgroundImage="bg-efsa-one"
         showScrollIndicator={true}
-        children={
-          <div className="max-w-[1600px] mx-auto px-6 py-12">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Perustiedot Card */}
-              <div className="glass rounded-xl p-6 md:p-8 border border-sbluel/20 backdrop-blur-md">
-                <h3 className="text-xl md:text-2xl font-bold text-sbluel mb-4 flex items-center gap-2">
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                  Perustiedot
-                </h3>
-                <div className="space-y-3 text-swhite/90">
-                  <p>
-                    Savonlinnan Lentoasema (ICAO:{" "}
-                    <span className="font-semibold text-swhite">EFSA</span>,
-                    IATA: <span className="font-semibold text-swhite">SVL</span>
-                    ) sijaitsee 15 km Savonlinnan pohjoispuolella,
-                    Enonkoskentien 471 varrella.
+      >
+        <div className="max-w-[1600px] mx-auto px-6 py-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Perustiedot Card */}
+            <div className="glass rounded-xl p-6 md:p-8 border border-sbluel/20 backdrop-blur-md">
+              <h3 className="text-xl md:text-2xl font-bold text-sbluel mb-4 flex items-center gap-2">
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                Perustiedot
+              </h3>
+              <div className="space-y-3 text-swhite/90">
+                <p>
+                  Savonlinnan Lentoasema (ICAO:{" "}
+                  <span className="font-semibold text-swhite">EFSA</span>,
+                  IATA: <span className="font-semibold text-swhite">SVL</span>
+                  ) sijaitsee 15 km Savonlinnan pohjoispuolella,
+                  Enonkoskentien 471 varrella.
+                </p>
+                <div className="pt-2 border-t border-swhite/10">
+                  <p className="text-sm text-swhite/70 mb-1">Osoite</p>
+                  <p className="font-semibold text-swhite">
+                    Lentoasemantie 50, 57310 Savonlinna
                   </p>
-                  <div className="pt-2 border-t border-swhite/10">
-                    <p className="text-sm text-swhite/70 mb-1">Osoite</p>
-                    <p className="font-semibold text-swhite">
-                      Lentoasemantie 50, 57310 Savonlinna
-                    </p>
-                  </div>
-                  <div className="pt-2 border-t border-swhite/10">
-                    <p className="text-sm text-swhite/70 mb-1">
-                      Lentoaseman ylläpitäjä
-                    </p>
-                    <a
-                      href="https://www.finavia.fi/fi/lentoasemat/savonlinna"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 font-semibold text-sbluel hover:text-sbluel/80 transition-colors"
-                    >
-                      Finavia
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                        />
-                      </svg>
-                    </a>
-                  </div>
                 </div>
-              </div>
-
-              {/* Toiminta Card */}
-              <div className="glass rounded-xl p-6 md:p-8 border border-sbluel/20 backdrop-blur-md">
-                <h3 className="text-xl md:text-2xl font-bold text-sbluel mb-4 flex items-center gap-2">
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+                <div className="pt-2 border-t border-swhite/10">
+                  <p className="text-sm text-swhite/70 mb-1">
+                    Lentoaseman ylläpitäjä
+                  </p>
+                  <a
+                    href="https://www.finavia.fi/fi/lentoasemat/savonlinna"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 font-semibold text-sbluel hover:text-sbluel/80 transition-colors"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
-                    />
-                  </svg>
-                  Toiminta
-                </h3>
-                <div className="space-y-3 text-swhite/90">
-                  <p>
-                    Savonlinnan Lentokerho on toiminut Savonlinnan lentoasemalla
-                    sen käyttöönotosta vuodesta 1974 alkaen. Lentoasema tarjoaa
-                    erinomaiset puitteet sekä moottori- että
-                    purjelentotoiminnalle.
-                  </p>
-                  <p>
-                    Kenttä on avoinna ympäri vuoden, ja rauhallinen ilmatila
-                    sekä pitkä kiitotie tekevät siitä ihanteellisen paikan
-                    lentokoulutukselle ja harrastelentämiselle.
-                  </p>
+                    Finavia
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                      />
+                    </svg>
+                  </a>
                 </div>
               </div>
             </div>
+
+            {/* Toiminta Card */}
+            <div className="glass rounded-xl p-6 md:p-8 border border-sbluel/20 backdrop-blur-md">
+              <h3 className="text-xl md:text-2xl font-bold text-sbluel mb-4 flex items-center gap-2">
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+                  />
+                </svg>
+                Toiminta
+              </h3>
+              <div className="space-y-3 text-swhite/90">
+                <p>
+                  Savonlinnan Lentokerho on toiminut Savonlinnan lentoasemalla
+                  sen käyttöönotosta vuodesta 1974 alkaen. Lentoasema tarjoaa
+                  erinomaiset puitteet sekä moottori- että
+                  purjelentotoiminnalle.
+                </p>
+                <p>
+                  Kenttä on avoinna ympäri vuoden, ja rauhallinen ilmatila
+                  sekä pitkä kiitotie tekevät siitä ihanteellisen paikan
+                  lentokoulutukselle ja harrastelentämiselle.
+                </p>
+              </div>
+            </div>
           </div>
-        }
-      />
+        </div>
+      </PageHero>
 
       <ContentSection variant="light" backgroundImage="bg-punkaharju-one">
         <div className="max-w-4xl mx-auto">
@@ -186,7 +185,7 @@ export default function Page() {
                 <div className="bg-sblued/30 rounded-lg p-4 border border-sbluel/10">
                   <p className="text-swhite/70 text-sm mb-1">Koordinaatit</p>
                   <p className="text-lg font-semibold text-swhite font-mono">
-                    61°56'40″N, 28°56'05″E
+                    61°56&apos;40″N, 28°56&apos;05″E
                   </p>
                 </div>
               </div>

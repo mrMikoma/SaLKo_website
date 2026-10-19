@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavbar } from "@/providers/NavbarContextProvider";
 
 interface ImageGalleryProps {
@@ -16,6 +16,20 @@ const ImageGallery = ({ images, title = "Gallery" }: ImageGalleryProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const { closeMobileMenu, setIsFullscreenMode } = useNavbar();
+
+  const imageCount = images?.length ?? 0;
+
+  const goToPrevious = useCallback(() => {
+    setCurrentIndex((prevIndex) =>
+      prevIndex === 0 ? imageCount - 1 : prevIndex - 1
+    );
+  }, [imageCount]);
+
+  const goToNext = useCallback(() => {
+    setCurrentIndex((prevIndex) =>
+      prevIndex === imageCount - 1 ? 0 : prevIndex + 1
+    );
+  }, [imageCount]);
 
   // Disable scrolling when fullscreen is active and close mobile menu
   useEffect(() => {
@@ -60,23 +74,11 @@ const ImageGallery = ({ images, title = "Gallery" }: ImageGalleryProps) => {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isFullscreen, currentIndex]);
+  }, [isFullscreen, goToPrevious, goToNext]);
 
   if (!images || images.length === 0) {
     return null;
   }
-
-  const goToPrevious = () => {
-    setCurrentIndex((prevIndex) =>
-      prevIndex === 0 ? images.length - 1 : prevIndex - 1
-    );
-  };
-
-  const goToNext = () => {
-    setCurrentIndex((prevIndex) =>
-      prevIndex === images.length - 1 ? 0 : prevIndex + 1
-    );
-  };
 
   const goToSlide = (index: number) => {
     setCurrentIndex(index);
@@ -94,6 +96,7 @@ const ImageGallery = ({ images, title = "Gallery" }: ImageGalleryProps) => {
             src={images[currentIndex].src}
             alt={images[currentIndex].alt || title}
             fill
+            sizes="(min-width: 1280px) 1280px, 100vw"
             className="object-cover transition-opacity duration-500"
             priority={currentIndex === 0}
           />

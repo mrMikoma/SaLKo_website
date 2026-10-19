@@ -136,23 +136,28 @@ export default function FlightLogHistory() {
   const [editingFlight, setEditingFlight] = useState<FlightWithBilling | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  const loadData = useCallback(async () => {
+  // Sets state only in promise callbacks, so the mount effect does not
+  // re-render synchronously; reloadData() resets the loading/error state first.
+  const loadData = useCallback(
+    () =>
+      Promise.all([getMyFlightLogs(), getMyFlightSummary()])
+        .then(([flightsData, summaryData]) => {
+          setFlights(flightsData)
+          setSummary(summaryData)
+        })
+        .catch((error) => {
+          console.error("Error loading flight data:", error)
+          setLoadError("Lentohistorian lataus epäonnistui. Yritä uudelleen.")
+        })
+        .finally(() => setLoading(false)),
+    []
+  )
+
+  const reloadData = useCallback(async () => {
     setLoading(true)
     setLoadError(null)
-    try {
-      const [flightsData, summaryData] = await Promise.all([
-        getMyFlightLogs(),
-        getMyFlightSummary(),
-      ])
-      setFlights(flightsData)
-      setSummary(summaryData)
-    } catch (error) {
-      console.error("Error loading flight data:", error)
-      setLoadError("Lentohistorian lataus epäonnistui. Yritä uudelleen.")
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+    await loadData()
+  }, [loadData])
 
   useEffect(() => {
     loadData()
@@ -163,7 +168,7 @@ export default function FlightLogHistory() {
     try {
       const result = await deleteFlightLog(billableId)
       if (result.status === "success") {
-        await loadData()
+        await reloadData()
       }
     } finally {
       setDeletingId(null)
@@ -186,7 +191,7 @@ export default function FlightLogHistory() {
         showIcon
         action={
           <button
-            onClick={loadData}
+            onClick={reloadData}
             className="text-sm font-medium text-red-600 underline ml-2"
           >
             Yritä uudelleen
@@ -262,7 +267,7 @@ export default function FlightLogHistory() {
           flight={editingFlight}
           open={!!editingFlight}
           onClose={() => setEditingFlight(null)}
-          onSaved={loadData}
+          onSaved={reloadData}
         />
       )}
     </div>

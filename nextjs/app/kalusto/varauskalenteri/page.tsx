@@ -36,8 +36,9 @@ export default async function Page() {
         compact={true}
         backgroundImage="bg-mopu-one"
         showScrollIndicator={false}
-        children={<BookingSection userContext={userContext} />}
-      />
+      >
+        <BookingSection userContext={userContext} />
+      </PageHero>
     </div>
   );
 }

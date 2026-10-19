@@ -344,7 +344,7 @@ export async function addRepeatingBookings({
     const bookingEndHour = endDate.getHours();
     const bookingEndMinute = endDate.getMinutes();
 
-    let currentDate = new Date(startDate);
+    const currentDate = new Date(startDate);
     currentDate.setHours(0, 0, 0, 0); // Normalize to start of day for comparison
 
     const normalizedEndDate = new Date(repeatEndDate);

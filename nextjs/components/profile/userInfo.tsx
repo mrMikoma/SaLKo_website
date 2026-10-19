@@ -12,6 +12,18 @@ interface UserInfoProps {
   phone?: string;
 }
 
+const InfoRow = ({ icon, label, value }: { icon: React.ReactElement; label: string; value: string | React.ReactElement }) => (
+  <div className="flex items-start space-x-3 py-3">
+    <div className="flex-shrink-0 text-sbluel mt-0.5">
+      {icon}
+    </div>
+    <div className="flex-1 min-w-0">
+      <p className="text-sm font-semibold text-swhite/70">{label}</p>
+      <div className="text-base text-swhite break-words font-medium">{value}</div>
+    </div>
+  </div>
+);
+
 const UserInfo = ({
   name,
   email,
@@ -21,18 +33,6 @@ const UserInfo = ({
   postalCode,
   phone,
 }: UserInfoProps) => {
-  const InfoRow = ({ icon, label, value }: { icon: React.ReactElement; label: string; value: string | React.ReactElement }) => (
-    <div className="flex items-start space-x-3 py-3">
-      <div className="flex-shrink-0 text-sbluel mt-0.5">
-        {icon}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-swhite/70">{label}</p>
-        <div className="text-base text-swhite break-words font-medium">{value}</div>
-      </div>
-    </div>
-  );
-
   return (
     <div className="user-info">
       <h3 className="text-lg md:text-xl font-bold text-swhite mb-4 md:mb-6 pb-2 md:pb-3 border-b-2 border-sred">Omat tiedot</h3>

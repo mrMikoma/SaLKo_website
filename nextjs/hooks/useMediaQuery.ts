@@ -1,38 +1,25 @@
-import { useState, useEffect } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 
 /**
  * Custom hook for responsive design
  * Detects screen size and returns whether it matches the media query
  */
 export const useMediaQuery = (query: string): boolean => {
-  const [matches, setMatches] = useState(false);
+  const subscribe = useCallback(
+    (onChange: () => void) => {
+      const media = window.matchMedia(query);
+      media.addEventListener("change", onChange);
+      return () => media.removeEventListener("change", onChange);
+    },
+    [query]
+  );
 
-  useEffect(() => {
-    // Check if window is defined (client-side)
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const media = window.matchMedia(query);
-
-    // Set initial value
-    setMatches(media.matches);
-
-    // Define listener
-    const listener = (event: MediaQueryListEvent) => {
-      setMatches(event.matches);
-    };
-
-    // Add listener
-    media.addEventListener("change", listener);
-
-    // Cleanup
-    return () => {
-      media.removeEventListener("change", listener);
-    };
-  }, [query]);
-
-  return matches;
+  return useSyncExternalStore(
+    subscribe,
+    () => window.matchMedia(query).matches,
+    // Server render and hydration assume no match, as before
+    () => false
+  );
 };
 
 /**

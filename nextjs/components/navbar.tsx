@@ -21,26 +21,18 @@ import { useSession } from "next-auth/react";
 import { useNavbar } from "@/providers/NavbarContextProvider";
 
 const Navbar = () => {
-  const { data: session, status } = useSession();
-  const [authenticated, setAuthenticated] = useState(false);
-  const [userName, setUserName] = useState("");
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { data: session } = useSession();
+  // Logout is a server action, so useSession() keeps returning the old session
+  // until it refetches. Remember which session was logged out and hide it.
+  const [loggedOutSession, setLoggedOutSession] = useState<typeof session>(null);
+  const user = session !== loggedOutSession ? session?.user : undefined;
+  const authenticated = Boolean(user);
+  const userName = user?.name || "";
+  const isAdmin = user?.roles?.includes("admin") || false;
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
   const { isFullscreenMode } = useNavbar();
   const router = useRouter();
-
-  useEffect(() => {
-    if (session?.user) {
-      setAuthenticated(true);
-      setUserName(session.user.name || "");
-      setIsAdmin(session.user.roles?.includes("admin") || false);
-    } else {
-      setAuthenticated(false);
-      setUserName("");
-      setIsAdmin(false);
-    }
-  }, [session, status]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -65,8 +57,7 @@ const Navbar = () => {
 
   const handleLogout = async () => {
     router.refresh();
-    setAuthenticated(false);
-    setUserName("");
+    setLoggedOutSession(session);
   };
 
   return (
@@ -84,7 +75,8 @@ const Navbar = () => {
                 src="/images/SaLKon Logo_vaakunaversio.png"
                 alt="SaLKo"
                 width={120}
-                height={40}
+                height={124}
+                loading="eager"
                 className="w-20 h-auto md:w-26"
               />
             </span>

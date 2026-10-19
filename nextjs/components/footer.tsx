@@ -35,7 +35,7 @@ export default function Footer() {
                   src="/images/SaLKon Logo_vaakunaversio.png"
                   alt="SaLKo"
                   width={120}
-                  height={40}
+                  height={124}
                 />
               </Link>
             </div>

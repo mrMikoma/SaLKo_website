@@ -11,7 +11,7 @@ Website for **Savonlinnan Lentokerho ry** (SaLKo) — a Finnish general aviation
 All commands run from `nextjs/`:
 
 ```bash
-# Development — start postgres first
+# Development — start postgres first (cp postgres/.env.example postgres/.env on first run)
 cd postgres && docker compose up -d
 cd nextjs && bun install && bun dev        # app at http://localhost:3000
 
@@ -23,9 +23,47 @@ bun run lint
 
 # Run METAR cronjob locally
 bun run cronjob:update-metar              # or: tsx ../cronjobs/update-metar/index.ts
+
+# E2E tests (Playwright) — starts `bun dev`, or reuses a server already on :3000
+bun run test:e2e
+bun run test:e2e e2e/smoke.spec.ts -g kalusto   # one file / filter by title
+bun run test:e2e:ui                             # interactive UI mode
+bun run test:e2e --project=setup                # only (re)create the e2e accounts and saved sessions
 ```
 
-There are no automated tests.
+## Testing and Browser Checks
+
+Playwright e2e tests live in `nextjs/e2e/` (config: `nextjs/playwright.config.ts`). There are no unit tests. `.github/workflows/test.yaml` runs lint, the type check and the e2e suite on every PR to `dev` or `main` that touches `nextjs/` or `postgres/`. In CI the suite runs against a production build served by `.next/standalone/server.js`, as in the Docker image, and a Postgres built from `postgres/init/`.
+
+- `smoke.spec.ts` checks that every public page renders an `h1`, that protected routes redirect anonymous visitors to `/`, and that the login dialog opens.
+- Every test fails on an uncaught page error or a `console.error` (auto fixture in `e2e/fixtures.ts`), so import `test`/`expect` from `./fixtures`, not from `@playwright/test`.
+- `auth.setup.ts` creates two credentials accounts in the local database, `e2e-user@salko.invalid` (member) and `e2e-admin@salko.invalid` (admin), both with password `E2e-local-pass1!`. It logs in as each and saves the sessions to `nextjs/playwright/.auth/{user,admin}.json` for `member.spec.ts` and `admin.spec.ts`. It only writes to a database on localhost or a Docker bridge address (172.16.0.0/12). For any other database, set `E2E_USER_EMAIL`/`E2E_USER_PASSWORD` and `E2E_ADMIN_EMAIL`/`E2E_ADMIN_PASSWORD` in `nextjs/.env` to existing accounts, or those specs are skipped.
+- A dev server already listening on :3000 is reused. In a worktree, when another checkout's server owns :3000, run `PORT=3001 bun run test:e2e` so the tests hit this tree's code.
+
+After changing UI, check it in a real browser with Playwright CLI (the `playwright-cli` skill), run from `nextjs/` where its config lives. In Claude Code sessions the SessionStart hook puts `nextjs/node_modules/.bin` on PATH, so `playwright-cli` is the pinned dev dependency. In a plain terminal use `bunx --no-install playwright-cli`; without `--no-install`, bunx downloads the deprecated unscoped `playwright-cli` package when run outside `nextjs/`.
+
+```bash
+playwright-cli open http://localhost:3000/kalusto  # headless; --headed to watch
+playwright-cli snapshot          # accessibility tree with element refs (e12…)
+playwright-cli click e12         # act on a ref from the snapshot
+playwright-cli console           # browser console messages
+playwright-cli screenshot --filename=/tmp/page.png   # then Read the PNG
+playwright-cli state-load playwright/.auth/admin.json # continue logged in (user.json for a member)
+playwright-cli close
+```
+
+Snapshots and console logs are written to `nextjs/.playwright-cli/`, which is gitignored.
+
+## Claude Code Setup
+
+Shared config lives in `.claude/` (`settings.json`, `hooks/`, `skills/`, `agents/`); `.claude/worktrees/` and `settings.local.json` stay local. Hooks:
+
+- **SessionStart** (`hooks/session-start.sh`): adds `nextjs/node_modules/.bin` to PATH and reports whether `salko-postgres` and this checkout's dev server are running.
+- **PreToolUse**: blocks `git commit` / `git push` (run them yourself) and edits to `.env`.
+- **PostToolUse** (`hooks/lint-edited-file.sh`): runs `eslint --quiet` on each edited file under `nextjs/` and feeds errors back.
+- **Stop** (`hooks/typecheck.sh`): runs `tsc --noEmit` once per turn when a `.ts`/`.tsx` file changed since the last check, and feeds errors back.
+
+`.mcp.json` adds the `next-devtools` MCP server (`next-devtools-mcp`, pinned, telemetry off), which Claude Code asks you to approve once. It finds running Next dev servers (`nextjs_index`) and calls their built-in `/_next/mcp` tools (`nextjs_call`): `get_errors`, `get_logs`, `get_routes`, `get_page_metadata`, `get_server_action_by_id` and more. `get_errors` only reports once a browser is connected to the dev server, so open the page with `playwright-cli` first. Use `playwright-cli` rather than its `browser_eval` tool for driving the browser.
 
 ## Architecture
 
@@ -42,12 +80,16 @@ traefik/       # Reverse proxy config
 
 ### Database
 
-Three core tables (defined in `postgres/init/01-schema.sql`):
-- **`users`** — roles: `admin | user | guest`. `auth_provider` is `credentials | google | system`.
-- **`bookings`** — aircraft reservations; `repeat_group_id` (UUID) groups recurring bookings. `plane` is one of the club's registration codes (OH-CON, OH-816, OH-829, OH-475, OH-386).
+Tables (defined in `postgres/init/01-schema.sql`):
+- **`users`** — `roles` is a text array of `admin | user | guest`. `auth_provider` is `credentials | google | system`. Accounts whose only role is `guest` cannot log in.
+- **`bookings`** — aircraft reservations; `repeat_group_id` (UUID) groups recurring bookings. `plane` is a registration from `nextjs/data/planes.json` (OH-CON, OH-386, OH-PDX, OH-816, OH-829, OH-475).
 - **`guest_bookings`** — contact info for unauthenticated bookings, linked 1:1 to a `bookings` row.
 - **`bullets`** — club announcements.
+- **`billable_items`** — flight logs and other charges (`billable_type`: flight, membership, hangar, instruction, other). `payment_status` moves `recorded → checked → invoiced → paid`; rows are soft-deleted with `deleted_at`.
 - **`metar_data`** — METAR weather records for EFSA, upserted every 2 min by the cronjob, retained 7 days.
+- `accounts`, `sessions`, `verification_tokens` — NextAuth adapter tables (sessions themselves are JWTs).
+
+`postgres/init/02–04` seed an admin, a test user, a guest user, bulletins and bookings.
 
 The database connection is a `pg.Pool` singleton exported from `utilities/db.ts`. It is `null` when `DATABASE_CONNECTION_STRING` is unset or `CI=true` — always null-check before querying.
 
@@ -71,7 +113,7 @@ Configured in `auth.ts`. Two providers:
 1. **Google OAuth** — restricted to `@savonlinnanlentokerho.fi` domain via `hd` parameter. First login auto-creates a `user`-role record.
 2. **Credentials** — email + bcrypt password, validated by `LoginFormSchema` (Zod).
 
-The JWT callback fetches `id`, `role`, and `full_name` from the DB for both providers. The session callback re-fetches the same fields on every request to keep role data fresh; it returns `null` (invalidating the session) if the user is deleted or on DB error.
+The JWT callback fetches `id`, `roles`, and `full_name` from the DB for both providers. The session callback re-fetches the same fields on every request to keep role data fresh; it returns `null` (invalidating the session) if the user is deleted or on DB error.
 
 Session strategy is JWT with 30-day expiry. `trustHost: true` is required because the app runs behind Traefik.
 
@@ -92,7 +134,7 @@ Proxied through the Next.js app (`/api/umami/script` and `/api/umami/send`) to a
 
 ## Environment Variables
 
-Copy `.env.example` to `.env`:
+Copy `nextjs/.env.example` to `nextjs/.env` (Claude's hooks block editing `.env` itself):
 
 | Variable | Purpose |
 |---|---|
@@ -103,13 +145,18 @@ Copy `.env.example` to `.env`:
 | `SESSION_SECRET` | Legacy jose JWT secret (used by `utilities/sessions.ts`) |
 | `NEXT_PUBLIC_UMAMI_WEBSITE_ID` | Umami site ID (optional) |
 | `UMAMI_INTERNAL_URL` | Internal Umami URL (default: `http://salko-umami:3000`) |
+| `ALLOW_INDEXING` | `true` only in production; otherwise `robots.ts` disallows crawling |
+| `GOOGLE_SERVICE_ACCOUNT_KEY` / `FLIGHT_LOG_SPREADSHEET_ID` | Google Sheets export of flight logs (optional) |
+| `E2E_USER_*` / `E2E_ADMIN_*` | `_EMAIL` and `_PASSWORD` of existing accounts for e2e tests against a non-local database (optional) |
 
 ## Deployment
 
-CI/CD runs on GitHub Actions with self-hosted Hetzner Cloud runners. Workflows are manually triggered (`workflow_dispatch`) or via `repository_dispatch`:
-- `build-and-publish-prod.yaml` → builds Docker image, tags and pushes to GHCR
-- `deploy-app-prod.yaml` → SSH into server, `docker compose pull && up`
-- `db-migrate.yaml` → applies `postgres/migrations/` to the dev or prod database (see Schema Changes)
-- `main` branch = production; `dev` branch = development environment
+CI/CD runs on GitHub Actions. Build jobs run on GitHub-hosted runners; jobs that touch the server create a temporary self-hosted runner in Hetzner Cloud (`create-runner` / `delete-runner`). `main` is production and `dev` is the development environment. Changes reach either one only through a PR and these workflows, never by hand on the server.
+
+- `build-and-publish-dev.yaml` runs on pushes to `dev` that touch `nextjs/`, pushes the image to GHCR and triggers `deploy-app-dev.yaml`.
+- `build-and-publish-prod.yaml` (manual, from `main`) builds the prod image; `deploy-app-prod.yaml` (manual or `repository_dispatch`) runs `docker compose pull && up` on the server.
+- `db-migrate.yaml` applies `postgres/migrations/` to the dev or prod database (see Schema Changes).
+- `test.yaml` runs lint, types and the e2e suite on PRs (see Testing and Browser Checks).
+- `deploy-cronjobs-docker.yaml`, `deploy-monitoring.yaml` and `deploy-traefik.yaml` deploy the other stacks; `ansible-provision.yaml` and `terraform-plan-and-apply.yaml` manage the host.
 
 The Next.js build uses `output: "standalone"` and runs behind Traefik with TLS via Cloudflare.

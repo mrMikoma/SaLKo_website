@@ -1065,7 +1065,7 @@ const BookingModal = memo(
                 <p className="text-gray-900 font-medium">
                   Haluatko varmasti poistaa varauksen{" "}
                   <span className="font-bold text-red-700">
-                    "{booking.title}"
+                    &quot;{booking.title}&quot;
                   </span>
                   ?
                 </p>
