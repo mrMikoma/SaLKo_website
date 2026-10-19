@@ -17,7 +17,7 @@ If there are unpushed commits, stop and tell the user.
 
 ## Deployment sequences
 
-**Deploy to dev** (branch: `dev`):
+**Deploy to dev** (branch: `dev`): pushing to `dev` builds and deploys automatically. Run these only to redeploy by hand:
 ```
 Step 1 — Build:  gh workflow run build-and-publish-dev.yaml --repo mrMikoma/SaLKo_website
 Step 2 — Deploy: gh workflow run deploy-app-dev.yaml --repo mrMikoma/SaLKo_website
@@ -27,7 +27,7 @@ Wait for step 1 to succeed before running step 2:
 gh run watch --repo mrMikoma/SaLKo_website $(gh run list --repo mrMikoma/SaLKo_website --workflow=build-and-publish-dev.yaml --limit 1 --json databaseId -q '.[0].databaseId')
 ```
 
-**Deploy to prod** (branch: `main`):
+**Deploy to prod** (branch: `main`). If `postgres/migrations/` has files that prod hasn't applied yet, run `db-migrate.yaml` against prod first (manual, needs approval):
 ```
 Step 1 — Build:  gh workflow run build-and-publish-prod.yaml --repo mrMikoma/SaLKo_website
 Step 2 — Deploy: gh workflow run deploy-app-prod.yaml --repo mrMikoma/SaLKo_website

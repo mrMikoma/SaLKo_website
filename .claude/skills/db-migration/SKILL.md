@@ -1,15 +1,19 @@
 ---
 name: db-migration
-description: Create a new numbered PostgreSQL migration file in postgres/init/
+description: Make a PostgreSQL schema change — update postgres/init/ and add the matching numbered, idempotent migration in postgres/migrations/
 disable-model-invocation: true
 ---
 
-Create a new SQL migration file in `postgres/init/`.
+Follow "Schema Changes" in the root `CLAUDE.md`. Every change goes into both places in the same PR.
 
 Steps:
-1. List existing files in `postgres/init/` to find the next number (current highest + 1, zero-padded to 2 digits)
-2. Prompt for a short kebab-case name describing the migration
-3. Create `postgres/init/<NN>-<name>.sql` with a header comment and `BEGIN;` / `COMMIT;` wrapper
-4. Remind user to add a corresponding `GRANT` in `05-grant-app-permissions.sql` if adding tables
+1. Change the definition in `postgres/init/01-schema.sql`. For a new table, add its grants to `05-grant-app-permissions.sql`.
+2. List `postgres/migrations/` and take the next free number: `NNN_snake_case.sql`. Ask for a short name if the change doesn't suggest one.
+3. Write the same change for existing databases:
+   - idempotent (`IF NOT EXISTS`, `IF EXISTS`, `CREATE OR REPLACE`, a `DO` block for `CREATE TYPE`), so it is a no-op on a database built from `init/`
+   - no `BEGIN`/`COMMIT` (`migrate.sh` wraps each file in a transaction)
+   - `GRANT ... TO :app_user;` for new tables, matching `05-grant-app-permissions.sql`
+   - no `SELECT` of member data (the Actions logs are public)
+4. Dry-run against the local database: `APP_DB_USER=salko_app bash postgres/migrate.sh salko-postgres postgres/migrations --dry-run`
 
-Never run the migration automatically — just create the file.
+Never edit or rename a migration that has already run anywhere; fix mistakes with a new one. Don't apply migrations to dev or prod by hand: `.github/workflows/db-migrate.yaml` does that.

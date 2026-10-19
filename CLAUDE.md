@@ -11,7 +11,7 @@ Website for **Savonlinnan Lentokerho ry** (SaLKo) — a Finnish general aviation
 All commands run from `nextjs/`:
 
 ```bash
-# Development — start postgres first
+# Development — start postgres first (cp postgres/.env.example postgres/.env on first run)
 cd postgres && docker compose up -d
 cd nextjs && bun install && bun dev        # app at http://localhost:3000
 
@@ -78,12 +78,16 @@ traefik/       # Reverse proxy config
 
 ### Database
 
-Three core tables (defined in `postgres/init/01-schema.sql`):
-- **`users`** — roles: `admin | user | guest`. `auth_provider` is `credentials | google | system`.
-- **`bookings`** — aircraft reservations; `repeat_group_id` (UUID) groups recurring bookings. `plane` is one of the club's registration codes (OH-CON, OH-816, OH-829, OH-475, OH-386).
+Tables (defined in `postgres/init/01-schema.sql`):
+- **`users`** — `roles` is a text array of `admin | user | guest`. `auth_provider` is `credentials | google | system`. Accounts whose only role is `guest` cannot log in.
+- **`bookings`** — aircraft reservations; `repeat_group_id` (UUID) groups recurring bookings. `plane` is a registration from `nextjs/data/planes.json` (OH-CON, OH-386, OH-PDX, OH-816, OH-829, OH-475).
 - **`guest_bookings`** — contact info for unauthenticated bookings, linked 1:1 to a `bookings` row.
 - **`bullets`** — club announcements.
+- **`billable_items`** — flight logs and other charges (`billable_type`: flight, membership, hangar, instruction, other). `payment_status` moves `recorded → checked → invoiced → paid`; rows are soft-deleted with `deleted_at`.
 - **`metar_data`** — METAR weather records for EFSA, upserted every 2 min by the cronjob, retained 7 days.
+- `accounts`, `sessions`, `verification_tokens` — NextAuth adapter tables (sessions themselves are JWTs).
+
+`postgres/init/02–04` seed an admin, a test user, a guest user, bulletins and bookings.
 
 The database connection is a `pg.Pool` singleton exported from `utilities/db.ts`. It is `null` when `DATABASE_CONNECTION_STRING` is unset or `CI=true` — always null-check before querying.
 
@@ -107,7 +111,7 @@ Configured in `auth.ts`. Two providers:
 1. **Google OAuth** — restricted to `@savonlinnanlentokerho.fi` domain via `hd` parameter. First login auto-creates a `user`-role record.
 2. **Credentials** — email + bcrypt password, validated by `LoginFormSchema` (Zod).
 
-The JWT callback fetches `id`, `role`, and `full_name` from the DB for both providers. The session callback re-fetches the same fields on every request to keep role data fresh; it returns `null` (invalidating the session) if the user is deleted or on DB error.
+The JWT callback fetches `id`, `roles`, and `full_name` from the DB for both providers. The session callback re-fetches the same fields on every request to keep role data fresh; it returns `null` (invalidating the session) if the user is deleted or on DB error.
 
 Session strategy is JWT with 30-day expiry. `trustHost: true` is required because the app runs behind Traefik.
 
@@ -128,7 +132,7 @@ Proxied through the Next.js app (`/api/umami/script` and `/api/umami/send`) to a
 
 ## Environment Variables
 
-Copy `.env.example` to `.env`:
+Copy `nextjs/.env.example` to `nextjs/.env` (Claude's hooks block editing `.env` itself):
 
 | Variable | Purpose |
 |---|---|
@@ -139,13 +143,17 @@ Copy `.env.example` to `.env`:
 | `SESSION_SECRET` | Legacy jose JWT secret (used by `utilities/sessions.ts`) |
 | `NEXT_PUBLIC_UMAMI_WEBSITE_ID` | Umami site ID (optional) |
 | `UMAMI_INTERNAL_URL` | Internal Umami URL (default: `http://salko-umami:3000`) |
+| `ALLOW_INDEXING` | `true` only in production; otherwise `robots.ts` disallows crawling |
+| `GOOGLE_SERVICE_ACCOUNT_KEY` / `FLIGHT_LOG_SPREADSHEET_ID` | Google Sheets export of flight logs (optional) |
+| `E2E_USER_*` / `E2E_ADMIN_*` | `_EMAIL` and `_PASSWORD` of existing accounts for e2e tests against a non-local database (optional) |
 
 ## Deployment
 
-CI/CD runs on GitHub Actions with self-hosted Hetzner Cloud runners. Workflows are manually triggered (`workflow_dispatch`) or via `repository_dispatch`:
-- `build-and-publish-prod.yaml` → builds Docker image, tags and pushes to GHCR
-- `deploy-app-prod.yaml` → SSH into server, `docker compose pull && up`
-- `db-migrate.yaml` → applies `postgres/migrations/` to the dev or prod database (see Schema Changes)
-- `main` branch = production; `dev` branch = development environment
+CI/CD runs on GitHub Actions. Build jobs run on GitHub-hosted runners; jobs that touch the server create a temporary self-hosted runner in Hetzner Cloud (`create-runner` / `delete-runner`). `main` is production and `dev` is the development environment. Changes reach either one only through a PR and these workflows, never by hand on the server.
+
+- `build-and-publish-dev.yaml` runs on pushes to `dev` that touch `nextjs/`, pushes the image to GHCR and triggers `deploy-app-dev.yaml`.
+- `build-and-publish-prod.yaml` (manual, from `main`) builds the prod image; `deploy-app-prod.yaml` (manual or `repository_dispatch`) runs `docker compose pull && up` on the server.
+- `db-migrate.yaml` applies `postgres/migrations/` to the dev or prod database (see Schema Changes).
+- `deploy-cronjobs-docker.yaml`, `deploy-monitoring.yaml` and `deploy-traefik.yaml` deploy the other stacks; `ansible-provision.yaml` and `terraform-plan-and-apply.yaml` manage the host.
 
 The Next.js build uses `output: "standalone"` and runs behind Traefik with TLS via Cloudflare.
