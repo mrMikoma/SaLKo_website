@@ -1,3 +1,5 @@
+@AGENTS.md
+
 # CLAUDE.md - SaLKo Website Development Guide
 
 This document provides comprehensive guidelines for AI assistants (Claude Code) working on the Savonlinnan Lentokerho (SaLKo) website project.
