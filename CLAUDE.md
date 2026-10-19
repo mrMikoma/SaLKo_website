@@ -63,6 +63,8 @@ Shared config lives in `.claude/` (`settings.json`, `hooks/`, `skills/`, `agents
 - **PostToolUse** (`hooks/lint-edited-file.sh`): runs `eslint --quiet` on each edited file under `nextjs/` and feeds errors back.
 - **Stop** (`hooks/typecheck.sh`): runs `tsc --noEmit` once per turn when a `.ts`/`.tsx` file changed since the last check, and feeds errors back.
 
+`.mcp.json` adds the `next-devtools` MCP server (`next-devtools-mcp`, pinned, telemetry off), which Claude Code asks you to approve once. It finds running Next dev servers (`nextjs_index`) and calls their built-in `/_next/mcp` tools (`nextjs_call`): `get_errors`, `get_logs`, `get_routes`, `get_page_metadata`, `get_server_action_by_id` and more. `get_errors` only reports once a browser is connected to the dev server, so open the page with `playwright-cli` first. Use `playwright-cli` rather than its `browser_eval` tool for driving the browser.
+
 ## Architecture
 
 ### Monorepo Layout
