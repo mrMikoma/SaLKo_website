@@ -109,7 +109,7 @@ const calculatebookingOffset = (booking: BookingType, hour: string) => {
     hour: parseInt(hour.split(":")[0]),
   });
   let top = 0;
-  let diff = cellStart.diff(bookingStart, "hours").hours;
+  const diff = cellStart.diff(bookingStart, "hours").hours;
   if (diff < 0) {
     top = diff * -100;
   }

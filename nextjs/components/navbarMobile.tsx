@@ -19,21 +19,11 @@ import Login from "@/components/auth/login";
 import Logout from "@/components/auth/logout";
 
 const NavbarMobile = (handleLogoutProp: { handleLogout: () => void }) => {
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
   const { isMobileMenuOpen, setIsMobileMenuOpen } = useNavbar();
   const pathName = usePathname();
-  const [authenticated, setAuthenticated] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  useEffect(() => {
-    if (session?.user) {
-      setAuthenticated(true);
-      setIsAdmin(session.user.roles?.includes("admin") || false);
-    } else {
-      setAuthenticated(false);
-      setIsAdmin(false);
-    }
-  }, [session, status]);
+  const authenticated = Boolean(session?.user);
+  const isAdmin = session?.user?.roles?.includes("admin") || false;
 
   // Toggle menu visibility
   const handleToggle = () => {
