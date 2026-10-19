@@ -1,6 +1,6 @@
 services:
   ofelia:
-    image: mcuadros/ofelia:0.3.19
+    image: mcuadros/ofelia:0.3.22
     container_name: ${NAME_PREFIX:-salko}-ofelia-${BRANCH_SUFFIX:-prod}
     command: daemon --docker
     volumes:
