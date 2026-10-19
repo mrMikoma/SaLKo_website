@@ -64,9 +64,9 @@ export default function Page() {
             <Image
               src="/images/SaLKon Logo_vaakunaversio.png"
               alt="SaLKo"
-              width={80}
-              height={26}
-              className=""
+              width={120}
+              height={124}
+              className="w-20 h-auto"
             />
             <h2 className="text-lg md:text-2xl text-sbluel font-bold text-center md:text-left">
               {name}

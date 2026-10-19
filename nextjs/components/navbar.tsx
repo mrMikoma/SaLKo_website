@@ -75,7 +75,8 @@ const Navbar = () => {
                 src="/images/SaLKon Logo_vaakunaversio.png"
                 alt="SaLKo"
                 width={120}
-                height={40}
+                height={124}
+                loading="eager"
                 className="w-20 h-auto md:w-26"
               />
             </span>

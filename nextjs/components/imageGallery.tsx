@@ -96,6 +96,7 @@ const ImageGallery = ({ images, title = "Gallery" }: ImageGalleryProps) => {
             src={images[currentIndex].src}
             alt={images[currentIndex].alt || title}
             fill
+            sizes="(min-width: 1280px) 1280px, 100vw"
             className="object-cover transition-opacity duration-500"
             priority={currentIndex === 0}
           />

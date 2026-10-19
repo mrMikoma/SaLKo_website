@@ -785,6 +785,7 @@ export default function Page() {
                 src="/images/planning_1.jpg"
                 alt="Teoriaopintojen yhdistäminen käytäntöön"
                 fill
+                sizes="(min-width: 768px) 33vw, 100vw"
                 className="object-cover group-hover:scale-105 transition-transform duration-300 opacity-85"
               />
             </div>
@@ -806,6 +807,7 @@ export default function Page() {
                 src="/images/planning_2.jpg"
                 alt="Lennon suunnittelua"
                 fill
+                sizes="(min-width: 768px) 33vw, 100vw"
                 className="object-cover group-hover:scale-105 transition-transform duration-300 opacity-85"
               />
             </div>
@@ -826,6 +828,7 @@ export default function Page() {
                 src="/images/training_1.jpg"
                 alt="Lentoharjoittelua"
                 fill
+                sizes="(min-width: 768px) 33vw, 100vw"
                 className="object-cover group-hover:scale-105 transition-transform duration-300 opacity-85"
               />
             </div>
