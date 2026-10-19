@@ -23,9 +23,35 @@ bun run lint
 
 # Run METAR cronjob locally
 bun run cronjob:update-metar              # or: tsx ../cronjobs/update-metar/index.ts
+
+# E2E tests (Playwright) — starts `bun dev`, or reuses a server already on :3000
+bun run test:e2e
+bun run test:e2e e2e/smoke.spec.ts -g kalusto   # one file / filter by title
+bun run test:e2e:ui                             # interactive UI mode
 ```
 
-There are no automated tests.
+## Testing and Browser Checks
+
+Playwright e2e tests live in `nextjs/e2e/` (config: `nextjs/playwright.config.ts`). There are no unit tests.
+
+- `smoke.spec.ts` checks that every public page renders an `h1`, that protected routes redirect anonymous visitors to `/`, and that the login dialog opens.
+- Every test fails on an uncaught page error or a `console.error` (auto fixture in `e2e/fixtures.ts`), so import `test`/`expect` from `./fixtures`, not from `@playwright/test`.
+- Member-area specs run only when `E2E_USER_EMAIL` and `E2E_USER_PASSWORD` (a credentials account in the local DB) are set in `nextjs/.env`. `auth.setup.ts` logs in once and saves the session to `nextjs/playwright/.auth/user.json`.
+- A dev server already listening on :3000 is reused. In a worktree, when another checkout's server owns :3000, run `PORT=3001 bun run test:e2e` so the tests hit this tree's code.
+
+After changing UI, check it in a real browser with Playwright CLI, run from `nextjs/`. Use `bunx --no-install`, which runs the pinned dev dependency and refuses to download the deprecated unscoped `playwright-cli` package:
+
+```bash
+bunx --no-install playwright-cli open http://localhost:3000/kalusto  # headless; --headed to watch
+bunx --no-install playwright-cli snapshot          # accessibility tree with element refs (e12…)
+bunx --no-install playwright-cli click e12         # act on a ref from the snapshot
+bunx --no-install playwright-cli console           # browser console messages
+bunx --no-install playwright-cli screenshot --filename=/tmp/page.png   # then Read the PNG
+bunx --no-install playwright-cli state-load playwright/.auth/user.json # continue logged in
+bunx --no-install playwright-cli close
+```
+
+`bunx --no-install playwright-cli --help` lists every command and prints the path of its agent skill file. Snapshots and console logs are written to `nextjs/.playwright-cli/`, which is gitignored.
 
 ## Architecture
 
