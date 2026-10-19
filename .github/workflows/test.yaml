@@ -1,0 +1,105 @@
+name: Test
+
+on:
+  pull_request:
+    branches:
+      - dev
+      - main
+    paths:
+      - "nextjs/**"
+      - "postgres/**"
+      - ".github/workflows/test.yaml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Lint, types and e2e
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: nextjs
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+
+      # Same compose file and init scripts as local development; throwaway
+      # credentials, the database only lives for this job
+      - name: Start Postgres
+        working-directory: postgres
+        run: |
+          cat > .env <<'EOF'
+          POSTGRES_USER=postgres
+          POSTGRES_PASSWORD=ci-postgres
+          POSTGRES_DB=salko
+          APP_DB_USER=salko_app
+          APP_DB_PASSWORD=ci-app
+          UMAMI_DB_USER=umami
+          UMAMI_DB_PASSWORD=ci-umami
+          EOF
+          docker compose up -d
+          # The init scripts run on a socket-only server; TCP answers once they are done
+          for _ in $(seq 60); do
+            docker exec salko-postgres pg_isready -q -h 127.0.0.1 -U postgres -d salko && exit 0
+            sleep 2
+          done
+          docker logs salko-postgres
+          exit 1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 24
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2.2.0
+        with:
+          bun-version: 1.4.3
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Type check
+        run: |
+          bunx --no-install next typegen
+          bunx --no-install tsc --noEmit
+
+      - name: Install Chromium
+        run: bunx --no-install playwright install --with-deps chromium
+
+      - name: Write .env
+        run: |
+          cat > .env <<EOF
+          DATABASE_CONNECTION_STRING=postgresql://salko_app:ci-app@localhost:5432/salko
+          NEXTAUTH_SECRET=$(openssl rand -base64 32)
+          NEXTAUTH_URL=http://localhost:3000
+          SESSION_SECRET=$(openssl rand -base64 32)
+          GOOGLE_CLIENT_ID=ci-placeholder
+          GOOGLE_CLIENT_SECRET=ci-placeholder
+          EOF
+
+      # Builds the app, starts .next/standalone/server.js and creates the
+      # e2e accounts in the job's database (see playwright.config.ts)
+      - name: Run Playwright
+        run: bun run test:e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: playwright-report
+          path: |
+            nextjs/playwright-report/
+            nextjs/test-results/
+          retention-days: 7

@@ -33,7 +33,7 @@ bun run test:e2e --project=setup                # only (re)create the e2e accoun
 
 ## Testing and Browser Checks
 
-Playwright e2e tests live in `nextjs/e2e/` (config: `nextjs/playwright.config.ts`). There are no unit tests.
+Playwright e2e tests live in `nextjs/e2e/` (config: `nextjs/playwright.config.ts`). There are no unit tests. `.github/workflows/test.yaml` runs lint, the type check and the e2e suite on every PR to `dev` or `main` that touches `nextjs/` or `postgres/`. In CI the suite runs against a production build served by `.next/standalone/server.js`, as in the Docker image, and a Postgres built from `postgres/init/`.
 
 - `smoke.spec.ts` checks that every public page renders an `h1`, that protected routes redirect anonymous visitors to `/`, and that the login dialog opens.
 - Every test fails on an uncaught page error or a `console.error` (auto fixture in `e2e/fixtures.ts`), so import `test`/`expect` from `./fixtures`, not from `@playwright/test`.
@@ -156,6 +156,7 @@ CI/CD runs on GitHub Actions. Build jobs run on GitHub-hosted runners; jobs that
 - `build-and-publish-dev.yaml` runs on pushes to `dev` that touch `nextjs/`, pushes the image to GHCR and triggers `deploy-app-dev.yaml`.
 - `build-and-publish-prod.yaml` (manual, from `main`) builds the prod image; `deploy-app-prod.yaml` (manual or `repository_dispatch`) runs `docker compose pull && up` on the server.
 - `db-migrate.yaml` applies `postgres/migrations/` to the dev or prod database (see Schema Changes).
+- `test.yaml` runs lint, types and the e2e suite on PRs (see Testing and Browser Checks).
 - `deploy-cronjobs-docker.yaml`, `deploy-monitoring.yaml` and `deploy-traefik.yaml` deploy the other stacks; `ansible-provision.yaml` and `terraform-plan-and-apply.yaml` manage the host.
 
 The Next.js build uses `output: "standalone"` and runs behind Traefik with TLS via Cloudflare.

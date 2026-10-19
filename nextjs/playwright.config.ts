@@ -9,6 +9,14 @@ dotenv.config({ path: ".env", quiet: true });
 const port = Number(process.env.PORT ?? 3000);
 const baseURL = process.env.E2E_BASE_URL ?? `http://localhost:${port}`;
 
+// CI tests the production build, laid out like the Docker image
+const ciServer = [
+  "bun run build",
+  "cp -r public .next/standalone/",
+  "cp -r .next/static .next/standalone/.next/",
+  "node .next/standalone/server.js",
+].join(" && ");
+
 export default defineConfig({
   testDir: "./e2e",
   outputDir: "./test-results",
@@ -16,7 +24,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI
-    ? "github"
+    ? [["github"], ["html", { open: "never" }]]
     : [["list"], ["html", { open: "never" }]],
   use: {
     baseURL,
@@ -36,9 +44,18 @@ export default defineConfig({
   webServer: process.env.E2E_BASE_URL
     ? undefined
     : {
-        command: "bun dev",
+        command: process.env.CI ? ciServer : "bun dev",
         url: baseURL,
         reuseExistingServer: !process.env.CI,
-        timeout: 120_000,
+        timeout: process.env.CI ? 300_000 : 120_000,
+        env: {
+          // utilities/db.ts creates no pool when CI is set (for image builds
+          // without a database); the e2e server needs one
+          CI: "",
+          // server.js binds to HOSTNAME, which GitHub runners set to the
+          // machine name
+          HOSTNAME: "localhost",
+          PORT: String(port),
+        },
       },
 });
