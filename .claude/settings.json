@@ -1,0 +1,54 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "input=$(cat); cmd=$(echo \"$input\" | jq -r '.tool_input.command // \"\"'); if echo \"$cmd\" | grep -qE 'git (commit|push)'; then echo '{\"decision\": \"block\", \"reason\": \"git commit and git push are blocked — run these yourself\"}'; exit 0; fi"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "input=$(cat); file=$(echo \"$input\" | jq -r '.tool_input.file_path // \"\"'); if echo \"$file\" | grep -qP '\\.env$'; then echo '{\"decision\": \"block\", \"reason\": \".env is blocked — edit .env.example instead\"}'; fi"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /home/miko/repos/SaLKo_website/nextjs && bun run tsc --noEmit 2>&1 | tail -20"
+          },
+          {
+            "type": "command",
+            "command": "cd /home/miko/repos/SaLKo_website/nextjs && bun run lint 2>&1 | tail -20"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(jq -r '.tool_input.file_path // empty'); case \"$f\" in */postgres/init/*|*/postgres/migrations/*) jq -n --arg m 'Database change: every schema change goes into BOTH postgres/init/ (01-schema.sql, grants for new tables in 05-grant-app-permissions.sql) AND a new idempotent postgres/migrations/NNN_description.sql (IF NOT EXISTS / CREATE OR REPLACE / DO blocks, no BEGIN or COMMIT, GRANT ... TO :app_user, no SELECT of member data). Never edit a migration that has already run. Update the other side now if it is missing. See Schema Changes in CLAUDE.md.' '{hookSpecificOutput: {hookEventName: \"PostToolUse\", additionalContext: $m}}';; esac"
+          }
+        ]
+      }
+    ]
+  },
+  "worktree": {
+    "symlinkDirectories": ["nextjs/node_modules"]
+  },
+  "enabledPlugins": {
+    "claude-code-setup@claude-plugins-official": true
+  }
+}
