@@ -18,6 +18,9 @@ if [ -f "$stamp" ]; then
   [ -n "$changed" ] || exit 0
 fi
 
+# next-env.d.ts is generated (and gitignored); a fresh checkout has none yet
+[ -f next-env.d.ts ] || bunx --no-install next typegen >/dev/null 2>&1 || true
+
 if ! out=$(bunx --no-install tsc --noEmit --pretty false 2>&1); then
   echo "TypeScript errors (cd nextjs && bunx tsc --noEmit):" >&2
   echo "$out" | head -40 >&2
