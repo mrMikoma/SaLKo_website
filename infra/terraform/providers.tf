@@ -1,16 +1,24 @@
 terraform {
+  required_version = ">= 1.15.0, < 1.17.0"
+
   required_providers {
     hcloud = {
       source  = "hetznercloud/hcloud"
-      version = ">= 1.51.0"
+      version = "~> 1.70.0"
     }
     github = {
       source  = "integrations/github"
-      version = ">= 6.6.0"
+      version = "~> 6.13.0"
     }
+    # Held below 5.26: 5.26.0+ plans a spurious update on every existing
+    # cloudflare_dns_record (cloudflare/terraform-provider-cloudflare#7387).
     cloudflare = {
       source  = "cloudflare/cloudflare"
-      version = ">= 5.5.0"
+      version = "~> 5.25.0"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.9.0"
     }
   }
 
