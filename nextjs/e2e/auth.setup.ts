@@ -1,21 +1,21 @@
 import { test as setup, expect } from "@playwright/test";
-import { STORAGE_STATE, hasCredentials } from "./fixtures";
+import { accounts, seedAccount } from "./accounts";
 
-// Logs in once with a credentials account and saves the session cookie, so
-// member-area specs (and `playwright-cli state-load`) can start logged in.
-setup("log in with credentials", async ({ page }) => {
-  setup.skip(!hasCredentials, "E2E_USER_EMAIL / E2E_USER_PASSWORD not set");
+// Logs in once per account and saves the session cookie, so the member and
+// admin specs (and `playwright-cli state-load`) can start logged in.
+for (const account of Object.values(accounts)) {
+  if (!account) continue;
 
-  await page.goto("/");
-  await page.getByRole("button", { name: "Jäsenalue" }).click();
-  await page
-    .getByRole("textbox", { name: "Sähköposti" })
-    .fill(process.env.E2E_USER_EMAIL!);
-  await page
-    .getByRole("textbox", { name: "Salasana" })
-    .fill(process.env.E2E_USER_PASSWORD!);
-  await page.getByRole("button", { name: "Kirjaudu sisään" }).click();
-  await expect(page.getByText("Et ole kirjautunut jäsenalueelle")).toBeHidden();
+  setup(`log in as ${account.role}`, async ({ page }) => {
+    if (account.seed) await seedAccount(account);
 
-  await page.context().storageState({ path: STORAGE_STATE });
-});
+    await page.goto("/");
+    await page.getByRole("button", { name: "Jäsenalue" }).click();
+    await page.getByRole("textbox", { name: "Sähköposti" }).fill(account.email);
+    await page.getByRole("textbox", { name: "Salasana" }).fill(account.password);
+    await page.getByRole("button", { name: "Kirjaudu sisään" }).click();
+    await expect(page.getByText("Et ole kirjautunut jäsenalueelle")).toBeHidden();
+
+    await page.context().storageState({ path: account.storageState });
+  });
+}

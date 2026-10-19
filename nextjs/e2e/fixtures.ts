@@ -1,11 +1,5 @@
 import { test as base, expect } from "@playwright/test";
 
-export const STORAGE_STATE = "playwright/.auth/user.json";
-
-export const hasCredentials = Boolean(
-  process.env.E2E_USER_EMAIL && process.env.E2E_USER_PASSWORD
-);
-
 // Fails any test whose page throws or logs console.error — catches hydration
 // errors and broken client components that still render a 200 page.
 export const test = base.extend<{ browserErrors: string[] }>({
