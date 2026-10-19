@@ -57,6 +57,10 @@ jobs:
               # No cronjob changes, but workflow file changed - deploy all
               echo "jobs=$ALL_JOBS" >> $GITHUB_OUTPUT
               echo "deploy_all=true" >> $GITHUB_OUTPUT
+            elif echo "$CHANGED_FILES" | grep -qE '^cronjobs/[^/]+$'; then
+              # Shared files such as the docker-compose files changed - deploy all
+              echo "jobs=$ALL_JOBS" >> $GITHUB_OUTPUT
+              echo "deploy_all=true" >> $GITHUB_OUTPUT
             else
               # Extract changed job directories (only actual directories with Dockerfiles)
               CHANGED_DIRS=$(echo "$CHANGED_FILES" | cut -d'/' -f2 | sort -u)
@@ -322,7 +326,8 @@ jobs:
       - create-runner
       - deploy
     runs-on: ubuntu-24.04
-    if: ${{ always() }}
+    # Only when a runner was actually created
+    if: ${{ always() && needs.create-runner.outputs.server_id != '' }}
     steps:
       - name: Delete runner
         uses: Cyclenerd/hcloud-github-runner@v1.4.1
