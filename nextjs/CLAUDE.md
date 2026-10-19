@@ -38,8 +38,10 @@ npm run lint         # Run ESLint
 
 ### Database
 ```bash
-# Run migrations (from project root)
-psql $DATABASE_CONNECTION_STRING -f postgres/migrations/<file>.sql
+# Migrations run through the "Database Migrations" workflow (.github/workflows/db-migrate.yaml).
+# Every schema change goes into postgres/init/ and postgres/migrations/, see ../CLAUDE.md.
+# Locally, from the project root, against a running postgres container:
+APP_DB_USER=salko_app bash postgres/migrate.sh <container> postgres/migrations --dry-run
 
 # Connect to database
 psql $DATABASE_CONNECTION_STRING

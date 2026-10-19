@@ -2,34 +2,50 @@
 -- Date: 2026-01-21
 -- Description: Flight hour logging and billing system tables
 -- Note: Aircraft data is sourced from nextjs/data/planes.json and prices.json
+-- init/01-schema.sql already creates all of this.
 
 -- Types of billable items
-CREATE TYPE billable_type AS ENUM (
-  'flight',
-  'membership',
-  'hangar',
-  'instruction',
-  'other'
-);
+DO $$
+BEGIN
+  CREATE TYPE billable_type AS ENUM (
+    'flight',
+    'membership',
+    'hangar',
+    'instruction',
+    'other'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- Payment status workflow
-CREATE TYPE payment_status AS ENUM (
-  'recorded',    -- Initial entry (auto for flights)
-  'checked',     -- Verified against paper logbook
-  'invoiced',    -- Invoice sent
-  'paid'         -- Payment received
-);
+DO $$
+BEGIN
+  CREATE TYPE payment_status AS ENUM (
+    'recorded',    -- Initial entry (auto for flights)
+    'checked',     -- Verified against paper logbook
+    'invoiced',    -- Invoice sent
+    'paid'         -- Payment received
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- Billing period types
-CREATE TYPE billing_period AS ENUM (
-  'one_time',
-  'monthly',
-  'quarterly',
-  'yearly'
-);
+DO $$
+BEGIN
+  CREATE TYPE billing_period AS ENUM (
+    'one_time',
+    'monthly',
+    'quarterly',
+    'yearly'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END
+$$;
 
 -- Main billable items table
-CREATE TABLE billable_items (
+CREATE TABLE IF NOT EXISTS billable_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   -- Core identification
@@ -74,16 +90,16 @@ CREATE TABLE billable_items (
 );
 
 -- Indexes for efficient querying
-CREATE INDEX idx_billable_items_type ON billable_items(billable_type);
-CREATE INDEX idx_billable_items_status ON billable_items(payment_status);
-CREATE INDEX idx_billable_items_member ON billable_items(member_id);
-CREATE INDEX idx_billable_items_external_ref ON billable_items(external_ref);
-CREATE INDEX idx_billable_items_date ON billable_items(item_date);
-CREATE INDEX idx_billable_items_aircraft ON billable_items(aircraft_registration)
+CREATE INDEX IF NOT EXISTS idx_billable_items_type ON billable_items(billable_type);
+CREATE INDEX IF NOT EXISTS idx_billable_items_status ON billable_items(payment_status);
+CREATE INDEX IF NOT EXISTS idx_billable_items_member ON billable_items(member_id);
+CREATE INDEX IF NOT EXISTS idx_billable_items_external_ref ON billable_items(external_ref);
+CREATE INDEX IF NOT EXISTS idx_billable_items_date ON billable_items(item_date);
+CREATE INDEX IF NOT EXISTS idx_billable_items_aircraft ON billable_items(aircraft_registration)
   WHERE aircraft_registration IS NOT NULL;
 
 -- Unique constraint on external_ref when present
-CREATE UNIQUE INDEX idx_billable_items_unique_external_ref
+CREATE UNIQUE INDEX IF NOT EXISTS idx_billable_items_unique_external_ref
   ON billable_items(external_ref)
   WHERE external_ref IS NOT NULL;
 
@@ -96,7 +112,7 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
-CREATE TRIGGER update_billable_items_updated_at
+CREATE OR REPLACE TRIGGER update_billable_items_updated_at
   BEFORE UPDATE ON billable_items
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
@@ -105,3 +121,6 @@ CREATE TRIGGER update_billable_items_updated_at
 COMMENT ON TABLE billable_items IS 'All billable items: flights, memberships, hangar fees, etc.';
 COMMENT ON COLUMN billable_items.external_ref IS 'Links to Google Sheet log_id for flights';
 COMMENT ON COLUMN billable_items.aircraft_registration IS 'Aircraft registration (e.g., OH-CON) - references planes.json';
+
+-- Same grant as init/05-grant-app-permissions.sql (default privileges leave out DELETE)
+GRANT SELECT, INSERT, UPDATE, DELETE ON billable_items TO :app_user;
