@@ -40,19 +40,28 @@ Playwright e2e tests live in `nextjs/e2e/` (config: `nextjs/playwright.config.ts
 - `auth.setup.ts` creates two credentials accounts in the local database, `e2e-user@salko.invalid` (member) and `e2e-admin@salko.invalid` (admin), both with password `E2e-local-pass1!`. It logs in as each and saves the sessions to `nextjs/playwright/.auth/{user,admin}.json` for `member.spec.ts` and `admin.spec.ts`. It only writes to a database on localhost or a Docker bridge address (172.16.0.0/12). For any other database, set `E2E_USER_EMAIL`/`E2E_USER_PASSWORD` and `E2E_ADMIN_EMAIL`/`E2E_ADMIN_PASSWORD` in `nextjs/.env` to existing accounts, or those specs are skipped.
 - A dev server already listening on :3000 is reused. In a worktree, when another checkout's server owns :3000, run `PORT=3001 bun run test:e2e` so the tests hit this tree's code.
 
-After changing UI, check it in a real browser with Playwright CLI, run from `nextjs/`. Use `bunx --no-install`, which runs the pinned dev dependency and refuses to download the deprecated unscoped `playwright-cli` package:
+After changing UI, check it in a real browser with Playwright CLI (the `playwright-cli` skill), run from `nextjs/` where its config lives. In Claude Code sessions the SessionStart hook puts `nextjs/node_modules/.bin` on PATH, so `playwright-cli` is the pinned dev dependency. In a plain terminal use `bunx --no-install playwright-cli`; without `--no-install`, bunx downloads the deprecated unscoped `playwright-cli` package when run outside `nextjs/`.
 
 ```bash
-bunx --no-install playwright-cli open http://localhost:3000/kalusto  # headless; --headed to watch
-bunx --no-install playwright-cli snapshot          # accessibility tree with element refs (e12…)
-bunx --no-install playwright-cli click e12         # act on a ref from the snapshot
-bunx --no-install playwright-cli console           # browser console messages
-bunx --no-install playwright-cli screenshot --filename=/tmp/page.png   # then Read the PNG
-bunx --no-install playwright-cli state-load playwright/.auth/admin.json # continue logged in (user.json for a member)
-bunx --no-install playwright-cli close
+playwright-cli open http://localhost:3000/kalusto  # headless; --headed to watch
+playwright-cli snapshot          # accessibility tree with element refs (e12…)
+playwright-cli click e12         # act on a ref from the snapshot
+playwright-cli console           # browser console messages
+playwright-cli screenshot --filename=/tmp/page.png   # then Read the PNG
+playwright-cli state-load playwright/.auth/admin.json # continue logged in (user.json for a member)
+playwright-cli close
 ```
 
-`bunx --no-install playwright-cli --help` lists every command and prints the path of its agent skill file. Snapshots and console logs are written to `nextjs/.playwright-cli/`, which is gitignored.
+Snapshots and console logs are written to `nextjs/.playwright-cli/`, which is gitignored.
+
+## Claude Code Setup
+
+Shared config lives in `.claude/` (`settings.json`, `hooks/`, `skills/`, `agents/`); `.claude/worktrees/` and `settings.local.json` stay local. Hooks:
+
+- **SessionStart** (`hooks/session-start.sh`): adds `nextjs/node_modules/.bin` to PATH and reports whether `salko-postgres` and this checkout's dev server are running.
+- **PreToolUse**: blocks `git commit` / `git push` (run them yourself) and edits to `.env`.
+- **PostToolUse** (`hooks/lint-edited-file.sh`): runs `eslint --quiet` on each edited file under `nextjs/` and feeds errors back.
+- **Stop** (`hooks/typecheck.sh`): runs `tsc --noEmit` once per turn when a `.ts`/`.tsx` file changed since the last check, and feeds errors back.
 
 ## Architecture
 
