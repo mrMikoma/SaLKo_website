@@ -51,6 +51,20 @@ Three core tables (defined in `postgres/init/01-schema.sql`):
 
 The database connection is a `pg.Pool` singleton exported from `utilities/db.ts`. It is `null` when `DATABASE_CONNECTION_STRING` is unset or `CI=true` — always null-check before querying.
 
+### Schema Changes
+
+**Every database change goes into both `postgres/init/` and `postgres/migrations/`, in the same PR.**
+
+- `postgres/init/` is the full current schema. It only runs when a database is created from scratch: the dev database on every dev deploy, or a new server. Edit the definitions in `01-schema.sql`, and add grants for new tables to `05-grant-app-permissions.sql`.
+- `postgres/migrations/NNN_description.sql` is the same change for databases that already exist, which in practice means prod. `.github/workflows/db-migrate.yaml` applies pending files in name order with `postgres/migrate.sh`. It runs on dev automatically when migrations reach the `dev` branch, and on prod only manually, from `main`, after approval. Run the prod migration right before deploying the code that needs it.
+
+Rules for migration files:
+- Name them `NNN_snake_case.sql` with the next free number. Never edit or rename a migration once it has run anywhere; `migrate.sh` compares checksums and stops. Fix mistakes with a new migration.
+- Make them idempotent (`IF NOT EXISTS`, `IF EXISTS`, `CREATE OR REPLACE`, a `DO` block for `CREATE TYPE`). A database created from `init/` already has every change, so each migration must be a no-op there. Compare the result against `init/` before opening the PR.
+- Leave out `BEGIN`/`COMMIT`: each file runs in one transaction with its `schema_migrations` row, so `CREATE INDEX CONCURRENTLY` is not possible.
+- Grant new tables to the app role with `GRANT ... TO :app_user;`, matching `05-grant-app-permissions.sql`. Default privileges leave out `DELETE`.
+- Don't `SELECT` member data, because the Actions logs are public.
+
 ### Authentication (NextAuth v5)
 
 Configured in `auth.ts`. Two providers:
@@ -95,6 +109,7 @@ Copy `.env.example` to `.env`:
 CI/CD runs on GitHub Actions with self-hosted Hetzner Cloud runners. Workflows are manually triggered (`workflow_dispatch`) or via `repository_dispatch`:
 - `build-and-publish-prod.yaml` → builds Docker image, tags and pushes to GHCR
 - `deploy-app-prod.yaml` → SSH into server, `docker compose pull && up`
+- `db-migrate.yaml` → applies `postgres/migrations/` to the dev or prod database (see Schema Changes)
 - `main` branch = production; `dev` branch = development environment
 
 The Next.js build uses `output: "standalone"` and runs behind Traefik with TLS via Cloudflare.

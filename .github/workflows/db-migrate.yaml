@@ -1,0 +1,173 @@
+name: Database Migrations
+
+# Applies postgres/migrations/*.sql with postgres/migrate.sh on salko0.
+# dev: runs on every push to dev that touches migrations. The dev database is
+#      rebuilt from postgres/init on each dev deploy, so this mainly checks that
+#      the migrations are no-ops on a database created from init.
+# prod: manual only, from main, after approval of the production environment.
+#       Run it right before deploying the code that needs the change.
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Database to migrate"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+          - prod
+      dry_run:
+        description: "Only list pending migrations"
+        required: true
+        default: false
+        type: boolean
+  push:
+    branches:
+      - dev
+    paths:
+      - "postgres/migrations/**"
+      - "postgres/migrate.sh"
+      - ".github/workflows/db-migrate.yaml"
+
+concurrency:
+  group: db-migrate-${{ github.event.inputs.environment || 'dev' }}
+  cancel-in-progress: false
+
+env:
+  TARGET: ${{ github.event.inputs.environment || 'dev' }}
+  DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+  NAME_PREFIX: "salko"
+  APP_DB_USER: "salko_app"
+
+jobs:
+  check:
+    name: Check target
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Prod migrations only from main
+        run: |
+          if [ "$TARGET" = "prod" ] && [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "❌ prod migrations must run from main (this run is on $GITHUB_REF)"
+            exit 1
+          fi
+          echo "Target: $TARGET, dry run: $DRY_RUN, ref: $GITHUB_REF"
+
+  create-runner:
+    name: Create Hetzner Cloud runner
+    needs: check
+    runs-on: ubuntu-24.04
+    outputs:
+      label: ${{ steps.create-hcloud-runner.outputs.label }}
+      server_id: ${{ steps.create-hcloud-runner.outputs.server_id }}
+    steps:
+      - name: Create runner
+        id: create-hcloud-runner
+        uses: Cyclenerd/hcloud-github-runner@v1.4.1
+        with:
+          mode: create
+          github_token: ${{ secrets.HETZNER_GHA_RUNNER_PAT }}
+          hcloud_token: ${{ secrets.HETZNER_API_TOKEN }}
+          network: ${{ secrets.HETZNER_NETWORK_ID }}
+          ssh_key: ${{ secrets.HETZNER_GHA_RUNNER_SSH_KEY_ID }}
+          server_type: cx23
+          location: hel1
+          image: ubuntu-24.04
+          pre_runner_script: |
+            set -ex
+            echo "Configuring private network routing..."
+            sleep 10
+            PRIVATE_IFACE=$(ip -o addr show | grep "10.1.1." | awk '{print $2}' | head -n1)
+            if [ -z "$PRIVATE_IFACE" ]; then
+              echo "No private interface found in 10.1.1.0/24 subnet, skipping network configuration"
+              exit 0
+            fi
+            PRIVATE_IP=$(ip -o -4 addr show $PRIVATE_IFACE | awk '{print $4}' | cut -d/ -f1)
+            echo "Found interface $PRIVATE_IFACE with IP $PRIVATE_IP"
+            cat > /etc/netplan/60-private-network.yaml <<'NETPLAN_EOF'
+            network:
+              version: 2
+              renderer: networkd
+              ethernets:
+                PLACEHOLDER_IFACE:
+                  dhcp4: false
+                  dhcp6: false
+                  accept-ra: false
+                  addresses:
+                    - PLACEHOLDER_IP/32
+                  routes:
+                    - to: 10.1.0.0/16
+                      via: 10.1.0.1
+                      on-link: true
+                      metric: 100
+                  nameservers:
+                    addresses:
+                      - 1.1.1.1
+                      - 1.0.0.1
+            NETPLAN_EOF
+            sed -i "s/PLACEHOLDER_IFACE/$PRIVATE_IFACE/g" /etc/netplan/60-private-network.yaml
+            sed -i "s|PLACEHOLDER_IP|$PRIVATE_IP|g" /etc/netplan/60-private-network.yaml
+            netplan apply
+            echo "Network configuration applied successfully"
+            ip route show
+
+  migrate:
+    name: Migrate ${{ github.event.inputs.environment || 'dev' }}
+    needs: create-runner
+    runs-on: ${{ needs.create-runner.outputs.label }}
+    environment: ${{ github.event.inputs.environment == 'prod' && 'production' || 'development' }}
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+        with:
+          sparse-checkout: |
+            postgres/migrations/
+            postgres/migrate.sh
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ vars.SERVER_IP_SALKO0 }} >> ~/.ssh/known_hosts
+
+      - name: Transfer migrations to SERVER
+        run: |
+          remote_dir="/home/salko/migrations/${TARGET}"
+          ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} "rm -rf ${remote_dir} && mkdir -p ${remote_dir}/migrations"
+          scp -i ~/.ssh/id_ed25519 postgres/migrate.sh "salko@${{ vars.SERVER_IP_SALKO0 }}:${remote_dir}/migrate.sh"
+          if compgen -G "postgres/migrations/*.sql" > /dev/null; then
+            scp -i ~/.ssh/id_ed25519 postgres/migrations/*.sql "salko@${{ vars.SERVER_IP_SALKO0 }}:${remote_dir}/migrations/"
+          fi
+
+      - name: Run migrations
+        run: |
+          remote_dir="/home/salko/migrations/${TARGET}"
+          flag=""
+          if [ "$DRY_RUN" = "true" ]; then
+            flag="--dry-run"
+          fi
+          ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} \
+            "APP_DB_USER=${APP_DB_USER} bash ${remote_dir}/migrate.sh ${NAME_PREFIX}-postgres-${TARGET} ${remote_dir}/migrations ${flag}"
+
+  delete-runner:
+    name: Delete Hetzner Cloud runner
+    needs:
+      - create-runner
+      - migrate
+    runs-on: ubuntu-24.04
+    # Only when a runner was actually created
+    if: ${{ always() && needs.create-runner.outputs.server_id != '' }}
+    steps:
+      - name: Delete runner
+        uses: Cyclenerd/hcloud-github-runner@v1.4.1
+        with:
+          mode: delete
+          github_token: ${{ secrets.HETZNER_GHA_RUNNER_PAT }}
+          hcloud_token: ${{ secrets.HETZNER_API_TOKEN }}
+          name: ${{ needs.create-runner.outputs.label }}
+          server_id: ${{ needs.create-runner.outputs.server_id }}
