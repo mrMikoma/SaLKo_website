@@ -1,0 +1,6 @@
+# Managed by Ansible (infra/ansible/roles/maintenance). Local changes are overwritten.
+# Replaces the stock schedule (06:00 local time plus up to 60 minutes).
+[Timer]
+OnCalendar=
+OnCalendar={{ maintenance_apt_upgrade_on_calendar }} {{ maintenance_timezone }}
+RandomizedDelaySec={{ maintenance_apt_upgrade_randomized_delay }}

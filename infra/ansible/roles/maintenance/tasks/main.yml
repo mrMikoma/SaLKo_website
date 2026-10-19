@@ -1,0 +1,140 @@
+---
+# Units installed by the removed cronjobs role (METAR now runs in Ofelia).
+- name: Find legacy cronjob systemd timers
+  ansible.builtin.find:
+    paths: /etc/systemd/system
+    patterns: "salko-cronjob-*.timer"
+    file_type: any
+  register: maintenance_legacy_timers
+
+- name: Find legacy cronjob systemd services
+  ansible.builtin.find:
+    paths: /etc/systemd/system
+    patterns: "salko-cronjob-*.service"
+    file_type: any
+  register: maintenance_legacy_services
+
+- name: Stop and disable legacy cronjob systemd units
+  ansible.builtin.systemd:
+    name: "{{ item.path | basename }}"
+    state: stopped
+    enabled: false
+  loop: "{{ maintenance_legacy_timers.files + maintenance_legacy_services.files }}"
+  loop_control:
+    label: "{{ item.path }}"
+
+- name: Remove legacy cronjob systemd units
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ maintenance_legacy_timers.files + maintenance_legacy_services.files }}"
+  loop_control:
+    label: "{{ item.path }}"
+  notify: Reload systemd
+
+- name: Install unattended-upgrades
+  ansible.builtin.apt:
+    name: unattended-upgrades
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Enable periodic unattended upgrades
+  ansible.builtin.template:
+    src: 20auto-upgrades.j2
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    mode: "0644"
+    owner: root
+    group: root
+
+- name: Configure unattended upgrades
+  ansible.builtin.template:
+    src: 52salko-unattended-upgrades.j2
+    dest: /etc/apt/apt.conf.d/52salko-unattended-upgrades
+    mode: "0644"
+    owner: root
+    group: root
+
+- name: Create systemd drop-in directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+    owner: root
+    group: root
+  loop:
+    - /etc/systemd/system/apt-daily-upgrade.timer.d
+    - /etc/systemd/journald.conf.d
+
+- name: Set unattended upgrade schedule
+  ansible.builtin.template:
+    src: apt-daily-upgrade.timer.conf.j2
+    dest: /etc/systemd/system/apt-daily-upgrade.timer.d/salko.conf
+    mode: "0644"
+    owner: root
+    group: root
+  notify: Restart maintenance timers
+
+- name: Install maintenance systemd units
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    mode: "0644"
+    owner: root
+    group: root
+  loop:
+    - salko-docker-prune.service
+    - salko-docker-prune.timer
+    - salko-reboot-if-required.service
+    - salko-reboot-if-required.timer
+  register: maintenance_unit_files
+  notify: Restart maintenance timers
+
+# A dry run does not write the unit files above, so new units cannot be enabled yet.
+- name: Enable and start maintenance timers
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  loop:
+    - apt-daily.timer
+    - apt-daily-upgrade.timer
+    - salko-docker-prune.timer
+    - salko-reboot-if-required.timer
+  when: not (ansible_check_mode and maintenance_unit_files is changed)
+
+- name: Check for existing Docker daemon configuration
+  ansible.builtin.stat:
+    path: /etc/docker/daemon.json
+  register: maintenance_docker_daemon_file
+
+- name: Read existing Docker daemon configuration
+  ansible.builtin.slurp:
+    src: /etc/docker/daemon.json
+  register: maintenance_docker_daemon_current
+  when: maintenance_docker_daemon_file.stat.exists
+
+- name: Configure Docker log rotation and live-restore
+  ansible.builtin.copy:
+    dest: /etc/docker/daemon.json
+    content: "{{ maintenance_docker_daemon_existing | combine(maintenance_docker_daemon_settings) | to_nice_json }}\n"
+    mode: "0644"
+    owner: root
+    group: root
+    backup: true
+    validate: /usr/bin/dockerd --validate --config-file %s
+  vars:
+    maintenance_docker_daemon_existing: >-
+      {{ (maintenance_docker_daemon_current.content | b64decode | trim | default('{}', true) | from_json)
+         if maintenance_docker_daemon_file.stat.exists else {} }}
+  notify: Reload Docker
+
+- name: Cap journald disk usage
+  ansible.builtin.template:
+    src: journald.conf.j2
+    dest: /etc/systemd/journald.conf.d/salko.conf
+    mode: "0644"
+    owner: root
+    group: root
+  notify: Restart journald

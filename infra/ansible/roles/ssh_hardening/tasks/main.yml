@@ -16,6 +16,7 @@
     - {regexp: '^#?AuthorizedKeysFile', line: 'AuthorizedKeysFile .ssh/authorized_keys'}
     - {regexp: '^#?PublicKeyAuthentication', line: 'PublicKeyAuthentication yes'}
     - {regexp: '^#?ChallengeResponseAuthentication', line: 'ChallengeResponseAuthentication no'}
+  notify: Restart SSH
 
 - name: Ensure root has SSH directory
   ansible.builtin.file:
@@ -28,8 +29,7 @@
     path: /etc/ssh/sshd_config
     line: "AllowUsers root salko"
     insertafter: EOF
+  notify: Restart SSH
 
-- name: Restart SSH
-  ansible.builtin.systemd:
-    name: ssh
-    state: restarted
+- name: Apply SSH configuration changes
+  ansible.builtin.meta: flush_handlers
