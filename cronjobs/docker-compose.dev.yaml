@@ -2,7 +2,7 @@ services:
   ofelia:
     image: mcuadros/ofelia:0.3.22
     container_name: ${NAME_PREFIX:-salko}-ofelia-${BRANCH_SUFFIX:-dev}
-    command: daemon --docker
+    command: daemon --docker -f label=com.docker.compose.project=salko-cronjobs-${BRANCH_SUFFIX:-dev}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     labels:
@@ -19,6 +19,8 @@ services:
     env_file: .env.dev
     environment:
       - DATABASE_CONNECTION_STRING=postgresql://${APP_DB_USER}:${APP_DB_PASSWORD}@${NAME_PREFIX}-postgres-${BRANCH_SUFFIX}:${PGPORT}/${POSTGRES_DB}
+    # Reaps the processes that Ofelia exec runs leave behind
+    init: true
     command: tail -f /dev/null
     labels:
       ofelia.enabled: "true"
