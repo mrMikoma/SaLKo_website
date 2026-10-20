@@ -29,17 +29,21 @@ const DEFAULT_START_HOUR = "9:00";
  * where it continues from the day before or into the next day
  */
 const getTimeLabel = (booking: BookingType, day: string): string => {
-  if (isFullDayBooking(booking)) return "Koko päivä";
-
   const bookingDays = getBookingDays(booking);
-  const start =
-    bookingDays[0] === day
-      ? DateTime.fromISO(booking.start_time).toFormat("HH:mm")
-      : "…";
-  const end =
-    bookingDays[bookingDays.length - 1] === day
-      ? DateTime.fromISO(booking.end_time).toFormat("HH:mm")
-      : "…";
+  const isFirstDay = bookingDays[0] === day;
+  const isLastDay = bookingDays[bookingDays.length - 1] === day;
+
+  // Full-day bookings, and the middle days of longer ones
+  if (isFullDayBooking(booking) || (!isFirstDay && !isLastDay)) {
+    return "Koko päivä";
+  }
+
+  const start = isFirstDay
+    ? DateTime.fromISO(booking.start_time).toFormat("HH:mm")
+    : "…";
+  const end = isLastDay
+    ? DateTime.fromISO(booking.end_time).toFormat("HH:mm")
+    : "…";
   return `${start}–${end}`;
 };
 
