@@ -1,78 +1,82 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
-import { DateTime } from "luxon";
+import { DateTime } from "@/utilities/clubTime";
+import { BOOKABLE_PLANES } from "@/utilities/planeHelpers";
 import {
   fetchBookingsForDateRange,
   addBooking,
   addGuestBooking,
+  addRepeatingBookings,
   updateBooking,
   removeBooking,
   BookingType,
+  BookingResult,
 } from "@/utilities/bookings";
+import type { BookingInput, GuestContactInput } from "@/schemas/bookingSchema";
 
-const PLANES = ["OH-CON", "OH-386", "OH-816", "OH-829", "OH-475"];
-
-interface UseBookingsOptions {
-  date?: string;
-  dates?: string[];
-  enabled?: boolean;
+export interface SaveBookingRequest {
+  booking: BookingType;
+  repeatEndDate?: string;
+  guestContact?: GuestContactInput;
+  // Save even though the aircraft is already booked (after the overlap warning)
+  allowOverlap?: boolean;
 }
 
+export type SaveBookingOutcome = BookingResult<unknown>;
+
 /**
- * Fetches bookings for multiple dates using optimized bulk query
- * Consolidates N×M queries (N dates × M planes) into a single query
+ * Fetches bookings for all bookable planes over the range the dates span,
+ * in a single query
  */
 const fetchBookingsForDates = async (dates: string[]): Promise<BookingType[]> => {
   if (dates.length === 0) return [];
 
-  // Sort dates to get range
   const sortedDates = [...dates].sort();
-  const startDate = sortedDates[0];
-  const endDate = sortedDates[sortedDates.length - 1];
+  const response = await fetchBookingsForDateRange(
+    [...BOOKABLE_PLANES],
+    sortedDates[0],
+    sortedDates[sortedDates.length - 1]
+  );
 
-  console.log(`Bulk fetching ${startDate} to ${endDate} for ${PLANES.length} planes`);
-
-  // SINGLE BULK QUERY instead of N×M queries
-  const response = await fetchBookingsForDateRange(PLANES, startDate, endDate);
-
-  if (response.status === "success" && Array.isArray(response.result)) {
-    console.log(`Bulk query returned ${response.result.length} bookings`);
-    return response.result as BookingType[];
+  if (response.status === "success") {
+    return response.result;
   }
-
-  console.error("Error fetching bookings:", response.result);
-  return [];
+  throw new Error(
+    response.status === "error" ? response.error : "Varausten haku epäonnistui"
+  );
 };
 
-/**
- * Fetches bookings for a single date using the bulk query for consistency
- */
-const fetchBookingsForDate = async (date: string): Promise<BookingType[]> => {
-  return fetchBookingsForDates([date]);
-};
+const toBookingInput = (booking: BookingType): BookingInput => ({
+  plane: booking.plane,
+  type: booking.type as BookingInput["type"],
+  title: booking.title,
+  description: booking.description,
+  start_time: booking.start_time,
+  end_time: booking.end_time,
+});
 
 /**
- * Custom hook for managing bookings data with React Query
- * Features:
- * - Automatic caching and revalidation
- * - Optimistic updates with rollback on error
- * - Prefetching for adjacent dates
- * - Loading and error states
+ * Bookings for the given dates, plus save and remove. Saving returns the
+ * server's answer (success, overlap conflict or error) so the booking modal
+ * can show it; removing throws with a Finnish message on failure.
  */
-export const useBookings = ({ date, dates, enabled = true }: UseBookingsOptions) => {
+export const useBookings = ({
+  dates,
+  enabled = true,
+}: {
+  dates: string[];
+  enabled?: boolean;
+}) => {
   const queryClient = useQueryClient();
 
-  // Determine which mode we're in
-  const dateList = dates || (date ? [date] : []);
+  // Range-based key: the same range is cached however the dates are ordered
+  const sortedDates = [...dates].sort();
+  const queryKey = [
+    "bookings",
+    "range",
+    sortedDates[0],
+    sortedDates[sortedDates.length - 1],
+  ];
 
-  // IMPROVED: Use range-based keys for better cache hits
-  // Sort dates to ensure consistent cache keys regardless of input order
-  const sortedDates = [...dateList].sort();
-  const queryKey = dateList.length > 1
-    ? ["bookings", "range", sortedDates[0], sortedDates[sortedDates.length - 1]]
-    : ["bookings", "single", dateList[0]];
-
-  // Fetch bookings for all planes on a specific date or dates
   const {
     data: bookings = [],
     isLoading,
@@ -81,221 +85,67 @@ export const useBookings = ({ date, dates, enabled = true }: UseBookingsOptions)
     refetch,
   } = useQuery({
     queryKey,
-    queryFn: () => dates ? fetchBookingsForDates(dates) : fetchBookingsForDate(date!),
-    enabled: enabled && dateList.length > 0 && dateList.every(d => DateTime.fromISO(d).isValid),
+    queryFn: () => fetchBookingsForDates(dates),
+    enabled:
+      enabled &&
+      dates.length > 0 &&
+      dates.every((d) => DateTime.fromISO(d).isValid),
     staleTime: 1000 * 60 * 5, // 5 minutes
     gcTime: 1000 * 60 * 30, // 30 minutes
     retry: 2,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
-  // ENHANCED: Prefetch adjacent dates and week view for smoother navigation
-  useEffect(() => {
-    if (dates || !date || !DateTime.fromISO(date).isValid) return;
+  const invalidateBookings = () =>
+    queryClient.invalidateQueries({ queryKey: ["bookings"], exact: false });
 
-    const currentDate = DateTime.fromISO(date);
-    const previousDate = currentDate.minus({ days: 1 }).toISODate();
-    const nextDate = currentDate.plus({ days: 1 }).toISODate();
+  const saveMutation = useMutation({
+    mutationFn: async ({
+      booking,
+      repeatEndDate,
+      guestContact,
+      allowOverlap,
+    }: SaveBookingRequest): Promise<SaveBookingOutcome> => {
+      const input = toBookingInput(booking);
+      const options = { allowOverlap };
 
-    // Prefetch previous day
-    if (previousDate) {
-      queryClient.prefetchQuery({
-        queryKey: ["bookings", "single", previousDate],
-        queryFn: () => fetchBookingsForDate(previousDate),
-        staleTime: 1000 * 60 * 5,
-      });
-    }
-
-    // Prefetch next day
-    if (nextDate) {
-      queryClient.prefetchQuery({
-        queryKey: ["bookings", "single", nextDate],
-        queryFn: () => fetchBookingsForDate(nextDate),
-        staleTime: 1000 * 60 * 5,
-      });
-    }
-
-    // ENHANCED: Prefetch current week for faster week view switching
-    const weekStart = currentDate.startOf("week").toISODate();
-    const weekEnd = currentDate.endOf("week").toISODate();
-    if (weekStart && weekEnd) {
-      const weekDates = Array.from({ length: 7 }, (_, i) =>
-        currentDate.startOf("week").plus({ days: i }).toISODate()
-      ).filter((d): d is string => d !== null);
-
-      queryClient.prefetchQuery({
-        queryKey: ["bookings", "range", weekStart, weekEnd],
-        queryFn: () => fetchBookingsForDates(weekDates),
-        staleTime: 1000 * 60 * 5,
-      });
-    }
-  }, [date, dates, queryClient]);
-
-  // Add booking mutation with optimistic update (supports both regular and guest bookings)
-  const addBookingMutation = useMutation({
-    mutationFn: async (newBooking: BookingType & { contactName?: string; contactEmail?: string; contactPhone?: string }) => {
-      // Check if this is a guest booking (no user_id or has guest contact info)
-      const isGuestBooking = !newBooking.user_id || (newBooking.contactName && newBooking.contactEmail && newBooking.contactPhone);
-
-      if (isGuestBooking && newBooking.contactName && newBooking.contactEmail && newBooking.contactPhone) {
-        // Guest booking
-        const response = await addGuestBooking({
-          plane: newBooking.plane,
-          start_time: newBooking.start_time,
-          end_time: newBooking.end_time,
-          type: newBooking.type,
-          title: newBooking.title,
-          description: newBooking.description,
-          contactInfo: {
-            contactName: newBooking.contactName,
-            contactEmail: newBooking.contactEmail,
-            contactPhone: newBooking.contactPhone,
-          },
-        });
-        if (response.status !== "success") {
-          throw new Error(
-            response.data instanceof Error
-              ? response.data.message
-              : "Failed to add guest booking"
-          );
-        }
-        return { ...newBooking, id: response.bookingId || -1 };
-      } else {
-        // Regular authenticated booking (the server takes the user from the session)
-        const response = await addBooking({
-          plane: newBooking.plane,
-          start_time: newBooking.start_time,
-          end_time: newBooking.end_time,
-          type: newBooking.type,
-          title: newBooking.title,
-          description: newBooking.description,
-        });
-        if (response.status !== "success") {
-          throw new Error(
-            response.data instanceof Error
-              ? response.data.message
-              : "Failed to add booking"
-          );
-        }
-        return newBooking;
+      if (booking.id >= 0) {
+        return updateBooking(booking.id, input, options);
       }
-    },
-    onMutate: async (newBooking) => {
-      // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey });
-
-      // Snapshot previous value
-      const previousBookings = queryClient.getQueryData<BookingType[]>(queryKey);
-
-      // Optimistically update
-      queryClient.setQueryData<BookingType[]>(queryKey, (old = []) => [
-        ...old,
-        newBooking,
-      ]);
-
-      return { previousBookings };
-    },
-    onError: (err, _newBooking, context) => {
-      // Rollback on error
-      if (context?.previousBookings) {
-        queryClient.setQueryData(queryKey, context.previousBookings);
+      if (guestContact) {
+        return addGuestBooking(input, guestContact, options);
       }
-      console.error("Failed to add booking:", err);
+      if (repeatEndDate) {
+        return addRepeatingBookings(input, repeatEndDate, options);
+      }
+      return addBooking(input, options);
     },
-    onSuccess: () => {
-      // IMPROVED: More granular invalidation - invalidate all booking queries
-      queryClient.invalidateQueries({
-        queryKey: ["bookings"],
-        exact: false, // Invalidate all booking-related queries
-      });
+    onSuccess: (outcome) => {
+      if (outcome.status === "success") {
+        invalidateBookings();
+      }
     },
   });
 
-  // Remove booking mutation with optimistic update
-  const removeBookingMutation = useMutation({
-    mutationFn: async (bookingId: number) => {
-      const response = await removeBooking(bookingId);
+  const removeMutation = useMutation({
+    mutationFn: async ({
+      id,
+      deleteFollowing = false,
+    }: {
+      id: number;
+      deleteFollowing?: boolean;
+    }) => {
+      const response = await removeBooking(id, deleteFollowing);
       if (response.status !== "success") {
         throw new Error(
-          response.result instanceof Error
-            ? response.result.message
-            : "Failed to remove booking"
+          response.status === "error"
+            ? response.error
+            : "Varauksen poisto epäonnistui"
         );
       }
-      return bookingId;
+      return response.result;
     },
-    onMutate: async (bookingId) => {
-      await queryClient.cancelQueries({ queryKey });
-
-      const previousBookings = queryClient.getQueryData<BookingType[]>(queryKey);
-
-      // Optimistically remove booking
-      queryClient.setQueryData<BookingType[]>(queryKey, (old = []) =>
-        old.filter((booking) => booking.id !== bookingId)
-      );
-
-      return { previousBookings };
-    },
-    onError: (err, _bookingId, context) => {
-      if (context?.previousBookings) {
-        queryClient.setQueryData(queryKey, context.previousBookings);
-      }
-      console.error("Failed to remove booking:", err);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["bookings"],
-        exact: false,
-      });
-    },
-  });
-
-  // Update booking mutation
-  const updateBookingMutation = useMutation({
-    mutationFn: async (updatedBooking: BookingType) => {
-      const response = await updateBooking({
-        id: updatedBooking.id,
-        plane: updatedBooking.plane,
-        start_time: updatedBooking.start_time,
-        end_time: updatedBooking.end_time,
-        type: updatedBooking.type,
-        title: updatedBooking.title,
-        description: updatedBooking.description,
-      });
-      if (response.status !== "success") {
-        throw new Error(
-          response.data instanceof Error
-            ? response.data.message
-            : "Failed to update booking"
-        );
-      }
-      return response.data as BookingType;
-    },
-    onMutate: async (updatedBooking) => {
-      await queryClient.cancelQueries({ queryKey });
-
-      const previousBookings = queryClient.getQueryData<BookingType[]>(queryKey);
-
-      queryClient.setQueryData<BookingType[]>(queryKey, (old = []) =>
-        old.map((booking) =>
-          booking.id === updatedBooking.id ? updatedBooking : booking
-        )
-      );
-
-      return { previousBookings };
-    },
-    onError: (err, _updatedBooking, context) => {
-      if (context?.previousBookings) {
-        queryClient.setQueryData(queryKey, context.previousBookings);
-      }
-      console.error("Failed to update booking:", err);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["bookings"],
-        exact: false,
-      });
-    },
+    onSuccess: invalidateBookings,
   });
 
   return {
@@ -304,14 +154,9 @@ export const useBookings = ({ date, dates, enabled = true }: UseBookingsOptions)
     isError,
     error,
     refetch,
-    addBooking: addBookingMutation.mutate,
-    removeBooking: removeBookingMutation.mutate,
-    updateBooking: updateBookingMutation.mutate,
-    isAddingBooking: addBookingMutation.isPending,
-    isRemovingBooking: removeBookingMutation.isPending,
-    isUpdatingBooking: updateBookingMutation.isPending,
-    addBookingError: addBookingMutation.error,
-    removeBookingError: removeBookingMutation.error,
-    updateBookingError: updateBookingMutation.error,
+    saveBooking: saveMutation.mutateAsync,
+    removeBooking: removeMutation.mutateAsync,
+    isSaving: saveMutation.isPending,
+    isRemoving: removeMutation.isPending,
   };
 };

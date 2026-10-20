@@ -1,10 +1,11 @@
 "use client";
 
-import { DateTime } from "luxon";
+import { DateTime } from "@/utilities/clubTime";
 import { LeftOutlined, RightOutlined } from "@ant-design/icons";
 import { BookingType } from "@/utilities/bookings";
 import { FlightTypeConfig } from "@/types/bookings";
 import { useMemo, memo } from "react";
+import { getBookingDays } from "@/utilities/bookingHelpers";
 
 interface BookingsMonthViewProps {
   bookings: BookingType[];
@@ -15,22 +16,6 @@ interface BookingsMonthViewProps {
   flightTypes: FlightTypeConfig[];
   getFlightTypeColor: (type: string) => string;
 }
-
-// Helper function to get all dates a booking spans (moved outside component for reusability)
-const getBookingDates = (booking: BookingType): string[] => {
-  const start = DateTime.fromISO(booking.start_time).startOf("day");
-  const end = DateTime.fromISO(booking.end_time).startOf("day");
-  const dates: string[] = [];
-
-  let current = start;
-  while (current <= end) {
-    const dateStr = current.toISODate();
-    if (dateStr) dates.push(dateStr);
-    current = current.plus({ days: 1 });
-  }
-
-  return dates;
-};
 
 export const BookingsMonthView = memo(
   ({
@@ -62,8 +47,7 @@ export const BookingsMonthView = memo(
       const result: Record<string, BookingType[]> = {};
 
       bookings.forEach((booking) => {
-        const dates = getBookingDates(booking);
-        dates.forEach((date) => {
+        getBookingDays(booking).forEach((date) => {
           if (!result[date]) {
             result[date] = [];
           }
@@ -167,17 +151,11 @@ export const BookingsMonthView = memo(
                 {/* Booking indicators — hidden on mobile, day number + count is enough */}
                 <div className="hidden sm:block space-y-1">
                   {dayBookings.slice(0, 3).map((booking, idx) => {
-                    const isMultiday =
-                      DateTime.fromISO(booking.start_time).toISODate() !==
-                      DateTime.fromISO(booking.end_time).toISODate();
-                    const bookingStartDate = DateTime.fromISO(
-                      booking.start_time
-                    ).toISODate();
-                    const bookingEndDate = DateTime.fromISO(
-                      booking.end_time
-                    ).toISODate();
-                    const isStartDay = bookingStartDate === dateString;
-                    const isEndDay = bookingEndDate === dateString;
+                    const bookingDays = getBookingDays(booking);
+                    const isMultiday = bookingDays.length > 1;
+                    const isStartDay = bookingDays[0] === dateString;
+                    const isEndDay =
+                      bookingDays[bookingDays.length - 1] === dateString;
 
                     return (
                       <div

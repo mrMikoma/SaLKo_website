@@ -1,9 +1,9 @@
 import { memo, useState } from "react";
-import { DateTime } from "luxon";
+import { DateTime } from "@/utilities/clubTime";
 import { BookingType } from "@/utilities/bookings";
 import { FlightTypeConfig } from "@/types/bookings";
 import { getBookingDisplayName, getDisplayTimesForDay } from "@/utilities/bookingHelpers";
-import { getPlaneDisplayName } from "@/utilities/planeHelpers";
+import { getPlaneDisplayName, BOOKABLE_PLANES } from "@/utilities/planeHelpers";
 
 interface BookingsMobileViewProps {
   bookings: BookingType[];
@@ -14,7 +14,6 @@ interface BookingsMobileViewProps {
   getFlightTypeColor: (type: string) => string;
 }
 
-const PLANES = ["OH-CON", "OH-386", "OH-816", "OH-829", "OH-475"];
 
 export const BookingsMobileView = memo(
   ({
@@ -25,7 +24,7 @@ export const BookingsMobileView = memo(
     flightTypes,
     getFlightTypeColor,
   }: BookingsMobileViewProps) => {
-    const groupedBookings = PLANES.map((plane) => ({
+    const groupedBookings = BOOKABLE_PLANES.map((plane) => ({
       plane,
       bookings: bookings
         .filter((booking) => booking.plane === plane)
