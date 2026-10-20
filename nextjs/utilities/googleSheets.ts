@@ -1,4 +1,6 @@
-"use server"
+// Helpers for utilities/flightLogs.ts only. Not "use server": that would turn
+// every export into a server action that anyone can call without a session.
+import "server-only"
 
 import { google, sheets_v4 } from "googleapis"
 
