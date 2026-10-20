@@ -147,6 +147,7 @@ Copy `nextjs/.env.example` to `nextjs/.env` (Claude's hooks block editing `.env`
 | `UMAMI_INTERNAL_URL` | Internal Umami URL (default: `http://salko-umami:3000`) |
 | `ALLOW_INDEXING` | `true` only in production; otherwise `robots.ts` disallows crawling |
 | `GOOGLE_SERVICE_ACCOUNT_KEY` / `FLIGHT_LOG_SPREADSHEET_ID` | Google Sheets export of flight logs (optional) |
+| `FEATURE_FLIGHT_LOG` | `true` turns on the unfinished flight log (`utilities/features.ts`). Set in dev by `deploy-app-dev.yaml`, unset in prod; defaults to on under `bun dev` |
 | `E2E_USER_*` / `E2E_ADMIN_*` | `_EMAIL` and `_PASSWORD` of existing accounts for e2e tests against a non-local database (optional) |
 
 ## Deployment

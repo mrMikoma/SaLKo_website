@@ -1,7 +1,8 @@
 export const dynamic = "force-dynamic"
 
 import { auth } from "@/auth"
-import { redirect } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
+import { isFlightLogEnabled } from "@/utilities/features"
 import PageHero from "@/components/pageHero"
 import ContentSection from "@/components/contentSection"
 import FlightLogManager from "@/components/flightLogs/FlightLogManager"
@@ -12,6 +13,11 @@ export const metadata = {
 }
 
 export default async function Page() {
+  // Still being built: shown in dev, hidden in production
+  if (!isFlightLogEnabled()) {
+    notFound()
+  }
+
   const session = await auth()
 
   if (!session?.user) {

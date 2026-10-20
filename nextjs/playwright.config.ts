@@ -56,6 +56,8 @@ export default defineConfig({
           // machine name
           HOSTNAME: "localhost",
           PORT: String(port),
+          // Features hidden in production are tested too (utilities/features.ts)
+          FEATURE_FLIGHT_LOG: "true",
         },
       },
 });

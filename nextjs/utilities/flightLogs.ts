@@ -3,6 +3,7 @@
 import pool from "@/utilities/db"
 import { auth } from "@/auth"
 import { hasPermission } from "@/utilities/roles"
+import { isFlightLogEnabled } from "@/utilities/features"
 import { revalidatePath } from "next/cache"
 import { DateTime } from "luxon"
 import {
@@ -48,6 +49,8 @@ interface AircraftRentalRate {
   pricePerHourWithoutEquipmentFee: string
   notes?: string
 }
+
+const FLIGHT_LOG_DISABLED = "Lentopäiväkirja ei ole vielä käytössä"
 
 function getRentalRate(registration: string): number {
   const rate = pricesData.aircraftRentalRates.find(
@@ -170,6 +173,10 @@ export async function getAircraftByRegistration(
 export async function logFlight(
   data: FlightLogFormData
 ): Promise<FlightLogResponse> {
+  if (!isFlightLogEnabled()) {
+    return { status: "error", error: FLIGHT_LOG_DISABLED }
+  }
+
   try {
     const session = await auth()
     if (!session?.user?.id) {
@@ -308,6 +315,10 @@ export async function editFlightLog(
   billableItemId: string,
   data: FlightLogEditFormData
 ): Promise<{ status: "success" | "error"; error?: string }> {
+  if (!isFlightLogEnabled()) {
+    return { status: "error", error: FLIGHT_LOG_DISABLED }
+  }
+
   try {
     const session = await auth()
     if (!session?.user?.id) {
@@ -405,6 +416,10 @@ export async function editFlightLog(
 export async function deleteFlightLog(
   billableItemId: string
 ): Promise<{ status: "success" | "error"; error?: string }> {
+  if (!isFlightLogEnabled()) {
+    return { status: "error", error: FLIGHT_LOG_DISABLED }
+  }
+
   try {
     const session = await auth()
     if (!session?.user?.id) {
@@ -450,6 +465,10 @@ export async function deleteFlightLog(
 }
 
 export async function getMyFlightLogs(): Promise<FlightWithBilling[]> {
+  if (!isFlightLogEnabled()) {
+    return []
+  }
+
   try {
     const session = await auth()
     if (!session?.user?.id) {
@@ -476,6 +495,10 @@ export async function getMyFlightLogs(): Promise<FlightWithBilling[]> {
 }
 
 export async function getMyFlightSummary(): Promise<MemberFlightSummary | null> {
+  if (!isFlightLogEnabled()) {
+    return null
+  }
+
   try {
     const session = await auth()
     if (!session?.user?.id) {
@@ -511,6 +534,10 @@ export async function getMyFlightSummary(): Promise<MemberFlightSummary | null> 
 export async function getAircraftLatestHobbs(
   registration: string
 ): Promise<number | null> {
+  if (!isFlightLogEnabled()) {
+    return null
+  }
+
   try {
     const session = await auth()
     if (!session?.user?.id) {
@@ -525,6 +552,10 @@ export async function getAircraftLatestHobbs(
 }
 
 export async function getMyBillingItems(): Promise<BillableItem[]> {
+  if (!isFlightLogEnabled()) {
+    return []
+  }
+
   try {
     const session = await auth()
     if (!session?.user?.id) {
@@ -579,6 +610,10 @@ export async function getMyBillingSummary(): Promise<{
   totalUnpaid: number
   itemsByStatus: Record<string, number>
 } | null> {
+  if (!isFlightLogEnabled()) {
+    return null
+  }
+
   try {
     const session = await auth()
     if (!session?.user?.id) {
