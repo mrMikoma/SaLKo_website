@@ -27,6 +27,14 @@ test.afterAll(async () => {
   await query("DELETE FROM bookings WHERE title LIKE 'E2E-%'");
 });
 
+// A new booking ends on the "Varaus tallennettu" screen with calendar links
+async function closeSavedScreen(page: Page) {
+  const saved = page.getByRole("dialog", { name: "Varaus tallennettu" });
+  await expect(saved).toBeVisible();
+  await saved.getByRole("button", { name: "Valmis" }).click();
+  await expect(saved).toBeHidden();
+}
+
 async function openNewBooking(page: Page, date: string, plane: string, hour: string) {
   await page.goto(`/kalusto/varauskalenteri?paiva=${date}&view=day`);
   await page
@@ -45,7 +53,24 @@ test.describe("member", () => {
     const dialog = await openNewBooking(page, "2027-03-10", "OH-CON", "10:00");
     await dialog.getByLabel("Otsikko *").fill("E2E-yksi");
     await dialog.getByRole("button", { name: "Tallenna" }).click();
-    await expect(dialog).toBeHidden();
+
+    // Calendar export: 10:00 Helsinki time is 08:00 UTC in March
+    const saved = page.getByRole("dialog", { name: "Varaus tallennettu" });
+    const google = saved.getByRole("link", { name: "Google-kalenteri" });
+    await expect(google).toHaveAttribute(
+      "href",
+      /calendar\.google\.com.*dates=20270310T100000%2F20270310T110000.*ctz=Europe%2FHelsinki/
+    );
+    const icsHref = await saved
+      .getByRole("link", { name: "Apple / Outlook (.ics)" })
+      .getAttribute("href");
+    const ics = await page.request.get(icsHref!);
+    expect(ics.headers()["content-type"]).toContain("text/calendar");
+    const icsText = await ics.text();
+    expect(icsText).toContain("SUMMARY:OH-CON: E2E-yksi");
+    expect(icsText).toContain("DTSTART:20270310T080000Z");
+    expect(icsText).toContain("DTEND:20270310T090000Z");
+    await closeSavedScreen(page);
 
     const booking = page.getByRole("button", { name: /^Varaus: E2E-yksi/ });
     await expect(booking).toBeVisible();
@@ -66,7 +91,7 @@ test.describe("member", () => {
     let dialog = await openNewBooking(page, "2027-03-11", "OH-386", "10:00");
     await dialog.getByLabel("Otsikko *").fill("E2E-ensin");
     await dialog.getByRole("button", { name: "Tallenna" }).click();
-    await expect(dialog).toBeHidden();
+    await closeSavedScreen(page);
 
     // 09–11 overlaps the 10–11 booking
     dialog = await openNewBooking(page, "2027-03-11", "OH-386", "9:00");
@@ -77,7 +102,7 @@ test.describe("member", () => {
     await expect(dialog.getByText("OH-386 on jo varattu tähän aikaan")).toBeVisible();
     await expect(dialog.getByText(/E2E-ensin/)).toBeVisible();
     await dialog.getByRole("button", { name: "Varaa silti" }).click();
-    await expect(dialog).toBeHidden();
+    await closeSavedScreen(page);
 
     // Both bookings show in the 10:00 slot
     await expect(page.getByRole("button", { name: /^Varaus: E2E-ensin/ })).toBeVisible();
@@ -91,7 +116,21 @@ test.describe("member", () => {
     await dialog.getByLabel("Toistuva varaus").check();
     await dialog.getByLabel("Toiston lopetuspäivä *").fill("2027-03-29");
     await dialog.getByRole("button", { name: "Tallenna" }).click();
-    await expect(dialog).toBeHidden();
+
+    // The whole series goes to the calendar
+    const saved = page.getByRole("dialog", { name: "Varaus tallennettu" });
+    await expect(saved.getByText("Toistuu 4 päivänä")).toBeVisible();
+    await expect(saved.getByRole("link", { name: "Google-kalenteri" })).toHaveAttribute(
+      "href",
+      /recur=RRULE%3AFREQ%3DDAILY%3BCOUNT%3D4/
+    );
+    const icsHref = await saved
+      .getByRole("link", { name: "Apple / Outlook (.ics)" })
+      .getAttribute("href");
+    expect(icsHref).toContain("sarja=1");
+    const icsText = await (await page.request.get(icsHref!)).text();
+    expect(icsText.match(/BEGIN:VEVENT/g)).toHaveLength(4);
+    await closeSavedScreen(page);
 
     const rows = await query<{ day: string; start: string; end: string }>(
       `SELECT to_char(start_time AT TIME ZONE 'Europe/Helsinki', 'YYYY-MM-DD') AS day,
@@ -115,7 +154,7 @@ test.describe("member", () => {
     await dialog.getByLabel("Toiston lopetuspäivä *").fill("2027-03-20");
     await dialog.getByLabel("Toistuva varaus").uncheck();
     await dialog.getByRole("button", { name: "Tallenna" }).click();
-    await expect(dialog).toBeHidden();
+    await closeSavedScreen(page);
 
     const rows = await query<{ start: string; end: string }>(
       `SELECT to_char(start_time AT TIME ZONE 'Europe/Helsinki', 'YYYY-MM-DD HH24:MI') AS start,
@@ -127,6 +166,11 @@ test.describe("member", () => {
 });
 
 test.describe("anonymous visitor", () => {
+  test("can't download a booking's .ics", async ({ page }) => {
+    const response = await page.request.get("/api/varaukset/1/kalenteri");
+    expect(response.status()).toBe(401);
+  });
+
   test("makes a guest booking and sees it only as taken", async ({ page }) => {
     const dialog = await openNewBooking(page, "2027-03-12", "OH-CON", "14:00");
     await expect(dialog.getByLabel("Toistuva varaus")).toHaveCount(0);
@@ -136,7 +180,12 @@ test.describe("anonymous visitor", () => {
     await dialog.getByLabel("Sähköposti *").fill("vieras@salko.invalid");
     await dialog.getByLabel("Puhelinnumero *").fill("040 000 0000");
     await dialog.getByRole("button", { name: "Tallenna" }).click();
-    await expect(dialog).toBeHidden();
+
+    // Guests get the Google link; the .ics download needs a session
+    const saved = page.getByRole("dialog", { name: "Varaus tallennettu" });
+    await expect(saved.getByRole("link", { name: "Google-kalenteri" })).toBeVisible();
+    await expect(saved.getByRole("link", { name: "Apple / Outlook (.ics)" })).toHaveCount(0);
+    await closeSavedScreen(page);
 
     await expect(page.getByRole("button", { name: /^Varaus: Varattu/ })).toBeVisible();
     await expect(page.getByText("Testi Vieras")).toHaveCount(0);

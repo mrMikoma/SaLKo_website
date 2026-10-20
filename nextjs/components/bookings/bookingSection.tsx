@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, lazy, Suspense } from "react";
+import { ConfigProvider, ThemeConfig } from "antd";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import DatePicker from "@/components/bookings/datePicker";
 import ViewSelector, { ViewMode } from "@/components/bookings/viewSelector";
@@ -36,6 +37,15 @@ const BookingUpdateModal = lazy(
 export type FlightTypes = FlightTypeConfig;
 export const FLIGHT_TYPES = FLIGHT_TYPE_CONFIGS as unknown as FlightTypes[];
 
+// The Ant Design parts (the booking modal) in the site's font and blue
+const ANTD_THEME: ThemeConfig = {
+  token: {
+    colorPrimary: "#003580", // sblue
+    fontFamily: "var(--font-finlandica), sans-serif",
+    borderRadius: 8,
+  },
+};
+
 interface BookingSectionProps {
   userContext: {
     isLoggedIn: boolean;
@@ -57,7 +67,7 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { date, dateString, setDate } = useDateFromUrl();
+  const { date, dateString } = useDateFromUrl();
   const { viewMode, setViewMode } = useViewMode();
   const isMobile = useIsMobile();
   // On mobile, treat "week" as "day" since week grid doesn't fit
@@ -163,9 +173,6 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
     }
   };
 
-  const handlePrevMonth = () => setDate(date.minus({ months: 1 }));
-  const handleNextMonth = () => setDate(date.plus({ months: 1 }));
-
   const handleMobileCreateBooking = (plane: string) => {
     // For logged-in users, userId must be present
     if (isLoggedIn && !userId) {
@@ -204,17 +211,11 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
     }
   };
 
-  // The modal stays open until the server accepts the booking, and shows the
-  // overlap warning or error otherwise
-  const handleSaveBooking = async (
+  // The modal shows the result: the saved booking with calendar links, the
+  // overlap warning or the error; it closes itself after an update
+  const handleSaveBooking = (
     request: SaveBookingRequest
-  ): Promise<SaveBookingOutcome> => {
-    const outcome = await saveBooking(request);
-    if (outcome.status === "success") {
-      closeModal();
-    }
-    return outcome;
-  };
+  ): Promise<SaveBookingOutcome> => saveBooking(request);
 
   // Throws with a Finnish message on failure; the delete dialog shows it
   const handleDeleteBooking = async (
@@ -229,119 +230,119 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
   };
 
   return (
-    <div className="px-2 py-3 lg:p-4 text-black" role="main" aria-label="Varauskalenteri">
-      {/* Guest Booking Info Banner */}
-      {!isLoggedIn && (
-        <div className="mb-3 lg:w-1/2 lg:mx-auto px-4 py-2.5 bg-white/95 border border-sblue/30 rounded-xl shadow-sm text-center">
-          <p className="text-sm text-gray-700">
-            Voit varata ilman kirjautumista.{" "}
-            <span className="font-semibold text-sblue">Jäsenalue</span>
-            -valikon kautta voit kirjautua sisään varataksesi käyttäjänä.
-          </p>
+    <ConfigProvider theme={ANTD_THEME}>
+      <div className="px-2 py-3 lg:p-4 text-black" role="main" aria-label="Varauskalenteri">
+        {/* Guest Booking Info Banner */}
+        {!isLoggedIn && (
+          <div className="mb-3 lg:w-1/2 lg:mx-auto px-4 py-2.5 bg-white/95 border border-sblue/30 rounded-xl shadow-sm text-center">
+            <p className="text-sm text-gray-700">
+              Voit varata ilman kirjautumista.{" "}
+              <span className="font-semibold text-sblue">Jäsenalue</span>
+              -valikon kautta voit kirjautua sisään varataksesi käyttäjänä.
+            </p>
+          </div>
+        )}
+        
+        {/* Date Picker and View Selector - side by side on desktop */}
+        <div className="flex flex-col lg:flex-row gap-3 items-center justify-between mb-3 lg:mb-6">
+          <div className="w-full lg:flex-1">
+            <DatePicker viewMode={effectiveViewMode} />
+          </div>
+          <div className="flex-shrink-0">
+            <ViewSelector
+              currentView={effectiveViewMode}
+              onViewChange={setViewMode}
+              availableViews={isMobile ? ["day", "month"] : undefined}
+            />
+          </div>
         </div>
-      )}
-      
-      {/* Date Picker and View Selector - side by side on desktop */}
-      <div className="flex flex-col lg:flex-row gap-3 items-center justify-between mb-3 lg:mb-6">
-        <div className="w-full lg:flex-1">
-          <DatePicker viewMode={effectiveViewMode} />
-        </div>
-        <div className="flex-shrink-0">
-          <ViewSelector
-            currentView={effectiveViewMode}
-            onViewChange={setViewMode}
-            availableViews={isMobile ? ["day", "month"] : undefined}
-          />
-        </div>
-      </div>
 
 
 
-      {/* Loading State */}
-      {isLoading && <BookingsSkeleton />}
+        {/* Loading State */}
+        {isLoading && <BookingsSkeleton />}
 
-      {/* Error State */}
-      {isError && !isLoading && (
-        <BookingsError error={error} onRetry={() => refetch()} />
-      )}
+        {/* Error State */}
+        {isError && !isLoading && (
+          <BookingsError error={error} onRetry={() => refetch()} />
+        )}
 
-      {/* Content - only show when not loading or error */}
-      {!isLoading && !isError && (
-        <>
-          {/* Responsive Booking View */}
-          {isMobile ? (
-            effectiveViewMode === "month" ? (
+        {/* Content - only show when not loading or error */}
+        {!isLoading && !isError && (
+          <>
+            {/* Responsive Booking View */}
+            {isMobile ? (
+              effectiveViewMode === "month" ? (
+                <BookingsMonthView
+                  bookings={bookings}
+                  selectedDate={date}
+                  onDayClick={handleDayClick}
+                  flightTypes={FLIGHT_TYPES}
+                  getFlightTypeColor={getFlightTypeColor}
+                />
+              ) : (
+                <BookingsMobileView
+                  bookings={bookings}
+                  selectedDate={date}
+                  onBookingClick={handleBookingClick}
+                  onCreateBooking={handleMobileCreateBooking}
+                  flightTypes={FLIGHT_TYPES}
+                  getFlightTypeColor={getFlightTypeColor}
+                />
+              )
+            ) : effectiveViewMode === "week" ? (
+              <BookingsWeekView
+                bookings={bookings}
+                selectedDate={date}
+                onCellClick={handleCellClick}
+                onBookingClick={handleBookingClick}
+                flightTypes={FLIGHT_TYPES}
+                getFlightTypeColor={getFlightTypeColor}
+              />
+            ) : effectiveViewMode === "month" ? (
               <BookingsMonthView
                 bookings={bookings}
                 selectedDate={date}
                 onDayClick={handleDayClick}
-                onPrevMonth={handlePrevMonth}
-                onNextMonth={handleNextMonth}
                 flightTypes={FLIGHT_TYPES}
                 getFlightTypeColor={getFlightTypeColor}
               />
             ) : (
-              <BookingsMobileView
+              <BookingsDesktopView
                 bookings={bookings}
                 selectedDate={date}
+                onCellClick={handleCellClick}
                 onBookingClick={handleBookingClick}
-                onCreateBooking={handleMobileCreateBooking}
                 flightTypes={FLIGHT_TYPES}
                 getFlightTypeColor={getFlightTypeColor}
               />
-            )
-          ) : effectiveViewMode === "week" ? (
-            <BookingsWeekView
-              bookings={bookings}
-              selectedDate={date}
-              onCellClick={handleCellClick}
-              onBookingClick={handleBookingClick}
-              flightTypes={FLIGHT_TYPES}
-              getFlightTypeColor={getFlightTypeColor}
-            />
-          ) : effectiveViewMode === "month" ? (
-            <BookingsMonthView
-              bookings={bookings}
-              selectedDate={date}
-              onDayClick={handleDayClick}
-              flightTypes={FLIGHT_TYPES}
-              getFlightTypeColor={getFlightTypeColor}
-            />
-          ) : (
-            <BookingsDesktopView
-              bookings={bookings}
-              selectedDate={date}
-              onCellClick={handleCellClick}
-              onBookingClick={handleBookingClick}
-              flightTypes={FLIGHT_TYPES}
-              getFlightTypeColor={getFlightTypeColor}
-            />
-          )}
-        </>
-      )}
+            )}
+          </>
+        )}
 
-      {/* Booking Modal */}
-      {modalMode && (
-        <Suspense
-          fallback={
-            <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-            </div>
-          }
-        >
-          <BookingUpdateModal
-            mode={modalMode}
-            booking={selectedBooking}
-            onSave={handleSaveBooking}
-            onDelete={handleDeleteBooking}
-            onCancel={closeModal}
-            onChange={setSelectedBooking}
-            isLoggedIn={isLoggedIn}
-            userRole={userRole}
-          />
-        </Suspense>
-      )}
-    </div>
+        {/* Booking Modal */}
+        {modalMode && (
+          <Suspense
+            fallback={
+              <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+              </div>
+            }
+          >
+            <BookingUpdateModal
+              mode={modalMode}
+              booking={selectedBooking}
+              onSave={handleSaveBooking}
+              onDelete={handleDeleteBooking}
+              onCancel={closeModal}
+              onChange={setSelectedBooking}
+              isLoggedIn={isLoggedIn}
+              userRole={userRole}
+            />
+          </Suspense>
+        )}
+      </div>
+    </ConfigProvider>
   );
 };
 

@@ -124,7 +124,7 @@ Session strategy is JWT with 30-day expiry. `trustHost: true` is required becaus
 ### Data Flow Pattern
 
 - **Server actions** (`"use server"`) in `utilities/` handle all DB mutations and are called directly from client components.
-- **API routes** (`app/api/`) exist only for: METAR reads, Umami analytics proxy (forwards to internal `salko-umami:3000`), and NextAuth.
+- **API routes** (`app/api/`) exist only for: METAR reads, Umami analytics proxy (forwards to internal `salko-umami:3000`), NextAuth, and the booking `.ics` export (`api/varaukset/[id]/kalenteri`, see `nextjs/docs/BOOKINGS.md`).
 - **Static content** (contacts, plane specs, prices, history) is kept in JSON files under `nextjs/data/` and imported at build time — not stored in the DB.
 - TanStack Query (`providers/QueryProvider.tsx`) is used on the client for data fetching that benefits from caching/refetching (e.g. bookings calendar).
 

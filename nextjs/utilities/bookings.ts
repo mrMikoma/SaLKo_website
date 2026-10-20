@@ -342,7 +342,7 @@ export async function addRepeatingBookings(
   input: BookingInput,
   repeatEndDate: string,
   options: BookingWriteOptions = {}
-): Promise<BookingResult<{ count: number }>> {
+): Promise<BookingResult<{ id: number; count: number }>> {
   const user = await getSessionUser();
   if (!user || !hasPermission(user.roles, "CREATE_OWN_BOOKING")) {
     return {
@@ -383,10 +383,11 @@ export async function addRepeatingBookings(
     // The whole series is saved or none of it
     await client.query("BEGIN");
     const repeatGroupId = crypto.randomUUID();
-    await client.query(
+    const inserted = await client.query(
       `INSERT INTO bookings (user_id, plane, start_time, end_time, type, title, description, repeat_group_id)
        SELECT $1, $2, slot.start_at, slot.end_at, $5, $6, $7, $8
-       FROM unnest($3::timestamptz[], $4::timestamptz[]) AS slot(start_at, end_at)`,
+       FROM unnest($3::timestamptz[], $4::timestamptz[]) AS slot(start_at, end_at)
+       RETURNING id, start_time`,
       [
         user.id,
         booking.plane,
@@ -400,7 +401,14 @@ export async function addRepeatingBookings(
     );
     await client.query("COMMIT");
 
-    return { status: "success", result: { count: slots.length } };
+    // The first day's booking stands for the series (calendar export)
+    const first = inserted.rows.reduce((earliest, row) =>
+      new Date(row.start_time) < new Date(earliest.start_time) ? row : earliest
+    );
+    return {
+      status: "success",
+      result: { id: first.id, count: slots.length },
+    };
   } catch (error) {
     await client.query("ROLLBACK");
     console.error("Error adding repeating bookings:", error);

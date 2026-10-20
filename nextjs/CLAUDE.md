@@ -11,7 +11,7 @@ Next.js 16 (App Router, Turbopack), React 19, TypeScript 5 with `strict: false`,
 ## Layout
 
 ```
-app/          # routes; segments are Finnish (kalusto, jasenalue, kerho, …), api/ only for auth, METAR, Umami
+app/          # routes; segments are Finnish (kalusto, jasenalue, kerho, …), api/ only for auth, METAR, Umami, booking .ics
 components/   # one folder per feature (bookings/, flightLogs/, admin/, profile/, …), shared ones at the top
 utilities/    # server actions ("use server" files) and helpers; db.ts, roles.ts, definitions.ts
 hooks/        # client hooks, e.g. useBookings (TanStack Query)
@@ -52,4 +52,4 @@ proxy.ts      # route protection (Next 16's replacement for middleware.ts)
 
 ## More Docs
 
-`docs/` has background on specific features: `AUTH_SETUP.md`, `BOOKING_MODERNIZATION.md`, `BOOKING_PHASE2_IMPROVEMENTS.md`, `BOOKING_PHASE3_TODO.md`, `GITHUB_SECRETS_SETUP.md` and `METAR_SETUP.md`. They were written at different times, so check them against the code.
+`docs/` has background on specific features: `BOOKINGS.md` (current booking calendar: club time, permissions, saving, export), `AUTH_SETUP.md`, `GITHUB_SECRETS_SETUP.md` and `METAR_SETUP.md`, plus the historical `BOOKING_MODERNIZATION.md`, `BOOKING_PHASE2_IMPROVEMENTS.md` and `BOOKING_PHASE3_TODO.md`. They were written at different times, so check them against the code.

@@ -152,7 +152,7 @@ export const BookingsMobileView = memo(
                             {booking.title}
                           </h4>
                           <span
-                            className="text-xs px-2 py-1 rounded-full text-white font-medium ml-2 flex-shrink-0"
+                            className="text-xs px-2 py-1 rounded-full text-sblack font-medium ml-2 flex-shrink-0"
                             style={{
                               backgroundColor: getFlightTypeColor(booking.type),
                             }}
