@@ -1,26 +1,28 @@
 "use client";
-import { useActionState, startTransition } from "react";
-import { logout } from "@/utilities/authActions";
+import { useState } from "react";
+import { signOut } from "next-auth/react";
 
+// next-auth's client signOut clears the session cookie, tells SessionProvider
+// and other tabs, and then loads / again, so the navbar can't keep showing the
+// old session (it sometimes did with a server action, when useSession()
+// refetched before the cookie was gone)
 const Logout = ({ onHandleLogout }: { onHandleLogout: () => void }) => {
-  const [, action, pending] = useActionState(logout, undefined);
+  const [pending, setPending] = useState(false);
 
   return (
-    <form
-      onClick={(e) => {
-        e.preventDefault();
-        startTransition(() => {
-          action();
-        });
-        onHandleLogout();
-      }}
-    >
-      <div>
-        <button disabled={pending} type="button">
-          Kirjaudu ulos
-        </button>
-      </div>
-    </form>
+    <div>
+      <button
+        type="button"
+        disabled={pending}
+        onClick={async () => {
+          setPending(true);
+          onHandleLogout();
+          await signOut({ redirectTo: "/" });
+        }}
+      >
+        Kirjaudu ulos
+      </button>
+    </div>
   );
 };
 
