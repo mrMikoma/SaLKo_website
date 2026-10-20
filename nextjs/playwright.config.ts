@@ -58,6 +58,8 @@ export default defineConfig({
           PORT: String(port),
           // Features hidden in production are tested too (utilities/features.ts)
           FEATURE_FLIGHT_LOG: "true",
+          // The flight log reads a synthetic sheet, never the club's real one
+          FLIGHT_SHEET_SOURCE: "fixture",
         },
       },
 });

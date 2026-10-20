@@ -3,13 +3,16 @@ export const dynamic = "force-dynamic"
 import { auth } from "@/auth"
 import { notFound, redirect } from "next/navigation"
 import { isFlightLogEnabled } from "@/utilities/features"
+import { hasPermission } from "@/utilities/roles"
+import { ensureFreshSync } from "@/utilities/flightSync"
+import { getMyFlights } from "@/utilities/flightLogData"
 import PageHero from "@/components/pageHero"
 import ContentSection from "@/components/contentSection"
-import FlightLogManager from "@/components/flightLogs/FlightLogManager"
+import MyFlights from "@/components/flightLogs/MyFlights"
 
 export const metadata = {
   title: "Lentopäiväkirja | SaLKo",
-  description: "Kirjaa ja hallinnoi lentotuntejasi",
+  description: "Omat lentosi kerhon lentopäiväkirjasta",
 }
 
 export default async function Page() {
@@ -23,12 +26,18 @@ export default async function Page() {
   if (!session?.user) {
     redirect("/auth/login")
   }
+  if (!hasPermission(session.user.roles, "VIEW_OWN_FLIGHTS")) {
+    redirect("/")
+  }
+
+  await ensureFreshSync()
+  const flights = await getMyFlights(session.user.id)
 
   return (
     <div className="min-h-screen flex flex-col w-full">
       <PageHero
         title="Lentopäiväkirja"
-        subtitle="Kirjaa ja seuraa lentotuntejasi"
+        subtitle="Omat lentosi kerhon lentopäiväkirjasta"
         breadcrumbs={["Jäsenalue", "Lentopäiväkirja"]}
         backgroundImage="bg-punkaharju-one"
         compact={true}
@@ -36,8 +45,8 @@ export default async function Page() {
       />
 
       <ContentSection variant="dark" containerSize="default">
-        <div className="max-w-6xl mx-auto -mt-16">
-          <FlightLogManager />
+        <div className="max-w-3xl mx-auto -mt-16">
+          <MyFlights flights={flights} />
         </div>
       </ContentSection>
     </div>
