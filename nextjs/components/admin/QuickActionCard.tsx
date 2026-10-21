@@ -10,10 +10,10 @@ const QuickActionCard = ({ href, title, description }: QuickActionCardProps) => 
   return (
     <Link
       href={href}
-      className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
+      className="block h-full rounded-lg border border-gray-200 p-4 hover:shadow"
     >
-      <h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
-      <p className="text-gray-600 text-sm">{description}</p>
+      <span className="block font-medium text-gray-900">{title}</span>
+      <span className="block text-sm text-gray-600">{description}</span>
     </Link>
   );
 };

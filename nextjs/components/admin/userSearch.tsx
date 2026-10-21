@@ -41,14 +41,15 @@ const UserSearch = ({ initialSearch }: UserSearchProps) => {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Hae nimellä tai sähköpostilla..."
-          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+          aria-label="Hae käyttäjiä"
+          className="w-full min-h-11 rounded-lg border border-gray-300 bg-white px-3 text-base text-gray-900"
           disabled={isPending}
         />
       </div>
       <button
         type="submit"
         disabled={isPending}
-        className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+        className="min-h-11 px-5 rounded-lg bg-sblue text-white font-medium hover:bg-sblued transition-colors disabled:opacity-60"
       >
         {isPending ? "Haetaan..." : "Hae"}
       </button>
@@ -57,7 +58,7 @@ const UserSearch = ({ initialSearch }: UserSearchProps) => {
           type="button"
           onClick={handleClear}
           disabled={isPending}
-          className="bg-gray-300 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-400 disabled:bg-gray-200 disabled:cursor-not-allowed"
+          className="min-h-11 px-4 rounded-lg border border-gray-300 bg-white text-gray-800 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
         >
           Tyhjennä
         </button>

@@ -82,7 +82,7 @@ const CreateUserForm = ({
               onChange={(e) =>
                 setNewUser({ ...newUser, email: e.target.value })
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+              className="w-full min-h-11 rounded-lg border border-gray-300 bg-white px-3 text-base text-gray-900"
               required
               disabled={isPending}
             />
@@ -100,7 +100,7 @@ const CreateUserForm = ({
               onChange={(e) =>
                 setNewUser({ ...newUser, password: e.target.value })
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+              className="w-full min-h-11 rounded-lg border border-gray-300 bg-white px-3 text-base text-gray-900"
               required={!isGuestOnly}
               disabled={isPending}
               placeholder={isGuestOnly ? "Vieras ei voi kirjautua" : ""}
@@ -120,7 +120,7 @@ const CreateUserForm = ({
               type="text"
               value={newUser.name}
               onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white"
+              className="w-full min-h-11 rounded-lg border border-gray-300 bg-white px-3 text-base text-gray-900"
               required
               disabled={isPending}
             />
@@ -136,7 +136,7 @@ const CreateUserForm = ({
               onChange={(e) =>
                 setNewUser({ ...newUser, full_name: e.target.value })
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900  bg-white"
+              className="w-full min-h-11 rounded-lg border border-gray-300 bg-white px-3 text-base text-gray-900"
               required
               disabled={isPending}
             />
@@ -166,11 +166,11 @@ const CreateUserForm = ({
             </div>
           </fieldset>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             type="submit"
             disabled={isPending}
-            className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 disabled:bg-gray-400"
+            className="min-h-11 px-4 rounded-lg bg-sblue text-white font-medium hover:bg-sblued transition-colors disabled:opacity-60"
           >
             {isPending ? "Luodaan..." : "Luo käyttäjä"}
           </button>
@@ -178,7 +178,7 @@ const CreateUserForm = ({
             type="button"
             onClick={handleCancel}
             disabled={isPending}
-            className="bg-gray-300 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-400 disabled:bg-gray-200"
+            className="min-h-11 px-4 rounded-lg border border-gray-300 bg-white text-gray-800 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
           >
             Peruuta
           </button>
