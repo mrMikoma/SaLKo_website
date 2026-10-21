@@ -204,6 +204,8 @@ jobs:
             echo "NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET }}" >> .env.dev
             echo "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}" >> .env.dev
             echo "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" >> .env.dev
+            # Unfinished features, on in dev only (nextjs/utilities/features.ts)
+            echo "FEATURE_FLIGHT_LOG=true" >> .env.dev
 
             # Ensure the environment variables are written before proceeding
             echo ".env.dev file created with environment variables."
