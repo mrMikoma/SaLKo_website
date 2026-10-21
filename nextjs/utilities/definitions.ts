@@ -1,19 +1,23 @@
 import { z } from "zod";
 
+// The rules every password must meet: login checks them, so a password set
+// any other way (new user, reset link) must meet them too
+export const PasswordSchema = z
+  .string()
+  .min(8, { message: "Salasanan on oltava vähintään 8 merkkiä pitkä." })
+  .max(32, { message: "Salasanan on oltava enintään 32 merkkiä pitkä." })
+  .regex(/[a-zA-Z]/, {
+    message: "Salasanassa on oltava vähintään yksi kirjain.",
+  })
+  .regex(/[0-9]/, { message: "Salasanassa on oltava vähintään yksi numero." })
+  .regex(/[^a-zA-Z0-9]/, {
+    message: "Salasanassa on oltava vähintään yksi erikoismerkki.",
+  })
+  .trim();
+
 export const LoginFormSchema = z.object({
   email: z.string().email({ message: "Syötä oikea sähköpostiosoite." }),
-  password: z
-    .string()
-    .min(8, { message: "Salasanan on oltava vähintään 8 merkkiä pitkä." })
-    .max(32, { message: "Salasanan on oltava enintään 32 merkkiä pitkä." })
-    .regex(/[a-zA-Z]/, {
-      message: "Salasanassa on oltava vähintään yksi kirjain.",
-    })
-    .regex(/[0-9]/, { message: "Salasanassa on oltava vähintään yksi numero." })
-    .regex(/[^a-zA-Z0-9]/, {
-      message: "Salasanassa on oltava vähintään yksi erikoismerkki.",
-    })
-    .trim(),
+  password: PasswordSchema,
 });
 
 export type FormState =

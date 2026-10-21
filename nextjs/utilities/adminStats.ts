@@ -49,15 +49,17 @@ export async function getDashboardStats(): Promise<DashboardStats | null> {
     }
 
     const [userStats, bookingStats, recentUsers] = await Promise.all([
-      // User statistics
+      // User statistics: active accounts, without the system guest account.
+      // Admins usually have the user role too, so "users" are the non-admins.
       pool.query(
         `SELECT
           COUNT(*) as total,
           COUNT(*) FILTER (WHERE 'admin' = ANY(roles)) as admins,
-          COUNT(*) FILTER (WHERE 'user' = ANY(roles)) as users,
+          COUNT(*) FILTER (WHERE 'user' = ANY(roles) AND NOT 'admin' = ANY(roles)) as users,
           COUNT(*) FILTER (WHERE 'guest' = ANY(roles)) as guests,
           COUNT(*) FILTER (WHERE auth_provider = 'google') as google_users
-        FROM users`,
+        FROM users
+        WHERE auth_provider IS DISTINCT FROM 'system' AND deactivated_at IS NULL`,
       ),
       // Booking statistics
       pool.query(
@@ -71,6 +73,7 @@ export async function getDashboardStats(): Promise<DashboardStats | null> {
       pool.query(
         `SELECT id, name, full_name, email, roles, created_at, last_login
         FROM users
+        WHERE auth_provider IS DISTINCT FROM 'system'
         ORDER BY created_at DESC
         LIMIT 5`,
       ),

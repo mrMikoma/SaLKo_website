@@ -16,7 +16,9 @@ CREATE TABLE
     avatar_url TEXT,
     email_verified BOOLEAN DEFAULT FALSE,
     last_login TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT NOW ()
+    created_at TIMESTAMPTZ DEFAULT NOW (),
+    -- Set when an admin removes the user: no login, history (bookings) is kept
+    deactivated_at TIMESTAMPTZ
   );
 
 -- Create bullets table

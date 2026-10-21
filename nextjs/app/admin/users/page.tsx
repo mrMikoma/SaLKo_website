@@ -40,7 +40,7 @@ export default async function UsersPage({ searchParams }: PageProps) {
         <div className="p-6 border-b border-gray-200">
           <UserSearch initialSearch={searchQuery} />
         </div>
-        <UserTable users={users} />
+        <UserTable users={users} currentUserId={session.user.id} />
       </div>
     </div>
   );

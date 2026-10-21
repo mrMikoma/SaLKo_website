@@ -35,9 +35,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const { email, password } = parsed.data;
 
         try {
-          // Query user
+          // Emails compare in lower case; deactivated users can't log in
           const result = await pool.query(
-            "SELECT * FROM users WHERE email = $1 AND auth_provider = 'credentials'",
+            `SELECT * FROM users
+             WHERE lower(email) = lower($1) AND auth_provider = 'credentials'
+               AND deactivated_at IS NULL`,
             [email]
           );
 
@@ -100,9 +102,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         try {
           // Check if user exists or create new one
           const result = await pool.query(
-            "SELECT * FROM users WHERE email = $1",
+            "SELECT * FROM users WHERE lower(email) = lower($1)",
             [email]
           );
+
+          if (result.rows.length > 0 && result.rows[0].deactivated_at) {
+            console.log("Login blocked for deactivated user:", email);
+            return false;
+          }
 
           if (result.rows.length === 0) {
             // Auto-create user on first Google login
@@ -110,7 +117,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               `INSERT INTO users (email, name, full_name, roles, auth_provider, google_id, email_verified, avatar_url, phone, address, city, postal_code, last_login)
                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, '', '', '', '', NOW())`,
               [
-                email,
+                email.toLowerCase(),
                 profile?.name || email.split("@")[0],
                 profile?.name || email.split("@")[0],
                 ["user"], // Default roles array
@@ -124,8 +131,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             // Update existing user with Google info
             await pool.query(
               `UPDATE users SET google_id = $1, avatar_url = $2, email_verified = $3, last_login = NOW()
-               WHERE email = $4`,
-              [profile?.sub, profile?.picture, true, email]
+               WHERE id = $4`,
+              [profile?.sub, profile?.picture, true, result.rows[0].id]
             );
           }
         } catch (error) {
@@ -149,7 +156,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         );
         try {
           const result = await pool.query(
-            "SELECT id, roles, full_name FROM users WHERE email = $1",
+            "SELECT id, roles, full_name FROM users WHERE lower(email) = lower($1)",
             [user.email]
           );
           if (result.rows.length > 0) {
@@ -186,9 +193,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
       try {
         if (token.id) {
-          // Fetch fresh user data from database to ensure we have latest roles/info
+          // Fetch fresh user data from database to ensure we have latest roles/info.
+          // A deactivated user's session ends on the next request.
           const result = await pool.query(
-            "SELECT id, email, name, full_name, roles, avatar_url FROM users WHERE id = $1",
+            `SELECT id, email, name, full_name, roles, avatar_url FROM users
+             WHERE id = $1 AND deactivated_at IS NULL`,
             [token.id]
           );
 
@@ -202,7 +211,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             session.user.image = user.avatar_url;
             console.log("[SESSION] User found by ID:", user.id);
           } else {
-            // User not found - this can happen during logout or if user was deleted
+            // User not found or deactivated - this can happen during logout or if user was deleted
             // Return null to invalidate the session
             console.log(
               "[SESSION] No user found for ID:",

@@ -1,8 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { DateTime } from "luxon";
 import { RecentUser } from "@/utilities/adminStats";
 import { getRoleDisplayName } from "@/utilities/roles";
+
+// Rendered on the server too, so the zone is explicit (the server runs in UTC)
+const inHelsinki = (iso: string) =>
+  DateTime.fromJSDate(new Date(iso)).setZone("Europe/Helsinki");
 
 interface RecentUsersTableProps {
   users: RecentUser[];
@@ -74,29 +79,15 @@ const RecentUsersTable = ({ users }: RecentUsersTableProps) => {
                     ))}
                   </div>
                 </td>
-                <td
-                  className="px-6 py-4 whitespace-nowrap text-sm text-gray-600"
-                  suppressHydrationWarning
-                >
-                  {new Date(user.created_at).toLocaleDateString("fi-FI")}
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                  {inHelsinki(user.created_at).toFormat("d.M.yyyy")}
                 </td>
-                <td
-                  className="px-6 py-4 whitespace-nowrap text-sm text-gray-600"
-                  suppressHydrationWarning
-                >
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                   {user.last_login ? (
                     <div>
-                      <div suppressHydrationWarning>
-                        {new Date(user.last_login).toLocaleDateString("fi-FI")}
-                      </div>
-                      <div
-                        className="text-xs text-gray-400"
-                        suppressHydrationWarning
-                      >
-                        {new Date(user.last_login).toLocaleTimeString("fi-FI", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                      <div>{inHelsinki(user.last_login).toFormat("d.M.yyyy")}</div>
+                      <div className="text-xs text-gray-400">
+                        {inHelsinki(user.last_login).toFormat("HH.mm")}
                       </div>
                     </div>
                   ) : (

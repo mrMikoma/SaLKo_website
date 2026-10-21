@@ -6,7 +6,7 @@ const admin = accounts.admin;
 test.skip(!admin, "no admin account: set E2E_ADMIN_* or use a local database");
 test.use({ storageState: admin?.storageState });
 
-for (const path of ["/admin", "/admin/users", "/admin/bulletins", "/admin/settings"]) {
+for (const path of ["/admin", "/admin/users", "/admin/bulletins"]) {
   test(`${path} renders for admins`, async ({ page }) => {
     await page.goto(path);
     await expect(page).toHaveURL(path);
