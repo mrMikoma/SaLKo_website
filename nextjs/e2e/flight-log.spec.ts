@@ -1,6 +1,10 @@
 import { Pool } from "pg";
-import { test, expect } from "./fixtures";
+import { test, expect as baseExpect } from "./fixtures";
 import { accounts, isLocalDatabase } from "./accounts";
+
+// Server actions here wait for the sheet sync, which runs one at a time and
+// queues up while the other flight-log specs run in parallel
+const expect = baseExpect.configure({ timeout: 20_000 });
 
 // Reads the synthetic flight log (e2e/fixtures/flight-sheet.json, see
 // FLIGHT_SHEET_SOURCE in playwright.config.ts). Matching a pilot name writes

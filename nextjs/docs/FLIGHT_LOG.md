@@ -122,6 +122,44 @@ On `/admin/lennot` (`MANAGE_FLIGHT_LOG`), the biller ticks the rows that match t
 - **Tallenna sivu taulukkoon** writes everything in one batch under the aircraft lock (`writePaperPage`). Every flight of the page gets Tila Tarkistettu and the page number. A correction rewrites only what the paper says (date, pilots, persons, route, times, landings, purpose, and the remark if the paper has one), so fuel, oil and the hour meter stay. Like a status change, it refuses the page if a matched row changed after the check.
 - **Review log:** each flight gets a line in `flight_status_changes` with a note such as "Paperisivu 47, korjattu: lasku 11:03 → 11:05". The service account writes the sheet, so the sheet's own history can't say who did it. On `/admin/lennot` the note shows on hover over who checked the flight.
 
+## Billing
+
+`/admin/laskutus` (`MANAGE_BILLING`) bills checked flights by period. `utilities/billing.ts` holds the rules, as pure functions with unit tests; `utilities/billingData.ts` gathers the flights and settings for it.
+
+**Who pays** follows the purpose code (`flight_purposes.payer`, editable on the settings page):
+- HAR, MAT, TAR and LAS: the PIC.
+- KOU, KOUMAT and KOUHAR: the student, meaning the second pilot, or the PIC on a solo flight.
+- The rest: nobody. They are listed apart as "Ei laskuteta".
+
+A payer is a member through `pilot_aliases`. Several sheet names of one member make one bill. A name matched as a non-member is billed under that name. A name not matched at all stops the period from closing.
+
+**Price** is the airborne minutes × the aircraft's per-minute price on the flight's date (`aircraft_rates`):
+- the lower price applies to members who paid that calendar year's equipment fee (`equipment_fee_seasons`), and to training flights, since students are exempt from the fee until their check flight;
+- everyone else pays the higher price.
+
+OH-CON starts at 3,10 / 5,00 €/min, as in `data/prices.json`. That file is the public price list and is edited separately.
+
+**Minimum:** a lone local flight (same departure and arrival) shorter than the aircraft's minimum is billed the minimum (30 min for OH-CON), as a "Minimilaskutus" line. Consecutive flights by the same payer on the same day, and trips to another field, have no minimum, as in the price list.
+
+**Free hour:** for equipment-fee payers, per calendar year, on the aircraft set on the settings page (OH-CON). After every 600 paid minutes the next 60 are free, shown as a "Hyvitys" line. The count runs in billing order:
+1. the year's flights billed before the website did billing, or not yet billed;
+2. then the minutes in closed periods;
+3. then this period's flights in date order.
+
+**Periods:** a period is a date range with a name, e.g. `2026-10`; periods don't overlap.
+- **Open period:** it is worked out from the synced flights each time it is shown. It includes the flights dated in it that the website hasn't billed and whose Tila isn't already Laskutettu, Ei laskuteta or Maksettu (those were billed by hand). The first open period also takes late entries, flights dated inside a period that has already closed.
+- **Blockers:** unchecked flights (not Tarkistettu), names not matched to a member, unknown purposes, missing airborne time, and aircraft without a price. Each links to where it is fixed.
+- **Sulje jakso:** syncs, then stores the lines (`billing_lines`) and per-payer totals (`billing_payers`). It writes Tila Laskutettu or Ei laskuteta and the period's name in Laskutusjakso for every flight of the period, checking each row's `input_hash`, and commits the database only after the sheet write has succeeded. A closed period can't be reopened or removed.
+- **Merkitse maksetuksi:** per payer, writes Maksettu for their flights. "Peru" puts back Laskutettu.
+- **Changes after closing:** a flight that changes in the sheet after its period closed is flagged there ("Muuttunut laskutuksen jälkeen"). The first open period then gets a "Korjaus" line with the difference: a new payer is credited and billed separately, and a removed flight is credited. Corrections leave out the minimum and the free hour.
+
+**Output:**
+- CSV of every line, or one row per payer (`?taso=maksajat`), in Finnish Excel format, for the accounting software;
+- printable summaries, one page per payer (`/admin/laskutus/[id]/tuloste`);
+- members see their closed periods, with lines and whether they are paid, on `/jasenalue/lentopaivakirja` (`VIEW_OWN_BILLING`).
+
+**Settings** (`/admin/laskutus/asetukset`): prices per aircraft from a date, the equipment-fee members per season, the free hour, and who pays for each purpose.
+
 ## Pages
 
 - **`/admin/lennot`** (`VIEW_ALL_FLIGHTS`; changes need `MANAGE_FLIGHT_LOG`):
@@ -129,7 +167,8 @@ On `/admin/lennot` (`MANAGE_FLIGHT_LOG`), the biller ticks the rows that match t
   - matching sheet names to members;
   - one month of flights per aircraft, or every flight still to check, with totals, links into the sheet and the Tila actions above.
 - **`/admin/lennot/tuonti`:** a page of the paper book into the sheet (above).
-- **`/jasenalue/lentopaivakirja`:** the member's own flights, as PIC or as the second pilot or student, by month, with this year's total. Linked from the user menu ("Lentopäiväkirja") when the feature is on.
+- **`/admin/laskutus`**, **`/admin/laskutus/[id]`** (with `/csv` and `/tuloste`) and **`/admin/laskutus/asetukset`:** billing (above).
+- **`/jasenalue/lentopaivakirja`:** the member's own flights, as PIC or as the second pilot or student, by month, with this year's total, and their bills from closed periods. Linked from the user menu ("Lentopäiväkirja") when the feature is on.
 - **`/jasenalue/lentopaivakirja/uusi`:** the entry form above.
 
 ## Development and tests
@@ -144,12 +183,17 @@ Without the variable, Google is used when it's configured, and the fixture other
 - `e2e/flight-log.spec.ts` covers the admin page, the sync, name matching and the member's list.
 - `e2e/flight-entry.spec.ts` enters two flights as the e2e admin, checks them in the own list and undoes them.
 - `e2e/flight-review.spec.ts` marks two flights checked, including the refusal when a row changed, and puts them back.
+- `e2e/flight-billing.spec.ts` bills a one-day period from start to end: a paper page, name matching, the equipment fee, the minimum, closing, payment, the CSV and the member's view.
 - `e2e/flight-paper-page.spec.ts` pastes a paper page that confirms one flight, corrects one and adds one, then puts the corrected one back. The added flight stays in the dev server's copy of the fixture until it restarts, so the fixture has spare formula rows for many runs.
 
-Migration `007_flight_log_web_entries.sql` adds `flight_log_web_entries`, `008_flight_status_changes.sql` adds `flight_status_changes` and `sheet_flights.input_hash`, and `009_flight_review_notes.sql` adds `flight_status_changes.note`.
+Migration `007_flight_log_web_entries.sql` adds `flight_log_web_entries`, `008_flight_status_changes.sql` adds `flight_status_changes` and `sheet_flights.input_hash`, and `009_flight_review_notes.sql` adds `flight_status_changes.note`, and `010_billing.sql` the billing tables.
+
+The entry spec logs its flights on OH-TST, a test aircraft with a tab of its own in the fixture: undo works only on a tab's last row, and the other specs add rows to OH-CON's tab at the same time.
 
 ## Before switching it on for the real sheet
 
 1. Add the ID, Lähde, Tila and Laskutusjakso headers at the right edge of each aircraft's tab, and give the service account editor access.
 2. Fill Tila down as **Laskutettu** for every flight that has already been billed the old way. Otherwise they all show up under Tarkistamatta, and later as unbilled.
 3. On a copy of the spreadsheet, try one save, one undo and one status change: `USER_ENTERED` follows the spreadsheet's locale.
+4. On `/admin/laskutus/asetukset`, check the prices and the minimum, tick the members who paid this season's equipment fee, and check the free hour.
+5. Start the first billing period after the last flight billed by hand. Flights before it, and those with Tila Laskutettu, are not billed again.

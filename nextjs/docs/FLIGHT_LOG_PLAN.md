@@ -251,6 +251,8 @@ Kept: the page shell, the permission names, and one shared airfield picker.
    - Done: bulk entry from the paper book (`/admin/lennot/tuonti`): paste, ditto marks, page totals, matching with pilots' entries, corrections to the paper, and a note per flight in the review log.
    - Moved to the billing PR, which is the first to use them: the rates, equipment-fee seasons and free-hour switch of `/admin/lennot/asetukset`.
 6. Billing periods and summaries.
+   - Done: periods with blockers, closing (lines plus the sheet's Laskutettu, Ei laskuteta and Laskutusjakso), payments (Maksettu), corrections after closing, CSV, printable summaries, the members' view, and settings (prices with the 30-min minimum from the price list, equipment-fee members, free hour, payer per purpose). See "Billing" in `FLIGHT_LOG.md`.
+   - Next: a "laskuttaja" (treasurer) role with billing and flight-log access but not the rest of the admin site; asked on 2026-10-21.
 7. Statistics, reports and the admin dashboard.
 8. Admin users and bulletins (independent, any time after 1).
 9. Historiaa and Hallit (independent).

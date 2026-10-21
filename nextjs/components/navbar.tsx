@@ -59,7 +59,7 @@ const Navbar = ({ flightLog }: { flightLog: boolean }) => {
 
   return (
     <div
-      className={`w-full fixed top-0 z-50 bg-sblued/80  border-b border-sred/30 transition-all duration-300 ${
+      className={`w-full fixed top-0 z-50 bg-sblued/80  border-b border-sred/30 transition-all duration-300 print:hidden ${
         isVisible && !isFullscreenMode ? "translate-y-0" : "-translate-y-full"
       }`}
     >

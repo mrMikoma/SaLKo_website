@@ -9,6 +9,8 @@ import { getMyFlights } from "@/utilities/flightLogData"
 import PageHero from "@/components/pageHero"
 import ContentSection from "@/components/contentSection"
 import MyFlights from "@/components/flightLogs/MyFlights"
+import MyBills from "@/components/billing/MyBills"
+import { getMyBills } from "@/utilities/billingData"
 import Link from "next/link"
 
 export const metadata = {
@@ -32,7 +34,10 @@ export default async function Page() {
   }
 
   await ensureFreshSync()
-  const flights = await getMyFlights(session.user.id)
+  const [flights, bills] = await Promise.all([
+    getMyFlights(session.user.id),
+    hasPermission(session.user.roles, "VIEW_OWN_BILLING") ? getMyBills(session.user.id) : [],
+  ])
 
   return (
     <div className="min-h-screen flex flex-col w-full">
@@ -55,6 +60,7 @@ export default async function Page() {
               + Kirjaa lento
             </Link>
           </div>
+          <MyBills bills={bills} />
           <MyFlights flights={flights} />
         </div>
       </ContentSection>
