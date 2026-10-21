@@ -3,20 +3,24 @@
 import React, { useRef, useState, useTransition } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { DateTime } from "luxon";
 import {
-  Bulletin,
+  AdminBulletin,
   createBulletin,
   updateBulletin,
+  setBulletinPublished,
   deleteBulletin,
 } from "@/utilities/bulletings";
+import { bulletinMarkdown } from "@/components/bulletings/bulletinMarkdown";
 
 interface BulletinTableProps {
-  bulletins: Bulletin[];
+  bulletins: AdminBulletin[];
 }
 
 // ─── Markdown editor with toolbar ────────────────────────────────────────────
 
 interface MarkdownEditorProps {
+  id: string;
   value: string;
   onChange: (v: string) => void;
   disabled?: boolean;
@@ -25,6 +29,7 @@ interface MarkdownEditorProps {
 }
 
 function MarkdownEditor({
+  id,
   value,
   onChange,
   disabled,
@@ -184,22 +189,26 @@ function MarkdownEditor({
 
       {/* Editor / Preview */}
       {preview ? (
-        <div className="min-h-[200px] px-3 py-2 bg-white text-gray-900 text-sm leading-relaxed [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mb-1 [&_strong]:font-bold [&_h2]:text-base [&_h2]:font-bold [&_h2]:mt-3 [&_h2]:mb-1 [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:mt-2 [&_h3]:mb-1 [&_hr]:border-gray-300 [&_hr]:my-3 [&_a]:text-blue-600 [&_a]:underline [&_p]:mb-2 [&_blockquote]:border-l-4 [&_blockquote]:border-gray-300 [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:text-gray-600">
+        // As members will see it on the site
+        <div className="min-h-[200px] px-6 py-4 bg-sblued text-swhite/90 text-base leading-relaxed">
           {value.trim() ? (
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{value}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={bulletinMarkdown}>
+              {value}
+            </ReactMarkdown>
           ) : (
-            <span className="text-gray-400 italic">Ei sisältöä</span>
+            <span className="text-swhite/60 italic">Ei sisältöä</span>
           )}
         </div>
       ) : (
         <textarea
+          id={id}
           ref={ref}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           disabled={disabled}
           placeholder={placeholder}
           rows={minRows}
-          className="w-full px-3 py-2 text-sm text-gray-900 bg-white resize-y focus:outline-none disabled:bg-gray-50 disabled:text-gray-500 font-mono"
+          className="w-full px-3 py-2 text-base text-gray-900 bg-white resize-y focus:outline-none disabled:bg-gray-50 disabled:text-gray-500 font-mono"
         />
       )}
 
@@ -227,13 +236,13 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
     setTimeout(() => setSuccess(null), 3000);
   };
 
-  const handleCreate = (e: React.FormEvent) => {
-    e.preventDefault();
+  // Enter in the form saves a draft; publishing is a deliberate second button
+  const handleCreate = (publish: boolean) => {
     setError(null);
     startTransition(async () => {
-      const result = await createBulletin(newBulletin);
+      const result = await createBulletin(newBulletin, publish);
       if (result.success) {
-        showSuccess("Tiedote luotu onnistuneesti");
+        showSuccess(publish ? "Tiedote julkaistu" : "Tiedote tallennettu luonnoksena");
         setShowCreateForm(false);
         setNewBulletin({ title: "", content: "" });
       } else {
@@ -242,7 +251,19 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
     });
   };
 
-  const handleEdit = (bulletin: Bulletin) => {
+  const handlePublish = (id: number, publish: boolean) => {
+    setError(null);
+    startTransition(async () => {
+      const result = await setBulletinPublished(id, publish);
+      if (result.success) {
+        showSuccess(publish ? "Tiedote julkaistu" : "Tiedote palautettu luonnokseksi");
+      } else {
+        setError(result.error || "Julkaisun muutos epäonnistui");
+      }
+    });
+  };
+
+  const handleEdit = (bulletin: AdminBulletin) => {
     setEditingId(bulletin.id);
     setEditedBulletin({ title: bulletin.title, content: bulletin.content });
     setError(null);
@@ -274,12 +295,9 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
     });
   };
 
-  const formatDate = (timestamp: number) =>
-    new Date(timestamp * 1000).toLocaleDateString("fi-FI", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
+  // Rendered on the server too, so the zone is explicit (the server runs in UTC)
+  const formatDate = (iso: string) =>
+    DateTime.fromISO(iso, { zone: "Europe/Helsinki" }).toFormat("d.M.yyyy");
 
   return (
     <div>
@@ -311,12 +329,19 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
             <h3 className="text-lg font-semibold mb-4 text-gray-900">
               Luo uusi tiedote
             </h3>
-            <form onSubmit={handleCreate} className="space-y-4">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleCreate(false);
+              }}
+              className="space-y-4"
+            >
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="new-bulletin-title" className="block text-sm font-medium text-gray-700 mb-1">
                   Otsikko *
                 </label>
                 <input
+                  id="new-bulletin-title"
                   type="text"
                   value={newBulletin.title}
                   onChange={(e) =>
@@ -329,10 +354,11 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="new-bulletin-content" className="block text-sm font-medium text-gray-700 mb-1">
                   Sisältö *
                 </label>
                 <MarkdownEditor
+                  id="new-bulletin-content"
                   value={newBulletin.content}
                   onChange={(v) => setNewBulletin({ ...newBulletin, content: v })}
                   disabled={isPending}
@@ -343,9 +369,17 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
                 <button
                   type="submit"
                   disabled={isPending}
-                  className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 disabled:bg-gray-400 transition-colors"
+                  className="bg-white text-gray-800 border border-gray-300 px-4 py-2 rounded-md hover:bg-gray-100 disabled:bg-gray-200 transition-colors"
                 >
-                  {isPending ? "Luodaan..." : "Luo tiedote"}
+                  Tallenna luonnoksena
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleCreate(true)}
+                  disabled={isPending}
+                  className="bg-green-700 text-white px-4 py-2 rounded-md hover:bg-green-800 disabled:bg-gray-400 transition-colors"
+                >
+                  Julkaise
                 </button>
                 <button
                   type="button"
@@ -384,10 +418,14 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
                     </h4>
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label
+                          htmlFor={`bulletin-${bulletin.id}-title`}
+                          className="block text-sm font-medium text-gray-700 mb-1"
+                        >
                           Otsikko
                         </label>
                         <input
+                          id={`bulletin-${bulletin.id}-title`}
                           type="text"
                           value={editedBulletin.title}
                           onChange={(e) =>
@@ -401,10 +439,14 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label
+                          htmlFor={`bulletin-${bulletin.id}-content`}
+                          className="block text-sm font-medium text-gray-700 mb-1"
+                        >
                           Sisältö
                         </label>
                         <MarkdownEditor
+                          id={`bulletin-${bulletin.id}-content`}
                           value={editedBulletin.content}
                           onChange={(v) =>
                             setEditedBulletin({ ...editedBulletin, content: v })
@@ -434,17 +476,31 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
                   <div className="p-4">
                     <div className="flex justify-between items-start mb-2">
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900">
+                        <h3 className="text-lg font-semibold text-gray-900 break-words">
                           {bulletin.title}
                         </h3>
-                        <div className="text-sm text-gray-500 mt-1">
-                          <span>{formatDate(bulletin.date)}</span>
-                          {bulletin.username && (
-                            <span className="ml-2">• {bulletin.username}</span>
+                        <div className="text-sm text-gray-500 mt-1 flex flex-wrap items-center gap-2">
+                          {bulletin.status === "published" ? (
+                            <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
+                              Julkaistu {bulletin.publishedAt && formatDate(bulletin.publishedAt)}
+                            </span>
+                          ) : (
+                            <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-900">
+                              Luonnos
+                            </span>
                           )}
+                          <span>Luotu {formatDate(bulletin.createdAt)}</span>
+                          {bulletin.author && <span>• {bulletin.author}</span>}
                         </div>
                       </div>
-                      <div className="flex gap-3 flex-shrink-0 ml-4">
+                      <div className="flex flex-wrap justify-end gap-3 flex-shrink-0 ml-4">
+                        <button
+                          onClick={() => handlePublish(bulletin.id, bulletin.status !== "published")}
+                          disabled={isPending}
+                          className="text-green-800 hover:text-green-950 disabled:text-gray-400 text-sm font-medium"
+                        >
+                          {bulletin.status === "published" ? "Palauta luonnokseksi" : "Julkaise"}
+                        </button>
                         <button
                           onClick={() => handleEdit(bulletin)}
                           disabled={isPending}

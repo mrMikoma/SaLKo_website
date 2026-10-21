@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 import { auth } from "@/auth";
 import { hasPermission } from "@/utilities/roles";
 import { redirect } from "next/navigation";
-import { fetchAllBulletings } from "@/utilities/bulletings";
+import { fetchAllBulletinsForAdmin } from "@/utilities/bulletings";
 import BulletinTable from "@/components/admin/bulletinTable";
 
 export default async function BulletinsPage() {
@@ -10,13 +10,13 @@ export default async function BulletinsPage() {
 
   if (
     !session?.user?.roles ||
-    !hasPermission(session.user.roles, "ACCESS_ADMIN_SITE")
+    !hasPermission(session.user.roles, "MANAGE_BULLETINS")
   ) {
     redirect("/");
   }
 
-  const bulletinsResponse = await fetchAllBulletings();
-  const bulletins = bulletinsResponse.result || [];
+  const { result: bulletins } = await fetchAllBulletinsForAdmin();
+  const published = bulletins.filter((b) => b.status === "published").length;
 
   return (
     <div className="space-y-6">
@@ -35,11 +35,12 @@ export default async function BulletinsPage() {
                 Kaikki tiedotteet
               </h2>
               <p className="text-sm text-gray-500 mt-1">
-                Etusivulla näytetään 5 uusinta tiedotetta
+                Uusi tiedote on luonnos, kunnes julkaiset sen. Etusivulla
+                näkyy 5 uusinta julkaistua, kaikki sivulla /tiedotteet.
               </p>
             </div>
             <span className="bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full">
-              {bulletins.length} tiedotetta
+              {published} julkaistu · {bulletins.length - published} luonnosta
             </span>
           </div>
         </div>
