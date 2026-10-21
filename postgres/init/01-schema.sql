@@ -172,134 +172,271 @@ COMMENT ON COLUMN metar_data.observation_time IS 'Time of actual weather observa
 COMMENT ON COLUMN metar_data.fetched_at IS 'Time when data was fetched from API';
 
 -- =============================================
--- Flight Logging & Billing System
+-- Flight log (synced from the club's Google Sheet)
 -- =============================================
--- Note: Aircraft data (planes and prices) is stored in JSON files
--- at nextjs/data/planes.json and nextjs/data/prices.json
--- This ensures a single source of truth for aircraft information
+-- The aircraft's paper journey log is the master record and the Google Sheet
+-- is its digital copy, one tab per aircraft. The website writes flights into
+-- the sheet and keeps sheet_flights in sync with it; flights are never edited
+-- here directly. See nextjs/docs/FLIGHT_LOG.md.
 
--- Types of billable items
-CREATE TYPE billable_type AS ENUM (
-  'flight',
-  'membership',
-  'hangar',
-  'instruction',
-  'other'
+-- Purpose codes of the sheet's "Lennon tarkoitus" column
+CREATE TABLE IF NOT EXISTS flight_purposes (
+  code TEXT PRIMARY KEY,
+  name_fi TEXT NOT NULL,
+  -- Who pays for the flight: the PIC, the student (Oppilas / SIC) or nobody
+  payer TEXT NOT NULL CHECK (payer IN ('pic', 'student', 'none')),
+  is_training BOOLEAN NOT NULL DEFAULT FALSE,
+  sort_order SMALLINT NOT NULL DEFAULT 0,
+  active BOOLEAN NOT NULL DEFAULT TRUE
 );
 
--- Payment status workflow
-CREATE TYPE payment_status AS ENUM (
-  'recorded',    -- Initial entry (auto for flights)
-  'checked',     -- Verified against paper logbook
-  'invoiced',    -- Invoice sent
-  'paid'         -- Payment received
+INSERT INTO flight_purposes (code, name_fi, payer, is_training, sort_order) VALUES
+  ('HAR', 'Harrastuslento', 'pic', FALSE, 10),
+  ('MAT', 'Matkalento', 'pic', FALSE, 20),
+  ('KOU', 'Koululento', 'student', TRUE, 30),
+  ('KOUMAT', 'Koulumatkalento', 'student', TRUE, 31),
+  ('KOUHAR', 'Kouluharrastuslento', 'student', TRUE, 32),
+  ('TAR', 'Tarkastuslento', 'pic', FALSE, 40),
+  ('ESI', 'Esittelylento', 'none', FALSE, 50),
+  ('SII', 'Siirtolento', 'none', FALSE, 60),
+  ('KOE', 'Koelento', 'none', FALSE, 70),
+  ('PALO', 'Palolento', 'none', FALSE, 80),
+  ('PALOHAR', 'Palolentoharjoitus', 'none', FALSE, 81),
+  ('SAR', 'Etsintälento', 'none', FALSE, 90),
+  ('SARHAR', 'Etsintälentoharjoitus', 'none', FALSE, 91),
+  ('HIN', 'Hinauslento', 'none', FALSE, 100),
+  ('LAS', 'Laskuvarjolento', 'pic', FALSE, 110)
+ON CONFLICT (code) DO NOTHING;
+
+-- Which tab of the flight log spreadsheet belongs to which aircraft
+CREATE TABLE IF NOT EXISTS aircraft_sheets (
+  registration TEXT PRIMARY KEY,
+  sheet_name TEXT NOT NULL UNIQUE,
+  -- Google's numeric tab id, for links into the sheet; the sync fills it in
+  sheet_gid BIGINT,
+  -- First flight row: row 1 has the headers and row 2 the opening totals
+  first_data_row INT NOT NULL DEFAULT 3,
+  active BOOLEAN NOT NULL DEFAULT TRUE
 );
 
--- Billing period types
-CREATE TYPE billing_period AS ENUM (
-  'one_time',
-  'monthly',
-  'quarterly',
-  'yearly'
+INSERT INTO aircraft_sheets (registration, sheet_name)
+VALUES ('OH-CON', 'OH-CON Matkapäiväkirja')
+ON CONFLICT (registration) DO NOTHING;
+
+-- Pilot names as written in the sheet ("T.Kuutti") matched to member accounts.
+-- name_key is the name in lower case without spaces and dots, so "T. Kuutti"
+-- and "t.kuutti" are the same pilot (nameKey() in utilities/flightSheetParser.ts).
+CREATE TABLE IF NOT EXISTS pilot_aliases (
+  name_key TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  user_id TEXT REFERENCES users (id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Main billable items table
-CREATE TABLE billable_items (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+CREATE INDEX IF NOT EXISTS idx_pilot_aliases_user ON pilot_aliases (user_id);
 
-  -- Core identification
-  billable_type billable_type NOT NULL,
-  member_id TEXT NOT NULL REFERENCES users(id),
-
-  -- External reference (for flights: links to Google Sheet log_id)
-  external_ref VARCHAR(100),
-
-  -- Description
-  description VARCHAR(255) NOT NULL,
-
-  -- Billing details
-  billing_period billing_period NOT NULL DEFAULT 'one_time',
-  period_start DATE,
-  period_end DATE,
-
-  -- Financials
-  quantity DECIMAL(10,2) NOT NULL DEFAULT 1,
-  unit_price DECIMAL(10,2) NOT NULL,
-  unit_label VARCHAR(50),  -- 'minutes', 'hours', 'months', 'year'
-  total_price DECIMAL(10,2) NOT NULL,
-
-  -- Payment workflow
-  payment_status payment_status NOT NULL DEFAULT 'recorded',
-  checked_at TIMESTAMP,
-  checked_by TEXT REFERENCES users(id),
-  invoiced_at TIMESTAMP,
-  invoiced_by TEXT REFERENCES users(id),
-  invoice_ref VARCHAR(100),
-  paid_at TIMESTAMP,
-  paid_marked_by TEXT REFERENCES users(id),
-
-  -- Aircraft registration (for flights) - references planes.json
-  aircraft_registration VARCHAR(10),
-
-  -- Metadata
-  item_date DATE NOT NULL,
-  notes TEXT,
-  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-
-  -- Flight-specific fields (populated only when billable_type = 'flight')
-  hobbs_start    DECIMAL(8,1),
-  hobbs_end      DECIMAL(8,1),
-  flight_type    VARCHAR(20)
-    CHECK (flight_type IS NULL OR flight_type IN (
-      'training','solo','checkout','cross_country','local','maintenance','other'
-    )),
-  departure_icao VARCHAR(7),
-  arrival_icao   VARCHAR(7),
-  landings       SMALLINT,
-  deleted_at     TIMESTAMP
+-- The synced copy, one row per flight row of the sheet
+CREATE TABLE IF NOT EXISTS sheet_flights (
+  id UUID PRIMARY KEY, -- the sheet's ID column
+  registration TEXT NOT NULL,
+  sheet_row INT NOT NULL,
+  flight_date DATE NOT NULL,
+  pic_name TEXT NOT NULL,
+  pic_key TEXT NOT NULL,
+  second_name TEXT,
+  second_key TEXT,
+  persons_on_board SMALLINT,
+  departure TEXT,
+  arrival TEXT,
+  takeoff_at TIMESTAMPTZ,
+  landing_at TIMESTAMPTZ,
+  airborne_minutes INT,
+  airframe_minutes INT,
+  landings INT,
+  total_landings INT,
+  purpose_code TEXT,
+  fuel_litres NUMERIC(8, 2),
+  oil_litres NUMERIC(6, 2),
+  hour_meter NUMERIC(9, 1),
+  remarks TEXT,
+  log_page TEXT,
+  book_total TEXT,
+  book_error TEXT,
+  maintenance TEXT,
+  source TEXT,
+  status TEXT,
+  billing_period TEXT,
+  raw JSONB NOT NULL,
+  content_hash TEXT NOT NULL,
+  synced_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  -- Set when the row is no longer in the sheet
+  missing_since TIMESTAMPTZ,
+  -- Hash of the typed-in fields only (not the running totals), so a status
+  -- change can tell whether the flight changed after the biller saw it
+  input_hash TEXT
 );
 
--- Indexes for efficient querying
-CREATE INDEX idx_billable_items_type ON billable_items(billable_type);
-CREATE INDEX idx_billable_items_status ON billable_items(payment_status);
-CREATE INDEX idx_billable_items_member ON billable_items(member_id);
-CREATE INDEX idx_billable_items_external_ref ON billable_items(external_ref);
-CREATE INDEX idx_billable_items_date ON billable_items(item_date);
-CREATE INDEX idx_billable_items_aircraft ON billable_items(aircraft_registration)
-  WHERE aircraft_registration IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_sheet_flights_aircraft_date
+  ON sheet_flights (registration, flight_date) WHERE missing_since IS NULL;
+CREATE INDEX IF NOT EXISTS idx_sheet_flights_pic_key ON sheet_flights (pic_key);
+CREATE INDEX IF NOT EXISTS idx_sheet_flights_second_key ON sheet_flights (second_key);
 
--- Partial index for the common "my active flights" query pattern
-CREATE INDEX idx_billable_items_not_deleted ON billable_items(member_id, billable_type)
-  WHERE deleted_at IS NULL;
+-- Flights members entered on the website: who wrote which sheet row, so they
+-- can undo their own latest entry
+CREATE TABLE IF NOT EXISTS flight_log_web_entries (
+  id UUID PRIMARY KEY, -- the row's ID in the sheet
+  user_id TEXT NOT NULL REFERENCES users (id),
+  registration TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  undone_at TIMESTAMPTZ
+);
 
--- Unique constraint on external_ref when present
-CREATE UNIQUE INDEX idx_billable_items_unique_external_ref
-  ON billable_items(external_ref)
-  WHERE external_ref IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_flight_log_web_entries_user
+  ON flight_log_web_entries (user_id, created_at DESC);
 
--- Trigger to update updated_at timestamp
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = NOW();
-  RETURN NEW;
-END;
-$$ language 'plpgsql';
+-- Problems the sync found in the sheet, recomputed on every sync
+CREATE TABLE IF NOT EXISTS sheet_flight_issues (
+  id SERIAL PRIMARY KEY,
+  registration TEXT NOT NULL,
+  sheet_row INT NOT NULL,
+  flight_id UUID,
+  kind TEXT NOT NULL,
+  message TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
-CREATE TRIGGER update_billable_items_updated_at
-  BEFORE UPDATE ON billable_items
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
+CREATE INDEX IF NOT EXISTS idx_sheet_flight_issues_aircraft
+  ON sheet_flight_issues (registration, sheet_row);
 
--- Comments for documentation
-COMMENT ON TABLE billable_items IS 'All billable items: flights, memberships, hangar fees, etc.';
-COMMENT ON COLUMN billable_items.external_ref IS 'Links to Google Sheet log_id for flights';
-COMMENT ON COLUMN billable_items.aircraft_registration IS 'Aircraft registration (e.g., OH-CON) - references planes.json';
-COMMENT ON COLUMN billable_items.hobbs_start    IS 'Hobbs meter reading at takeoff (flight entries only)';
-COMMENT ON COLUMN billable_items.hobbs_end      IS 'Hobbs meter reading after landing (flight entries only)';
-COMMENT ON COLUMN billable_items.flight_type    IS 'Flight category: training|solo|checkout|cross_country|local|maintenance|other';
-COMMENT ON COLUMN billable_items.departure_icao IS 'Departure airfield ICAO/local code (e.g. EFSA)';
-COMMENT ON COLUMN billable_items.arrival_icao   IS 'Arrival airfield ICAO/local code';
-COMMENT ON COLUMN billable_items.landings       IS 'Number of landings during the flight';
-COMMENT ON COLUMN billable_items.deleted_at     IS 'Soft-delete timestamp; NULL means active';
+CREATE TABLE IF NOT EXISTS sheet_sync_runs (
+  id SERIAL PRIMARY KEY,
+  started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  finished_at TIMESTAMPTZ,
+  status TEXT NOT NULL CHECK (status IN ('running', 'success', 'error')),
+  triggered_by TEXT NOT NULL,
+  rows_read INT,
+  rows_changed INT,
+  ids_assigned INT,
+  issues INT,
+  error TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_sheet_sync_runs_started ON sheet_sync_runs (started_at DESC);
+
+-- Who changed a flight's Tila on the website, and when. The sheet keeps only
+-- the current status.
+CREATE TABLE IF NOT EXISTS flight_status_changes (
+  id SERIAL PRIMARY KEY,
+  flight_id UUID NOT NULL, -- sheet_flights.id; no foreign key, the row can leave the sheet
+  registration TEXT NOT NULL,
+  old_status TEXT, -- NULL = Kirjattu
+  new_status TEXT,
+  changed_by TEXT REFERENCES users (id) ON DELETE SET NULL,
+  changed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  -- What else happened, e.g. "Paperisivu 47, korjattu: lasku 11:03 → 11:05"
+  note TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_flight_status_changes_flight
+  ON flight_status_changes (flight_id, changed_at DESC);
+
+-- Billing (nextjs/docs/FLIGHT_LOG.md, "Billing")
+
+-- Per-minute prices per aircraft, from a date on. A local flight shorter than
+-- minimum_local_minutes is billed that long (0 = no minimum).
+CREATE TABLE IF NOT EXISTS aircraft_rates (
+  registration TEXT NOT NULL,
+  valid_from DATE NOT NULL,
+  cents_with_fee INT NOT NULL CHECK (cents_with_fee >= 0),
+  cents_without_fee INT NOT NULL CHECK (cents_without_fee >= 0),
+  minimum_local_minutes INT NOT NULL DEFAULT 0 CHECK (minimum_local_minutes >= 0),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (registration, valid_from)
+);
+
+INSERT INTO aircraft_rates (registration, valid_from, cents_with_fee, cents_without_fee, minimum_local_minutes)
+VALUES ('OH-CON', '2000-01-01', 310, 500, 30)
+ON CONFLICT DO NOTHING;
+
+-- Members who paid a season's equipment fee (kalustomaksu): they fly at the
+-- lower price and earn the free hour
+CREATE TABLE IF NOT EXISTS equipment_fee_seasons (
+  user_id TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  season INT NOT NULL CHECK (season BETWEEN 2000 AND 2100),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_by TEXT REFERENCES users (id) ON DELETE SET NULL,
+  PRIMARY KEY (user_id, season)
+);
+
+-- Flight log settings the biller changes on the site
+CREATE TABLE IF NOT EXISTS flight_log_settings (
+  key TEXT PRIMARY KEY,
+  value JSONB NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_by TEXT REFERENCES users (id) ON DELETE SET NULL
+);
+
+INSERT INTO flight_log_settings (key, value)
+VALUES ('free_hour', '{"enabled": true, "aircraft": ["OH-CON"], "paidMinutes": 600, "freeMinutes": 60}')
+ON CONFLICT (key) DO NOTHING;
+
+-- Billing periods; the name is also written into the sheet's Laskutusjakso
+CREATE TABLE IF NOT EXISTS billing_periods (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  starts_on DATE NOT NULL,
+  ends_on DATE NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_by TEXT REFERENCES users (id) ON DELETE SET NULL,
+  closed_at TIMESTAMPTZ,
+  closed_by TEXT REFERENCES users (id) ON DELETE SET NULL,
+  CHECK (ends_on >= starts_on),
+  CONSTRAINT billing_periods_no_overlap EXCLUDE USING gist (daterange(starts_on, ends_on, '[]') WITH &&)
+);
+
+-- What a closed period billed, per payer
+CREATE TABLE IF NOT EXISTS billing_payers (
+  period_id INT NOT NULL REFERENCES billing_periods (id) ON DELETE CASCADE,
+  payer_key TEXT NOT NULL, -- "user:<id>", or "name:<name key>" for a non-member
+  payer_name TEXT NOT NULL,
+  user_id TEXT REFERENCES users (id) ON DELETE SET NULL,
+  total_cents INT NOT NULL,
+  paid_at TIMESTAMPTZ,
+  paid_by TEXT REFERENCES users (id) ON DELETE SET NULL,
+  PRIMARY KEY (period_id, payer_key)
+);
+
+-- The lines of a closed period as billed. "unbilled" records a flight nobody
+-- pays for, so the period still accounts for it.
+CREATE TABLE IF NOT EXISTS billing_lines (
+  id SERIAL PRIMARY KEY,
+  period_id INT NOT NULL REFERENCES billing_periods (id) ON DELETE CASCADE,
+  payer_key TEXT, -- NULL on unbilled lines
+  kind TEXT NOT NULL CHECK (kind IN ('flight', 'minimum', 'credit', 'adjustment', 'unbilled')),
+  flight_id UUID, -- sheet_flights.id; no foreign key, the row can leave the sheet
+  registration TEXT,
+  flight_date DATE,
+  purpose_code TEXT,
+  minutes INT NOT NULL DEFAULT 0,
+  landings INT NOT NULL DEFAULT 0,
+  cents_per_minute INT,
+  amount_cents INT NOT NULL DEFAULT 0,
+  description TEXT NOT NULL DEFAULT '',
+  -- The flight as billed (sheet_flights.input_hash), to spot later changes
+  input_hash TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_billing_lines_period ON billing_lines (period_id, payer_key);
+CREATE INDEX IF NOT EXISTS idx_billing_lines_flight ON billing_lines (flight_id);
+
+-- Hours per aircraft per year from before the flight log sheet, typed in on
+-- /admin/tilastot. Years the sheet has are counted from its flights instead.
+CREATE TABLE IF NOT EXISTS aircraft_year_totals (
+  registration TEXT NOT NULL,
+  year INT NOT NULL CHECK (year BETWEEN 1950 AND 2100),
+  minutes INT NOT NULL CHECK (minutes >= 0),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_by TEXT REFERENCES users (id) ON DELETE SET NULL,
+  PRIMARY KEY (registration, year)
+);

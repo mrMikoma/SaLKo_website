@@ -2,15 +2,31 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { canOpenAdminPath, ROLES } from "@/utilities/roles";
 
-const AdminNav = () => {
+const AdminNav = ({
+  showFlightLog = false,
+  roles,
+}: {
+  showFlightLog?: boolean;
+  roles: string[];
+}) => {
   const pathname = usePathname();
 
   const navItems = [
     { href: "/admin", label: "Etusivu", exact: true },
     { href: "/admin/users", label: "Käyttäjät" },
+    // The flight log is only on where FEATURE_FLIGHT_LOG is (utilities/features.ts)
+    ...(showFlightLog
+      ? [
+          { href: "/admin/lennot", label: "Lennot" },
+          { href: "/admin/laskutus", label: "Laskutus" },
+          { href: "/admin/tilastot", label: "Tilastot" },
+        ]
+      : []),
     { href: "/admin/bulletins", label: "Tiedotteet" },
-  ];
+    // A treasurer sees only their own sections
+  ].filter((item) => canOpenAdminPath(roles, item.href));
 
   const isActive = (href: string, exact?: boolean) => {
     if (exact) {
@@ -45,6 +61,9 @@ const AdminNav = () => {
           </div>
         </div>
         <div className="flex items-center gap-4">
+          <span className="text-sm text-blue-200">
+            {roles.includes(ROLES.ADMIN) ? "Admin" : "Laskuttaja"}
+          </span>
           <Link
             href="/jasenalue/profiili"
             className="text-blue-100 hover:text-white text-sm"

@@ -4,7 +4,7 @@ import { createHash, randomBytes } from "crypto";
 import { z } from "zod";
 import { auth } from "@/auth";
 import pool from "@/utilities/db";
-import { hasPermission, PERMISSIONS } from "@/utilities/roles";
+import { hasPermission, PERMISSIONS, validateRoles } from "@/utilities/roles";
 import { PasswordSchema } from "@/utilities/definitions";
 import { revalidatePath } from "next/cache";
 import * as bcrypt from "bcrypt";
@@ -34,7 +34,6 @@ export interface User {
 type ActionResult = { success: boolean; error?: string };
 
 const SYSTEM_GUEST_EMAIL = "vieras@savonlinnanlentokerho.fi";
-const VALID_ROLES = ["admin", "user", "guest"];
 const RESET_LINK_HOURS = 24;
 
 const USER_COLUMNS = `
@@ -124,13 +123,11 @@ export async function updateUserRoles(
       return { success: false, error: "Et voi muuttaa omaa rooliasi" };
     }
 
-    const filteredRoles = newRoles.filter((role) => VALID_ROLES.includes(role));
-    if (filteredRoles.length === 0) {
-      return {
-        success: false,
-        error: "Käyttäjällä täytyy olla vähintään yksi rooli",
-      };
+    const checked = validateRoles(newRoles);
+    if ("error" in checked) {
+      return { success: false, error: checked.error };
     }
+    const filteredRoles = checked.roles;
 
     const target = await loadTarget(userId, actor.id);
     if ("error" in target) {
@@ -318,13 +315,11 @@ export async function createCredentialUser(formData: {
     }
     const { email, name, full_name } = parsed.data;
 
-    const filteredRoles = parsed.data.roles.filter((role) => VALID_ROLES.includes(role));
-    if (filteredRoles.length === 0) {
-      return {
-        success: false,
-        error: "Käyttäjällä täytyy olla vähintään yksi rooli",
-      };
+    const checked = validateRoles(parsed.data.roles);
+    if ("error" in checked) {
+      return { success: false, error: checked.error };
     }
+    const filteredRoles = checked.roles;
 
     // Guest-only users can't log in, so they need no password. Everyone else
     // needs one that passes the login rules.

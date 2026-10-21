@@ -204,6 +204,15 @@ jobs:
             echo "NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET }}" >> .env.dev
             echo "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}" >> .env.dev
             echo "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" >> .env.dev
+            # Unfinished features, on in dev only (nextjs/utilities/features.ts)
+            echo "FEATURE_FLIGHT_LOG=true" >> .env.dev
+            # The dev flight log Google Sheet (nextjs/docs/FLIGHT_LOG_SETUP.md), from
+            # the development environment's secrets: the spreadsheet's ID and the
+            # service account's JSON key file as is. The key is base64-encoded here,
+            # so its quotes and line breaks survive the env file; the app decodes it.
+            # Unset secrets leave the flight log pages saying the sheet isn't set up.
+            echo "FLIGHT_LOG_SPREADSHEET_ID=${{ secrets.GOOGLE_SHEETS_ID }}" >> .env.dev
+            echo "GOOGLE_SERVICE_ACCOUNT_KEY=$(printf '%s' '${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}' | base64 -w0)" >> .env.dev
 
             # Ensure the environment variables are written before proceeding
             echo ".env.dev file created with environment variables."

@@ -75,6 +75,9 @@ jobs:
           bunx --no-install next typegen
           bunx --no-install tsc --noEmit
 
+      - name: Unit tests
+        run: bun run test:unit
+
       - name: Install Chromium
         run: bunx --no-install playwright install --with-deps chromium
 

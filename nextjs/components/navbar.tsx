@@ -16,23 +16,24 @@ import {
 } from "@headlessui/react";
 import XCrossIcon from "./icons/xCross";
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useNavbar } from "@/providers/NavbarContextProvider";
+import { hasPermission } from "@/utilities/roles";
 
-const Navbar = () => {
+// flightLog: whether the flight log feature is on (utilities/features.ts)
+const Navbar = ({ flightLog }: { flightLog: boolean }) => {
   const { data: session } = useSession();
-  // Logout is a server action, so useSession() keeps returning the old session
-  // until it refetches. Remember which session was logged out and hide it.
+  // Hide the user as soon as they click logout; signOut() then reloads the page
   const [loggedOutSession, setLoggedOutSession] = useState<typeof session>(null);
   const user = session !== loggedOutSession ? session?.user : undefined;
   const authenticated = Boolean(user);
   const userName = user?.name || "";
   const isAdmin = user?.roles?.includes("admin") || false;
+  // A treasurer's way into the admin site is billing
+  const isTreasurer = !isAdmin && flightLog && hasPermission(user?.roles ?? [], "MANAGE_BILLING");
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
   const { isFullscreenMode } = useNavbar();
-  const router = useRouter();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -55,14 +56,13 @@ const Navbar = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [lastScrollY]);
 
-  const handleLogout = async () => {
-    router.refresh();
+  const handleLogout = () => {
     setLoggedOutSession(session);
   };
 
   return (
     <div
-      className={`w-full fixed top-0 z-50 bg-sblued/80  border-b border-sred/30 transition-all duration-300 ${
+      className={`w-full fixed top-0 z-50 bg-sblued/80  border-b border-sred/30 transition-all duration-300 print:hidden ${
         isVisible && !isFullscreenMode ? "translate-y-0" : "-translate-y-full"
       }`}
     >
@@ -82,7 +82,7 @@ const Navbar = () => {
             </span>
           </Link>{" "}
           {/* Mobile menu toggle button */}
-          <NavbarMobile handleLogout={handleLogout} />
+          <NavbarMobile handleLogout={handleLogout} flightLog={flightLog} />
         </div>
 
         {/* Desktop Navigation Menu */}
@@ -273,6 +273,16 @@ const Navbar = () => {
                       Omat tiedot
                     </Link>
                   </MenuItem>
+                  {flightLog && (
+                    <MenuItem>
+                      <Link
+                        href="/jasenalue/lentopaivakirja"
+                        className="block px-4 py-3 text-swhite font-semibold hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
+                      >
+                        Lentopäiväkirja
+                      </Link>
+                    </MenuItem>
+                  )}
                   {isAdmin && (
                     <MenuItem>
                       <Link
@@ -280,6 +290,16 @@ const Navbar = () => {
                         className="block px-4 py-3 text-swhite font-semibold hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
                       >
                         Admin sivut
+                      </Link>
+                    </MenuItem>
+                  )}
+                  {isTreasurer && (
+                    <MenuItem>
+                      <Link
+                        href="/admin/laskutus"
+                        className="block px-4 py-3 text-swhite font-semibold hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
+                      >
+                        Laskutus
                       </Link>
                     </MenuItem>
                   )}

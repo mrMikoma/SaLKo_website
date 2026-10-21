@@ -1,6 +1,6 @@
 "use server";
 
-import { signIn, signOut } from "@/auth";
+import { signIn } from "@/auth";
 import { AuthError } from "next-auth";
 import { LoginFormSchema } from "@/utilities/definitions";
 
@@ -100,13 +100,3 @@ export async function loginWithGoogle() {
   }
 }
 
-/**
- * Server action for logout
- */
-export async function logout() {
-  // Note: signOut() throws NEXT_REDIRECT which is Next.js's way of handling redirects
-  // We should not catch this as an error - just let it propagate
-  await signOut({
-    redirectTo: "/",
-  });
-}

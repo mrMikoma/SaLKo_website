@@ -24,6 +24,9 @@ bun run lint
 # Run METAR cronjob locally
 bun run cronjob:update-metar              # or: tsx ../cronjobs/update-metar/index.ts
 
+# Unit tests (tests/unit/, bun's test runner)
+bun run test:unit
+
 # E2E tests (Playwright) — starts `bun dev`, or reuses a server already on :3000
 bun run test:e2e
 bun run test:e2e e2e/smoke.spec.ts -g kalusto   # one file / filter by title
@@ -33,11 +36,11 @@ bun run test:e2e --project=setup                # only (re)create the e2e accoun
 
 ## Testing and Browser Checks
 
-Playwright e2e tests live in `nextjs/e2e/` (config: `nextjs/playwright.config.ts`). There are no unit tests. `.github/workflows/test.yaml` runs lint, the type check and the e2e suite on every PR to `dev` or `main` that touches `nextjs/` or `postgres/`. In CI the suite runs against a production build served by `.next/standalone/server.js`, as in the Docker image, and a Postgres built from `postgres/init/`.
+Playwright e2e tests live in `nextjs/e2e/` (config: `nextjs/playwright.config.ts`). Unit tests for pure helpers live in `nextjs/tests/unit/` and run with `bun run test:unit` (bun's test runner). `.github/workflows/test.yaml` runs lint, the type check, the unit tests and the e2e suite on every PR to `dev` or `main` that touches `nextjs/` or `postgres/`. In CI the suite runs against a production build served by `.next/standalone/server.js`, as in the Docker image, and a Postgres built from `postgres/init/`.
 
 - `smoke.spec.ts` checks that every public page renders an `h1`, that protected routes redirect anonymous visitors to `/`, and that the login dialog opens.
 - Every test fails on an uncaught page error or a `console.error` (auto fixture in `e2e/fixtures.ts`), so import `test`/`expect` from `./fixtures`, not from `@playwright/test`.
-- `auth.setup.ts` creates two credentials accounts in the local database, `e2e-user@salko.invalid` (member) and `e2e-admin@salko.invalid` (admin), both with password `E2e-local-pass1!`. It logs in as each and saves the sessions to `nextjs/playwright/.auth/{user,admin}.json` for `member.spec.ts` and `admin.spec.ts`. It only writes to a database on localhost or a Docker bridge address (172.16.0.0/12). For any other database, set `E2E_USER_EMAIL`/`E2E_USER_PASSWORD` and `E2E_ADMIN_EMAIL`/`E2E_ADMIN_PASSWORD` in `nextjs/.env` to existing accounts, or those specs are skipped.
+- `auth.setup.ts` creates three credentials accounts in the local database, `e2e-user@salko.invalid` (member), `e2e-admin@salko.invalid` (admin) and `e2e-treasurer@salko.invalid` (member and treasurer), all with password `E2e-local-pass1!`. It logs in as each and saves the sessions to `nextjs/playwright/.auth/{user,admin,treasurer}.json` for `member.spec.ts`, `admin.spec.ts`, `treasurer.spec.ts` and the flight-log specs. It only writes to a database on localhost or a Docker bridge address (172.16.0.0/12). For any other database, set `E2E_USER_EMAIL`/`E2E_USER_PASSWORD`, `E2E_ADMIN_EMAIL`/`E2E_ADMIN_PASSWORD` and `E2E_TREASURER_EMAIL`/`E2E_TREASURER_PASSWORD` in `nextjs/.env` to existing accounts, or those specs are skipped.
 - A dev server already listening on :3000 is reused. In a worktree, when another checkout's server owns :3000, run `PORT=3001 bun run test:e2e` so the tests hit this tree's code.
 
 After changing UI, check it in a real browser with Playwright CLI (the `playwright-cli` skill), run from `nextjs/` where its config lives. In Claude Code sessions the SessionStart hook puts `nextjs/node_modules/.bin` on PATH, so `playwright-cli` is the pinned dev dependency. In a plain terminal use `bunx --no-install playwright-cli`; without `--no-install`, bunx downloads the deprecated unscoped `playwright-cli` package when run outside `nextjs/`.
@@ -81,11 +84,12 @@ traefik/       # Reverse proxy config
 ### Database
 
 Tables (defined in `postgres/init/01-schema.sql`):
-- **`users`** — `roles` is a text array of `admin | user | guest`. `auth_provider` is `credentials | google | system`. Accounts whose only role is `guest` cannot log in.
+- **`users`** — `roles` is a text array of `admin | treasurer | user | guest`; `treasurer` (laskuttaja) comes on top of `user`. `auth_provider` is `credentials | google | system`. Accounts whose only role is `guest` cannot log in.
 - **`bookings`** — aircraft reservations; `repeat_group_id` (UUID) groups recurring bookings. `plane` is a registration from `nextjs/data/planes.json` (OH-CON, OH-386, OH-PDX, OH-816, OH-829, OH-475).
 - **`guest_bookings`** — contact info for unauthenticated bookings, linked 1:1 to a `bookings` row.
 - **`bullets`** — club announcements.
-- **`billable_items`** — flight logs and other charges (`billable_type`: flight, membership, hangar, instruction, other). `payment_status` moves `recorded → checked → invoiced → paid`; rows are soft-deleted with `deleted_at`.
+- **`sheet_flights`** — read-only copy of the flight log Google Sheet (one tab per aircraft), kept in sync by `utilities/flightSync.ts`; `sheet_flight_issues` and `sheet_sync_runs` go with it. **`flight_purposes`** (purpose codes and who pays), **`aircraft_sheets`** (aircraft → tab) and **`pilot_aliases`** (sheet names → members) are owned by the site, and so are `flight_log_web_entries` and `flight_status_changes` (who entered or checked what). See `nextjs/docs/FLIGHT_LOG.md`.
+- **`billing_periods`**, **`billing_lines`** and **`billing_payers`** — billing periods and what a closed one billed to whom; **`aircraft_rates`**, **`equipment_fee_seasons`** and **`flight_log_settings`** hold the prices, the equipment-fee members per season and the free-hour setting. The rules are in `nextjs/utilities/billing.ts`. **`aircraft_year_totals`** holds hours per aircraft for the years before the flight log, for the statistics.
 - **`metar_data`** — METAR weather records for EFSA, upserted every 2 min by the cronjob, retained 7 days.
 - `accounts`, `sessions`, `verification_tokens` — NextAuth adapter tables (sessions themselves are JWTs).
 
@@ -121,6 +125,8 @@ Session strategy is JWT with 30-day expiry. `trustHost: true` is required becaus
 
 `utilities/roles.ts` exports `ROLES`, `PERMISSIONS`, `hasPermission()`, `canManageBooking()`, and `canDeleteBooking()`. All server actions call `auth()` and `hasPermission()` before touching the DB. Never rely on client-side role checks for access control.
 
+Roles: `admin` has the whole admin site. `treasurer` (laskuttaja) has the flight log, billing and statistics (`VIEW_ALL_FLIGHTS`, `MANAGE_FLIGHT_LOG`, `MANAGE_BILLING`, `VIEW_STATISTICS`) and nothing else of `/admin`: `canOpenAdminPath()` decides what `proxy.ts` lets through and what the admin nav shows, and `adminHome()` is where a treasurer lands (`/admin/laskutus`). `validateRoles()` checks the roles an admin gives, and refuses a treasurer without `user` or `admin`. Give a new role its permissions here, and add it to `ASSIGNABLE_ROLES` for the user forms.
+
 ### Data Flow Pattern
 
 - **Server actions** (`"use server"`) in `utilities/` handle all DB mutations and are called directly from client components.
@@ -146,7 +152,9 @@ Copy `nextjs/.env.example` to `nextjs/.env` (Claude's hooks block editing `.env`
 | `NEXT_PUBLIC_UMAMI_WEBSITE_ID` | Umami site ID (optional) |
 | `UMAMI_INTERNAL_URL` | Internal Umami URL (default: `http://salko-umami:3000`) |
 | `ALLOW_INDEXING` | `true` only in production; otherwise `robots.ts` disallows crawling |
-| `GOOGLE_SERVICE_ACCOUNT_KEY` / `FLIGHT_LOG_SPREADSHEET_ID` | Google Sheets export of flight logs (optional) |
+| `GOOGLE_SERVICE_ACCOUNT_KEY` / `FLIGHT_LOG_SPREADSHEET_ID` | The flight log Google Sheet: the service account's key file (JSON or base64) and the spreadsheet's ID. Setup in `nextjs/docs/FLIGHT_LOG_SETUP.md` (optional) |
+| `FLIGHT_SHEET_SOURCE` / `FLIGHT_SHEET_FIXTURE` | `google` or `fixture` (the synthetic `e2e/fixtures/flight-sheet.json`, used by Playwright and by default under `bun dev` without Google) |
+| `FEATURE_FLIGHT_LOG` | `true` turns on the unfinished flight log (`utilities/features.ts`). Set in dev by `deploy-app-dev.yaml`, unset in prod; defaults to on under `bun dev` |
 | `E2E_USER_*` / `E2E_ADMIN_*` | `_EMAIL` and `_PASSWORD` of existing accounts for e2e tests against a non-local database (optional) |
 
 ## Deployment

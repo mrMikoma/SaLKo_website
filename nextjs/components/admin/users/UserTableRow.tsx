@@ -10,12 +10,11 @@ import {
   deleteUser,
   createPasswordResetLink,
 } from "@/utilities/adminUserActions";
-import { getRoleDisplayName } from "@/utilities/roles";
+import { ASSIGNABLE_ROLES, getRoleDisplayName } from "@/utilities/roles";
 import RoleBadge from "./RoleBadge";
 import AuthProviderBadge from "./AuthProviderBadge";
 import EditUserForm from "./EditUserForm";
 
-const AVAILABLE_ROLES = ["admin", "user", "guest"] as const;
 const SYSTEM_GUEST_EMAIL = "vieras@savonlinnanlentokerho.fi";
 
 // Rendered on the server too, so the zone is explicit (the server runs in UTC)
@@ -124,7 +123,7 @@ const UserTableRow = ({ user, isSelf, onSuccess, onError }: UserTableRowProps) =
           {editingRoles ? (
             <fieldset className="flex flex-col gap-1">
               <legend className="sr-only">Roolit: {user.full_name}</legend>
-              {AVAILABLE_ROLES.map((role) => (
+              {ASSIGNABLE_ROLES.map((role) => (
                 <label key={role} className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"

@@ -8,9 +8,11 @@ const RoleBadge = ({ role }: RoleBadgeProps) => {
   const colorClass =
     role === "admin"
       ? "bg-purple-100 text-purple-800"
-      : role === "user"
-        ? "bg-green-100 text-green-800"
-        : "bg-gray-100 text-gray-800";
+      : role === "treasurer"
+        ? "bg-amber-100 text-amber-900"
+        : role === "user"
+          ? "bg-green-100 text-green-800"
+          : "bg-gray-100 text-gray-800";
 
   return (
     <span

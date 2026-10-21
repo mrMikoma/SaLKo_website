@@ -1,613 +1,643 @@
-"use server"
+"use server";
 
-import pool from "@/utilities/db"
-import { auth } from "@/auth"
-import { hasPermission } from "@/utilities/roles"
-import { revalidatePath } from "next/cache"
-import { DateTime } from "luxon"
+import { randomUUID } from "crypto";
+import { z } from "zod";
+import { DateTime } from "luxon";
+import { revalidatePath } from "next/cache";
+import pool from "@/utilities/db";
+import { auth } from "@/auth";
+import { hasPermission } from "@/utilities/roles";
+import { isFlightLogEnabled } from "@/utilities/features";
+import { syncFlightSheets, SyncSummary } from "@/utilities/flightSync";
 import {
-  appendFlightLog,
-  generateNextLogId,
-  getLatestHobbs,
-  FlightLogEntry as SheetFlightLogEntry,
-} from "@/utilities/googleSheets"
+  nameKey,
+  REVIEW_STATUSES,
+  SHEET_ZONE,
+  SheetFlightInput,
+} from "@/utilities/flightSheetParser";
+import { normalizeClock, sheetNameFor } from "@/utilities/flightFormInput";
 import {
-  flightLogSchema,
-  flightLogEditSchema,
-  type FlightLogFormData,
-  type FlightLogEditFormData,
-} from "@/schemas/flightLogSchema"
-import type {
-  Aircraft,
-  BillableItem,
-  FlightLogEntry,
-  FlightLogResponse,
-  FlightWithBilling,
-  MemberFlightSummary,
-} from "@/types/flightLog"
-import planesData from "@/data/planes.json"
-import pricesData from "@/data/prices.json"
+  appendFlightsToSheet,
+  clearWebFlight,
+  FlightSheetWriteError,
+  PaperPageWrite,
+  setFlightStatuses,
+  StatusChange,
+  writePaperPage,
+} from "@/utilities/flightSheetWriter";
+import { getFlightsOnDates } from "@/utilities/flightLogData";
+import {
+  describeDifferences,
+  ExistingFlight,
+  matchPaperRows,
+  PaperRow,
+  readPaperGrid,
+  RowMatch,
+} from "@/utilities/paperPage";
 
-interface PlaneJson {
-  registeration: string
-  name: string
-  nickname: string | null
-  description: string
-  specs: Record<string, string>
-  links: { text: string; url: string }[]
-  images: { src: string; alt: string }[]
-}
+type ActionResult<T = null> =
+  | { status: "success"; result: T }
+  | { status: "error"; error: string };
 
-interface AircraftRentalRate {
-  registration: string
-  model: string
-  type: string
-  pricePerMinuteWithEquipmentFee: string
-  pricePerMinuteWithoutEquipmentFee: string
-  pricePerHourWithEquipmentFee: string
-  pricePerHourWithoutEquipmentFee: string
-  notes?: string
-}
+const FLIGHT_LOG_DISABLED = "Lentopäiväkirja ei ole vielä käytössä";
 
-function getRentalRate(registration: string): number {
-  const rate = pricesData.aircraftRentalRates.find(
-    (r) => "registration" in r && r.registration === registration
-  ) as AircraftRentalRate | undefined
-
-  if (!rate) return 0
-  return parseFloat(rate.pricePerMinuteWithEquipmentFee.replace("~", "")) || 0
-}
-
-function rowToFlightWithBilling(
-  row: Record<string, unknown>,
-  planes: PlaneJson[]
-): FlightWithBilling {
-  const registration = row.aircraft_registration as string | null
-  const plane = registration
-    ? planes.find((p) => p.registeration === registration)
-    : undefined
-
-  return {
-    logId: (row.external_ref as string) || "",
-    date: row.item_date as string,
-    pilotId: row.member_id as string,
-    pilotName: "",
-    hobbsStart: row.hobbs_start != null ? parseFloat(row.hobbs_start as string) : 0,
-    hobbsEnd: row.hobbs_end != null ? parseFloat(row.hobbs_end as string) : 0,
-    flightMinutes: Math.round(parseFloat(row.quantity as string)),
-    flightType: (row.flight_type as FlightLogEntry["flightType"]) || "local",
-    departureIcao: (row.departure_icao as string) || undefined,
-    arrivalIcao: (row.arrival_icao as string) || undefined,
-    landings: row.landings != null ? (row.landings as number) : undefined,
-    remarks: (row.notes as string) || undefined,
-    createdAt: row.created_at as string,
-    createdBy: "",
-    billableItem: {
-      id: row.id as string,
-      billableType: row.billable_type as BillableItem["billableType"],
-      memberId: row.member_id as string,
-      externalRef: row.external_ref as string | undefined,
-      description: row.description as string,
-      billingPeriod: row.billing_period as BillableItem["billingPeriod"],
-      periodStart: row.period_start as string | undefined,
-      periodEnd: row.period_end as string | undefined,
-      quantity: parseFloat(row.quantity as string),
-      unitPrice: parseFloat(row.unit_price as string),
-      unitLabel: row.unit_label as string | undefined,
-      totalPrice: parseFloat(row.total_price as string),
-      paymentStatus: row.payment_status as BillableItem["paymentStatus"],
-      checkedAt: row.checked_at as string | undefined,
-      checkedBy: row.checked_by as string | undefined,
-      invoicedAt: row.invoiced_at as string | undefined,
-      invoicedBy: row.invoiced_by as string | undefined,
-      invoiceRef: row.invoice_ref as string | undefined,
-      paidAt: row.paid_at as string | undefined,
-      paidMarkedBy: row.paid_marked_by as string | undefined,
-      aircraftId: registration || undefined,
-      itemDate: row.item_date as string,
-      notes: row.notes as string | undefined,
-      createdAt: row.created_at as string,
-      updatedAt: row.updated_at as string,
-    },
-    aircraft: registration
-      ? {
-          id: registration,
-          registration,
-          name: plane?.name || registration,
-          minuteRate: getRentalRate(registration),
-          hourlyRate: getRentalRate(registration) * 60,
-          active: true,
-          createdAt: "",
-          updatedAt: "",
-        }
-      : undefined,
+async function requireFlightLogAdmin() {
+  if (!isFlightLogEnabled()) {
+    return { error: FLIGHT_LOG_DISABLED };
   }
+  const session = await auth();
+  if (!session?.user?.id || !hasPermission(session.user.roles, "MANAGE_FLIGHT_LOG")) {
+    return { error: "Ei oikeuksia lentopäiväkirjan hallintaan" };
+  }
+  return { user: session.user };
 }
 
-export async function getAircraft(): Promise<Aircraft[]> {
-  const planes = planesData as PlaneJson[]
-
-  return planes.map((plane) => {
-    const minuteRate = getRentalRate(plane.registeration)
-
-    return {
-      id: plane.registeration,
-      registration: plane.registeration,
-      name: plane.name,
-      minuteRate,
-      hourlyRate: minuteRate * 60,
-      active: true,
-      createdAt: "",
-      updatedAt: "",
-    }
-  })
-}
-
-export async function getAircraftByRegistration(
-  registration: string
-): Promise<Aircraft | null> {
-  const planes = planesData as PlaneJson[]
-  const plane = planes.find((p) => p.registeration === registration)
-
-  if (!plane) {
-    return null
+/** Admin: copy the sheet into the database now */
+export async function runFlightSync(): Promise<ActionResult<SyncSummary>> {
+  const access = await requireFlightLogAdmin();
+  if ("error" in access) {
+    return { status: "error", error: access.error };
   }
 
-  const minuteRate = getRentalRate(registration)
-
-  return {
-    id: registration,
-    registration: plane.registeration,
-    name: plane.name,
-    minuteRate,
-    hourlyRate: minuteRate * 60,
-    active: true,
-    createdAt: "",
-    updatedAt: "",
+  const summary = await syncFlightSheets(access.user.fullName || access.user.email || "ylläpitäjä", {
+    wait: true,
+  });
+  revalidatePath("/admin/lennot");
+  if (summary.status === "busy") {
+    return { status: "error", error: "Synkronointi on jo käynnissä, yritä hetken päästä" };
   }
+  if (summary.status === "error") {
+    return { status: "error", error: summary.error ?? "Synkronointi epäonnistui" };
+  }
+  return { status: "success", result: summary };
 }
 
-export async function logFlight(
-  data: FlightLogFormData
-): Promise<FlightLogResponse> {
+const pilotAliasSchema = z.object({
+  name: z.string().trim().min(1, "Nimi puuttuu").max(100, "Nimi on liian pitkä"),
+  userId: z.string().min(1).nullable(),
+});
+
+/**
+ * Admin: match a pilot name as written in the sheet to a member account, or
+ * clear the match with userId null
+ */
+export async function setPilotAlias(
+  name: string,
+  userId: string | null
+): Promise<ActionResult> {
+  const access = await requireFlightLogAdmin();
+  if ("error" in access) {
+    return { status: "error", error: access.error };
+  }
+
+  const parsed = pilotAliasSchema.safeParse({ name, userId });
+  if (!parsed.success) {
+    return { status: "error", error: parsed.error.issues[0].message };
+  }
+
   try {
-    const session = await auth()
-    if (!session?.user?.id) {
-      return { status: "error", error: "Kirjaudu sisään" }
-    }
-
-    if (!hasPermission(session.user.roles, "LOG_OWN_FLIGHT")) {
-      return { status: "error", error: "Ei oikeuksia kirjata lentoja" }
-    }
-
-    const validated = flightLogSchema.safeParse(data)
-    if (!validated.success) {
-      return {
-        status: "error",
-        error: validated.error.issues[0].message,
-      }
-    }
-
-    const {
-      aircraftRegistration,
-      date,
-      hobbsStart,
-      hobbsEnd,
-      flightType,
-      departureIcao,
-      arrivalIcao,
-      landings,
-      remarks,
-    } = validated.data
-
-    const aircraft = await getAircraftByRegistration(aircraftRegistration)
-    if (!aircraft) {
-      return { status: "error", error: "Lentokonetta ei löydy" }
-    }
-
-    const flightMinutes = Math.round((hobbsEnd - hobbsStart) * 60)
-    const totalPrice = flightMinutes * aircraft.minuteRate
-
-    const logId = await generateNextLogId(aircraftRegistration)
-
-    const userResult = await pool.query(
-      "SELECT full_name, email FROM users WHERE id = $1",
-      [session.user.id]
-    )
-    const pilotName =
-      userResult.rows[0]?.full_name || session.user.name || "Unknown"
-    const createdBy = userResult.rows[0]?.email || "app"
-
-    const now = DateTime.now().setZone("Europe/Helsinki").toISO()
-
-    const flightEntry: SheetFlightLogEntry = {
-      logId,
-      date,
-      pilotId: session.user.id,
-      pilotName,
-      hobbsStart,
-      hobbsEnd,
-      flightMinutes,
-      flightType,
-      remarks,
-      createdAt: now!,
-      createdBy,
-    }
-
-    const sheetResult = await appendFlightLog(aircraftRegistration, flightEntry)
-    if (!sheetResult.success) {
-      return {
-        status: "error",
-        error: `Virhe Google Sheets -kirjauksessa: ${sheetResult.error}`,
+    if (parsed.data.userId) {
+      const user = await pool.query("SELECT 1 FROM users WHERE id = $1", [parsed.data.userId]);
+      if (user.rowCount === 0) {
+        return { status: "error", error: "Jäsentä ei löytynyt" };
       }
     }
 
     await pool.query(
-      `INSERT INTO billable_items (
-        billable_type, member_id, external_ref, description,
-        quantity, unit_price, unit_label, total_price,
-        aircraft_registration, item_date, notes,
-        hobbs_start, hobbs_end, flight_type,
-        departure_icao, arrival_icao, landings,
-        created_at, updated_at
-      ) VALUES (
-        'flight', $1, $2, $3,
-        $4, $5, 'minuuttia', $6,
-        $7, $8, $9,
-        $10, $11, $12,
-        $13, $14, $15,
-        NOW(), NOW()
-      )`,
-      [
-        session.user.id,
-        logId,
-        `Lento ${aircraftRegistration} - ${date}`,
-        flightMinutes,
-        aircraft.minuteRate,
-        totalPrice,
-        aircraftRegistration,
-        date,
-        remarks || null,
-        hobbsStart,
-        hobbsEnd,
-        flightType,
-        departureIcao || null,
-        arrivalIcao || null,
-        landings ?? null,
-      ]
-    )
+      `INSERT INTO pilot_aliases (name_key, name, user_id)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (name_key) DO UPDATE
+         SET name = EXCLUDED.name, user_id = EXCLUDED.user_id, updated_at = NOW()`,
+      [nameKey(parsed.data.name), parsed.data.name, parsed.data.userId]
+    );
+  } catch (error) {
+    console.error("Error saving pilot alias:", error);
+    return { status: "error", error: "Tallennus epäonnistui" };
+  }
 
-    revalidatePath("/jasenalue/lentopaivakirja")
+  // Refresh the "not matched" issues
+  await syncFlightSheets(access.user.fullName || access.user.email || "ylläpitäjä", {
+    wait: true,
+  });
+  revalidatePath("/admin/lennot");
+  revalidatePath("/jasenalue/lentopaivakirja");
+  return { status: "success", result: null };
+}
 
+/*
+ * Entering flights
+ */
+
+const clockField = z
+  .string()
+  .transform((value, ctx) => {
+    const clock = normalizeClock(value);
+    if (!clock) {
+      ctx.addIssue({ code: "custom", message: "Anna kellonaika muodossa 14.05" });
+      return z.NEVER;
+    }
+    return clock;
+  });
+
+const airfieldField = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .regex(/^[A-ZÅÄÖ0-9]{2,8}$/, "Anna kenttä tunnuksella, esim. EFSA tai JÄÄ");
+
+const optionalNumber = (max: number, message: string) =>
+  z.number().min(0, message).max(max, message).nullable();
+
+const legSchema = z.object({
+  departure: airfieldField,
+  arrival: airfieldField,
+  takeoff: clockField,
+  landing: clockField,
+  landings: z.number().int("Laskujen määrä on kokonaisluku").min(0).max(99, "Liian monta laskua"),
+  personsOnBoard: z.number().int().min(1, "Henkilöitä vähintään 1").max(6, "Henkilöitä enintään 6"),
+  purposeCode: z.string().trim().toUpperCase().min(1, "Valitse lennon tarkoitus"),
+  fuelLitres: optionalNumber(500, "Tarkista tankkausmäärä"),
+  oilLitres: optionalNumber(20, "Tarkista öljymäärä"),
+  hourMeter: optionalNumber(99999.9, "Tarkista tuntimittarin lukema"),
+  remarks: z.string().trim().max(300, "Huomiot voivat olla enintään 300 merkkiä").nullable(),
+});
+
+const logFlightsSchema = z.object({
+  registration: z.string().min(1, "Valitse kone"),
+  flightDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Valitse päivä"),
+  // As PIC the other name is the student or SIC; as a student it is the PIC
+  role: z.enum(["pic", "student"]),
+  otherPilot: z.string().trim().max(60, "Nimi on liian pitkä").nullable(),
+  legs: z.array(legSchema).min(1, "Lisää vähintään yksi lento").max(12, "Enintään 12 lentoa kerralla"),
+});
+
+export type LogFlightsInput = z.input<typeof logFlightsSchema>;
+
+/**
+ * How the member is written in the flight log. Their matched sheet name if
+ * they have one; otherwise "T.Kuutti" from their full name, or the full name,
+ * whichever nobody uses yet, matched to them now. A name already in the sheet
+ * or in pilot_aliases is never claimed here: it may be another pilot's, and
+ * matching it would hand them that pilot's flights and bills. The admin
+ * matches those on /admin/lennot.
+ */
+async function memberSheetName(userId: string, fullName: string): Promise<string | null> {
+  const existing = await pool.query(
+    "SELECT name FROM pilot_aliases WHERE user_id = $1 ORDER BY updated_at DESC LIMIT 1",
+    [userId]
+  );
+  if (existing.rows.length > 0) return existing.rows[0].name;
+
+  for (const candidate of [sheetNameFor(fullName), fullName.trim()]) {
+    if (!candidate) continue;
+    const claimed = await pool.query(
+      `INSERT INTO pilot_aliases (name_key, name, user_id)
+       SELECT $1::text, $2::text, $3::text
+       WHERE NOT EXISTS (SELECT 1 FROM sheet_flights WHERE pic_key = $1)
+         AND NOT EXISTS (SELECT 1 FROM sheet_flights WHERE second_key = $1)
+       ON CONFLICT (name_key) DO NOTHING
+       RETURNING name`,
+      [nameKey(candidate), candidate, userId]
+    );
+    if (claimed.rows.length > 0) return claimed.rows[0].name;
+  }
+  return null;
+}
+
+/**
+ * Member: write one or more flights (legs of the same day and aircraft) into
+ * the flight log sheet
+ */
+export async function logFlights(
+  input: LogFlightsInput
+): Promise<ActionResult<{ ids: string[]; sheetName: string }>> {
+  if (!isFlightLogEnabled()) {
+    return { status: "error", error: FLIGHT_LOG_DISABLED };
+  }
+  const session = await auth();
+  if (!session?.user?.id || !hasPermission(session.user.roles, "LOG_OWN_FLIGHT")) {
+    return { status: "error", error: "Kirjaudu sisään kirjataksesi lentoja" };
+  }
+
+  const parsed = logFlightsSchema.safeParse(input);
+  if (!parsed.success) {
+    return { status: "error", error: parsed.error.issues[0].message };
+  }
+  const { registration, flightDate, role, otherPilot, legs } = parsed.data;
+
+  const today = DateTime.now().setZone(SHEET_ZONE).toISODate()!;
+  if (flightDate > today) {
+    return { status: "error", error: "Päivä ei voi olla tulevaisuudessa" };
+  }
+  if (role === "student" && !otherPilot) {
+    return { status: "error", error: "Kirjoita päällikön (opettajan) nimi" };
+  }
+
+  let inputs: SheetFlightInput[] = [];
+  let sheetName: string | null = null;
+  try {
+    const purposes = await pool.query(
+      "SELECT code FROM flight_purposes WHERE active AND code = ANY($1)",
+      [legs.map((leg) => leg.purposeCode)]
+    );
+    const known = new Set(purposes.rows.map((row) => row.code));
+    const unknown = legs.find((leg) => !known.has(leg.purposeCode));
+    if (unknown) {
+      return { status: "error", error: `Tuntematon lennon tarkoitus ${unknown.purposeCode}` };
+    }
+
+    sheetName = await memberSheetName(
+      session.user.id,
+      session.user.fullName || session.user.name || ""
+    );
+    if (!sheetName) {
+      return {
+        status: "error",
+        error:
+          "Nimesi on jo lentopäiväkirjassa, mutta sitä ei ole yhdistetty sinuun. Pyydä laskuttajaa yhdistämään nimesi, niin voit kirjata lentoja.",
+      };
+    }
+
+    inputs = legs.map((leg) => ({
+      id: randomUUID(),
+      flightDate,
+      picName: role === "pic" ? sheetName : otherPilot!,
+      secondName: role === "pic" ? otherPilot : sheetName,
+      personsOnBoard: leg.personsOnBoard,
+      departure: leg.departure,
+      arrival: leg.arrival,
+      takeoff: leg.takeoff,
+      landing: leg.landing,
+      landings: leg.landings,
+      purposeCode: leg.purposeCode,
+      fuelLitres: leg.fuelLitres,
+      oilLitres: leg.oilLitres,
+      hourMeter: leg.hourMeter,
+      remarks: leg.remarks || null,
+    }));
+
+    await appendFlightsToSheet(registration, inputs);
+    await pool.query(
+      `INSERT INTO flight_log_web_entries (id, user_id, registration)
+       SELECT unnest($1::uuid[]), $2, $3`,
+      [inputs.map((i) => i.id), session.user.id, registration]
+    );
+  } catch (error) {
+    console.error("Error logging flights:", error);
+    return {
+      status: "error",
+      error:
+        error instanceof FlightSheetWriteError
+          ? error.message
+          : "Lentojen tallennus epäonnistui. Lentopäiväkirjan taulukkoon ei saatu yhteyttä.",
+    };
+  }
+
+  await syncFlightSheets(session.user.fullName || "jäsen", { wait: true });
+  revalidatePath("/jasenalue/lentopaivakirja");
+  revalidatePath("/admin/lennot");
+  return { status: "success", result: { ids: inputs.map((i) => i.id), sheetName } };
+}
+
+/**
+ * Member: undo a flight they entered on the site, while it is still the last
+ * row of the sheet and nobody has checked it
+ */
+export async function undoFlight(id: string): Promise<ActionResult> {
+  if (!isFlightLogEnabled()) {
+    return { status: "error", error: FLIGHT_LOG_DISABLED };
+  }
+  const session = await auth();
+  if (!session?.user?.id || !hasPermission(session.user.roles, "LOG_OWN_FLIGHT")) {
+    return { status: "error", error: "Kirjaudu sisään" };
+  }
+  if (!z.uuid().safeParse(id).success) {
+    return { status: "error", error: "Lentoa ei löytynyt" };
+  }
+
+  const entry = await pool.query(
+    `SELECT registration FROM flight_log_web_entries
+     WHERE id = $1 AND user_id = $2 AND undone_at IS NULL`,
+    [id, session.user.id]
+  );
+  if (entry.rowCount === 0) {
+    return { status: "error", error: "Voit kumota vain itse kirjaamasi lennon" };
+  }
+
+  try {
+    await clearWebFlight(entry.rows[0].registration, id);
+    await pool.query("UPDATE flight_log_web_entries SET undone_at = NOW() WHERE id = $1", [id]);
+  } catch (error) {
+    console.error("Error undoing flight:", error);
+    return {
+      status: "error",
+      error:
+        error instanceof FlightSheetWriteError
+          ? error.message
+          : "Kumoaminen epäonnistui. Lentopäiväkirjan taulukkoon ei saatu yhteyttä.",
+    };
+  }
+
+  await syncFlightSheets(session.user.fullName || "jäsen", { wait: true });
+  revalidatePath("/jasenalue/lentopaivakirja");
+  revalidatePath("/admin/lennot");
+  return { status: "success", result: null };
+}
+
+const setFlightStatusSchema = z.object({
+  registration: z.string().min(1),
+  status: z.enum(REVIEW_STATUSES),
+  flights: z
+    .array(z.object({ id: z.uuid(), inputHash: z.string().max(64).nullable() }))
+    .min(1, "Valitse ensin lennot")
+    .max(500, "Enintään 500 lentoa kerralla"),
+});
+
+/**
+ * Admin: set Tila on flights compared with the paper book (Tarkistettu,
+ * Korjattava, or back to Kirjattu). Written into the sheet, which stays the
+ * source; flight_status_changes keeps who changed it and when.
+ */
+export async function setFlightStatus(
+  input: z.input<typeof setFlightStatusSchema>
+): Promise<ActionResult<{ changed: number }>> {
+  const access = await requireFlightLogAdmin();
+  if ("error" in access) {
+    return { status: "error", error: access.error };
+  }
+  const parsed = setFlightStatusSchema.safeParse(input);
+  if (!parsed.success) {
+    return { status: "error", error: parsed.error.issues[0].message };
+  }
+  const { registration, status, flights } = parsed.data;
+
+  let changes: StatusChange[] = [];
+  let error: string | null = null;
+  try {
+    changes = await setFlightStatuses(registration, flights, status);
+    if (changes.length > 0) {
+      await pool.query(
+        `INSERT INTO flight_status_changes (flight_id, registration, old_status, new_status, changed_by)
+         SELECT c.id, $2, NULLIF(c.old_status, ''), NULLIF($3, ''), $4
+         FROM jsonb_to_recordset($1::jsonb) AS c(id uuid, old_status text)`,
+        [
+          JSON.stringify(changes.map((c) => ({ id: c.id, old_status: c.oldStatus }))),
+          registration,
+          status,
+          access.user.id,
+        ]
+      );
+    }
+  } catch (caught) {
+    console.error("Error setting flight status:", caught);
+    error =
+      caught instanceof FlightSheetWriteError
+        ? caught.message
+        : "Tilan tallennus epäonnistui. Lentopäiväkirjan taulukkoon ei saatu yhteyttä.";
+  }
+
+  // Sync either way: after a refusal the page then shows what changed
+  await syncFlightSheets(access.user.fullName || "ylläpito", { wait: true });
+  revalidatePath("/admin/lennot");
+  revalidatePath("/jasenalue/lentopaivakirja");
+  if (error) {
+    return { status: "error", error };
+  }
+  return { status: "success", result: { changed: changes.length } };
+}
+
+/*
+ * Bulk entry from the paper book
+ */
+
+const paperCellsSchema = z.object({
+  date: z.string().max(20),
+  pic: z.string().max(60),
+  second: z.string().max(60),
+  persons: z.string().max(4),
+  departure: z.string().max(10),
+  arrival: z.string().max(10),
+  takeoff: z.string().max(8),
+  landing: z.string().max(8),
+  landings: z.string().max(4),
+  purpose: z.string().max(10),
+  remarks: z.string().max(300),
+});
+
+const paperPageSchema = z.object({
+  registration: z.string().min(1, "Valitse kone"),
+  logPage: z.string().trim().max(20, "Sivunumero on liian pitkä").nullable(),
+  grid: z.array(paperCellsSchema).max(60, "Enintään 60 riviä kerralla"),
+});
+
+export type PaperPageInput = z.input<typeof paperPageSchema>;
+
+export interface PaperPreviewRow {
+  index: number;
+  errors: string[];
+  match: RowMatch | null;
+}
+
+/** Reads the grid and checks the purpose codes; rows with errors have no row */
+async function readPage(grid: PaperPageInput["grid"]) {
+  const today = DateTime.now().setZone(SHEET_ZONE).toISODate()!;
+  const read = readPaperGrid(grid, today);
+  const codes = new Set(
+    (await pool.query("SELECT code FROM flight_purposes WHERE active")).rows.map((r) => r.code)
+  );
+  for (const line of read) {
+    if (line.row && !codes.has(line.row.purposeCode)) {
+      line.errors.push(`Tuntematon lennon tarkoitus ${line.row.purposeCode}`);
+      line.row = null;
+    }
+  }
+  return read;
+}
+
+/**
+ * Admin: check a typed page of the paper book before saving it. Syncs first,
+ * then pairs each line with a flight already in the sheet.
+ */
+export async function previewPaperPage(
+  input: PaperPageInput
+): Promise<ActionResult<{ rows: PaperPreviewRow[]; notOnPage: ExistingFlight[] }>> {
+  const access = await requireFlightLogAdmin();
+  if ("error" in access) {
+    return { status: "error", error: access.error };
+  }
+  const parsed = paperPageSchema.safeParse(input);
+  if (!parsed.success) {
+    return { status: "error", error: parsed.error.issues[0].message };
+  }
+  const { registration, grid } = parsed.data;
+
+  try {
+    const read = await readPage(grid);
+    if (read.length === 0) {
+      return { status: "error", error: "Kirjoita ensin sivun lennot" };
+    }
+    await syncFlightSheets(access.user.fullName || "ylläpito", { wait: true });
+    const valid = read.filter((line) => line.row);
+    const existing = await getFlightsOnDates(registration, [
+      ...new Set(valid.map((line) => line.row!.flightDate)),
+    ]);
+    const matches = matchPaperRows(
+      valid.map((line) => line.row!),
+      existing
+    );
+    const matchByIndex = new Map(valid.map((line, i) => [line.index, matches[i]]));
+    const matchedIds = new Set(matches.flatMap((m) => (m.kind === "new" ? [] : [m.flight.id])));
     return {
       status: "success",
       result: {
-        logId,
-        date,
-        pilotId: session.user.id,
-        pilotName,
-        hobbsStart,
-        hobbsEnd,
-        flightMinutes,
-        flightType: flightType as FlightLogEntry["flightType"],
-        departureIcao: departureIcao || undefined,
-        arrivalIcao: arrivalIcao || undefined,
-        landings: landings ?? undefined,
-        remarks,
-        createdAt: now!,
-        createdBy,
+        rows: read.map((line) => ({
+          index: line.index,
+          errors: line.errors,
+          match: matchByIndex.get(line.index) ?? null,
+        })),
+        // In the sheet on the page's days but not on the page: on the next
+        // page, or an extra row in the sheet
+        notOnPage: existing.filter((flight) => !matchedIds.has(flight.id)),
       },
-    }
+    };
   } catch (error) {
-    console.error("Error logging flight:", error)
-    return { status: "error", error: "Lennon kirjaus epäonnistui" }
+    console.error("Error previewing paper page:", error);
+    return { status: "error", error: "Sivun tarkistus epäonnistui" };
   }
 }
 
-export async function editFlightLog(
-  billableItemId: string,
-  data: FlightLogEditFormData
-): Promise<{ status: "success" | "error"; error?: string }> {
+const paperDecisionSchema = z.object({
+  index: z.number().int().min(0),
+  action: z.enum(["new", "confirm", "correct", "skip"]),
+  id: z.uuid().nullable(),
+  inputHash: z.string().max(64).nullable(),
+});
+
+const savePaperPageSchema = paperPageSchema.extend({
+  decisions: z.array(paperDecisionSchema).max(60),
+});
+
+const toSheetInput = (row: PaperRow, id: string) => ({
+  id,
+  flightDate: row.flightDate,
+  picName: row.picName,
+  secondName: row.secondName,
+  personsOnBoard: row.personsOnBoard,
+  departure: row.departure,
+  arrival: row.arrival,
+  takeoff: row.takeoff,
+  landing: row.landing,
+  landings: row.landings,
+  purposeCode: row.purposeCode,
+  fuelLitres: null,
+  oilLitres: null,
+  hourMeter: null,
+  remarks: row.remarks,
+});
+
+/**
+ * Admin: write a checked page of the paper book into the sheet. New lines are
+ * appended, lines a pilot already entered are confirmed or corrected to match
+ * the paper, and every flight of the page gets Tila Tarkistettu and the page
+ * number.
+ */
+export async function savePaperPage(
+  input: z.input<typeof savePaperPageSchema>
+): Promise<ActionResult<{ added: number; confirmed: number; corrected: number }>> {
+  const access = await requireFlightLogAdmin();
+  if ("error" in access) {
+    return { status: "error", error: access.error };
+  }
+  const parsed = savePaperPageSchema.safeParse(input);
+  if (!parsed.success) {
+    return { status: "error", error: parsed.error.issues[0].message };
+  }
+  const { registration, logPage, grid, decisions } = parsed.data;
+
+  const page: PaperPageWrite = { append: [], corrections: [], confirms: [], logPage: logPage || null };
+  // The review log gets a line for every flight of the page
+  const notes = new Map<string, string>();
+  const pageLabel = page.logPage ? `Paperisivu ${page.logPage}` : "Paperisivu";
+  let error: string | null = null;
   try {
-    const session = await auth()
-    if (!session?.user?.id) {
-      return { status: "error", error: "Kirjaudu sisään" }
+    const read = await readPage(grid);
+    const broken = read.find((line) => !line.row);
+    if (broken) {
+      return { status: "error", error: `Rivi ${broken.index + 1}: ${broken.errors[0]}` };
     }
-
-    const validated = flightLogEditSchema.safeParse(data)
-    if (!validated.success) {
-      return { status: "error", error: validated.error.issues[0].message }
-    }
-
-    const existing = await pool.query(
-      `SELECT member_id, payment_status, hobbs_start, aircraft_registration
-       FROM billable_items
-       WHERE id = $1 AND deleted_at IS NULL`,
-      [billableItemId]
-    )
-
-    if (existing.rows.length === 0) {
-      return { status: "error", error: "Kirjausta ei löydy" }
-    }
-
-    const row = existing.rows[0]
-    const isAdmin = hasPermission(session.user.roles, "EDIT_ANY_FLIGHT")
-
-    if (row.member_id !== session.user.id && !isAdmin) {
-      return { status: "error", error: "Ei oikeuksia muokata tätä kirjausta" }
-    }
-
-    if (row.payment_status !== "recorded" && !isAdmin) {
-      return {
-        status: "error",
-        error: "Kirjausta ei voi muokata enää (tila on muuttunut)",
+    const byIndex = new Map(decisions.map((decision) => [decision.index, decision]));
+    const inSheet = new Map(
+      (
+        await getFlightsOnDates(registration, [...new Set(read.map((line) => line.row!.flightDate))])
+      ).map((flight) => [flight.id, flight])
+    );
+    for (const line of read) {
+      const decision = byIndex.get(line.index);
+      if (!decision) {
+        return { status: "error", error: "Sivu on muuttunut. Tarkista se uudelleen ennen tallennusta." };
+      }
+      if (decision.action === "new") {
+        const id = randomUUID();
+        page.append.push(toSheetInput(line.row!, id));
+        notes.set(id, `${pageLabel}, uusi`);
+      } else if (decision.action !== "skip") {
+        if (!decision.id) {
+          return { status: "error", error: `Rivi ${line.index + 1}: taulukon riviä ei ole valittu` };
+        }
+        const matched = { id: decision.id, inputHash: decision.inputHash };
+        if (decision.action === "confirm") {
+          page.confirms.push(matched);
+          notes.set(decision.id, `${pageLabel}, sama`);
+        } else {
+          page.corrections.push({ ...matched, input: toSheetInput(line.row!, decision.id) });
+          const before = inSheet.get(decision.id);
+          const changed = before ? describeDifferences(line.row!, before) : [];
+          notes.set(
+            decision.id,
+            `${pageLabel}, korjattu${changed.length > 0 ? `: ${changed.join(", ")}` : ""}`
+          );
+        }
       }
     }
-
-    const {
-      hobbsEnd,
-      flightType,
-      departureIcao,
-      arrivalIcao,
-      landings,
-      remarks,
-    } = validated.data
-
-    const setClauses: string[] = []
-    const params: unknown[] = []
-    let paramIdx = 1
-
-    if (hobbsEnd !== undefined) {
-      const hobbsStart = parseFloat(row.hobbs_start)
-      const newMinutes = Math.round((hobbsEnd - hobbsStart) * 60)
-      const minuteRate = getRentalRate(row.aircraft_registration || "")
-      const newTotal = newMinutes * minuteRate
-
-      setClauses.push(`hobbs_end = $${paramIdx++}`)
-      params.push(hobbsEnd)
-      setClauses.push(`quantity = $${paramIdx++}`)
-      params.push(newMinutes)
-      setClauses.push(`total_price = $${paramIdx++}`)
-      params.push(newTotal)
+    if (page.append.length + page.confirms.length + page.corrections.length === 0) {
+      return { status: "error", error: "Sivulla ei ole tallennettavaa" };
     }
 
-    if (flightType !== undefined) {
-      setClauses.push(`flight_type = $${paramIdx++}`)
-      params.push(flightType)
-    }
-
-    setClauses.push(`departure_icao = $${paramIdx++}`)
-    params.push(departureIcao || null)
-    setClauses.push(`arrival_icao = $${paramIdx++}`)
-    params.push(arrivalIcao || null)
-    setClauses.push(`landings = $${paramIdx++}`)
-    params.push(landings ?? null)
-    setClauses.push(`notes = $${paramIdx++}`)
-    params.push(remarks || null)
-
-    params.push(billableItemId)
-
+    const { matched } = await writePaperPage(registration, page);
+    const previous = new Map(matched.map((m) => [m.id, m.oldStatus]));
     await pool.query(
-      `UPDATE billable_items
-       SET ${setClauses.join(", ")}, updated_at = NOW()
-       WHERE id = $${paramIdx}`,
-      params
-    )
-
-    revalidatePath("/jasenalue/lentopaivakirja")
-    return { status: "success" }
-  } catch (error) {
-    console.error("Error editing flight log:", error)
-    return { status: "error", error: "Muokkaus epäonnistui" }
+      `INSERT INTO flight_status_changes
+         (flight_id, registration, old_status, new_status, changed_by, note)
+       SELECT c.id, $2, NULLIF(c.old_status, ''), 'Tarkistettu', $3, c.note
+       FROM jsonb_to_recordset($1::jsonb) AS c(id uuid, old_status text, note text)`,
+      [
+        JSON.stringify(
+          [...notes].map(([id, note]) => ({ id, old_status: previous.get(id) ?? null, note }))
+        ),
+        registration,
+        access.user.id,
+      ]
+    );
+  } catch (caught) {
+    console.error("Error saving paper page:", caught);
+    error =
+      caught instanceof FlightSheetWriteError
+        ? caught.message
+        : "Sivun tallennus epäonnistui. Lentopäiväkirjan taulukkoon ei saatu yhteyttä.";
   }
-}
 
-export async function deleteFlightLog(
-  billableItemId: string
-): Promise<{ status: "success" | "error"; error?: string }> {
-  try {
-    const session = await auth()
-    if (!session?.user?.id) {
-      return { status: "error", error: "Kirjaudu sisään" }
-    }
-
-    const existing = await pool.query(
-      `SELECT member_id, payment_status
-       FROM billable_items
-       WHERE id = $1 AND deleted_at IS NULL`,
-      [billableItemId]
-    )
-
-    if (existing.rows.length === 0) {
-      return { status: "error", error: "Kirjausta ei löydy" }
-    }
-
-    const row = existing.rows[0]
-    const isAdmin = hasPermission(session.user.roles, "EDIT_ANY_FLIGHT")
-
-    if (row.member_id !== session.user.id && !isAdmin) {
-      return { status: "error", error: "Ei oikeuksia poistaa tätä kirjausta" }
-    }
-
-    if (row.payment_status !== "recorded" && !isAdmin) {
-      return {
-        status: "error",
-        error: "Kirjausta ei voi poistaa enää (tila on muuttunut)",
-      }
-    }
-
-    await pool.query(
-      `UPDATE billable_items SET deleted_at = NOW(), updated_at = NOW() WHERE id = $1`,
-      [billableItemId]
-    )
-
-    revalidatePath("/jasenalue/lentopaivakirja")
-    return { status: "success" }
-  } catch (error) {
-    console.error("Error deleting flight log:", error)
-    return { status: "error", error: "Poisto epäonnistui" }
+  await syncFlightSheets(access.user.fullName || "ylläpito", { wait: true });
+  revalidatePath("/admin/lennot");
+  revalidatePath("/jasenalue/lentopaivakirja");
+  if (error) {
+    return { status: "error", error };
   }
-}
-
-export async function getMyFlightLogs(): Promise<FlightWithBilling[]> {
-  try {
-    const session = await auth()
-    if (!session?.user?.id) {
-      return []
-    }
-
-    if (!hasPermission(session.user.roles, "VIEW_OWN_FLIGHTS")) {
-      return []
-    }
-
-    const result = await pool.query(
-      `SELECT * FROM billable_items
-       WHERE member_id = $1 AND billable_type = 'flight' AND deleted_at IS NULL
-       ORDER BY item_date DESC, created_at DESC`,
-      [session.user.id]
-    )
-
-    const planes = planesData as PlaneJson[]
-    return result.rows.map((row) => rowToFlightWithBilling(row, planes))
-  } catch (error) {
-    console.error("Error fetching flight logs:", error)
-    return []
-  }
-}
-
-export async function getMyFlightSummary(): Promise<MemberFlightSummary | null> {
-  try {
-    const session = await auth()
-    if (!session?.user?.id) {
-      return null
-    }
-
-    const result = await pool.query(
-      `SELECT
-        COUNT(*) as total_flights,
-        COALESCE(SUM(quantity), 0) as total_minutes,
-        COALESCE(SUM(total_price), 0) as total_cost,
-        COALESCE(SUM(CASE WHEN payment_status != 'paid' THEN total_price ELSE 0 END), 0) as unpaid_amount,
-        MAX(item_date) as last_flight_date
-       FROM billable_items
-       WHERE member_id = $1 AND billable_type = 'flight' AND deleted_at IS NULL`,
-      [session.user.id]
-    )
-
-    const row = result.rows[0]
-    return {
-      totalFlights: parseInt(row.total_flights, 10),
-      totalMinutes: parseFloat(row.total_minutes),
-      totalCost: parseFloat(row.total_cost),
-      unpaidAmount: parseFloat(row.unpaid_amount),
-      lastFlightDate: row.last_flight_date || undefined,
-    }
-  } catch (error) {
-    console.error("Error fetching flight summary:", error)
-    return null
-  }
-}
-
-export async function getAircraftLatestHobbs(
-  registration: string
-): Promise<number | null> {
-  try {
-    const session = await auth()
-    if (!session?.user?.id) {
-      return null
-    }
-
-    return await getLatestHobbs(registration)
-  } catch (error) {
-    console.error("Error fetching latest Hobbs:", error)
-    return null
-  }
-}
-
-export async function getMyBillingItems(): Promise<BillableItem[]> {
-  try {
-    const session = await auth()
-    if (!session?.user?.id) {
-      return []
-    }
-
-    if (!hasPermission(session.user.roles, "VIEW_OWN_BILLING")) {
-      return []
-    }
-
-    const result = await pool.query(
-      `SELECT * FROM billable_items
-       WHERE member_id = $1 AND deleted_at IS NULL
-       ORDER BY item_date DESC, created_at DESC`,
-      [session.user.id]
-    )
-
-    return result.rows.map((row) => ({
-      id: row.id,
-      billableType: row.billable_type,
-      memberId: row.member_id,
-      externalRef: row.external_ref,
-      description: row.description,
-      billingPeriod: row.billing_period,
-      periodStart: row.period_start,
-      periodEnd: row.period_end,
-      quantity: parseFloat(row.quantity),
-      unitPrice: parseFloat(row.unit_price),
-      unitLabel: row.unit_label,
-      totalPrice: parseFloat(row.total_price),
-      paymentStatus: row.payment_status,
-      checkedAt: row.checked_at,
-      checkedBy: row.checked_by,
-      invoicedAt: row.invoiced_at,
-      invoicedBy: row.invoiced_by,
-      invoiceRef: row.invoice_ref,
-      paidAt: row.paid_at,
-      paidMarkedBy: row.paid_marked_by,
-      aircraftId: row.aircraft_id,
-      itemDate: row.item_date,
-      notes: row.notes,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    }))
-  } catch (error) {
-    console.error("Error fetching billing items:", error)
-    return []
-  }
-}
-
-export async function getMyBillingSummary(): Promise<{
-  totalUnpaid: number
-  itemsByStatus: Record<string, number>
-} | null> {
-  try {
-    const session = await auth()
-    if (!session?.user?.id) {
-      return null
-    }
-
-    const result = await pool.query(
-      `SELECT
-        payment_status,
-        SUM(total_price) as total
-       FROM billable_items
-       WHERE member_id = $1 AND deleted_at IS NULL
-       GROUP BY payment_status`,
-      [session.user.id]
-    )
-
-    const itemsByStatus: Record<string, number> = {}
-    let totalUnpaid = 0
-
-    for (const row of result.rows) {
-      itemsByStatus[row.payment_status] = parseFloat(row.total)
-      if (row.payment_status !== "paid") {
-        totalUnpaid += parseFloat(row.total)
-      }
-    }
-
-    return { totalUnpaid, itemsByStatus }
-  } catch (error) {
-    console.error("Error fetching billing summary:", error)
-    return null
-  }
+  return {
+    status: "success",
+    result: {
+      added: page.append.length,
+      confirmed: page.confirms.length,
+      corrected: page.corrections.length,
+    },
+  };
 }
