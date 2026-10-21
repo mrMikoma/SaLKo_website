@@ -236,7 +236,10 @@ const FlightTable = ({
                       {statusLabel(flight.status)}
                     </span>
                     {flight.statusChangedAt && (
-                      <span className="block text-xs text-gray-600 mt-0.5">
+                      <span
+                        className="block text-xs text-gray-600 mt-0.5"
+                        title={flight.statusNote ?? undefined}
+                      >
                         {flight.statusChangedBy ?? "–"}, {formatDateTime(flight.statusChangedAt)}
                       </span>
                     )}

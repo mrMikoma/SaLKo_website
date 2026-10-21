@@ -1,7 +1,10 @@
 import "server-only";
 
+import { DateTime } from "luxon";
 import connectionPool from "@/utilities/db";
 import { getFlightSheet } from "@/utilities/flightSheetSource";
+import { SHEET_ZONE } from "@/utilities/flightSheetParser";
+import type { ExistingFlight } from "@/utilities/paperPage";
 import pricesData from "@/data/prices.json";
 
 /**
@@ -34,6 +37,7 @@ export interface SheetFlight {
   // The latest Tila change made on the website (admin pages only)
   statusChangedBy: string | null;
   statusChangedAt: string | null;
+  statusNote: string | null;
 }
 
 export interface FlightIssueRow {
@@ -97,7 +101,8 @@ const FLIGHT_JOINS = `
 // For the admin pages: who last changed Tila on the website, and when
 const STATUS_CHANGE = `
   LEFT JOIN LATERAL (
-    SELECT u.full_name AS status_changed_by, c.changed_at AS status_changed_at
+    SELECT u.full_name AS status_changed_by, c.changed_at AS status_changed_at,
+           c.note AS status_note
     FROM flight_status_changes c
     LEFT JOIN users u ON u.id = c.changed_by
     WHERE c.flight_id = f.id
@@ -138,6 +143,7 @@ function toFlight(
     inputHash: (row.input_hash as string) ?? null,
     statusChangedBy: (row.status_changed_by as string) ?? null,
     statusChangedAt: toIso((row.status_changed_at as Date) ?? null),
+    statusNote: (row.status_note as string) ?? null,
   };
 }
 
@@ -432,4 +438,42 @@ export async function getFlightFormOptions(userId: string): Promise<FlightFormOp
     lastPurpose: last.rows[0]?.purpose_code ?? null,
     lastAircraft: last.rows[0]?.registration ?? null,
   };
+}
+
+const clock = (value: Date | null) =>
+  value ? DateTime.fromJSDate(value, { zone: SHEET_ZONE }).toFormat("HH:mm") : "";
+
+/** An aircraft's flights on these days, to match a page of the paper book with */
+export async function getFlightsOnDates(
+  registration: string,
+  dates: string[]
+): Promise<ExistingFlight[]> {
+  if (dates.length === 0) return [];
+  const response = await connectionPool.query(
+    `SELECT id, sheet_row, flight_date, pic_name, second_name, persons_on_board, departure,
+            arrival, takeoff_at, landing_at, landings, purpose_code, remarks, source, status,
+            input_hash
+     FROM sheet_flights
+     WHERE registration = $1 AND flight_date = ANY($2::date[]) AND missing_since IS NULL
+     ORDER BY sheet_row`,
+    [registration, dates]
+  );
+  return response.rows.map((row) => ({
+    id: row.id,
+    sheetRow: row.sheet_row,
+    flightDate: toDateString(row.flight_date),
+    picName: row.pic_name,
+    secondName: row.second_name ?? null,
+    personsOnBoard: row.persons_on_board ?? 1,
+    departure: row.departure ?? "",
+    arrival: row.arrival ?? "",
+    takeoff: clock(row.takeoff_at),
+    landing: clock(row.landing_at),
+    landings: row.landings ?? 0,
+    purposeCode: row.purpose_code ?? "",
+    remarks: row.remarks ?? null,
+    source: row.source ?? null,
+    status: row.status ?? null,
+    inputHash: row.input_hash ?? null,
+  }));
 }

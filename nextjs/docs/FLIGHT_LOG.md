@@ -109,12 +109,26 @@ On `/admin/lennot` (`MANAGE_FLIGHT_LOG`), the biller ticks the rows that match t
 5. Writes only the Tila cells, as plain text, and records each change in `flight_status_changes` with the admin and the time. The table shows the latest one under the status.
 6. Syncs, also after a refusal, so the reloaded page shows what changed.
 
+## Typing in a page of the paper book
+
+`/admin/lennot/tuonti` (`MANAGE_FLIGHT_LOG`, the **Kirjaa paperisivu** button on `/admin/lennot`) is a grid for one page of the journey log, typed or pasted from a spreadsheet as tab-separated rows (`utilities/paperPage.ts`):
+- **Grid:** dates as `14.6.2025`, `14.6.25` or `14.6.`; an empty date or a `"` mark repeats the line above. Times take the same shorthand as the member form. Enter and the arrow keys move between lines.
+- **Totals:** the footer adds up the page. Typing the page's printed sum and landings shows whether they match.
+- **Tarkista sivu** syncs, then pairs each line with a flight already in the sheet: same day, takeoff within 15 minutes, or the same PIC with overlapping times. Each line is one of:
+  - **Uusi**: not in the sheet, appended like a member's entry;
+  - **Sama**: a pilot entered it already, and it is confirmed;
+  - **Eroaa**: a pilot entered it with other details, listed as "lasku 11:03 → 11:05". By default the sheet row is corrected to the paper, which is the master. It can also be added as a separate flight, or skipped.
+  - Lines already in billing are skipped. Flights in the sheet on the page's days that no line matched are listed under the grid: they are on the next page, or extra.
+- **Tallenna sivu taulukkoon** writes everything in one batch under the aircraft lock (`writePaperPage`). Every flight of the page gets Tila Tarkistettu and the page number. A correction rewrites only what the paper says (date, pilots, persons, route, times, landings, purpose, and the remark if the paper has one), so fuel, oil and the hour meter stay. Like a status change, it refuses the page if a matched row changed after the check.
+- **Review log:** each flight gets a line in `flight_status_changes` with a note such as "Paperisivu 47, korjattu: lasku 11:03 → 11:05". The service account writes the sheet, so the sheet's own history can't say who did it. On `/admin/lennot` the note shows on hover over who checked the flight.
+
 ## Pages
 
 - **`/admin/lennot`** (`VIEW_ALL_FLIGHTS`; changes need `MANAGE_FLIGHT_LOG`):
   - the sync status and the issues;
   - matching sheet names to members;
   - one month of flights per aircraft, or every flight still to check, with totals, links into the sheet and the Tila actions above.
+- **`/admin/lennot/tuonti`:** a page of the paper book into the sheet (above).
 - **`/jasenalue/lentopaivakirja`:** the member's own flights, as PIC or as the second pilot or student, by month, with this year's total. Linked from the user menu ("Lentopäiväkirja") when the feature is on.
 - **`/jasenalue/lentopaivakirja/uusi`:** the entry form above.
 
@@ -130,8 +144,9 @@ Without the variable, Google is used when it's configured, and the fixture other
 - `e2e/flight-log.spec.ts` covers the admin page, the sync, name matching and the member's list.
 - `e2e/flight-entry.spec.ts` enters two flights as the e2e admin, checks them in the own list and undoes them.
 - `e2e/flight-review.spec.ts` marks two flights checked, including the refusal when a row changed, and puts them back.
+- `e2e/flight-paper-page.spec.ts` pastes a paper page that confirms one flight, corrects one and adds one, then puts the corrected one back. The added flight stays in the dev server's copy of the fixture until it restarts, so the fixture has spare formula rows for many runs.
 
-Migration `007_flight_log_web_entries.sql` adds `flight_log_web_entries`, and `008_flight_status_changes.sql` adds `flight_status_changes` and `sheet_flights.input_hash`.
+Migration `007_flight_log_web_entries.sql` adds `flight_log_web_entries`, `008_flight_status_changes.sql` adds `flight_status_changes` and `sheet_flights.input_hash`, and `009_flight_review_notes.sql` adds `flight_status_changes.note`.
 
 ## Before switching it on for the real sheet
 

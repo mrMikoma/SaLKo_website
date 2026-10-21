@@ -331,7 +331,9 @@ CREATE TABLE IF NOT EXISTS flight_status_changes (
   old_status TEXT, -- NULL = Kirjattu
   new_status TEXT,
   changed_by TEXT REFERENCES users (id) ON DELETE SET NULL,
-  changed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  changed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  -- What else happened, e.g. "Paperisivu 47, korjattu: lasku 11:03 → 11:05"
+  note TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_flight_status_changes_flight
