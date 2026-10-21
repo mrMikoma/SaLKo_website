@@ -60,6 +60,9 @@ export const PERMISSIONS = {
   // mark payments and set the prices
   VIEW_OWN_BILLING: ["admin", "user"] as Role[],
   MANAGE_BILLING: ["admin", "treasurer"] as Role[],
+
+  // Flight statistics and the Traficom report
+  VIEW_STATISTICS: ["admin", "treasurer"] as Role[],
 };
 
 /**
@@ -171,6 +174,7 @@ export function validateRoles(roles: string[]): { roles: Role[] } | { error: str
 const ADMIN_SECTIONS: { path: string; permission: keyof typeof PERMISSIONS }[] = [
   { path: "/admin/laskutus", permission: "MANAGE_BILLING" },
   { path: "/admin/lennot", permission: "VIEW_ALL_FLIGHTS" },
+  { path: "/admin/tilastot", permission: "VIEW_STATISTICS" },
 ];
 
 /** Whether these roles may open a path under /admin */

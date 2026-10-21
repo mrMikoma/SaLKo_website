@@ -28,6 +28,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON flight_log_settings TO :app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON billing_periods TO :app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON billing_payers TO :app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON billing_lines TO :app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON aircraft_year_totals TO :app_user;
 
 -- Grant usage on sequences for the IDENTITY columns
 GRANT USAGE, SELECT ON SEQUENCE bullets_id_seq TO :app_user;

@@ -254,6 +254,8 @@ Kept: the page shell, the permission names, and one shared airfield picker.
    - Done: periods with blockers, closing (lines plus the sheet's Laskutettu, Ei laskuteta and Laskutusjakso), payments (Maksettu), corrections after closing, CSV, printable summaries, the members' view, and settings (prices with the 30-min minimum from the price list, equipment-fee members, free hour, payer per purpose). See "Billing" in `FLIGHT_LOG.md`.
    - Done: the "laskuttaja" (treasurer) role: billing and the flight log, not the rest of the admin site; admins keep billing.
 7. Statistics, reports and the admin dashboard.
+   - Done: `/admin/tilastot` (year and aircraft; months against the previous year, pilots, purposes, the Traficom report with a counter check, intro-flight days against 6, hours per year with earlier years pasted in), an Excel export, and the flight-log panel on `/admin`. Charts are plain bars; no chart library.
+   - Not done: the intro-flight register with passengers' contact details (backlog), and per-member yearly summaries on `/jasenalue`.
 8. Admin users and bulletins (independent, any time after 1).
 9. Historiaa and Hallit (independent).
 

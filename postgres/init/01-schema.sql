@@ -427,3 +427,14 @@ CREATE TABLE IF NOT EXISTS billing_lines (
 
 CREATE INDEX IF NOT EXISTS idx_billing_lines_period ON billing_lines (period_id, payer_key);
 CREATE INDEX IF NOT EXISTS idx_billing_lines_flight ON billing_lines (flight_id);
+
+-- Hours per aircraft per year from before the flight log sheet, typed in on
+-- /admin/tilastot. Years the sheet has are counted from its flights instead.
+CREATE TABLE IF NOT EXISTS aircraft_year_totals (
+  registration TEXT NOT NULL,
+  year INT NOT NULL CHECK (year BETWEEN 1950 AND 2100),
+  minutes INT NOT NULL CHECK (minutes >= 0),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_by TEXT REFERENCES users (id) ON DELETE SET NULL,
+  PRIMARY KEY (registration, year)
+);

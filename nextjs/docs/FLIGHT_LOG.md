@@ -124,7 +124,7 @@ On `/admin/lennot` (`MANAGE_FLIGHT_LOG`), the biller ticks the rows that match t
 
 ## Billing
 
-`/admin/laskutus` (`MANAGE_BILLING`: admins, and the treasurer role, "Laskuttaja") bills checked flights by period. A treasurer also checks flights, types in paper pages and matches names on `/admin/lennot`, but sees nothing else of the admin site; give the role on `/admin/users`, together with Käyttäjä. `utilities/billing.ts` holds the rules, as pure functions with unit tests; `utilities/billingData.ts` gathers the flights and settings for it.
+`/admin/laskutus` (`MANAGE_BILLING`: admins, and the treasurer role, "Laskuttaja") bills checked flights by period. A treasurer also checks flights, types in paper pages and matches names on `/admin/lennot`, and sees the statistics, but nothing else of the admin site; give the role on `/admin/users`, together with Käyttäjä. `utilities/billing.ts` holds the rules, as pure functions with unit tests; `utilities/billingData.ts` gathers the flights and settings for it.
 
 **Who pays** follows the purpose code (`flight_purposes.payer`, editable on the settings page):
 - HAR, MAT, TAR and LAS: the PIC.
@@ -160,6 +160,28 @@ OH-CON starts at 3,10 / 5,00 €/min, as in `data/prices.json`. That file is the
 
 **Settings** (`/admin/laskutus/asetukset`): prices per aircraft from a date, the equipment-fee members per season, the free hour, and who pays for each purpose.
 
+## Statistics
+
+`/admin/tilastot` (`VIEW_STATISTICS`: admins and treasurers) shows a year of the flight log, for one aircraft or all, counting every row of the sheet whatever its Tila. The arithmetic is in `utilities/flightStats.ts` (pure, unit-tested) and the reads in `utilities/statsData.ts`.
+- **Totals** for the year with the change from the previous one, and **month by month** with the previous year beside it.
+- **Per pilot**, as PIC and as student or second pilot. Sheet names matched to a member count together under the member's name.
+- **Per purpose code.**
+- **Lentotoimintailmoitus**, Traficom's annual report per aircraft, grouped as the club's sheet does it:
+  - koululennot (KOU, KOUMAT, KOUHAR);
+  - DTO-koulutus (those and TAR);
+  - muu yksityislentotoiminta (HAR, MAT, SII, ESI, KOE);
+  - palo-, etsintä-, hinaus- ja laskuvarjolennot;
+  - unknown codes, listed separately;
+  - the total.
+
+  Beside it, the year from the sheet's running totals, and where they stood at the year's end. When the two don't agree, it says so.
+- **Esittelylentopäivät:** the days in the year with ESI flights, against the limit of 6 in OPS M1-33, with flights, passengers and pilots per day.
+- **Vuosittain:** hours per aircraft per year. Years the flight log has are counted from its flights. Earlier ones are pasted in as a table (header row of registrations, then a year and hours per row, as in the sheet's yearly statistics), are kept in `aircraft_year_totals`, and can be removed one by one. The real numbers are not in the repository.
+
+**Lataa Excel** downloads the same as a workbook, one tab per section, with times as durations (`utilities/statsWorkbook.ts`, written by `utilities/xlsx.ts`).
+
+The admin front page has a flight-log panel when the feature is on: the sync, flights still to check, the sheet's notes, the open billing period or unpaid bills, and the intro-flight days used.
+
 ## Pages
 
 - **`/admin/lennot`** (`VIEW_ALL_FLIGHTS`; changes need `MANAGE_FLIGHT_LOG`):
@@ -168,6 +190,7 @@ OH-CON starts at 3,10 / 5,00 €/min, as in `data/prices.json`. That file is the
   - one month of flights per aircraft, or every flight still to check, with totals, links into the sheet and the Tila actions above.
 - **`/admin/lennot/tuonti`:** a page of the paper book into the sheet (above).
 - **`/admin/laskutus`**, **`/admin/laskutus/[id]`** (with `/csv` and `/tuloste`) and **`/admin/laskutus/asetukset`:** billing (above).
+- **`/admin/tilastot`** (with `/xlsx`): statistics (above).
 - **`/jasenalue/lentopaivakirja`:** the member's own flights, as PIC or as the second pilot or student, by month, with this year's total, and their bills from closed periods. Linked from the user menu ("Lentopäiväkirja") when the feature is on.
 - **`/jasenalue/lentopaivakirja/uusi`:** the entry form above.
 
@@ -183,10 +206,11 @@ Without the variable, Google is used when it's configured, and the fixture other
 - `e2e/flight-log.spec.ts` covers the admin page, the sync, name matching and the member's list.
 - `e2e/flight-entry.spec.ts` enters two flights as the e2e admin, checks them in the own list and undoes them.
 - `e2e/flight-review.spec.ts` marks two flights checked, including the refusal when a row changed, and puts them back.
+- `e2e/flight-stats.spec.ts` opens the statistics as the treasurer, downloads the workbook, types in and removes an earlier year, and checks the admin front page's panel.
 - `e2e/flight-billing.spec.ts` bills a one-day period from start to end: a paper page, name matching, the equipment fee, the minimum, closing, payment, the CSV and the member's view.
 - `e2e/flight-paper-page.spec.ts` pastes a paper page that confirms one flight, corrects one and adds one, then puts the corrected one back. The added flight stays in the dev server's copy of the fixture until it restarts, so the fixture has spare formula rows for many runs.
 
-Migration `007_flight_log_web_entries.sql` adds `flight_log_web_entries`, `008_flight_status_changes.sql` adds `flight_status_changes` and `sheet_flights.input_hash`, and `009_flight_review_notes.sql` adds `flight_status_changes.note`, and `010_billing.sql` the billing tables.
+Migration `007_flight_log_web_entries.sql` adds `flight_log_web_entries`, `008_flight_status_changes.sql` adds `flight_status_changes` and `sheet_flights.input_hash`, and `009_flight_review_notes.sql` adds `flight_status_changes.note`, and `010_billing.sql` the billing tables, and `011_aircraft_year_totals.sql` the earlier years' hours.
 
 The entry spec logs its flights on OH-TST, a test aircraft with a tab of its own in the fixture: undo works only on a tab's last row, and the other specs add rows to OH-CON's tab at the same time.
 
