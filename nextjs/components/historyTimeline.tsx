@@ -1,45 +1,24 @@
 import Link from "next/link";
 
+import historyData from "@/data/history.json";
+
 interface TimelineEvent {
   year: string;
   title: string;
   description: string;
 }
 
-const events: TimelineEvent[] = [
-  {
-    year: "1962",
-    title: "Kerhon perustaminen",
-    description:
-      "Savonlinnan Lentokerho ry perustettiin yleisilmailun harrastustoiminnan edistämiseksi.",
-  },
-  {
-    year: "1970-luku",
-    title: "Toiminnan laajeneminen",
-    description:
-      "Kerhon toiminta laajeni merkittävästi ja jäsenmäärä kasvoi voimakkaasti.",
-  },
-  {
-    year: "1980-luku",
-    title: "Kaluston kehittäminen",
-    description:
-      "Hankittiin uutta kalustoa ja modernisoitiin olemassa olevaa lentotekniikkaa.",
-  },
-  {
-    year: "2000-luku",
-    title: "Modernisaatio",
-    description:
-      "Toiminnan modernisointi ja uusien koulutusmuotojen käyttöönotto digitalisoituvassa maailmassa.",
-  },
-  {
-    year: "2025",
-    title: "Nykyaika",
-    description:
-      "Aktiivinen kerho yli 60 vuoden historialla, tarjoten laadukasta koulutusta ja monipuolista harrastustoimintaa.",
-  },
-];
+interface HistoryTimelineProps {
+  // Defaults to the milestones in data/history.json
+  events?: TimelineEvent[];
+  // The link to the full history page; off on that page itself
+  showMoreLink?: boolean;
+}
 
-const HistoryTimeline = () => {
+const HistoryTimeline = ({
+  events = historyData.milestones,
+  showMoreLink = true,
+}: HistoryTimelineProps) => {
   return (
     <section className="w-full bg-gradient-to-b from-sblued to-sblack py-16 lg:py-24">
       <div className="container mx-auto px-6">
@@ -62,7 +41,7 @@ const HistoryTimeline = () => {
           <div className="space-y-12">
             {events.map((event, index) => (
               <div
-                key={index}
+                key={event.year}
                 className={`flex flex-col md:flex-row items-center gap-8 ${
                   index % 2 === 0 ? "md:flex-row" : "md:flex-row-reverse"
                 }`}
@@ -101,14 +80,16 @@ const HistoryTimeline = () => {
         </div>
 
         {/* CTA */}
-        <div className="text-center mt-12">
-          <Link
-            href="/kerho/historiaa"
-            className="inline-block px-8 py-4 bg-sred text-swhite font-semibold rounded-lg shadow-xl hover:bg-sred/90 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300"
-          >
-            Lue lisää historiastamme
-          </Link>
-        </div>
+        {showMoreLink && (
+          <div className="text-center mt-12">
+            <Link
+              href="/kerho/historiaa"
+              className="inline-block px-8 py-4 bg-sred text-swhite font-semibold rounded-lg shadow-xl hover:bg-sred/90 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300"
+            >
+              Lue lisää historiastamme
+            </Link>
+          </div>
+        )}
       </div>
     </section>
   );
