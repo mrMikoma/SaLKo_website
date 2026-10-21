@@ -16,14 +16,12 @@ import {
 } from "@headlessui/react";
 import XCrossIcon from "./icons/xCross";
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useNavbar } from "@/providers/NavbarContextProvider";
 
 const Navbar = () => {
   const { data: session } = useSession();
-  // Logout is a server action, so useSession() keeps returning the old session
-  // until it refetches. Remember which session was logged out and hide it.
+  // Hide the user as soon as they click logout; signOut() then reloads the page
   const [loggedOutSession, setLoggedOutSession] = useState<typeof session>(null);
   const user = session !== loggedOutSession ? session?.user : undefined;
   const authenticated = Boolean(user);
@@ -32,7 +30,6 @@ const Navbar = () => {
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
   const { isFullscreenMode } = useNavbar();
-  const router = useRouter();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -55,8 +52,7 @@ const Navbar = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [lastScrollY]);
 
-  const handleLogout = async () => {
-    router.refresh();
+  const handleLogout = () => {
     setLoggedOutSession(session);
   };
 
