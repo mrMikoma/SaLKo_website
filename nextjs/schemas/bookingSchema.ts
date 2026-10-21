@@ -1,203 +1,155 @@
 import { z } from "zod";
-import { FlightType, Plane } from "@/types/bookings";
+import { DateTime } from "@/utilities/clubTime";
+import { FlightType } from "@/types/bookings";
+import { isBookablePlane } from "@/utilities/planeHelpers";
 
-/**
- * Zod schema for booking validation
+/*
+ * Shared fields. The form schemas below validate the booking modal; the input
+ * schemas validate the same data again in the server actions.
  */
-const bookingBaseSchema = z.object({
-  id: z.number().int().min(-1),
-  user_id: z.string().min(1, "Käyttäjätunnus vaaditaan"),
-  plane: z.nativeEnum(Plane, {
-    message: "Valitse lentokone",
-  }),
-  type: z.nativeEnum(FlightType, {
-    message: "Valitse lennon tyyppi",
-  }),
-  title: z
-    .string()
-    .min(1, "Otsikko vaaditaan")
-    .max(100, "Otsikko voi olla enintään 100 merkkiä"),
-  description: z
-    .string()
-    .max(500, "Kuvaus voi olla enintään 500 merkkiä")
-    .optional()
-    .or(z.literal("")),
-  start_time: z.string().refine(
-    (val) => {
-      const date = new Date(val);
-      return !isNaN(date.getTime());
-    },
-    { message: "Virheellinen aloitusaika" }
-  ).refine(
-    (val) => {
-      const date = new Date(val);
-      return date.getMinutes() === 0 && date.getSeconds() === 0;
-    },
-    { message: "Aloitusajan tulee olla tasatunti (esim. 10:00)" }
-  ),
-  end_time: z.string().refine(
-    (val) => {
-      const date = new Date(val);
-      return !isNaN(date.getTime());
-    },
-    { message: "Virheellinen lopetusaika" }
-  ).refine(
-    (val) => {
-      const date = new Date(val);
-      return date.getMinutes() === 0 && date.getSeconds() === 0;
-    },
-    { message: "Lopetusajan tulee olla tasatunti (esim. 11:00)" }
-  ),
-  full_name: z.string().optional(),
+
+const planeField = z.string().refine(isBookablePlane, {
+  message: "Valitse lentokone",
 });
 
-export const bookingSchema = bookingBaseSchema.refine(
-  (data) => {
-    const start = new Date(data.start_time);
-    const end = new Date(data.end_time);
-    return end > start;
-  },
-  {
-    message: "Lopetusajan tulee olla aloitusaikaa myöhemmin",
-    path: ["end_time"],
-  }
-).refine(
-  (data) => {
-    const start = new Date(data.start_time);
-    const end = new Date(data.end_time);
-    const durationHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-    return durationHours >= 1;
-  },
-  {
-    message: "Varauksen tulee olla vähintään 1 tunti",
-    path: ["end_time"],
-  }
-);
+const typeField = z.nativeEnum(FlightType, {
+  message: "Valitse lennon tyyppi",
+});
 
-export type BookingFormValues = z.infer<typeof bookingSchema>;
+const titleField = z
+  .string()
+  .trim()
+  .min(1, "Otsikko vaaditaan")
+  .max(100, "Otsikko voi olla enintään 100 merkkiä");
 
-/**
- * Create mode schema (without id validation)
- */
-export const createBookingSchema = bookingBaseSchema
-  .omit({ id: true, full_name: true })
-  .refine(
-    (data) => {
-      const start = new Date(data.start_time);
-      const end = new Date(data.end_time);
-      return end > start;
-    },
-    {
-      message: "Lopetusajan tulee olla aloitusaikaa myöhemmin",
-      path: ["end_time"],
-    }
-  )
-  .refine(
-    (data) => {
-      const start = new Date(data.start_time);
-      const end = new Date(data.end_time);
-      const durationHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-      return durationHours >= 1;
-    },
-    {
-      message: "Varauksen tulee olla vähintään 1 tunti",
-      path: ["end_time"],
-    }
-  );
+const descriptionField = z
+  .string()
+  .max(500, "Kuvaus voi olla enintään 500 merkkiä")
+  .optional()
+  .or(z.literal(""));
 
-export type CreateBookingFormValues = z.infer<typeof createBookingSchema>;
+// Bookings start and end on the hour, in club time
+const onTheHour = (value: string) => {
+  const time = DateTime.fromISO(value);
+  return time.minute === 0 && time.second === 0;
+};
 
-/**
- * Update mode schema (id is required)
- */
-export const updateBookingSchema = bookingSchema.refine(
-  (data) => data.id >= 0,
-  {
-    message: "Varauksen ID vaaditaan päivityksessä",
-    path: ["id"],
-  }
-);
+const startTimeField = z
+  .string()
+  .refine((value) => DateTime.fromISO(value).isValid, {
+    message: "Virheellinen aloitusaika",
+  })
+  .refine(onTheHour, {
+    message: "Aloitusajan tulee olla tasatunti (esim. 10:00)",
+  });
 
-export type UpdateBookingFormValues = z.infer<typeof updateBookingSchema>;
+const endTimeField = z
+  .string()
+  .refine((value) => DateTime.fromISO(value).isValid, {
+    message: "Virheellinen lopetusaika",
+  })
+  .refine(onTheHour, {
+    message: "Lopetusajan tulee olla tasatunti (esim. 11:00)",
+  });
 
-/**
- * Guest booking schema (without user_id, with contact info)
- */
-export const guestBookingSchema = z.object({
-  plane: z.nativeEnum(Plane, {
-    message: "Valitse lentokone",
-  }),
-  type: z.nativeEnum(FlightType, {
-    message: "Valitse lennon tyyppi",
-  }),
-  title: z
-    .string()
-    .min(1, "Otsikko vaaditaan")
-    .max(100, "Otsikko voi olla enintään 100 merkkiä"),
-  description: z
-    .string()
-    .max(500, "Kuvaus voi olla enintään 500 merkkiä")
-    .optional()
-    .or(z.literal("")),
-  start_time: z.string().refine(
-    (val) => {
-      const date = new Date(val);
-      return !isNaN(date.getTime());
-    },
-    { message: "Virheellinen aloitusaika" }
-  ).refine(
-    (val) => {
-      const date = new Date(val);
-      return date.getMinutes() === 0 && date.getSeconds() === 0;
-    },
-    { message: "Aloitusajan tulee olla tasatunti (esim. 10:00)" }
-  ),
-  end_time: z.string().refine(
-    (val) => {
-      const date = new Date(val);
-      return !isNaN(date.getTime());
-    },
-    { message: "Virheellinen lopetusaika" }
-  ).refine(
-    (val) => {
-      const date = new Date(val);
-      return date.getMinutes() === 0 && date.getSeconds() === 0;
-    },
-    { message: "Lopetusajan tulee olla tasatunti (esim. 11:00)" }
-  ),
+type TimeRange = { start_time: string; end_time: string };
+
+const endsAfterStart = (data: TimeRange) =>
+  DateTime.fromISO(data.end_time) > DateTime.fromISO(data.start_time);
+
+const lastsAtLeastAnHour = (data: TimeRange) =>
+  DateTime.fromISO(data.end_time).diff(DateTime.fromISO(data.start_time), "hours")
+    .hours >= 1;
+
+const endsAfterStartIssue = {
+  message: "Lopetusajan tulee olla aloitusaikaa myöhemmin",
+  path: ["end_time"],
+};
+
+const lastsAtLeastAnHourIssue = {
+  message: "Varauksen tulee olla vähintään 1 tunti",
+  path: ["end_time"],
+};
+
+const guestContactFields = {
   contactName: z
     .string()
+    .trim()
     .min(1, "Nimi vaaditaan")
     .max(100, "Nimi voi olla enintään 100 merkkiä"),
   contactEmail: z
     .string()
+    .trim()
     .email("Virheellinen sähköpostiosoite")
-    .min(1, "Sähköposti vaaditaan"),
+    .max(254, "Sähköposti on liian pitkä"),
   contactPhone: z
     .string()
+    .trim()
     .min(1, "Puhelinnumero vaaditaan")
+    .max(30, "Puhelinnumero on liian pitkä")
     .regex(/^[+\d\s()-]+$/, "Virheellinen puhelinnumero"),
-}).refine(
-  (data) => {
-    const start = new Date(data.start_time);
-    const end = new Date(data.end_time);
-    return end > start;
-  },
-  {
-    message: "Lopetusajan tulee olla aloitusaikaa myöhemmin",
-    path: ["end_time"],
-  }
-).refine(
-  (data) => {
-    const start = new Date(data.start_time);
-    const end = new Date(data.end_time);
-    const durationHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-    return durationHours >= 1;
-  },
-  {
-    message: "Varauksen tulee olla vähintään 1 tunti",
-    path: ["end_time"],
-  }
-);
+};
+
+/*
+ * Booking modal forms
+ */
+
+export const bookingSchema = z
+  .object({
+    id: z.number().int().min(-1),
+    user_id: z.string().min(1, "Käyttäjätunnus vaaditaan"),
+    plane: planeField,
+    type: typeField,
+    title: titleField,
+    description: descriptionField,
+    start_time: startTimeField,
+    end_time: endTimeField,
+    full_name: z.string().optional(),
+  })
+  .refine(endsAfterStart, endsAfterStartIssue)
+  .refine(lastsAtLeastAnHour, lastsAtLeastAnHourIssue);
+
+export type BookingFormValues = z.infer<typeof bookingSchema>;
+
+export const guestBookingSchema = z
+  .object({
+    plane: planeField,
+    type: typeField,
+    title: titleField,
+    description: descriptionField,
+    start_time: startTimeField,
+    end_time: endTimeField,
+    ...guestContactFields,
+  })
+  .refine(endsAfterStart, endsAfterStartIssue)
+  .refine(lastsAtLeastAnHour, lastsAtLeastAnHourIssue);
 
 export type GuestBookingFormValues = z.infer<typeof guestBookingSchema>;
+
+/*
+ * Server action input
+ */
+
+export const bookingInputSchema = z
+  .object({
+    plane: planeField,
+    type: typeField,
+    title: titleField,
+    description: descriptionField,
+    start_time: startTimeField,
+    end_time: endTimeField,
+  })
+  .refine(endsAfterStart, endsAfterStartIssue)
+  .refine(lastsAtLeastAnHour, lastsAtLeastAnHourIssue);
+
+export type BookingInput = z.infer<typeof bookingInputSchema>;
+
+export const guestContactSchema = z.object(guestContactFields);
+
+export type GuestContactInput = z.infer<typeof guestContactSchema>;
+
+export const repeatEndDateSchema = z
+  .string()
+  .refine((value) => DateTime.fromISO(value).isValid, {
+    message: "Virheellinen toiston lopetuspäivä",
+  });

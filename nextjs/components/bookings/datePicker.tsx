@@ -1,6 +1,6 @@
 "use client";
 
-import { DateTime } from "luxon";
+import { DateTime } from "@/utilities/clubTime";
 import {
   CalendarOutlined,
   LeftOutlined,

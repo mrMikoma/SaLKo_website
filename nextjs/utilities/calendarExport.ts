@@ -1,5 +1,5 @@
 import { BookingType } from "./bookings";
-import { DateTime } from "luxon";
+import { DateTime } from "@/utilities/clubTime";
 
 /**
  * Generates an iCal/ICS format string from a booking

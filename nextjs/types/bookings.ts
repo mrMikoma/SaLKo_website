@@ -21,17 +21,6 @@ export enum FlightType {
 }
 
 /**
- * Plane enum for available aircraft
- */
-export enum Plane {
-  OH_CON = "OH-CON",
-  OH_386 = "OH-386",
-  OH_816 = "OH-816",
-  OH_829 = "OH-829",
-  OH_475 = "OH-475",
-}
-
-/**
  * Modal mode enum for booking modal states
  */
 export enum ModalMode {
@@ -93,22 +82,15 @@ export const FLIGHT_TYPE_CONFIGS: readonly FlightTypeConfig[] = [
 ] as const;
 
 /**
- * Available planes array
+ * Bookable aircraft come from data/planes.json ("bookable": true), see
+ * BOOKABLE_PLANES in utilities/planeHelpers.ts
  */
-export const PLANES = Object.values(Plane) as readonly string[];
 
 /**
  * Type guard to check if a string is a valid FlightType
  */
 export const isFlightType = (value: string): value is FlightType => {
   return Object.values(FlightType).includes(value as FlightType);
-};
-
-/**
- * Type guard to check if a string is a valid Plane
- */
-export const isPlane = (value: string): value is Plane => {
-  return Object.values(Plane).includes(value as Plane);
 };
 
 /**
@@ -143,7 +125,7 @@ export type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;
  * Query filter for bookings
  */
 export interface BookingFilter {
-  plane?: Plane;
+  plane?: string;
   type?: FlightType;
   dateRange?: {
     start: string;
@@ -157,6 +139,6 @@ export interface BookingFilter {
 export interface BookingStats {
   totalBookings: number;
   bookingsByType: Record<FlightType, number>;
-  bookingsByPlane: Record<Plane, number>;
+  bookingsByPlane: Record<string, number>;
   averageDuration: number;
 }

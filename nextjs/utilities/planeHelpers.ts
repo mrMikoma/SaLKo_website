@@ -1,6 +1,17 @@
 import planesData from "@/data/planes.json";
 
 /**
+ * Registrations that can be booked, in the order of data/planes.json.
+ * Set "bookable": false there to take an aircraft out of the calendar.
+ */
+export const BOOKABLE_PLANES: readonly string[] = planesData
+  .filter((p) => p.bookable)
+  .map((p) => p.registeration);
+
+export const isBookablePlane = (registration: string): boolean =>
+  BOOKABLE_PLANES.includes(registration);
+
+/**
  * Get plane display name with nickname if available
  * @param registration - Plane registration (e.g., "OH-386")
  * @returns Display name like "OH-386 (Tuulia)" or "OH-CON" if no nickname

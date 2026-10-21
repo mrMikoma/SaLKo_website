@@ -1,12 +1,15 @@
 "use client";
 
-import { useMemo, lazy, Suspense, useEffect } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMemo, lazy, Suspense } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import DatePicker from "@/components/bookings/datePicker";
 import ViewSelector, { ViewMode } from "@/components/bookings/viewSelector";
 import { BookingType } from "@/utilities/bookings";
-import { useBookings } from "@/hooks/useBookings";
+import {
+  useBookings,
+  SaveBookingRequest,
+  SaveBookingOutcome,
+} from "@/hooks/useBookings";
 import { useDateFromUrl } from "@/hooks/useDateFromUrl";
 import { useBookingModal } from "@/hooks/useBookingModal";
 import { useIsMobile } from "@/hooks/useMediaQuery";
@@ -18,7 +21,7 @@ import { BookingsDesktopView } from "./BookingsDesktopView";
 import { BookingsWeekView } from "./BookingsWeekView";
 import { BookingsMonthView } from "./BookingsMonthView";
 import { FLIGHT_TYPE_CONFIGS, FlightTypeConfig } from "@/types/bookings";
-import { DateTime } from "luxon";
+import { DateTime } from "@/utilities/clubTime";
 
 // Lazy load modal for better code splitting
 const BookingUpdateModal = lazy(
@@ -51,7 +54,6 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
   const { isLoggedIn, userId, userRole } = userContext;
 
   // Custom hooks for state management
-  const queryClient = useQueryClient();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -91,12 +93,8 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
     isError,
     error,
     refetch,
-    addBooking,
+    saveBooking,
     removeBooking,
-    updateBooking,
-    isAddingBooking,
-    isRemovingBooking,
-    isUpdatingBooking,
   } = useBookings({ dates: dateRange });
 
   const {
@@ -206,85 +204,28 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
     }
   };
 
+  // The modal stays open until the server accepts the booking, and shows the
+  // overlap warning or error otherwise
   const handleSaveBooking = async (
-    booking: BookingType,
-    repeatEndDate?: string
-  ) => {
-    if (repeatEndDate) {
-      // Handle repeating bookings
-      const { addRepeatingBookings } = await import("@/utilities/bookings");
-      try {
-        const response = await addRepeatingBookings({
-          plane: booking.plane,
-          start_time: booking.start_time,
-          end_time: booking.end_time,
-          type: booking.type,
-          title: booking.title,
-          description: booking.description,
-          repeat_end_date: repeatEndDate,
-        });
-
-        if (response.status === "success") {
-          closeModal();
-          // Invalidate ALL bookings cache to refresh all views (day, week, month)
-          queryClient.invalidateQueries({ queryKey: ["bookings"] });
-        }
-      } catch (error) {
-        console.error("Error creating repeating bookings:", error);
-      }
-    } else {
-      // Single booking - use the booking passed from modal
-      addBooking(booking);
+    request: SaveBookingRequest
+  ): Promise<SaveBookingOutcome> => {
+    const outcome = await saveBooking(request);
+    if (outcome.status === "success") {
       closeModal();
     }
+    return outcome;
   };
 
-  const handleUpdateBooking = (booking: BookingType) => {
-    updateBooking(booking);
-    closeModal();
-  };
-
+  // Throws with a Finnish message on failure; the delete dialog shows it
   const handleDeleteBooking = async (
     deleteFollowing?: boolean
   ): Promise<void> => {
-    if (selectedBooking.id >= 0) {
-      // If deleteFollowing is true and the booking has a repeat_group_id, use the new function
-      if (deleteFollowing && selectedBooking.repeat_group_id) {
-        const { removeBookingWithRepeats } = await import(
-          "@/utilities/bookings"
-        );
-        try {
-          const response = await removeBookingWithRepeats(
-            selectedBooking.id,
-            true
-          );
-
-          if (response.status === "success") {
-            // Invalidate ALL bookings cache to refresh all views
-            queryClient.invalidateQueries({ queryKey: ["bookings"] });
-            closeModal();
-          } else {
-            console.error(
-              "Error deleting repeating bookings:",
-              response.result
-            );
-            alert("Virhe poistettaessa toistuvia varauksia");
-            throw new Error("Failed to delete repeating bookings");
-          }
-        } catch (error) {
-          console.error("Error deleting repeating bookings:", error);
-          alert("Virhe poistettaessa toistuvia varauksia");
-          throw error;
-        }
-      } else {
-        // Regular single booking deletion - this uses React Query mutation
-        removeBooking(selectedBooking.id);
-        // Don't close modal here - let the mutation's onSuccess handle it
-        // Wait a bit for the mutation to process
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        closeModal();
-      }
-    }
+    if (selectedBooking.id < 0) return;
+    await removeBooking({
+      id: selectedBooking.id,
+      deleteFollowing: deleteFollowing && !!selectedBooking.repeat_group_id,
+    });
+    closeModal();
   };
 
   return (
@@ -379,31 +320,11 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
         </>
       )}
 
-      {/* Loading overlay for mutations */}
-      {(isAddingBooking || isRemovingBooking || isUpdatingBooking) && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50"
-          role="status"
-          aria-live="polite"
-        >
-          <div className="bg-white rounded-lg p-6 shadow-xl">
-            <div className="flex items-center gap-3">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-              <p className="text-gray-900 font-medium">
-                {isAddingBooking && "Lisätään varausta..."}
-                {isRemovingBooking && "Poistetaan varausta..."}
-                {isUpdatingBooking && "Päivitetään varausta..."}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Booking Modal */}
       {modalMode && (
         <Suspense
           fallback={
-            <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+            <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
             </div>
           }
@@ -412,7 +333,6 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
             mode={modalMode}
             booking={selectedBooking}
             onSave={handleSaveBooking}
-            onUpdate={handleUpdateBooking}
             onDelete={handleDeleteBooking}
             onCancel={closeModal}
             onChange={setSelectedBooking}

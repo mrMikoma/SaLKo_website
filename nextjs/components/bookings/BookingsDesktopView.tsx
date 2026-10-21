@@ -1,4 +1,4 @@
-import { DateTime } from "luxon";
+import { DateTime } from "@/utilities/clubTime";
 import { BookingType } from "@/utilities/bookings";
 import { FlightTypeConfig } from "@/types/bookings";
 import { useMemo, memo } from "react";
@@ -9,7 +9,7 @@ import {
   generateHourLabels,
   isFullDayBooking,
 } from "@/utilities/bookingHelpers";
-import { getPlaneDisplayName } from "@/utilities/planeHelpers";
+import { getPlaneDisplayName, BOOKABLE_PLANES } from "@/utilities/planeHelpers";
 
 interface BookingsDesktopViewProps {
   bookings: BookingType[];
@@ -20,7 +20,6 @@ interface BookingsDesktopViewProps {
   getFlightTypeColor: (type: string) => string;
 }
 
-const PLANES = ["OH-CON", "OH-386", "OH-816", "OH-829", "OH-475"];
 const START_HOUR = 6;
 const END_HOUR = 23;
 
@@ -192,7 +191,7 @@ export const BookingsDesktopView = memo(
               >
                 ALKAVA TUNTI
               </th>
-              {PLANES.map((plane) => (
+              {BOOKABLE_PLANES.map((plane) => (
                 <th
                   key={plane}
                   className="border border-gray-300 p-2 bg-gray-100"
@@ -213,7 +212,7 @@ export const BookingsDesktopView = memo(
                 >
                   {hour}
                 </th>
-                {PLANES.map((plane) => {
+                {BOOKABLE_PLANES.map((plane) => {
                   const hourValue = parseInt(hour.split(":")[0]);
                   const visibleBookings = getVisibleBookingsForHour(
                     plane,
