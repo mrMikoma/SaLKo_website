@@ -34,7 +34,7 @@ proxy.ts      # route protection (Next 16's replacement for middleware.ts)
   3. queries with `pool` from `@/utilities/db`, always parameterized (`$1`, `$2`, …);
   4. calls `revalidatePath()` for pages that show the changed data;
   5. returns `{ status: "success" | "error", error?, result? }`. Error messages are user-facing and in Finnish; log details with `console.error`.
-- **Access control:** `proxy.ts` redirects anonymous users away from `/jasenalue/*` and non-admins away from `/admin/*`. That is only a UI guard. The server action check above is what protects data.
+- **Access control:** `proxy.ts` redirects anonymous users away from `/jasenalue/*`, and keeps `/admin/*` to admins, except the flight log and billing sections, which treasurers can also open (`canOpenAdminPath()` in `utilities/roles.ts`). That is only a UI guard. The server action check above is what protects data.
 - **Forms** call server actions through `useActionState` (`components/auth/login.tsx`, `components/profile/*Form.tsx`).
 - **Client data** that needs caching or refetching goes through TanStack Query hooks in `hooks/` (see `useBookings.ts`).
 - **Dates:** use Luxon. Postgres runs in UTC, so set `Europe/Helsinki` explicitly when you format times for people.
@@ -52,4 +52,4 @@ proxy.ts      # route protection (Next 16's replacement for middleware.ts)
 
 ## More Docs
 
-`docs/` has background on specific features: `BOOKINGS.md` (current booking calendar: club time, permissions, saving, export), `AUTH_SETUP.md`, `GITHUB_SECRETS_SETUP.md` and `METAR_SETUP.md`, plus the historical `BOOKING_MODERNIZATION.md`, `BOOKING_PHASE2_IMPROVEMENTS.md` and `BOOKING_PHASE3_TODO.md`. They were written at different times, so check them against the code.
+`docs/` has background on specific features: `BOOKINGS.md` (current booking calendar: club time, permissions, saving, export), `FLIGHT_LOG.md` (the flight log sync), `FLIGHT_LOG_SETUP.md` (connecting an environment to a Google Sheet, with the empty template `lentopaivakirja-pohja.xlsx`) and `FLIGHT_LOG_PLAN.md` (the plan for flight log, billing and stats), `AUTH_SETUP.md`, `GITHUB_SECRETS_SETUP.md` and `METAR_SETUP.md`, plus the historical `BOOKING_MODERNIZATION.md`, `BOOKING_PHASE2_IMPROVEMENTS.md` and `BOOKING_PHASE3_TODO.md`. They were written at different times, so check them against the code.

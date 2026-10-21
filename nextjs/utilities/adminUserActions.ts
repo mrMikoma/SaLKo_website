@@ -2,7 +2,7 @@
 
 import { auth } from "@/auth";
 import pool from "@/utilities/db";
-import { hasPermission } from "@/utilities/roles";
+import { hasPermission, validateRoles } from "@/utilities/roles";
 import { revalidatePath } from "next/cache";
 import * as bcrypt from "bcrypt";
 
@@ -94,15 +94,11 @@ export async function updateUserRoles(
       return { success: false, error: "Et voi muuttaa omaa rooliasi" };
     }
 
-    // Validate roles
-    const validRoles = ["admin", "user", "guest"];
-    const filteredRoles = newRoles.filter((role) => validRoles.includes(role));
-    if (filteredRoles.length === 0) {
-      return {
-        success: false,
-        error: "Käyttäjällä täytyy olla vähintään yksi rooli",
-      };
+    const checked = validateRoles(newRoles);
+    if ("error" in checked) {
+      return { success: false, error: checked.error };
     }
+    const filteredRoles = checked.roles;
 
     await pool.query("UPDATE users SET roles = $1 WHERE id = $2", [
       filteredRoles,
@@ -220,16 +216,11 @@ export async function createCredentialUser(formData: {
     }
 
     // Validate roles first
-    const validRoles = ["admin", "user", "guest"];
-    const filteredRoles = formData.roles.filter((role) =>
-      validRoles.includes(role),
-    );
-    if (filteredRoles.length === 0) {
-      return {
-        success: false,
-        error: "Käyttäjällä täytyy olla vähintään yksi rooli",
-      };
+    const checked = validateRoles(formData.roles);
+    if ("error" in checked) {
+      return { success: false, error: checked.error };
     }
+    const filteredRoles = checked.roles;
 
     // Check if this is a guest-only user (cannot log in, password not needed)
     const isGuestOnly =
