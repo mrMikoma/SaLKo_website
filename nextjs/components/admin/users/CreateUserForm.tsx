@@ -71,12 +71,13 @@ const CreateUserForm = ({
         Luo uusi käyttäjä
       </h3>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="new-user-email" className="block text-sm font-medium text-gray-700 mb-1">
               Sähköposti *
             </label>
             <input
+              id="new-user-email"
               type="email"
               value={newUser.email}
               onChange={(e) =>
@@ -88,32 +89,35 @@ const CreateUserForm = ({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Salasana {isGuestOnly ? "(ei tarvita)" : "* (min. 8 merkkiä)"}
+            <label htmlFor="new-user-password" className="block text-sm font-medium text-gray-700 mb-1">
+              Salasana {isGuestOnly ? "(ei tarvita)" : "*"}
             </label>
             <input
+              id="new-user-password"
               type="password"
+              autoComplete="new-password"
+              aria-describedby="new-user-password-help"
               value={newUser.password}
               onChange={(e) =>
                 setNewUser({ ...newUser, password: e.target.value })
               }
               className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 bg-white"
               required={!isGuestOnly}
-              minLength={isGuestOnly ? undefined : 8}
               disabled={isPending}
               placeholder={isGuestOnly ? "Vieras ei voi kirjautua" : ""}
             />
-            {isGuestOnly && (
-              <p className="text-xs text-gray-500 mt-1">
-                Vieraskäyttäjät eivät voi kirjautua sisään
-              </p>
-            )}
+            <p id="new-user-password-help" className="text-xs text-gray-500 mt-1">
+              {isGuestOnly
+                ? "Vieraskäyttäjät eivät voi kirjautua sisään"
+                : "8–32 merkkiä, vähintään yksi kirjain, numero ja erikoismerkki. Käyttäjä voi vaihtaa sen vaihtolinkillä."}
+            </p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Nimi *
+            <label htmlFor="new-user-name" className="block text-sm font-medium text-gray-700 mb-1">
+              Käyttäjänimi *
             </label>
             <input
+              id="new-user-name"
               type="text"
               value={newUser.name}
               onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
@@ -123,10 +127,11 @@ const CreateUserForm = ({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="new-user-full-name" className="block text-sm font-medium text-gray-700 mb-1">
               Koko nimi *
             </label>
             <input
+              id="new-user-full-name"
               type="text"
               value={newUser.full_name}
               onChange={(e) =>
@@ -137,10 +142,10 @@ const CreateUserForm = ({
               disabled={isPending}
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+          <fieldset>
+            <legend className="block text-sm font-medium text-gray-700 mb-1">
               Roolit *
-            </label>
+            </legend>
             <div className="flex flex-wrap gap-3 mt-1">
               {AVAILABLE_ROLES.map((role) => (
                 <label
@@ -160,7 +165,7 @@ const CreateUserForm = ({
                 </label>
               ))}
             </div>
-          </div>
+          </fieldset>
         </div>
         <div className="flex gap-2">
           <button

@@ -7,9 +7,15 @@ import UserTableRow from "./users/UserTableRow";
 
 interface UserTableProps {
   users: User[];
+  // The admin viewing the page: their own row has no role, deactivate or
+  // delete actions, which the server would refuse anyway
+  currentUserId: string;
 }
 
-const UserTable = ({ users }: UserTableProps) => {
+const headerClassName =
+  "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider";
+
+const UserTable = ({ users, currentUserId }: UserTableProps) => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -71,28 +77,28 @@ const UserTable = ({ users }: UserTableProps) => {
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className={headerClassName}>
                 Nimi
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className={headerClassName}>
                 Sähköposti
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className={headerClassName}>
                 Rooli
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Auth
+              <th scope="col" className={`hidden lg:table-cell ${headerClassName}`}>
+                Kirjautuminen
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className={`hidden lg:table-cell ${headerClassName}`}>
                 Puhelin
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className={`hidden md:table-cell ${headerClassName}`}>
                 Liittynyt
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className={`hidden md:table-cell ${headerClassName}`}>
                 Viimeisin kirjautuminen
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className={headerClassName}>
                 Toiminnot
               </th>
             </tr>
@@ -102,6 +108,7 @@ const UserTable = ({ users }: UserTableProps) => {
               <UserTableRow
                 key={user.id}
                 user={user}
+                isSelf={user.id === currentUserId}
                 onSuccess={handleSuccess}
                 onError={handleError}
               />

@@ -143,9 +143,9 @@ export default async function AdminDashboard() {
           description="Tarkastele, muokkaa ja hallitse käyttäjätilejä"
         />
         <QuickActionCard
-          href="/admin/settings"
-          title="Järjestelmän asetukset"
-          description="Muokkaa järjestelmän asetuksia"
+          href="/admin/bulletins"
+          title="Tiedotteet"
+          description="Kirjoita ja muokkaa kerhon tiedotteita"
         />
       </div>
     </div>
