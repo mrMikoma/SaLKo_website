@@ -1,11 +1,20 @@
 import React from "react";
 import Link from "next/link";
 
+// A crumb links to the path its labels spell out, without accents ("Kerho",
+// "Kenttä" → /kerho/kentta). A level that has no page of its own is passed as
+// { label, link: false } and shown as plain text.
+type Crumb = string | { label: string; link: false };
+
+const crumbLabel = (crumb: Crumb) => (typeof crumb === "string" ? crumb : crumb.label);
+const crumbSlug = (crumb: Crumb) =>
+  crumbLabel(crumb).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
 interface PageHeroProps {
   title?: string;
   subtitle?: string;
   backgroundImage?: string;
-  breadcrumbs?: string[];
+  breadcrumbs?: Crumb[];
   compact?: boolean;
   children?: React.ReactNode;
   showScrollIndicator?: boolean;
@@ -47,23 +56,21 @@ const PageHero = ({
                 </Link>
                 {breadcrumbs.map((crumb, index) => {
                   const isLast = index === breadcrumbs.length - 1;
-                  const href =
-                    "/" +
-                    breadcrumbs
-                      .slice(0, index + 1)
-                      .map((c) => c.toLowerCase())
-                      .join("/");
+                  const label = crumbLabel(crumb);
+                  const href = "/" + breadcrumbs.slice(0, index + 1).map(crumbSlug).join("/");
                   return (
                     <React.Fragment key={index}>
                       <span>/</span>
                       {isLast ? (
-                        <span className="text-swhite font-medium">{crumb}</span>
+                        <span className="text-swhite font-medium">{label}</span>
+                      ) : typeof crumb !== "string" ? (
+                        <span>{label}</span>
                       ) : (
                         <Link
                           href={href}
                           className="hover:text-swhite/90 transition-colors"
                         >
-                          {crumb}
+                          {label}
                         </Link>
                       )}
                     </React.Fragment>
