@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import { Pool } from "pg";
 
-type Role = "user" | "admin";
+type Role = "user" | "admin" | "treasurer";
 
 export type Account = {
   role: Role;
@@ -17,7 +17,7 @@ const LOCAL_PASSWORD = "E2e-local-pass1!";
 
 // Seeding writes to the users table, so it only ever runs against a database
 // on this machine or on a Docker bridge network (172.16.0.0/12).
-function isLocalDatabase(): boolean {
+export function isLocalDatabase(): boolean {
   const connectionString = process.env.DATABASE_CONNECTION_STRING;
   if (!connectionString) return false;
   const host = new URL(connectionString).hostname;
@@ -44,6 +44,7 @@ function account(role: Role, envPrefix: string): Account | null {
 export const accounts = {
   user: account("user", "E2E_USER"),
   admin: account("admin", "E2E_ADMIN"),
+  treasurer: account("treasurer", "E2E_TREASURER"),
 };
 
 export async function seedAccount({ role, email, password }: Account) {
@@ -56,7 +57,14 @@ export async function seedAccount({ role, email, password }: Account) {
        VALUES ($1, $2, $3, $4, $5, 'credentials', TRUE)
        ON CONFLICT (email) DO UPDATE
          SET roles = EXCLUDED.roles, password = EXCLUDED.password`,
-      [[role], `e2e-${role}`, `E2E ${role}`, email, await bcrypt.hash(password, 10)]
+      [
+        // The treasurer role comes on top of a member's
+        role === "treasurer" ? ["user", "treasurer"] : [role],
+        `e2e-${role}`,
+        `E2E ${role}`,
+        email,
+        await bcrypt.hash(password, 10),
+      ]
     );
   } finally {
     await pool.end();

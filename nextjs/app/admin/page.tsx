@@ -7,6 +7,8 @@ import { getDashboardStats } from "@/utilities/adminStats";
 import StatCard from "@/components/admin/StatCard";
 import RecentUsersTable from "@/components/admin/RecentUsersTable";
 import QuickActionCard from "@/components/admin/QuickActionCard";
+import FlightLogTasks from "@/components/admin/FlightLogTasks";
+import { isFlightLogEnabled } from "@/utilities/features";
 
 // Icons as components for cleaner code
 const UsersIcon = () => (
@@ -99,6 +101,9 @@ export default async function AdminDashboard() {
         <h1 className="text-3xl font-bold text-gray-900">Etusivu</h1>
         <p className="text-gray-600 mt-2">Järjestelmän yleiskatsaus</p>
       </div>
+
+      {/* What the flight log needs, while the feature is on */}
+      {isFlightLogEnabled() && <FlightLogTasks />}
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

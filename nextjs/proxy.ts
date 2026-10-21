@@ -1,5 +1,6 @@
 import { auth } from "./auth";
 import { NextResponse } from "next/server";
+import { adminHome, canOpenAdminPath } from "./utilities/roles";
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
@@ -17,13 +18,15 @@ export default auth((req) => {
     }
   }
 
-  // Admin-only routes
+  // The admin site: all of it for admins, their own sections for treasurers
+  // (utilities/roles.ts). Anyone else goes back to the front page.
   if (pathname.startsWith("/admin")) {
     if (!session) {
       return NextResponse.redirect(new URL(`/`, req.url));
     }
-    if (!session.user.roles?.includes("admin")) {
-      return NextResponse.redirect(new URL("/", req.url));
+    const roles = session.user.roles ?? [];
+    if (!canOpenAdminPath(roles, pathname)) {
+      return NextResponse.redirect(new URL(adminHome(roles) ?? "/", req.url));
     }
   }
 
