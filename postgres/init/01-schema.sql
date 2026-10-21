@@ -269,7 +269,10 @@ CREATE TABLE IF NOT EXISTS sheet_flights (
   content_hash TEXT NOT NULL,
   synced_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   -- Set when the row is no longer in the sheet
-  missing_since TIMESTAMPTZ
+  missing_since TIMESTAMPTZ,
+  -- Hash of the typed-in fields only (not the running totals), so a status
+  -- change can tell whether the flight changed after the biller saw it
+  input_hash TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_sheet_flights_aircraft_date
@@ -318,3 +321,18 @@ CREATE TABLE IF NOT EXISTS sheet_sync_runs (
 );
 
 CREATE INDEX IF NOT EXISTS idx_sheet_sync_runs_started ON sheet_sync_runs (started_at DESC);
+
+-- Who changed a flight's Tila on the website, and when. The sheet keeps only
+-- the current status.
+CREATE TABLE IF NOT EXISTS flight_status_changes (
+  id SERIAL PRIMARY KEY,
+  flight_id UUID NOT NULL, -- sheet_flights.id; no foreign key, the row can leave the sheet
+  registration TEXT NOT NULL,
+  old_status TEXT, -- NULL = Kirjattu
+  new_status TEXT,
+  changed_by TEXT REFERENCES users (id) ON DELETE SET NULL,
+  changed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_flight_status_changes_flight
+  ON flight_status_changes (flight_id, changed_at DESC);

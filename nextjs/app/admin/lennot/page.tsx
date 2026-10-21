@@ -15,7 +15,10 @@ import {
   getLatestSyncRuns,
   getMatchedPilots,
   getMemberOptions,
+  getUncheckedCount,
+  getUncheckedFlights,
   getUnmatchedPilots,
+  UNCHECKED_LIMIT,
 } from "@/utilities/flightLogData";
 import { formatDateTime, formatFullDate, formatMonth } from "@/utilities/flightFormat";
 import SyncStatus from "@/components/flightLogs/SyncStatus";
@@ -27,7 +30,7 @@ export const metadata = {
 };
 
 interface PageProps {
-  searchParams: Promise<{ kone?: string; kuukausi?: string }>;
+  searchParams: Promise<{ kone?: string; kuukausi?: string; nakyma?: string }>;
 }
 
 function sheetKind(): "google" | "fixture" | null {
@@ -59,15 +62,30 @@ export default async function FlightsAdminPage({ searchParams }: PageProps) {
 
   const months = registration ? await getFlightMonths(registration) : [];
   const month = months.includes(params.kuukausi ?? "") ? params.kuukausi! : months[0];
+  // The month's flights, or every flight not yet compared with the paper book
+  const unchecked = params.nakyma === "tarkistamatta";
+  const canReview = hasPermission(session.user.roles, "MANAGE_FLIGHT_LOG");
 
-  const [sync, flights, issues, unmatched, matched, members] = await Promise.all([
+  const [sync, flights, uncheckedCount, issues, unmatched, matched, members] = await Promise.all([
     getLatestSyncRuns(),
-    registration && month ? getFlightsForMonth(registration, month) : [],
+    !registration
+      ? []
+      : unchecked
+        ? getUncheckedFlights(registration)
+        : month
+          ? getFlightsForMonth(registration, month)
+          : [],
+    registration ? getUncheckedCount(registration) : 0,
     registration ? getFlightIssues(registration) : [],
     getUnmatchedPilots(),
     getMatchedPilots(),
     getMemberOptions(),
   ]);
+
+  const viewHref = (view: "kuukausi" | "tarkistamatta") =>
+    `/admin/lennot?kone=${encodeURIComponent(registration ?? "")}${
+      view === "tarkistamatta" ? "&nakyma=tarkistamatta" : month ? `&kuukausi=${month}` : ""
+    }`;
 
   const otherIssues = issues.filter((issue) => issue.kind !== "unknown_pilot");
 
@@ -148,7 +166,29 @@ export default async function FlightsAdminPage({ searchParams }: PageProps) {
               </Link>
             ))}
           </div>
-          {months.length > 0 && registration && (
+          <nav className="flex gap-1 rounded-lg bg-gray-100 p-1" aria-label="Näkymä">
+            {(
+              [
+                ["kuukausi", "Kuukausittain"],
+                ["tarkistamatta", `Tarkistamatta (${uncheckedCount})`],
+              ] as const
+            ).map(([view, label]) => {
+              const current = (view === "tarkistamatta") === unchecked;
+              return (
+                <Link
+                  key={view}
+                  href={viewHref(view)}
+                  aria-current={current ? "page" : undefined}
+                  className={`min-h-11 inline-flex items-center px-3 rounded-md text-sm font-medium ${
+                    current ? "bg-white text-gray-900 shadow" : "text-gray-700 hover:text-gray-900"
+                  }`}
+                >
+                  {label}
+                </Link>
+              );
+            })}
+          </nav>
+          {!unchecked && months.length > 0 && registration && (
             <form className="flex items-center gap-2" action="/admin/lennot">
               <input type="hidden" name="kone" value={registration} />
               <label htmlFor="kuukausi" className="text-sm text-gray-700">
@@ -175,7 +215,23 @@ export default async function FlightsAdminPage({ searchParams }: PageProps) {
             </form>
           )}
         </div>
-        <FlightTable flights={flights} issues={issues} />
+        {unchecked && uncheckedCount > UNCHECKED_LIMIT && (
+          <p className="mx-6 mt-4 rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-900">
+            Näytetään {UNCHECKED_LIMIT} vanhinta {uncheckedCount} lennosta. Jos tässä
+            näkyy vanhoja, jo laskutettuja lentoja, merkitse niiden Tila taulukossa
+            Laskutetuksi (täyttö alaspäin), niin lista lyhenee.
+          </p>
+        )}
+        <FlightTable
+          // A new view starts with nothing selected
+          key={unchecked ? "tarkistamatta" : `${registration}-${month}`}
+          flights={flights}
+          issues={issues}
+          review={canReview && registration ? { registration } : undefined}
+          emptyText={unchecked ? "Kaikki lennot on tarkistettu." : undefined}
+          totalLabel={unchecked ? "Tarkistamatta" : undefined}
+          fullDates={unchecked}
+        />
       </div>
     </div>
   );

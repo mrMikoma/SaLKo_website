@@ -9,6 +9,7 @@ import {
   parseFlightSheet,
   ParsedFlight,
 } from "@/utilities/flightSheetParser";
+import { inputHash } from "@/utilities/flightInputHash";
 
 /**
  * Copies the flight log sheet into sheet_flights. The sheet is the only place
@@ -76,6 +77,7 @@ function toRecord(flight: ParsedFlight) {
     billing_period: flight.billingPeriod,
     raw: flight.raw,
     content_hash: createHash("sha256").update(JSON.stringify(flight.raw)).digest("hex"),
+    input_hash: inputHash(flight),
   };
 }
 
@@ -85,21 +87,22 @@ const UPSERT_FLIGHTS = `
     persons_on_board, departure, arrival, takeoff_at, landing_at, airborne_minutes,
     airframe_minutes, landings, total_landings, purpose_code, fuel_litres, oil_litres,
     hour_meter, remarks, log_page, book_total, book_error, maintenance, source, status,
-    billing_period, raw, content_hash, synced_at, missing_since
+    billing_period, raw, content_hash, input_hash, synced_at, missing_since
   )
   SELECT
     f.id, $2, f.sheet_row, f.flight_date, f.pic_name, f.pic_key, f.second_name, f.second_key,
     f.persons_on_board, f.departure, f.arrival, f.takeoff_at, f.landing_at, f.airborne_minutes,
     f.airframe_minutes, f.landings, f.total_landings, f.purpose_code, f.fuel_litres, f.oil_litres,
     f.hour_meter, f.remarks, f.log_page, f.book_total, f.book_error, f.maintenance, f.source, f.status,
-    f.billing_period, f.raw, f.content_hash, NOW(), NULL
+    f.billing_period, f.raw, f.content_hash, f.input_hash, NOW(), NULL
   FROM jsonb_to_recordset($1::jsonb) AS f(
     id uuid, sheet_row int, flight_date date, pic_name text, pic_key text, second_name text,
     second_key text, persons_on_board smallint, departure text, arrival text,
     takeoff_at timestamptz, landing_at timestamptz, airborne_minutes int, airframe_minutes int,
     landings int, total_landings int, purpose_code text, fuel_litres numeric, oil_litres numeric,
     hour_meter numeric, remarks text, log_page text, book_total text, book_error text,
-    maintenance text, source text, status text, billing_period text, raw jsonb, content_hash text
+    maintenance text, source text, status text, billing_period text, raw jsonb, content_hash text,
+    input_hash text
   )
   ON CONFLICT (id) DO UPDATE SET
     registration = EXCLUDED.registration, sheet_row = EXCLUDED.sheet_row,
@@ -114,8 +117,10 @@ const UPSERT_FLIGHTS = `
     log_page = EXCLUDED.log_page, book_total = EXCLUDED.book_total,
     book_error = EXCLUDED.book_error, maintenance = EXCLUDED.maintenance, source = EXCLUDED.source,
     status = EXCLUDED.status, billing_period = EXCLUDED.billing_period, raw = EXCLUDED.raw,
-    content_hash = EXCLUDED.content_hash, synced_at = NOW(), missing_since = NULL
+    content_hash = EXCLUDED.content_hash, input_hash = EXCLUDED.input_hash, synced_at = NOW(),
+    missing_since = NULL
   WHERE sheet_flights.content_hash IS DISTINCT FROM EXCLUDED.content_hash
+     OR sheet_flights.input_hash IS DISTINCT FROM EXCLUDED.input_hash
      OR sheet_flights.sheet_row <> EXCLUDED.sheet_row
      OR sheet_flights.registration <> EXCLUDED.registration
      OR sheet_flights.missing_since IS NOT NULL
