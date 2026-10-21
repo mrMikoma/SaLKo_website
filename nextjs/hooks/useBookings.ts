@@ -16,8 +16,6 @@ interface UseBookingsOptions {
   date?: string;
   dates?: string[];
   enabled?: boolean;
-  userId?: string;
-  userRole?: string | string[];
 }
 
 /**
@@ -61,7 +59,7 @@ const fetchBookingsForDate = async (date: string): Promise<BookingType[]> => {
  * - Prefetching for adjacent dates
  * - Loading and error states
  */
-export const useBookings = ({ date, dates, enabled = true, userId, userRole }: UseBookingsOptions) => {
+export const useBookings = ({ date, dates, enabled = true }: UseBookingsOptions) => {
   const queryClient = useQueryClient();
 
   // Determine which mode we're in
@@ -163,9 +161,8 @@ export const useBookings = ({ date, dates, enabled = true, userId, userRole }: U
         }
         return { ...newBooking, id: response.bookingId || -1 };
       } else {
-        // Regular authenticated booking
+        // Regular authenticated booking (the server takes the user from the session)
         const response = await addBooking({
-          user_id: newBooking.user_id,
           plane: newBooking.plane,
           start_time: newBooking.start_time,
           end_time: newBooking.end_time,
@@ -217,10 +214,7 @@ export const useBookings = ({ date, dates, enabled = true, userId, userRole }: U
   // Remove booking mutation with optimistic update
   const removeBookingMutation = useMutation({
     mutationFn: async (bookingId: number) => {
-      if (!userId) {
-        throw new Error("User ID is required to delete booking");
-      }
-      const response = await removeBooking(bookingId, userId, userRole);
+      const response = await removeBooking(bookingId);
       if (response.status !== "success") {
         throw new Error(
           response.result instanceof Error
@@ -261,7 +255,6 @@ export const useBookings = ({ date, dates, enabled = true, userId, userRole }: U
     mutationFn: async (updatedBooking: BookingType) => {
       const response = await updateBooking({
         id: updatedBooking.id,
-        user_id: updatedBooking.user_id,
         plane: updatedBooking.plane,
         start_time: updatedBooking.start_time,
         end_time: updatedBooking.end_time,

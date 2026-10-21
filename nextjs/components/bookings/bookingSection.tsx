@@ -97,7 +97,7 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
     isAddingBooking,
     isRemovingBooking,
     isUpdatingBooking,
-  } = useBookings({ dates: dateRange, userId, userRole });
+  } = useBookings({ dates: dateRange });
 
   const {
     modalMode,
@@ -215,7 +215,6 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
       const { addRepeatingBookings } = await import("@/utilities/bookings");
       try {
         const response = await addRepeatingBookings({
-          user_id: booking.user_id,
           plane: booking.plane,
           start_time: booking.start_time,
           end_time: booking.end_time,
@@ -257,8 +256,6 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
         try {
           const response = await removeBookingWithRepeats(
             selectedBooking.id,
-            userId!,
-            userRole,
             true
           );
 

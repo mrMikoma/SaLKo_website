@@ -1,5 +1,31 @@
 "use server";
 import connectionPool from "@/utilities/db";
+import { auth } from "@/auth";
+import {
+  hasPermission,
+  canManageBooking,
+  canDeleteBooking,
+} from "@/utilities/roles";
+
+/*
+ * Session helpers
+ */
+
+interface SessionUser {
+  id: string;
+  roles: string[];
+}
+
+// Identity always comes from the session, never from the caller's arguments
+async function getSessionUser(): Promise<SessionUser | null> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return null;
+  }
+  return { id: session.user.id, roles: session.user.roles ?? [] };
+}
+
+const MAX_REPEAT_DAYS = 366;
 
 /*
  * Allowed types
@@ -68,20 +94,19 @@ export interface BookingType {
   start_time: string;
   end_time: string;
   full_name: string;
-  email?: string; // Populated from users table when fetched
-  phone?: string; // Populated from users table when fetched
+  email?: string; // Booker's email, logged-in viewers only
+  phone?: string; // Booker's phone, logged-in viewers only
   type: string;
   plane: string;
   description: string;
   repeat_group_id?: string; // UUID to group repeating bookings together
   is_guest?: boolean; // True if this is a guest booking
-  guest_contact_name?: string; // Guest contact name
-  guest_contact_email?: string; // Guest contact email
-  guest_contact_phone?: string; // Guest contact phone
+  guest_contact_name?: string; // Members and admins only
+  guest_contact_email?: string; // Admins only (VIEW_BOOKING_CONTACT_INFO)
+  guest_contact_phone?: string; // Admins only (VIEW_BOOKING_CONTACT_INFO)
 }
 
 interface AddBookingParams {
-  user_id: string;
   plane: string;
   start_time: number | string;
   end_time: number | string;
@@ -92,7 +117,6 @@ interface AddBookingParams {
 
 interface UpdateBookingParams {
   id: number;
-  user_id: string;
   plane: string;
   start_time: number | string;
   end_time: number | string;
@@ -121,80 +145,6 @@ interface AddGuestBookingParams {
  * Functions
  */
 
-export async function fetchDayBookings(
-  selectedPlane: string,
-  selectedDate: string
-): Promise<{ status: string; result: BookingType[] | Error }> {
-  try {
-    if (!allowedPlaneTypes.includes(selectedPlane)) {
-      console.error("Invalid plane type");
-      return {
-        status: "error",
-        result: new Error("Invalid plane type"),
-      };
-    }
-
-    if (typeof selectedDate !== "string") {
-      console.error("Invalid date format");
-      return {
-        status: "error",
-        result: new Error("Invalid date format"),
-      };
-    } else {
-      selectedDate = new Date(selectedDate).toISOString().split("T")[0]; // Convert to YYYY-MM-DD format
-    }
-
-    try {
-      // Fetch bookings for the selected plane and date, including guest contact info if available
-      console.log(
-        "Fetching bookings for plane:",
-        selectedPlane,
-        "on date:",
-        selectedDate
-      ); // debug
-      const response = await connectionPool.query(
-        `SELECT b.id, b.plane, b.start_time, b.end_time, b.user_id, u.full_name, u.email, u.phone, b.type, b.title, b.description, b.repeat_group_id,
-                gb.contact_name as guest_contact_name, gb.contact_email as guest_contact_email, gb.contact_phone as guest_contact_phone,
-                CASE WHEN gb.booking_id IS NOT NULL THEN true ELSE false END as is_guest
-         FROM bookings b
-         JOIN users u ON b.user_id = u.id
-         LEFT JOIN guest_bookings gb ON b.id = gb.booking_id
-         WHERE b.plane = $1 AND b.start_time::date = $2`,
-        [selectedPlane, selectedDate]
-      );
-      console.log("Bookings query successful"); // debug
-
-      if (response.rowCount === 0) {
-        return {
-          status: "success",
-          result: [],
-        };
-      } else {
-        // Change timeformat to ISO string
-        response.rows.forEach((booking: BookingType) => {
-          booking.start_time = new Date(booking.start_time).toISOString();
-          booking.end_time = new Date(booking.end_time).toISOString();
-        });
-        console.log("Bookings after formatting:", response.rows); // debug
-
-        return {
-          status: "success",
-          result: response.rows,
-        };
-      }
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      return {
-        status: "error",
-        result: error,
-      };
-    }
-  } catch (error) {
-    console.error("Error occurred:", error);
-    throw error;
-  }
-}
-
 /**
  * Fetches bookings for multiple planes across a date range
  * Optimized for calendar views (month/week/day)
@@ -204,6 +154,10 @@ export async function fetchDayBookings(
  * - ANY($1) for multiple planes
  * - Range comparison instead of ::date cast for index usage
  * - Overlap detection for multi-day bookings
+ *
+ * What each booking reveals depends on the viewer: anonymous visitors only see
+ * that the aircraft is taken, logged-in members see who booked it, why and how
+ * to reach them, and only VIEW_BOOKING_CONTACT_INFO sees guest contact details.
  *
  * @param planes - Array of plane identifiers (e.g., ['OH-CON', 'OH-816'])
  * @param startDate - ISO date string (start of range, inclusive) - YYYY-MM-DD format
@@ -237,6 +191,11 @@ export async function fetchBookingsForDateRange(
     if (start > end) {
       throw new Error("Start date must be before or equal to end date");
     }
+
+    const viewer = await getSessionUser();
+    const canViewContactInfo =
+      viewer !== null &&
+      hasPermission(viewer.roles, "VIEW_BOOKING_CONTACT_INFO");
 
     // Normalize to full day ranges in UTC
     const startOfDay = new Date(startDate);
@@ -279,17 +238,52 @@ export async function fetchBookingsForDateRange(
 
     console.log(`Fetched ${response.rowCount} bookings in single bulk query`);
 
-    if (response.rowCount === 0) {
-      return { status: "success", result: [] };
-    }
+    // Build each booking from an allowlist of fields for the viewer's access level
+    const bookings: BookingType[] = response.rows.map((row) => {
+      const start_time = new Date(row.start_time).toISOString();
+      const end_time = new Date(row.end_time).toISOString();
 
-    // Format timestamps to ISO strings
-    response.rows.forEach((booking: BookingType) => {
-      booking.start_time = new Date(booking.start_time).toISOString();
-      booking.end_time = new Date(booking.end_time).toISOString();
+      if (!viewer) {
+        return {
+          id: row.id,
+          user_id: "",
+          title: "Varattu",
+          start_time,
+          end_time,
+          full_name: "",
+          type: row.type,
+          plane: row.plane,
+          description: "",
+          is_guest: row.is_guest,
+        };
+      }
+
+      const booking: BookingType = {
+        id: row.id,
+        user_id: row.user_id,
+        title: row.title,
+        start_time,
+        end_time,
+        full_name: row.full_name,
+        email: row.email,
+        phone: row.phone,
+        type: row.type,
+        plane: row.plane,
+        description: row.description,
+        repeat_group_id: row.repeat_group_id,
+        is_guest: row.is_guest,
+        guest_contact_name: row.guest_contact_name,
+      };
+
+      if (canViewContactInfo) {
+        booking.guest_contact_email = row.guest_contact_email;
+        booking.guest_contact_phone = row.guest_contact_phone;
+      }
+
+      return booking;
     });
 
-    return { status: "success", result: response.rows };
+    return { status: "success", result: bookings };
   } catch (error) {
     console.error("Error fetching bookings for date range:", error);
     return {
@@ -300,7 +294,6 @@ export async function fetchBookingsForDateRange(
 }
 
 export async function addRepeatingBookings({
-  user_id,
   plane,
   start_time,
   end_time,
@@ -313,6 +306,14 @@ export async function addRepeatingBookings({
   data: null | Error;
   count?: number;
 }> {
+  const user = await getSessionUser();
+  if (!user || !hasPermission(user.roles, "CREATE_OWN_BOOKING")) {
+    return {
+      status: "error",
+      data: new Error("Kirjaudu sisään tehdäksesi toistuvan varauksen"),
+    };
+  }
+
   try {
     if (!allowedPlaneTypes.includes(plane)) {
       throw new Error("Invalid plane type");
@@ -320,10 +321,6 @@ export async function addRepeatingBookings({
 
     if (!allowedFlightTypes.includes(type)) {
       throw new Error("Invalid flight type");
-    }
-
-    if (typeof user_id !== "string") {
-      throw new Error("Invalid user ID");
     }
 
     // Validate time format, range, hour boundaries, and minimum duration
@@ -334,8 +331,14 @@ export async function addRepeatingBookings({
     const endDate = new Date(end_time);
     const repeatEndDate = new Date(repeat_end_date);
 
-    if (repeatEndDate <= startDate) {
+    if (isNaN(repeatEndDate.getTime()) || repeatEndDate <= startDate) {
       throw new Error("Repeat end date must be after start date");
+    }
+
+    const repeatDays =
+      (repeatEndDate.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000);
+    if (repeatDays > MAX_REPEAT_DAYS) {
+      throw new Error(`Repeat period can be at most ${MAX_REPEAT_DAYS} days`);
     }
 
     // Get the time of day for the booking (local hours/minutes, same for every repeated day)
@@ -374,7 +377,7 @@ export async function addRepeatingBookings({
         await connectionPool.query(
           "INSERT INTO bookings (user_id, plane, start_time, end_time, type, title, description, repeat_group_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
           [
-            user_id,
+            user.id,
             plane,
             dayStart.toISOString(),
             dayEnd.toISOString(),
@@ -409,6 +412,8 @@ export async function addRepeatingBookings({
 
 const GUEST_USER_EMAIL = "vieras@savonlinnanlentokerho.fi";
 
+// Open to anonymous visitors on purpose: guests can create bookings, but never
+// view, update or delete them afterwards
 export async function addGuestBooking({
   plane,
   start_time,
@@ -450,7 +455,7 @@ export async function addGuestBooking({
 
     // Get the guest user ID
     const guestResult = await client.query(
-      "SELECT id FROM users WHERE email = $1 AND role = 'guest' LIMIT 1",
+      "SELECT id FROM users WHERE email = $1 AND 'guest' = ANY(roles) LIMIT 1",
       [GUEST_USER_EMAIL]
     );
 
@@ -503,7 +508,6 @@ export async function addGuestBooking({
 }
 
 export async function addBooking({
-  user_id,
   plane,
   start_time,
   end_time,
@@ -511,6 +515,14 @@ export async function addBooking({
   title,
   description,
 }: AddBookingParams): Promise<{ status: string; data: null | Error }> {
+  const user = await getSessionUser();
+  if (!user || !hasPermission(user.roles, "CREATE_OWN_BOOKING")) {
+    return {
+      status: "error",
+      data: new Error("Kirjaudu sisään tehdäksesi varauksen"),
+    };
+  }
+
   try {
     if (!allowedPlaneTypes.includes(plane)) {
       throw new Error("Invalid plane type");
@@ -523,14 +535,10 @@ export async function addBooking({
     // Validate time format, range, hour boundaries, and minimum duration
     validateBookingTimes(start_time, end_time);
 
-    if (typeof user_id !== "string") {
-      throw new Error("Invalid user ID");
-    }
-
     try {
       await connectionPool.query(
         "INSERT INTO bookings (user_id, plane, start_time, end_time, type, title, description) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
-        [user_id, plane, start_time, end_time, type, title, description]
+        [user.id, plane, start_time, end_time, type, title, description]
       );
     } catch (error) {
       console.error("Error inserting data:", error);
@@ -551,17 +559,24 @@ export async function addBooking({
 
 export async function updateBooking({
   id,
-  user_id,
   plane,
   start_time,
   end_time,
   type,
   title,
   description,
-}: UpdateBookingParams & { userRole?: string }): Promise<{
+}: UpdateBookingParams): Promise<{
   status: string;
   data: BookingType | Error;
 }> {
+  const user = await getSessionUser();
+  if (!user || !hasPermission(user.roles, "EDIT_OWN_BOOKING")) {
+    return {
+      status: "error",
+      data: new Error("Ei oikeuksia muokata varausta"),
+    };
+  }
+
   try {
     // Validation
     if (typeof id !== "number" || id < 0) {
@@ -579,37 +594,30 @@ export async function updateBooking({
     // Validate time format, range, hour boundaries, and minimum duration
     validateBookingTimes(start_time, end_time);
 
-    if (typeof user_id !== "string") {
-      throw new Error("Invalid user ID");
-    }
-
     try {
-      // Check if user is admin to determine if they can edit any booking
-      const userRoleResult = await connectionPool.query(
-        "SELECT roles FROM users WHERE id = $1",
-        [user_id]
+      const existing = await connectionPool.query(
+        "SELECT user_id FROM bookings WHERE id = $1",
+        [id]
       );
 
-      const isAdmin =
-        userRoleResult.rows.length > 0 &&
-        userRoleResult.rows[0].roles?.includes("admin");
+      // Admins can update any booking, members only their own
+      if (
+        existing.rowCount === 0 ||
+        !canManageBooking(user.roles, user.id, existing.rows[0].user_id)
+      ) {
+        return {
+          status: "error",
+          data: new Error("Booking not found or unauthorized"),
+        };
+      }
 
-      // Admin can update any booking, regular users can only update their own
-      const updateQuery = isAdmin
-        ? `UPDATE bookings
-           SET plane = $1, start_time = $2, end_time = $3, type = $4, title = $5, description = $6
-           WHERE id = $7
-           RETURNING id, user_id, plane, start_time, end_time, type, title, description`
-        : `UPDATE bookings
-           SET plane = $1, start_time = $2, end_time = $3, type = $4, title = $5, description = $6
-           WHERE id = $7 AND user_id = $8
-           RETURNING id, user_id, plane, start_time, end_time, type, title, description`;
-
-      const updateParams = isAdmin
-        ? [plane, start_time, end_time, type, title, description, id]
-        : [plane, start_time, end_time, type, title, description, id, user_id];
-
-      const response = await connectionPool.query(updateQuery, updateParams);
+      const response = await connectionPool.query(
+        `UPDATE bookings
+         SET plane = $1, start_time = $2, end_time = $3, type = $4, title = $5, description = $6
+         WHERE id = $7
+         RETURNING id, user_id, plane, start_time, end_time, type, title, description`,
+        [plane, start_time, end_time, type, title, description, id]
+      );
 
       if (response.rowCount === 0) {
         return {
@@ -655,40 +663,41 @@ export async function updateBooking({
 }
 
 export async function removeBooking(
-  bookingId: number,
-  userId: string,
-  userRole?: string | string[]
+  bookingId: number
 ): Promise<{ status: string; result: null | Error }> {
+  const user = await getSessionUser();
+  if (!user || !hasPermission(user.roles, "DELETE_OWN_BOOKING")) {
+    return {
+      status: "error",
+      result: new Error("Ei oikeuksia poistaa varausta"),
+    };
+  }
+
   try {
     if (typeof bookingId !== "number") {
       throw new Error("Invalid booking ID");
     }
 
-    if (typeof userId !== "string") {
-      throw new Error("Invalid user ID");
-    }
-
-    // Check if user is admin (support both string and array format)
-    const isAdmin = Array.isArray(userRole)
-      ? userRole.includes("admin")
-      : userRole === "admin";
-
     try {
-      // Admin can delete any booking, regular users can only delete their own
-      const query = isAdmin
-        ? "DELETE FROM bookings WHERE id = $1"
-        : "DELETE FROM bookings WHERE id = $1 AND user_id = $2";
+      const existing = await connectionPool.query(
+        "SELECT user_id FROM bookings WHERE id = $1",
+        [bookingId]
+      );
 
-      const params = isAdmin ? [bookingId] : [bookingId, userId];
-
-      const result = await connectionPool.query(query, params);
-
-      if (result.rowCount === 0) {
+      // Admins can delete any booking, members only their own
+      if (
+        existing.rowCount === 0 ||
+        !canDeleteBooking(user.roles, user.id, existing.rows[0].user_id)
+      ) {
         return {
           status: "error",
           result: new Error("Booking not found or unauthorized to delete"),
         };
       }
+
+      await connectionPool.query("DELETE FROM bookings WHERE id = $1", [
+        bookingId,
+      ]);
     } catch (error) {
       console.error("Error removing data:", error);
       return {
@@ -710,30 +719,27 @@ export async function removeBooking(
  * Removes a booking and optionally all following bookings in the same repeat group
  *
  * @param bookingId - The ID of the booking to delete
- * @param userId - The ID of the user attempting the deletion
- * @param userRole - The role(s) of the user (admin can delete any booking)
  * @param deleteFollowing - If true, deletes all bookings in the same repeat group that start on or after this booking
  * @returns Promise with status and result
  */
 export async function removeBookingWithRepeats(
   bookingId: number,
-  userId: string,
-  userRole?: string | string[],
   deleteFollowing: boolean = false
 ): Promise<{ status: string; result: null | Error; deletedCount?: number }> {
+  const user = await getSessionUser();
+  if (!user || !hasPermission(user.roles, "DELETE_OWN_BOOKING")) {
+    return {
+      status: "error",
+      result: new Error("Ei oikeuksia poistaa varausta"),
+    };
+  }
+
   try {
     if (typeof bookingId !== "number") {
       throw new Error("Invalid booking ID");
     }
 
-    if (typeof userId !== "string") {
-      throw new Error("Invalid user ID");
-    }
-
-    // Check if user is admin (support both string and array format)
-    const isAdmin = Array.isArray(userRole)
-      ? userRole.includes("admin")
-      : userRole === "admin";
+    const canDeleteAny = hasPermission(user.roles, "DELETE_ANY_BOOKING");
 
     // First, get the booking to check if it has a repeat_group_id and get its start_time
     const bookingQuery = await connectionPool.query(
@@ -751,7 +757,7 @@ export async function removeBookingWithRepeats(
     const booking = bookingQuery.rows[0];
 
     // Check authorization
-    if (!isAdmin && booking.user_id !== userId) {
+    if (!canDeleteBooking(user.roles, user.id, booking.user_id)) {
       return {
         status: "error",
         result: new Error("Unauthorized to delete this booking"),
@@ -763,24 +769,21 @@ export async function removeBookingWithRepeats(
 
       if (deleteFollowing && booking.repeat_group_id) {
         // Delete this booking and all following bookings in the same repeat group
-        const query = isAdmin
+        const query = canDeleteAny
           ? "DELETE FROM bookings WHERE repeat_group_id = $1 AND start_time >= $2"
           : "DELETE FROM bookings WHERE repeat_group_id = $1 AND start_time >= $2 AND user_id = $3";
 
-        const params = isAdmin
+        const params = canDeleteAny
           ? [booking.repeat_group_id, booking.start_time]
-          : [booking.repeat_group_id, booking.start_time, userId];
+          : [booking.repeat_group_id, booking.start_time, user.id];
 
         result = await connectionPool.query(query, params);
       } else {
         // Just delete the single booking
-        const query = isAdmin
-          ? "DELETE FROM bookings WHERE id = $1"
-          : "DELETE FROM bookings WHERE id = $1 AND user_id = $2";
-
-        const params = isAdmin ? [bookingId] : [bookingId, userId];
-
-        result = await connectionPool.query(query, params);
+        result = await connectionPool.query(
+          "DELETE FROM bookings WHERE id = $1",
+          [bookingId]
+        );
       }
 
       if (result.rowCount === 0) {
@@ -814,65 +817,4 @@ export async function arrangeBookingsColumns(
   // Simple column arrangement - just return bookings in a single column for now
   // This can be enhanced later to handle overlapping bookings in multiple columns
   return [bookings];
-}
-
-export async function fetchGuestContactInfo(
-  bookingId: number,
-  userId: string
-): Promise<{ status: string; result: GuestContactInfo | Error | null }> {
-  try {
-    if (typeof bookingId !== "number") {
-      throw new Error("Invalid booking ID");
-    }
-
-    if (typeof userId !== "string") {
-      throw new Error("Invalid user ID");
-    }
-
-    // Check if user is admin
-    const userRoleResult = await connectionPool.query(
-      "SELECT roles FROM users WHERE id = $1",
-      [userId]
-    );
-
-    if (userRoleResult.rows.length === 0) {
-      return {
-        status: "error",
-        result: new Error("User not found"),
-      };
-    }
-
-    if (!userRoleResult.rows[0].roles?.includes("admin")) {
-      return {
-        status: "error",
-        result: new Error(
-          "Unauthorized: Only admins can view guest contact information"
-        ),
-      };
-    }
-
-    // Fetch guest contact info
-    const result = await connectionPool.query(
-      "SELECT contact_name as contactName, contact_email as contactEmail, contact_phone as contactPhone FROM guest_bookings WHERE booking_id = $1",
-      [bookingId]
-    );
-
-    if (result.rows.length === 0) {
-      return {
-        status: "success",
-        result: null, // Not a guest booking
-      };
-    }
-
-    return {
-      status: "success",
-      result: result.rows[0],
-    };
-  } catch (error) {
-    console.error("Error fetching guest contact info:", error);
-    return {
-      status: "error",
-      result: error,
-    };
-  }
 }
