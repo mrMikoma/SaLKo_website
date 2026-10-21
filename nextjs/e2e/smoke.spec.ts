@@ -14,6 +14,7 @@ const publicPages = [
   "/koulutus",
   "/esittelylennot",
   "/yhteystiedot",
+  "/tiedotteet",
   ...planes.map((plane) => `/kalusto/${plane.registeration}`),
 ];
 

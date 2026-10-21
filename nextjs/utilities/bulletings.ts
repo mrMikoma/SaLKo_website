@@ -3,102 +3,146 @@ import connectionPool from "@/utilities/db";
 import { auth } from "@/auth";
 import { hasPermission } from "@/utilities/roles";
 import { revalidatePath } from "next/cache";
+import { bulletinSchema, BulletinInput } from "@/schemas/bulletinSchema";
 
+export type BulletinStatus = "draft" | "published";
+
+// What the public sees
 export interface Bulletin {
   id: number;
-  user_id: string;
-  date: number; // Unix timestamp
   title: string;
   content: string;
-  created_at: string;
-  username?: string; // From JOIN with users table
+  publishedAt: string; // ISO
+  author: string | null;
+}
+
+// What the admin sees: drafts too
+export interface AdminBulletin {
+  id: number;
+  title: string;
+  content: string;
+  status: BulletinStatus;
+  createdAt: string; // ISO
+  publishedAt: string | null;
+  author: string | null;
+}
+
+type ActionResult = { success: boolean; error?: string };
+
+const toIso = (value: Date | string | null) =>
+  value === null ? null : new Date(value).toISOString();
+
+function revalidateBulletinPages() {
+  revalidatePath("/");
+  revalidatePath("/tiedotteet");
+  revalidatePath("/admin/bulletins");
+}
+
+async function canManageBulletins() {
+  const session = await auth();
+  return session?.user?.id && hasPermission(session.user.roles, "MANAGE_BULLETINS")
+    ? session.user
+    : null;
 }
 
 /*
- * Fetches the five newest bullets from the database
+ * Published bulletins, newest first: the five newest for the home page, or
+ * all of them for the archive. Drafts never leave the admin.
  */
-export async function fetchLatestFiveBulletings(): Promise<{
-  status: string;
-  result: Bulletin[] | null;
+export async function fetchPublishedBulletins(limit?: number): Promise<{
+  status: "success" | "error";
+  result: Bulletin[];
 }> {
   try {
-    // Fetch the five newest bulletins from the database with user names
     const response = await connectionPool.query(
-      `SELECT bullets.*, users.name as username
-       FROM bullets
-       JOIN users ON bullets.user_id = users.id
-       ORDER BY bullets.date DESC
-       LIMIT 5`
+      `SELECT b.id, b.title, b.content, b.published_at, u.full_name AS author
+       FROM bullets b
+       LEFT JOIN users u ON u.id = b.user_id
+       WHERE b.status = 'published'
+       ORDER BY b.published_at DESC, b.id DESC
+       LIMIT $1`,
+      [limit ?? null]
     );
     return {
       status: "success",
-      result: response.rows as Bulletin[],
+      result: response.rows.map((row) => ({
+        id: row.id,
+        title: row.title,
+        content: row.content,
+        publishedAt: toIso(row.published_at)!,
+        author: row.author,
+      })),
     };
   } catch (error) {
-    console.error("Error fetching latest bulletins:", error);
-    return {
-      status: "error",
-      result: null,
-    };
+    console.error("Error fetching bulletins:", error);
+    return { status: "error", result: [] };
   }
 }
 
 /*
- * Fetch all bulletings from the database
+ * Every bulletin with its status (admin only)
  */
-export async function fetchAllBulletings(): Promise<{
-  status: string;
-  result: Bulletin[] | null;
+export async function fetchAllBulletinsForAdmin(): Promise<{
+  status: "success" | "error";
+  result: AdminBulletin[];
 }> {
   try {
-    // Fetch all bulletins from the database with user names
+    if (!(await canManageBulletins())) {
+      return { status: "error", result: [] };
+    }
+
     const response = await connectionPool.query(
-      `SELECT bullets.*, users.name as username
-       FROM bullets
-       JOIN users ON bullets.user_id = users.id
-       ORDER BY bullets.date DESC`
+      `SELECT b.id, b.title, b.content, b.status, b.created_at, b.published_at,
+              u.full_name AS author
+       FROM bullets b
+       LEFT JOIN users u ON u.id = b.user_id
+       ORDER BY b.status = 'published', COALESCE(b.published_at, b.created_at) DESC`
     );
     return {
       status: "success",
-      result: response.rows as Bulletin[],
+      result: response.rows.map((row) => ({
+        id: row.id,
+        title: row.title,
+        content: row.content,
+        status: row.status,
+        createdAt: toIso(row.created_at)!,
+        publishedAt: toIso(row.published_at),
+        author: row.author,
+      })),
     };
   } catch (error) {
-    console.error("Error fetching all bulletins:", error);
-    return {
-      status: "error",
-      result: null,
-    };
+    console.error("Error fetching bulletins for admin:", error);
+    return { status: "error", result: [] };
   }
 }
 
 /*
- * Create a new bulletin (admin only)
+ * Create a bulletin (admin only): as a draft, or published right away
  */
-export async function createBulletin(data: {
-  title: string;
-  content: string;
-}): Promise<{ success: boolean; error?: string }> {
+export async function createBulletin(
+  data: BulletinInput,
+  publish = false
+): Promise<ActionResult> {
   try {
-    const session = await auth();
-
-    if (!session?.user?.roles || !hasPermission(session.user.roles, "ACCESS_ADMIN_SITE")) {
+    const user = await canManageBulletins();
+    if (!user) {
       return { success: false, error: "Ei oikeuksia" };
     }
 
-    if (!data.title || !data.content) {
-      return { success: false, error: "Otsikko ja sisältö ovat pakollisia" };
+    const parsed = bulletinSchema.safeParse(data);
+    if (!parsed.success) {
+      return { success: false, error: parsed.error.issues[0].message };
     }
 
-    // Use current timestamp as date
-    const date = Math.floor(Date.now() / 1000);
-
     await connectionPool.query(
-      `INSERT INTO bullets (user_id, date, title, content) VALUES ($1, $2, $3, $4)`,
-      [session.user.id, date, data.title, data.content]
+      `INSERT INTO bullets (user_id, date, title, content, status, published_at)
+       VALUES ($1, extract(epoch FROM NOW())::bigint, $2, $3, $4, ${
+         publish ? "NOW()" : "NULL"
+       })`,
+      [user.id, parsed.data.title, parsed.data.content, publish ? "published" : "draft"]
     );
 
-    revalidatePath("/");
-    revalidatePath("/admin/bulletins");
+    revalidateBulletinPages();
     return { success: true };
   } catch (error) {
     console.error("Error creating bulletin:", error);
@@ -107,58 +151,31 @@ export async function createBulletin(data: {
 }
 
 /*
- * Update an existing bulletin (admin only)
+ * Update a bulletin's title and content (admin only)
  */
 export async function updateBulletin(
   id: number,
-  data: {
-    title?: string;
-    content?: string;
-  }
-): Promise<{ success: boolean; error?: string }> {
+  data: BulletinInput
+): Promise<ActionResult> {
   try {
-    const session = await auth();
-
-    if (!session?.user?.roles || !hasPermission(session.user.roles, "ACCESS_ADMIN_SITE")) {
+    if (!(await canManageBulletins())) {
       return { success: false, error: "Ei oikeuksia" };
     }
 
-    // Verify bulletin exists
-    const existing = await connectionPool.query(
-      "SELECT id FROM bullets WHERE id = $1",
-      [id]
-    );
+    const parsed = bulletinSchema.safeParse(data);
+    if (!parsed.success) {
+      return { success: false, error: parsed.error.issues[0].message };
+    }
 
-    if (existing.rows.length === 0) {
+    const response = await connectionPool.query(
+      "UPDATE bullets SET title = $1, content = $2 WHERE id = $3",
+      [parsed.data.title, parsed.data.content, id]
+    );
+    if (response.rowCount === 0) {
       return { success: false, error: "Tiedotetta ei löytynyt" };
     }
 
-    // Build update query dynamically
-    const updates: string[] = [];
-    const values: (string | number)[] = [];
-    let paramIndex = 1;
-
-    if (data.title !== undefined) {
-      updates.push(`title = $${paramIndex++}`);
-      values.push(data.title);
-    }
-    if (data.content !== undefined) {
-      updates.push(`content = $${paramIndex++}`);
-      values.push(data.content);
-    }
-
-    if (updates.length === 0) {
-      return { success: false, error: "Ei muutettavia tietoja" };
-    }
-
-    values.push(id);
-    await connectionPool.query(
-      `UPDATE bullets SET ${updates.join(", ")} WHERE id = $${paramIndex}`,
-      values
-    );
-
-    revalidatePath("/");
-    revalidatePath("/admin/bulletins");
+    revalidateBulletinPages();
     return { success: true };
   } catch (error) {
     console.error("Error updating bulletin:", error);
@@ -167,30 +184,53 @@ export async function updateBulletin(
 }
 
 /*
- * Delete a bulletin (admin only)
+ * Publish a draft, or take a bulletin back to drafts (admin only). The public
+ * date is the first publication, so taking a bulletin down for a fix and
+ * publishing it again doesn't move it to the top.
  */
-export async function deleteBulletin(id: number): Promise<{ success: boolean; error?: string }> {
+export async function setBulletinPublished(
+  id: number,
+  published: boolean
+): Promise<ActionResult> {
   try {
-    const session = await auth();
-
-    if (!session?.user?.roles || !hasPermission(session.user.roles, "ACCESS_ADMIN_SITE")) {
+    if (!(await canManageBulletins())) {
       return { success: false, error: "Ei oikeuksia" };
     }
 
-    // Verify bulletin exists
-    const existing = await connectionPool.query(
-      "SELECT id FROM bullets WHERE id = $1",
+    const response = await connectionPool.query(
+      published
+        ? `UPDATE bullets SET status = 'published', published_at = COALESCE(published_at, NOW())
+           WHERE id = $1`
+        : "UPDATE bullets SET status = 'draft' WHERE id = $1",
       [id]
     );
-
-    if (existing.rows.length === 0) {
+    if (response.rowCount === 0) {
       return { success: false, error: "Tiedotetta ei löytynyt" };
     }
 
-    await connectionPool.query("DELETE FROM bullets WHERE id = $1", [id]);
+    revalidateBulletinPages();
+    return { success: true };
+  } catch (error) {
+    console.error("Error publishing bulletin:", error);
+    return { success: false, error: "Julkaisun muutos epäonnistui" };
+  }
+}
 
-    revalidatePath("/");
-    revalidatePath("/admin/bulletins");
+/*
+ * Delete a bulletin (admin only)
+ */
+export async function deleteBulletin(id: number): Promise<ActionResult> {
+  try {
+    if (!(await canManageBulletins())) {
+      return { success: false, error: "Ei oikeuksia" };
+    }
+
+    const response = await connectionPool.query("DELETE FROM bullets WHERE id = $1", [id]);
+    if (response.rowCount === 0) {
+      return { success: false, error: "Tiedotetta ei löytynyt" };
+    }
+
+    revalidateBulletinPages();
     return { success: true };
   } catch (error) {
     console.error("Error deleting bulletin:", error);

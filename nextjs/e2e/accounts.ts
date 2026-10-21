@@ -17,7 +17,7 @@ const LOCAL_PASSWORD = "E2e-local-pass1!";
 
 // Seeding writes to the users table, so it only ever runs against a database
 // on this machine or on a Docker bridge network (172.16.0.0/12).
-function isLocalDatabase(): boolean {
+export function isLocalDatabase(): boolean {
   const connectionString = process.env.DATABASE_CONNECTION_STRING;
   if (!connectionString) return false;
   const host = new URL(connectionString).hostname;

@@ -28,6 +28,10 @@ CREATE TABLE
     title TEXT NOT NULL,
     content TEXT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW (),
+    -- Drafts are only visible in the admin; published_at is the date the
+    -- public sees, set the first time the bulletin is published
+    status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published')),
+    published_at TIMESTAMPTZ,
     FOREIGN KEY (user_id) REFERENCES users (id)
   );
 

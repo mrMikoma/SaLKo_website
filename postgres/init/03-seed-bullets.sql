@@ -43,4 +43,7 @@ BEGIN
       'Huom: OH-CON varauskalenteri uudistettu',
       E'Olemme uudistaneet **OH-CON:n varauskalenterin** toimintaa.\n\n### Muutokset\n\n- Varauksia voi tehdä enintään **60 päivää** etukäteen\n- Peruutus on tehtävä viimeistään **24 h** ennen varauksen alkua\n- Myöhäisestä peruutuksesta veloitetaan **50% lennon hinnasta**\n\n### Usein kysyttyä\n\n**Voinko siirtää varauksen?** Kyllä, ota yhteyttä muihin jäseniin tai hallitukseen.\n\n**Mitä jos sää estää lennon?** Sääperumisista ei peritä maksua — ilmoita mahdollisimman ajoissa.\n\n---\n\nUudet säännöt ovat voimassa **1.3.2026 alkaen**.'
     );
+
+  -- The sample bulletins are public; new ones start as drafts
+  UPDATE bullets SET status = 'published', published_at = to_timestamp(date);
 END $$;

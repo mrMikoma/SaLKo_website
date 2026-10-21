@@ -42,6 +42,9 @@ export const PERMISSIONS = {
   VIEW_ANALYTICS: ["admin"] as Role[],
   MANAGE_SETTINGS: ["admin"] as Role[],
 
+  // Bulletins: write, publish and delete, and see the drafts
+  MANAGE_BULLETINS: ["admin"] as Role[],
+
   // Flight logging
   LOG_OWN_FLIGHT: ["admin", "user"] as Role[],
   VIEW_OWN_FLIGHTS: ["admin", "user"] as Role[],
