@@ -432,3 +432,124 @@ export function findFlightIssues(
 
   return issues;
 }
+
+/*
+ * Writing
+ */
+
+// Columns a person types into; the website writes only these (and ID, Lähde)
+const INPUT_COLUMNS: SheetColumn[] = [
+  "date",
+  "pic",
+  "second",
+  "personsOnBoard",
+  "departure",
+  "arrival",
+  "takeoff",
+  "landing",
+  "landings",
+  "purpose",
+  "fuel",
+  "oil",
+  "hourMeter",
+  "remarks",
+  "id",
+];
+
+/**
+ * Rows a new flight can go into: the rows after the last flight that are
+ * pre-filled with the formulas (formulas[i] is row i + 1 of the airborne-time
+ * column) and still empty. Writing there keeps the running totals right.
+ * Stops at a row someone has started typing into, so it is never overwritten.
+ */
+export function findWritableRows(
+  values: SheetValues,
+  parsed: ParsedSheet,
+  formulas: string[],
+  firstDataRow = 3
+): number[] {
+  const lastFlightRow = parsed.flights.reduce(
+    (last, flight) => Math.max(last, flight.row),
+    firstDataRow - 1
+  );
+
+  const rows: number[] = [];
+  for (let row = lastFlightRow + 1; row <= formulas.length; row++) {
+    if (!formulas[row - 1]?.startsWith("=")) break;
+    const cells = values[row - 1] ?? [];
+    const typedInto = INPUT_COLUMNS.some((key) => {
+      const index = parsed.columns[key];
+      return index !== undefined && !isBlank(cells[index]);
+    });
+    if (typedInto) break;
+    rows.push(row);
+  }
+  return rows;
+}
+
+export interface SheetFlightInput {
+  id: string;
+  flightDate: string; // YYYY-MM-DD
+  picName: string;
+  secondName: string | null;
+  personsOnBoard: number;
+  departure: string;
+  arrival: string;
+  takeoff: string; // HH:MM, Finnish time
+  landing: string; // HH:MM
+  landings: number;
+  purposeCode: string;
+  fuelLitres: number | null;
+  oilLitres: number | null;
+  hourMeter: number | null;
+  remarks: string | null;
+}
+
+/**
+ * The cells of one flight for a sheet row, as typed text for Sheets to parse
+ * (USER_ENTERED): an ISO date and HH:MM times work in any spreadsheet locale.
+ * Optional columns the sheet doesn't have are skipped.
+ */
+// Text for a cell written with USER_ENTERED: the leading apostrophe makes
+// Sheets keep it as typed, so a remark like "=IMAGE(...)" never becomes a
+// formula in the club's sheet and an ID never turns into a number. Sheets
+// doesn't show or return the apostrophe.
+const asText = (value: string | null): string => (value ? `'${value}` : "");
+
+export function flightCells(
+  input: SheetFlightInput,
+  row: number,
+  columns: ParsedSheet["columns"]
+): { row: number; column: number; value: string }[] {
+  const values: Partial<Record<SheetColumn, string>> = {
+    date: input.flightDate,
+    pic: asText(input.picName),
+    second: asText(input.secondName),
+    personsOnBoard: String(input.personsOnBoard),
+    departure: asText(input.departure),
+    arrival: asText(input.arrival),
+    takeoff: input.takeoff,
+    landing: input.landing,
+    landings: String(input.landings),
+    purpose: asText(input.purposeCode),
+    fuel: input.fuelLitres === null ? "" : String(input.fuelLitres),
+    oil: input.oilLitres === null ? "" : String(input.oilLitres),
+    hourMeter: input.hourMeter === null ? "" : String(input.hourMeter),
+    remarks: asText(input.remarks),
+    id: asText(input.id),
+    source: asText("web"),
+  };
+  return Object.entries(values)
+    .filter(([key]) => columns[key as SheetColumn] !== undefined)
+    .map(([key, value]) => ({ row, column: columns[key as SheetColumn]!, value: value! }));
+}
+
+/** The cells to clear when a web entry is undone: its input columns and source */
+export function clearedFlightCells(
+  row: number,
+  columns: ParsedSheet["columns"]
+): { row: number; column: number; value: string }[] {
+  return [...INPUT_COLUMNS, "source" as SheetColumn]
+    .filter((key) => columns[key] !== undefined)
+    .map((key) => ({ row, column: columns[key]!, value: "" }));
+}

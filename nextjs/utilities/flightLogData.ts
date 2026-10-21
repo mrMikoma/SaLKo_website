@@ -2,6 +2,7 @@ import "server-only";
 
 import connectionPool from "@/utilities/db";
 import { getFlightSheet } from "@/utilities/flightSheetSource";
+import pricesData from "@/data/prices.json";
 
 /**
  * Reads of the synced flight log for server components. The pages check the
@@ -297,4 +298,88 @@ export async function getMyFlights(userId: string): Promise<MyFlight[]> {
     ...toFlight(row, rowUrl),
     role: row.role as MyFlight["role"],
   }));
+}
+
+export interface FlightFormOptions {
+  aircraft: { registration: string; minuteRate: number | null }[];
+  purposes: { code: string; name: string; isTraining: boolean; billed: boolean }[];
+  airfields: string[];
+  // How the member is written in the sheet, if already known
+  sheetName: string | null;
+  pilotNames: string[];
+  lastPurpose: string | null;
+  lastAircraft: string | null;
+}
+
+// Per-minute price with the equipment fee, for the estimate on the form;
+// billing itself comes later and uses its own rates
+function minuteRate(registration: string): number | null {
+  const rate = pricesData.aircraftRentalRates.find(
+    (r) => "registration" in r && r.registration === registration
+  ) as { pricePerMinuteWithEquipmentFee?: string } | undefined;
+  const value = Number(rate?.pricePerMinuteWithEquipmentFee?.replace("~", "").replace(",", "."));
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+export async function getFlightFormOptions(userId: string): Promise<FlightFormOptions> {
+  const [aircraft, purposes, airfields, alias, names, last] = await Promise.all([
+    connectionPool.query(
+      "SELECT registration FROM aircraft_sheets WHERE active ORDER BY registration"
+    ),
+    connectionPool.query(
+      "SELECT code, name_fi, is_training, payer FROM flight_purposes WHERE active ORDER BY sort_order"
+    ),
+    // The most used airfields of the last two years, home first
+    connectionPool.query(
+      `SELECT field FROM (
+         SELECT departure AS field FROM sheet_flights
+         WHERE missing_since IS NULL AND flight_date > NOW() - interval '2 years'
+         UNION ALL
+         SELECT arrival FROM sheet_flights
+         WHERE missing_since IS NULL AND flight_date > NOW() - interval '2 years'
+       ) f
+       WHERE field IS NOT NULL
+       GROUP BY field
+       ORDER BY field = 'EFSA' DESC, count(*) DESC
+       LIMIT 12`
+    ),
+    connectionPool.query(
+      "SELECT name FROM pilot_aliases WHERE user_id = $1 ORDER BY updated_at DESC LIMIT 1",
+      [userId]
+    ),
+    connectionPool.query(
+      `SELECT name FROM pilot_aliases
+       UNION
+       SELECT DISTINCT pic_name FROM sheet_flights
+       WHERE missing_since IS NULL AND flight_date > NOW() - interval '2 years'
+       ORDER BY 1`
+    ),
+    connectionPool.query(
+      `SELECT f.purpose_code, f.registration FROM sheet_flights f
+       JOIN pilot_aliases a ON a.user_id = $1 AND a.name_key IN (f.pic_key, f.second_key)
+       WHERE f.missing_since IS NULL
+       ORDER BY f.flight_date DESC, f.takeoff_at DESC NULLS LAST
+       LIMIT 1`,
+      [userId]
+    ),
+  ]);
+
+  const fields = airfields.rows.map((row) => row.field as string);
+  return {
+    aircraft: aircraft.rows.map((row) => ({
+      registration: row.registration,
+      minuteRate: minuteRate(row.registration),
+    })),
+    purposes: purposes.rows.map((row) => ({
+      code: row.code,
+      name: row.name_fi,
+      isTraining: row.is_training,
+      billed: row.payer !== "none",
+    })),
+    airfields: fields.includes("EFSA") ? fields : ["EFSA", ...fields],
+    sheetName: alias.rows[0]?.name ?? null,
+    pilotNames: names.rows.map((row) => row.name as string).filter(Boolean),
+    lastPurpose: last.rows[0]?.purpose_code ?? null,
+    lastAircraft: last.rows[0]?.registration ?? null,
+  };
 }

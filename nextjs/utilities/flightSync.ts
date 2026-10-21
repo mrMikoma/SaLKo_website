@@ -121,7 +121,12 @@ const UPSERT_FLIGHTS = `
      OR sheet_flights.missing_since IS NOT NULL
   RETURNING id`;
 
-export async function syncFlightSheets(triggeredBy: string): Promise<SyncSummary> {
+export async function syncFlightSheets(
+  triggeredBy: string,
+  // Wait for a sync that is already running (someone pressed the button, or a
+  // flight was just written) instead of giving up with "busy"
+  { wait = false }: { wait?: boolean } = {}
+): Promise<SyncSummary> {
   if (!connectionPool) {
     return emptySummary("error", "Tietokantayhteys puuttuu");
   }
@@ -132,11 +137,22 @@ export async function syncFlightSheets(triggeredBy: string): Promise<SyncSummary
   const summary = emptySummary("success");
 
   try {
-    const lock = await client.query("SELECT pg_try_advisory_lock($1) AS locked", [
-      SYNC_LOCK_KEY,
-    ]);
-    if (!lock.rows[0].locked) {
-      return emptySummary("busy");
+    if (wait) {
+      await client.query("SET lock_timeout = '30s'");
+      try {
+        await client.query("SELECT pg_advisory_lock($1)", [SYNC_LOCK_KEY]);
+      } catch {
+        return emptySummary("busy");
+      } finally {
+        await client.query("RESET lock_timeout");
+      }
+    } else {
+      const lock = await client.query("SELECT pg_try_advisory_lock($1) AS locked", [
+        SYNC_LOCK_KEY,
+      ]);
+      if (!lock.rows[0].locked) {
+        return emptySummary("busy");
+      }
     }
 
     try {

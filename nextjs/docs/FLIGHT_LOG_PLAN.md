@@ -244,6 +244,8 @@ Kept: the page shell, the permission names, and one shared airfield picker.
 2. Booking bugs and improvements.
 3. Sheet adapter, parser, sync, the copy in Postgres, purposes/rates/aliases, and a read-only `/admin/lennot`. Removes the old flight-log code.
 4. Member entry form, history and the `/jasenalue` hub.
+   - Done: the form, writing into the formula rows, undo of the latest own entry, the user-menu link. See `FLIGHT_LOG.md`.
+   - Still open: prefilling the aircraft from today's booking (only OH-CON has a tab, so it can wait), "Toista" for intro-flight days, a draft kept over a reload, and the `/jasenalue` hub, which waits until there are summaries to link to.
 5. Biller tools: status changes and bulk entry.
 6. Billing periods and summaries.
 7. Statistics, reports and the admin dashboard.

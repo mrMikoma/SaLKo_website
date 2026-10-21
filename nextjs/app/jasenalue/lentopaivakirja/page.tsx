@@ -9,6 +9,7 @@ import { getMyFlights } from "@/utilities/flightLogData"
 import PageHero from "@/components/pageHero"
 import ContentSection from "@/components/contentSection"
 import MyFlights from "@/components/flightLogs/MyFlights"
+import Link from "next/link"
 
 export const metadata = {
   title: "Lentopäiväkirja | SaLKo",
@@ -45,7 +46,15 @@ export default async function Page() {
       />
 
       <ContentSection variant="dark" containerSize="default">
-        <div className="max-w-3xl mx-auto -mt-16">
+        <div className="max-w-3xl mx-auto -mt-16 space-y-6">
+          <div className="flex justify-end">
+            <Link
+              href="/jasenalue/lentopaivakirja/uusi"
+              className="min-h-11 inline-flex items-center px-6 rounded-lg bg-sred text-white font-semibold shadow-lg hover:bg-sred/90"
+            >
+              + Kirjaa lento
+            </Link>
+          </div>
           <MyFlights flights={flights} />
         </div>
       </ContentSection>

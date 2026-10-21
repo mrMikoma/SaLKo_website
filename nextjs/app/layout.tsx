@@ -8,6 +8,7 @@ import { QueryProvider } from "@/providers/QueryProvider";
 import { NavbarProvider } from "@/providers/NavbarContextProvider";
 import { SessionProvider } from "@/providers/SessionProvider";
 import { UmamiProvider } from "@/providers/UmamiProvider";
+import { isFlightLogEnabled } from "@/utilities/features";
 
 const finlandica = Finlandica_Headline({
   subsets: ["latin"],
@@ -88,7 +89,7 @@ const RootLayout = async ({ children }: React.PropsWithChildren) => {
             <NavbarProvider>
               <main className="max-w-screen min-h-screen flex flex-col overflow-x-hidden relative bg-background bg-sblued text-white font-finlandica">
                 <AntdRegistry>
-                  <Navbar />
+                  <Navbar flightLog={isFlightLogEnabled()} />
                   {children}
                   <Footer />
                 </AntdRegistry>
