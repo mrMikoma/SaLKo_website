@@ -24,6 +24,9 @@ bun run lint
 # Run METAR cronjob locally
 bun run cronjob:update-metar              # or: tsx ../cronjobs/update-metar/index.ts
 
+# Unit tests (tests/unit/, bun's test runner)
+bun run test:unit
+
 # E2E tests (Playwright) — starts `bun dev`, or reuses a server already on :3000
 bun run test:e2e
 bun run test:e2e e2e/smoke.spec.ts -g kalusto   # one file / filter by title
@@ -33,7 +36,7 @@ bun run test:e2e --project=setup                # only (re)create the e2e accoun
 
 ## Testing and Browser Checks
 
-Playwright e2e tests live in `nextjs/e2e/` (config: `nextjs/playwright.config.ts`). There are no unit tests. `.github/workflows/test.yaml` runs lint, the type check and the e2e suite on every PR to `dev` or `main` that touches `nextjs/` or `postgres/`. In CI the suite runs against a production build served by `.next/standalone/server.js`, as in the Docker image, and a Postgres built from `postgres/init/`.
+Playwright e2e tests live in `nextjs/e2e/` (config: `nextjs/playwright.config.ts`). Unit tests for pure helpers live in `nextjs/tests/unit/` and run with `bun run test:unit` (bun's test runner). `.github/workflows/test.yaml` runs lint, the type check, the unit tests and the e2e suite on every PR to `dev` or `main` that touches `nextjs/` or `postgres/`. In CI the suite runs against a production build served by `.next/standalone/server.js`, as in the Docker image, and a Postgres built from `postgres/init/`.
 
 - `smoke.spec.ts` checks that every public page renders an `h1`, that protected routes redirect anonymous visitors to `/`, and that the login dialog opens.
 - Every test fails on an uncaught page error or a `console.error` (auto fixture in `e2e/fixtures.ts`), so import `test`/`expect` from `./fixtures`, not from `@playwright/test`.
@@ -85,7 +88,7 @@ Tables (defined in `postgres/init/01-schema.sql`):
 - **`bookings`** — aircraft reservations; `repeat_group_id` (UUID) groups recurring bookings. `plane` is a registration from `nextjs/data/planes.json` (OH-CON, OH-386, OH-PDX, OH-816, OH-829, OH-475).
 - **`guest_bookings`** — contact info for unauthenticated bookings, linked 1:1 to a `bookings` row.
 - **`bullets`** — club announcements.
-- **`billable_items`** — flight logs and other charges (`billable_type`: flight, membership, hangar, instruction, other). `payment_status` moves `recorded → checked → invoiced → paid`; rows are soft-deleted with `deleted_at`.
+- **`sheet_flights`** — read-only copy of the flight log Google Sheet (one tab per aircraft), kept in sync by `utilities/flightSync.ts`; `sheet_flight_issues` and `sheet_sync_runs` go with it. **`flight_purposes`** (purpose codes and who pays), **`aircraft_sheets`** (aircraft → tab) and **`pilot_aliases`** (sheet names → members) are owned by the site. See `nextjs/docs/FLIGHT_LOG.md`.
 - **`metar_data`** — METAR weather records for EFSA, upserted every 2 min by the cronjob, retained 7 days.
 - `accounts`, `sessions`, `verification_tokens` — NextAuth adapter tables (sessions themselves are JWTs).
 
@@ -146,7 +149,8 @@ Copy `nextjs/.env.example` to `nextjs/.env` (Claude's hooks block editing `.env`
 | `NEXT_PUBLIC_UMAMI_WEBSITE_ID` | Umami site ID (optional) |
 | `UMAMI_INTERNAL_URL` | Internal Umami URL (default: `http://salko-umami:3000`) |
 | `ALLOW_INDEXING` | `true` only in production; otherwise `robots.ts` disallows crawling |
-| `GOOGLE_SERVICE_ACCOUNT_KEY` / `FLIGHT_LOG_SPREADSHEET_ID` | Google Sheets export of flight logs (optional) |
+| `GOOGLE_SERVICE_ACCOUNT_KEY` / `FLIGHT_LOG_SPREADSHEET_ID` | The flight log Google Sheet; the service account needs editor access (optional) |
+| `FLIGHT_SHEET_SOURCE` / `FLIGHT_SHEET_FIXTURE` | `google` or `fixture` (the synthetic `e2e/fixtures/flight-sheet.json`, used by Playwright and by default under `bun dev` without Google) |
 | `FEATURE_FLIGHT_LOG` | `true` turns on the unfinished flight log (`utilities/features.ts`). Set in dev by `deploy-app-dev.yaml`, unset in prod; defaults to on under `bun dev` |
 | `E2E_USER_*` / `E2E_ADMIN_*` | `_EMAIL` and `_PASSWORD` of existing accounts for e2e tests against a non-local database (optional) |
 

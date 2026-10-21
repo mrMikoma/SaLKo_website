@@ -1,5 +1,6 @@
 import AdminNav from "@/components/admin/adminNav";
 import PageHero from "@/components/pageHero";
+import { isFlightLogEnabled } from "@/utilities/features";
 import { ReactNode } from "react";
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
@@ -11,7 +12,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         compact={true}
         showScrollIndicator={false}
       >
-        <AdminNav />
+        <AdminNav showFlightLog={isFlightLogEnabled()} />
       </PageHero>
       <div className="container mx-auto px-4 py-8">{children}</div>
     </div>

@@ -14,8 +14,15 @@ GRANT SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO :app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON users TO :app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON bullets TO :app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON bookings TO :app_user;
-GRANT SELECT, INSERT, UPDATE, DELETE ON billable_items TO :app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON flight_purposes TO :app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON aircraft_sheets TO :app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON pilot_aliases TO :app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON sheet_flights TO :app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON sheet_flight_issues TO :app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON sheet_sync_runs TO :app_user;
 
 -- Grant usage on sequences for the IDENTITY columns
 GRANT USAGE, SELECT ON SEQUENCE bullets_id_seq TO :app_user;
 GRANT USAGE, SELECT ON SEQUENCE bookings_id_seq TO :app_user;
+GRANT USAGE, SELECT ON SEQUENCE sheet_flight_issues_id_seq TO :app_user;
+GRANT USAGE, SELECT ON SEQUENCE sheet_sync_runs_id_seq TO :app_user;

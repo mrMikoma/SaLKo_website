@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const AdminNav = () => {
+const AdminNav = ({ showFlightLog = false }: { showFlightLog?: boolean }) => {
   const pathname = usePathname();
 
   const navItems = [
     { href: "/admin", label: "Etusivu", exact: true },
     { href: "/admin/users", label: "Käyttäjät" },
+    // The flight log is only on where FEATURE_FLIGHT_LOG is (utilities/features.ts)
+    ...(showFlightLog ? [{ href: "/admin/lennot", label: "Lennot" }] : []),
     { href: "/admin/bulletins", label: "Tiedotteet" },
     { href: "/admin/settings", label: "Asetukset" },
   ];

@@ -47,6 +47,8 @@ export const PERMISSIONS = {
   VIEW_OWN_FLIGHTS: ["admin", "user"] as Role[],
   VIEW_ALL_FLIGHTS: ["admin"] as Role[],
   EDIT_ANY_FLIGHT: ["admin"] as Role[],
+  // Sync the sheet and match pilot names to members
+  MANAGE_FLIGHT_LOG: ["admin"] as Role[],
 
   // Billing
   VIEW_OWN_BILLING: ["admin", "user"] as Role[],
