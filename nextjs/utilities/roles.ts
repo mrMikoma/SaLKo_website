@@ -50,11 +50,10 @@ export const PERMISSIONS = {
   // Sync the sheet and match pilot names to members
   MANAGE_FLIGHT_LOG: ["admin"] as Role[],
 
-  // Billing
+  // Billing: members see what they were billed; admins run the periods,
+  // mark payments and set the prices
   VIEW_OWN_BILLING: ["admin", "user"] as Role[],
-  VIEW_ALL_BILLING: ["admin"] as Role[],
-  CREATE_BILLING_ITEM: ["admin"] as Role[],
-  UPDATE_PAYMENT_STATUS: ["admin"] as Role[],
+  MANAGE_BILLING: ["admin"] as Role[],
 };
 
 /**

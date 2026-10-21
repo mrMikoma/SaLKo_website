@@ -290,3 +290,66 @@ export async function writePaperPage(
     };
   });
 }
+
+export interface BillingCellUpdate {
+  id: string;
+  // The flight as billed; null skips the check (marking a payment)
+  inputHash: string | null;
+  status: "Laskutettu" | "Ei laskuteta" | "Maksettu";
+  period?: string;
+}
+
+/**
+ * Writes what billing sets in the sheet: Tila Laskutettu or Ei laskuteta and
+ * the period's name when a period closes, Maksettu (or back to Laskutettu)
+ * for a payment. The whole write is refused if a flight has gone, changed
+ * since it was billed, or isn't in a state this step comes after.
+ */
+export async function writeBillingCells(
+  registration: string,
+  updates: BillingCellUpdate[],
+  allowedFrom: string[]
+): Promise<void> {
+  if (updates.length === 0) return;
+  await withAircraftLock(registration, async ({ sheetName, firstDataRow }) => {
+    const sheet = getFlightSheet();
+    const parsed = parseFlightSheet(await sheet.readTab(sheetName), firstDataRow);
+    if (parsed.errors.length > 0) {
+      throw new FlightSheetWriteError(parsed.errors.join("; "));
+    }
+    const { status: statusColumn, billingPeriod: periodColumn } = parsed.columns;
+    if (statusColumn === undefined || periodColumn === undefined) {
+      throw new FlightSheetWriteError("Taulukosta puuttuu Tila- tai Laskutusjakso-sarake");
+    }
+
+    const byId = new Map(parsed.flights.map((flight) => [flight.id, flight]));
+    const allowed = allowedFrom.map((status) => status.toLowerCase());
+    const problems: string[] = [];
+    for (const update of updates) {
+      const flight = byId.get(update.id);
+      if (!flight) {
+        problems.push("lento puuttuu taulukosta");
+      } else if (update.inputHash && inputHash(flight) !== update.inputHash) {
+        problems.push(`rivi ${flight.row} on muuttunut`);
+      } else if (!allowed.includes((flight.status ?? "").trim().toLowerCase())) {
+        problems.push(`rivin ${flight.row} tila on ${flight.status ?? "Kirjattu"}`);
+      }
+    }
+    if (problems.length > 0) {
+      throw new FlightSheetWriteError(
+        `Taulukko ei vastaa laskutusta (${[...new Set(problems)].join(", ")}). Synkronoi ja tarkista jakso uudelleen.`
+      );
+    }
+
+    await sheet.writeCells(
+      sheetName,
+      updates.flatMap((update) => {
+        const row = byId.get(update.id)!.row;
+        return [
+          { row, column: statusColumn, value: update.status },
+          ...(update.period !== undefined ? [{ row, column: periodColumn, value: update.period }] : []),
+        ];
+      })
+    );
+  });
+}

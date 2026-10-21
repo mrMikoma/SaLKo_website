@@ -304,16 +304,21 @@ export async function ensureFreshSync(): Promise<void> {
 
   const latest = (
     await connectionPool.query(
-      `SELECT status, started_at, finished_at FROM sheet_sync_runs
+      `SELECT status, started_at, finished_at,
+              EXISTS (SELECT 1 FROM sheet_sync_runs WHERE status = 'success') AS has_copy
+       FROM sheet_sync_runs
        ORDER BY started_at DESC LIMIT 1`
     )
   ).rows[0];
+  // Before the first successful sync there is nothing to show, so a page
+  // waits for a sync that is already running instead of rendering empty
+  const hasCopy = Boolean(latest?.has_copy);
   if (latest) {
     const age = Date.now() - new Date(latest.finished_at ?? latest.started_at).getTime();
     if (latest.status === "success" && age < STALE_AFTER_MS) return;
     if (latest.status === "error" && age < RETRY_AFTER_ERROR_MS) return;
-    if (latest.status === "running" && age < STALE_AFTER_MS) return;
+    if (latest.status === "running" && age < STALE_AFTER_MS && hasCopy) return;
   }
 
-  await syncFlightSheets("automaattinen");
+  await syncFlightSheets("automaattinen", { wait: !hasCopy });
 }

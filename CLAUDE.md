@@ -88,7 +88,8 @@ Tables (defined in `postgres/init/01-schema.sql`):
 - **`bookings`** — aircraft reservations; `repeat_group_id` (UUID) groups recurring bookings. `plane` is a registration from `nextjs/data/planes.json` (OH-CON, OH-386, OH-PDX, OH-816, OH-829, OH-475).
 - **`guest_bookings`** — contact info for unauthenticated bookings, linked 1:1 to a `bookings` row.
 - **`bullets`** — club announcements.
-- **`sheet_flights`** — read-only copy of the flight log Google Sheet (one tab per aircraft), kept in sync by `utilities/flightSync.ts`; `sheet_flight_issues` and `sheet_sync_runs` go with it. **`flight_purposes`** (purpose codes and who pays), **`aircraft_sheets`** (aircraft → tab) and **`pilot_aliases`** (sheet names → members) are owned by the site. See `nextjs/docs/FLIGHT_LOG.md`.
+- **`sheet_flights`** — read-only copy of the flight log Google Sheet (one tab per aircraft), kept in sync by `utilities/flightSync.ts`; `sheet_flight_issues` and `sheet_sync_runs` go with it. **`flight_purposes`** (purpose codes and who pays), **`aircraft_sheets`** (aircraft → tab) and **`pilot_aliases`** (sheet names → members) are owned by the site, and so are `flight_log_web_entries` and `flight_status_changes` (who entered or checked what). See `nextjs/docs/FLIGHT_LOG.md`.
+- **`billing_periods`**, **`billing_lines`** and **`billing_payers`** — billing periods and what a closed one billed to whom; **`aircraft_rates`**, **`equipment_fee_seasons`** and **`flight_log_settings`** hold the prices, the equipment-fee members per season and the free-hour setting. The rules are in `nextjs/utilities/billing.ts`.
 - **`metar_data`** — METAR weather records for EFSA, upserted every 2 min by the cronjob, retained 7 days.
 - `accounts`, `sessions`, `verification_tokens` — NextAuth adapter tables (sessions themselves are JWTs).
 

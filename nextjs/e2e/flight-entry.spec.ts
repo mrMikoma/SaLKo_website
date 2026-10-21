@@ -1,12 +1,22 @@
 import { Pool } from "pg";
-import { test, expect } from "./fixtures";
+import { test, expect as baseExpect } from "./fixtures";
 import { accounts, isLocalDatabase } from "./accounts";
 
+// Server actions here wait for the sheet sync, which runs one at a time and
+// queues up while the other flight-log specs run in parallel
+const expect = baseExpect.configure({ timeout: 20_000 });
+// Several page loads and server actions per test: slow under `next dev` with
+// the whole suite running
+test.describe.configure({ timeout: 90_000 });
+
 // Logs two flights into the synthetic flight log (FLIGHT_SHEET_SOURCE=fixture)
-// and undoes them. Logging gives the pilot a sheet name in pilot_aliases, so
-// this only runs against a local database and cleans up after itself. It logs
-// in as the admin: flight-log.spec.ts matches and unmatches the member's name
-// at the same time, in another worker.
+// and undoes them. They go to OH-TST, a test aircraft with a tab of its own in
+// the fixture: undo only works while a flight is the last row of its tab, and
+// other specs add rows to OH-CON's tab at the same time. Logging gives the
+// pilot a sheet name in pilot_aliases, so this only runs against a local
+// database and cleans up after itself. It logs in as the admin:
+// flight-log.spec.ts matches and unmatches the member's name at the same
+// time, in another worker.
 test.skip(!isLocalDatabase(), "writes pilot_aliases: local database only");
 test.skip(!accounts.admin, "no admin account");
 test.use({ storageState: accounts.admin?.storageState });
@@ -33,8 +43,18 @@ const cleanUp = async () => {
   // "E2E admin" is written E.admin, or in full when that is taken
   await query("DELETE FROM pilot_aliases WHERE name_key IN ('eadmin', 'e2eadmin')");
 };
-test.beforeAll(cleanUp);
-test.afterAll(cleanUp);
+test.beforeAll(async () => {
+  await cleanUp();
+  await query(
+    `INSERT INTO aircraft_sheets (registration, sheet_name)
+     VALUES ('OH-TST', 'OH-TST Matkapäiväkirja') ON CONFLICT DO NOTHING`
+  );
+});
+test.afterAll(async () => {
+  await cleanUp();
+  await query("DELETE FROM sheet_flights WHERE registration = 'OH-TST'");
+  await query("DELETE FROM aircraft_sheets WHERE registration = 'OH-TST'");
+});
 
 test("won't take a name that is already in the log", async ({ page }) => {
   // Both of the admin's names belong to pilots who aren't matched to anyone
@@ -60,7 +80,7 @@ test("logs a day's flights and undoes them", async ({ page, context }) => {
   await page.getByRole("link", { name: "+ Kirjaa lento" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Kirjaa lento" })).toBeVisible();
 
-  await page.getByRole("button", { name: "OH-CON" }).click();
+  await page.getByRole("button", { name: "OH-TST" }).click();
   await page.getByLabel("Lentopäivä").fill("2025-06-14");
 
   const first = page.getByRole("group", { name: "Lento", exact: true });

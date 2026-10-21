@@ -1,7 +1,15 @@
 import { Pool } from "pg";
 import type { Page } from "@playwright/test";
-import { test, expect } from "./fixtures";
+import { test, expect as baseExpect } from "./fixtures";
 import { accounts, isLocalDatabase } from "./accounts";
+import { pastePage } from "./paperPage";
+
+// Server actions here wait for the sheet sync, which runs one at a time and
+// queues up while the other flight-log specs run in parallel
+const expect = baseExpect.configure({ timeout: 20_000 });
+// Several page loads and server actions per test: slow under `next dev` with
+// the whole suite running
+test.describe.configure({ timeout: 90_000 });
 
 // The biller types a page of the paper journey log into the synthetic flight
 // log (FLIGHT_SHEET_SOURCE=fixture). The page confirms row 12, corrects row 13
@@ -46,18 +54,6 @@ const clock = (minutes: number) =>
   `${String(Math.floor(minutes / 60)).padStart(2, "0")}.${String(minutes % 60).padStart(2, "0")}`;
 const takeoff = clock(6 * 60 + slot * 30);
 const landing = clock(6 * 60 + slot * 30 + 30);
-
-// Rows copied from a spreadsheet arrive as one tab-separated paste
-async function pastePage(page: Page, lines: string[]) {
-  await page.getByLabel("Rivi 1: Päivä").focus();
-  await page.evaluate((text) => {
-    const data = new DataTransfer();
-    data.setData("text/plain", text);
-    document.activeElement!.dispatchEvent(
-      new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true })
-    );
-  }, lines.join("\n"));
-}
 
 async function savePage(page: Page, lines: string[]) {
   await page.goto("/admin/lennot/tuonti");
