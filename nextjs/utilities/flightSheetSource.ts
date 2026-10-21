@@ -208,8 +208,11 @@ export function getFlightSheet(): FlightSheet {
     (!source && !googleConfigured && process.env.NODE_ENV === "development");
 
   if (useFixture) {
+    // Read at run time only: without the ignore comment, next build would copy
+    // the whole project (data/ and docs/ too) into the standalone server.
+    // That server runs in .next/standalone, so e2e passes an absolute path.
     const file = path.resolve(
-      process.cwd(),
+      /*turbopackIgnore: true*/ process.cwd(),
       process.env.FLIGHT_SHEET_FIXTURE ?? "e2e/fixtures/flight-sheet.json"
     );
     return new FixtureFlightSheet(file);
