@@ -8,7 +8,7 @@ The website reaches the sheet as a Google **service account**: a robot user with
 |---|---|---|
 | Spreadsheet | made from `docs/lentopaivakirja-pohja.xlsx` | the club's real flight log |
 | Service account | `salko-lentopaivakirja-dev` | `salko-lentopaivakirja` |
-| GitHub secrets | `FLIGHT_LOG_SPREADSHEET_ID`, `FLIGHT_LOG_SERVICE_ACCOUNT_KEY` | the same names with `_PROD`, added when production goes live |
+| GitHub environment secrets | `GOOGLE_SHEETS_ID`, `GOOGLE_SERVICE_ACCOUNT_JSON` in the `development` environment | the same names in the production environment, added when production goes live |
 
 ## 1. Create the dev spreadsheet from the template
 
@@ -51,14 +51,16 @@ The website needs to edit, not only view: it writes the IDs, the flights members
 
 ## 4. Give the dev environment the sheet
 
-The dev deploy (`.github/workflows/deploy-app-dev.yaml`) writes two secrets into the app's environment. Add them in GitHub under **Settings → Secrets and variables → Actions → New repository secret**:
+The dev deploy (`.github/workflows/deploy-app-dev.yaml`) writes two secrets into the app's environment. Its job runs in the GitHub environment **`development`**, so add them there: **Settings → Environments → development → Add environment secret**. A repository secret of the same name works too; a secret in any other environment is invisible to this job.
 
 | Secret | Value |
 |---|---|
-| `FLIGHT_LOG_SPREADSHEET_ID` | the ID from step 1 |
-| `FLIGHT_LOG_SERVICE_ACCOUNT_KEY` | the key file in base64: `base64 -w0 key.json` (Linux), or `base64 -i key.json` on macOS |
+| `GOOGLE_SHEETS_ID` | the ID from step 1, of the Google Sheets copy (not the uploaded `.xlsx`) |
+| `GOOGLE_SERVICE_ACCOUNT_JSON` | the key file as downloaded: open it in a text editor and paste all of it |
 
-The key goes in as base64 because its quotes and line breaks don't survive the deploy script. The app accepts the key either as JSON or as base64 (`utilities/googleSheetsSetup.ts`).
+The deploy base64-encodes the key on the server before writing it to the env file, so its quotes and line breaks survive; the app decodes it (`utilities/googleSheetsSetup.ts`). In the app the two are `FLIGHT_LOG_SPREADSHEET_ID` and `GOOGLE_SERVICE_ACCOUNT_KEY`.
+
+The flight log has to be in the deployed code: on dev that means the flight-log pull requests merged into `dev`.
 
 Then deploy dev: push a change under `nextjs/` to `dev`, or run **Deploy APP to DEV** by hand. Without the secrets, the flight log pages say the sheet isn't set up.
 
@@ -69,19 +71,20 @@ The dev database is created from scratch on every deploy. The sheet keeps the fl
 On the dev site, log in as an admin and open `/admin/lennot`:
 1. The sync card shows **Avaa taulukko · palvelutili salko-lentopaivakirja-dev@…**. Press **Synkronoi nyt**: an empty sheet gives "0 lentoa".
 2. Log a flight at `/jasenalue/lentopaivakirja/uusi`, then look at the row in the sheet:
-   - the date and the times are right-aligned, so Sheets read them as a date and times, not text;
+   - the date and the times are right-aligned, so Sheets read them as a date and times, not text, and the times are the Finnish times you typed;
+   - with a tankkaus or tuntimittari like `1,5` filled in (under "Tuntimittari, tankkaus, öljy, huomiot"), the cell is the number 1,5, not a date;
    - the grey Ilmassa oloaika shows the time;
    - ID is filled and Lähde says `web`.
 
    If the date or times are left-aligned text, the locale in step 1.4 is wrong. Fix it, clear the row and log the flight again.
-3. Undo it with **Kumoa viimeisin** on the confirmation. The row empties and the formulas stay.
+3. Undo it with **Kumoa viimeisin** on the confirmation. The row's typed-in cells empty and its formulas stay: it is one of the pre-filled rows again, ready for the next flight. Since it was the last flight, no gap is left. (Undo is refused once a later flight is below it.)
 
 If the sync fails, the card says what to fix:
 
 | Message on the card | Fix |
 |---|---|
 | Google-taulukkoa ei ole määritetty | The secrets are missing or empty: step 4, then deploy again. |
-| GOOGLE_SERVICE_ACCOUNT_KEY ei ole palvelutilin avain | The secret isn't the key file, or its base64 is broken: step 4. |
+| GOOGLE_SERVICE_ACCOUNT_KEY ei ole palvelutilin avain | `GOOGLE_SERVICE_ACCOUNT_JSON` isn't the whole key file, or it changed when pasted: paste it again (step 4). |
 | Google Sheets API ei ole käytössä | Step 2.1, in the project the service account belongs to. |
 | Palvelutilillä … ei ole pääsyä taulukkoon | Share the spreadsheet with that address as Editor: step 3. |
 | Taulukkoa ei löydy | Wrong spreadsheet ID, or the file is still an `.xlsx`: step 1. |
@@ -103,7 +106,7 @@ Only ever point local development at the dev spreadsheet. Playwright sets `FLIGH
 ## Rotating or revoking the key
 
 1. Under the service account: **Keys → Add key**.
-2. Update `FLIGHT_LOG_SERVICE_ACCOUNT_KEY` and deploy.
+2. Update `GOOGLE_SERVICE_ACCOUNT_JSON` and deploy.
 3. Delete the old key.
 
 To cut the website off from a spreadsheet at once, remove the service account from the spreadsheet's sharing.
@@ -117,6 +120,6 @@ To cut the website off from a spreadsheet at once, remove the service account fr
 ## Production, later
 
 1. Make a separate service account (`salko-lentopaivakirja`) and share the club's real sheet with it.
-2. Add `FLIGHT_LOG_SPREADSHEET_ID_PROD` and `FLIGHT_LOG_SERVICE_ACCOUNT_KEY_PROD`, and the same two lines to `deploy-app-prod.yaml`.
+2. Add `GOOGLE_SHEETS_ID` and `GOOGLE_SERVICE_ACCOUNT_JSON` to the production environment's secrets, and the same two lines to `deploy-app-prod.yaml`.
 3. Turn on `FEATURE_FLIGHT_LOG`.
 4. Go through the checklist at the end of `FLIGHT_LOG.md` first.
