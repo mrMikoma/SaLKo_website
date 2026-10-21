@@ -33,11 +33,16 @@ interface PageProps {
   searchParams: Promise<{ kone?: string; kuukausi?: string; nakyma?: string }>;
 }
 
-function sheetKind(): "google" | "fixture" | null {
+function sheetInfo() {
   try {
-    return getFlightSheet().kind;
+    const sheet = getFlightSheet();
+    return {
+      sheetKind: sheet.kind,
+      spreadsheetUrl: sheet.spreadsheetUrl,
+      serviceAccount: sheet.serviceAccount,
+    };
   } catch {
-    return null;
+    return { sheetKind: null, spreadsheetUrl: null, serviceAccount: null };
   }
 }
 
@@ -116,7 +121,7 @@ export default async function FlightsAdminPage({ searchParams }: PageProps) {
         latestError={sync.latest?.status === "error" ? sync.latest.error : null}
         rowsRead={sync.lastSuccess?.rowsRead ?? null}
         issues={sync.lastSuccess?.issues ?? null}
-        sheetKind={sheetKind()}
+        {...sheetInfo()}
       />
 
       {otherIssues.length > 0 && (

@@ -206,6 +206,11 @@ jobs:
             echo "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" >> .env.dev
             # Unfinished features, on in dev only (nextjs/utilities/features.ts)
             echo "FEATURE_FLIGHT_LOG=true" >> .env.dev
+            # The dev flight log Google Sheet (nextjs/docs/FLIGHT_LOG_SETUP.md). The
+            # key is base64; tr drops any line breaks a wrapped base64 left in it.
+            # Unset secrets leave the flight log pages saying the sheet isn't set up.
+            echo "FLIGHT_LOG_SPREADSHEET_ID=${{ secrets.FLIGHT_LOG_SPREADSHEET_ID }}" >> .env.dev
+            echo "GOOGLE_SERVICE_ACCOUNT_KEY=$(echo '${{ secrets.FLIGHT_LOG_SERVICE_ACCOUNT_KEY }}' | tr -d '\n\r ')" >> .env.dev
 
             # Ensure the environment variables are written before proceeding
             echo ".env.dev file created with environment variables."

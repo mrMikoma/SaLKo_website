@@ -3,6 +3,7 @@ import "server-only";
 import { createHash, randomUUID } from "crypto";
 import connectionPool from "@/utilities/db";
 import { getFlightSheet, SheetCell } from "@/utilities/flightSheetSource";
+import { configuredServiceAccount, describeSheetError } from "@/utilities/googleSheetsSetup";
 import {
   findFlightIssues,
   nameKey,
@@ -276,8 +277,9 @@ export async function syncFlightSheets(
       await client.query("ROLLBACK").catch(() => undefined);
     }
     console.error("Flight log sync failed:", error);
-    const message =
-      error instanceof Error ? error.message : "Lentopäiväkirjan synkronointi epäonnistui";
+    const message = error
+      ? describeSheetError(error, configuredServiceAccount())
+      : "Lentopäiväkirjan synkronointi epäonnistui";
     if (runId !== null) {
       await client
         .query(

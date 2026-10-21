@@ -149,7 +149,7 @@ Copy `nextjs/.env.example` to `nextjs/.env` (Claude's hooks block editing `.env`
 | `NEXT_PUBLIC_UMAMI_WEBSITE_ID` | Umami site ID (optional) |
 | `UMAMI_INTERNAL_URL` | Internal Umami URL (default: `http://salko-umami:3000`) |
 | `ALLOW_INDEXING` | `true` only in production; otherwise `robots.ts` disallows crawling |
-| `GOOGLE_SERVICE_ACCOUNT_KEY` / `FLIGHT_LOG_SPREADSHEET_ID` | The flight log Google Sheet; the service account needs editor access (optional) |
+| `GOOGLE_SERVICE_ACCOUNT_KEY` / `FLIGHT_LOG_SPREADSHEET_ID` | The flight log Google Sheet: the service account's key file (JSON or base64) and the spreadsheet's ID. Setup in `nextjs/docs/FLIGHT_LOG_SETUP.md` (optional) |
 | `FLIGHT_SHEET_SOURCE` / `FLIGHT_SHEET_FIXTURE` | `google` or `fixture` (the synthetic `e2e/fixtures/flight-sheet.json`, used by Playwright and by default under `bun dev` without Google) |
 | `FEATURE_FLIGHT_LOG` | `true` turns on the unfinished flight log (`utilities/features.ts`). Set in dev by `deploy-app-dev.yaml`, unset in prod; defaults to on under `bun dev` |
 | `E2E_USER_*` / `E2E_ADMIN_*` | `_EMAIL` and `_PASSWORD` of existing accounts for e2e tests against a non-local database (optional) |
