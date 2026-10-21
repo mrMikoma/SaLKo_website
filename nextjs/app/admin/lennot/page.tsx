@@ -91,12 +91,22 @@ export default async function FlightsAdminPage({ searchParams }: PageProps) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Lennot</h1>
-        <p className="text-gray-600 mt-2">
-          Lentopäiväkirjan kopio kerhon Google-taulukosta. Lentoja muokataan
-          taulukossa; tämä sivu näyttää ne ja kertoo, mitä pitää tarkistaa.
-        </p>
+      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Lennot</h1>
+          <p className="text-gray-600 mt-2">
+            Lentopäiväkirjan kopio kerhon Google-taulukosta. Lentoja muokataan
+            taulukossa; tämä sivu näyttää ne ja kertoo, mitä pitää tarkistaa.
+          </p>
+        </div>
+        {canReview && (
+          <Link
+            href="/admin/lennot/tuonti"
+            className="shrink-0 min-h-11 inline-flex items-center px-4 rounded-lg bg-sblue text-white font-medium hover:bg-sblued"
+          >
+            Kirjaa paperisivu
+          </Link>
+        )}
       </div>
 
       <SyncStatus

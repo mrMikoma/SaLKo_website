@@ -3,10 +3,12 @@ import "server-only";
 import connectionPool from "@/utilities/db";
 import { getFlightSheet } from "@/utilities/flightSheetSource";
 import {
+  checkedCells,
   clearedFlightCells,
   findWritableRows,
   flightCells,
   isBilledStatus,
+  PAPER_COLUMNS,
   parseFlightSheet,
   ReviewStatus,
   SheetFlightInput,
@@ -181,5 +183,110 @@ export async function setFlightStatuses(
       changes.map((flight) => ({ row: flight.row, column: statusColumn, value: status }))
     );
     return changes.map((flight) => ({ id: flight.id!, oldStatus: flight.status }));
+  });
+}
+
+export interface PaperPageWrite {
+  // New flights, appended like a member's entry
+  append: SheetFlightInput[];
+  // Flights already in the sheet that the paper book corrects: their typed-in
+  // cells are rewritten, keeping the ID and Lähde
+  corrections: { id: string; inputHash: string | null; input: SheetFlightInput }[];
+  // Flights already in the sheet that match the paper book as they are
+  confirms: { id: string; inputHash: string | null }[];
+  logPage: string | null;
+}
+
+/**
+ * Writes one page of the paper book in a single batch: new flights into the
+ * formula rows, corrections into their own rows, and Tila Tarkistettu plus the
+ * page number on every flight of the page. Like setFlightStatuses it refuses
+ * the whole page when a matched row changed since the preview, or is already
+ * in billing.
+ */
+export async function writePaperPage(
+  registration: string,
+  page: PaperPageWrite
+): Promise<{ appendedRows: number[]; matched: StatusChange[] }> {
+  return withAircraftLock(registration, async ({ sheetName, firstDataRow }) => {
+    const sheet = getFlightSheet();
+    const values = await sheet.readTab(sheetName);
+    const parsed = parseFlightSheet(values, firstDataRow);
+    if (parsed.errors.length > 0) {
+      throw new FlightSheetWriteError(parsed.errors.join("; "));
+    }
+    const { columns } = parsed;
+    if (columns.status === undefined || columns.airborne === undefined) {
+      throw new FlightSheetWriteError("Taulukosta puuttuu Tila- tai Ilmassa oloaika -sarake");
+    }
+
+    const byId = new Map(parsed.flights.map((flight) => [flight.id, flight]));
+    const matched = [...page.corrections, ...page.confirms];
+    const changedRows: number[] = [];
+    const billedRows: number[] = [];
+    for (const { id, inputHash: seen } of matched) {
+      const flight = byId.get(id);
+      if (!flight) {
+        throw new FlightSheetWriteError(
+          "Osa sivun lennoista on poistunut taulukosta. Tarkista sivu uudelleen."
+        );
+      }
+      if (seen && inputHash(flight) !== seen) changedRows.push(flight.row);
+      else if (isBilledStatus(flight.status)) billedRows.push(flight.row);
+    }
+    if (changedRows.length > 0) {
+      throw new FlightSheetWriteError(
+        `Rivejä on muutettu taulukossa tarkistuksen jälkeen: ${changedRows.join(", ")}. Tarkista sivu uudelleen.`
+      );
+    }
+    if (billedRows.length > 0) {
+      throw new FlightSheetWriteError(
+        `Rivit ${billedRows.join(", ")} kuuluvat jo laskutukseen. Korjaa ne laskuttajan kanssa taulukossa.`
+      );
+    }
+
+    const formulas = await sheet.readFormulas(sheetName, columns.airborne);
+    const rows = findWritableRows(values, parsed, formulas, firstDataRow);
+    if (rows.length < page.append.length) {
+      throw new FlightSheetWriteError(
+        "Lentopäiväkirjan valmiit kaavarivit ovat lopussa. Jatka kaavoja taulukossa ja yritä uudelleen."
+      );
+    }
+
+    const checked = { status: "Tarkistettu" as const, logPage: page.logPage };
+    // A correction rewrites what the paper says, and the remark only when the
+    // paper has one; the row keeps its ID, Lähde, fuel, oil and hour meter
+    const correctedColumns = (input: SheetFlightInput) =>
+      new Set(
+        [...PAPER_COLUMNS, ...(input.remarks ? (["remarks"] as const) : [])].map(
+          (key) => columns[key]
+        )
+      );
+    const cells = [
+      ...page.append.flatMap((input, i) => flightCells({ ...input, ...checked }, rows[i], columns)),
+      ...page.corrections.flatMap(({ id, input }) => {
+        const row = byId.get(id)!.row;
+        const keep = correctedColumns(input);
+        return [
+          ...flightCells({ ...input, id }, row, columns).filter((cell) => keep.has(cell.column)),
+          ...checkedCells(row, columns, page.logPage),
+        ];
+      }),
+      ...page.confirms.flatMap(({ id }) => checkedCells(byId.get(id)!.row, columns, page.logPage)),
+    ];
+    await sheet.writeCells(sheetName, cells, { parse: true });
+
+    const after = parseFlightSheet(await sheet.readTab(sheetName), firstDataRow);
+    page.append.forEach((input, i) => {
+      if (after.flights.find((flight) => flight.row === rows[i])?.id !== input.id) {
+        throw new FlightSheetWriteError("Sivun tallennus taulukkoon epäonnistui");
+      }
+    });
+
+    return {
+      appendedRows: rows.slice(0, page.append.length),
+      // Each confirmed or corrected flight with the Tila it had
+      matched: matched.map(({ id }) => ({ id, oldStatus: byId.get(id)!.status })),
+    };
   });
 }

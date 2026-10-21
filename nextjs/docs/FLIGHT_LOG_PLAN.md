@@ -248,7 +248,8 @@ Kept: the page shell, the permission names, and one shared airfield picker.
    - Still open: prefilling the aircraft from today's booking (only OH-CON has a tab, so it can wait), "Toista" for intro-flight days, a draft kept over a reload, and the `/jasenalue` hub, which waits until there are summaries to link to.
 5. Biller tools: status changes and bulk entry.
    - Done: Tila from `/admin/lennot` with the "Tarkistamatta" view, the changed-row check and `flight_status_changes`.
-   - Next: bulk entry from the paper book (`/admin/lennot/tuonti`). The rates, equipment-fee seasons and free-hour switch move to the billing PR, which is the first to use them.
+   - Done: bulk entry from the paper book (`/admin/lennot/tuonti`): paste, ditto marks, page totals, matching with pilots' entries, corrections to the paper, and a note per flight in the review log.
+   - Moved to the billing PR, which is the first to use them: the rates, equipment-fee seasons and free-hour switch of `/admin/lennot/asetukset`.
 6. Billing periods and summaries.
 7. Statistics, reports and the admin dashboard.
 8. Admin users and bulletins (independent, any time after 1).

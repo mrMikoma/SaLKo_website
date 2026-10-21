@@ -20,9 +20,20 @@ import {
   appendFlightsToSheet,
   clearWebFlight,
   FlightSheetWriteError,
+  PaperPageWrite,
   setFlightStatuses,
   StatusChange,
+  writePaperPage,
 } from "@/utilities/flightSheetWriter";
+import { getFlightsOnDates } from "@/utilities/flightLogData";
+import {
+  describeDifferences,
+  ExistingFlight,
+  matchPaperRows,
+  PaperRow,
+  readPaperGrid,
+  RowMatch,
+} from "@/utilities/paperPage";
 
 type ActionResult<T = null> =
   | { status: "success"; result: T }
@@ -393,4 +404,240 @@ export async function setFlightStatus(
     return { status: "error", error };
   }
   return { status: "success", result: { changed: changes.length } };
+}
+
+/*
+ * Bulk entry from the paper book
+ */
+
+const paperCellsSchema = z.object({
+  date: z.string().max(20),
+  pic: z.string().max(60),
+  second: z.string().max(60),
+  persons: z.string().max(4),
+  departure: z.string().max(10),
+  arrival: z.string().max(10),
+  takeoff: z.string().max(8),
+  landing: z.string().max(8),
+  landings: z.string().max(4),
+  purpose: z.string().max(10),
+  remarks: z.string().max(300),
+});
+
+const paperPageSchema = z.object({
+  registration: z.string().min(1, "Valitse kone"),
+  logPage: z.string().trim().max(20, "Sivunumero on liian pitkä").nullable(),
+  grid: z.array(paperCellsSchema).max(60, "Enintään 60 riviä kerralla"),
+});
+
+export type PaperPageInput = z.input<typeof paperPageSchema>;
+
+export interface PaperPreviewRow {
+  index: number;
+  errors: string[];
+  match: RowMatch | null;
+}
+
+/** Reads the grid and checks the purpose codes; rows with errors have no row */
+async function readPage(grid: PaperPageInput["grid"]) {
+  const today = DateTime.now().setZone(SHEET_ZONE).toISODate()!;
+  const read = readPaperGrid(grid, today);
+  const codes = new Set(
+    (await pool.query("SELECT code FROM flight_purposes WHERE active")).rows.map((r) => r.code)
+  );
+  for (const line of read) {
+    if (line.row && !codes.has(line.row.purposeCode)) {
+      line.errors.push(`Tuntematon lennon tarkoitus ${line.row.purposeCode}`);
+      line.row = null;
+    }
+  }
+  return read;
+}
+
+/**
+ * Admin: check a typed page of the paper book before saving it. Syncs first,
+ * then pairs each line with a flight already in the sheet.
+ */
+export async function previewPaperPage(
+  input: PaperPageInput
+): Promise<ActionResult<{ rows: PaperPreviewRow[]; notOnPage: ExistingFlight[] }>> {
+  const access = await requireFlightLogAdmin();
+  if ("error" in access) {
+    return { status: "error", error: access.error };
+  }
+  const parsed = paperPageSchema.safeParse(input);
+  if (!parsed.success) {
+    return { status: "error", error: parsed.error.issues[0].message };
+  }
+  const { registration, grid } = parsed.data;
+
+  try {
+    const read = await readPage(grid);
+    if (read.length === 0) {
+      return { status: "error", error: "Kirjoita ensin sivun lennot" };
+    }
+    await syncFlightSheets(access.user.fullName || "ylläpito", { wait: true });
+    const valid = read.filter((line) => line.row);
+    const existing = await getFlightsOnDates(registration, [
+      ...new Set(valid.map((line) => line.row!.flightDate)),
+    ]);
+    const matches = matchPaperRows(
+      valid.map((line) => line.row!),
+      existing
+    );
+    const matchByIndex = new Map(valid.map((line, i) => [line.index, matches[i]]));
+    const matchedIds = new Set(matches.flatMap((m) => (m.kind === "new" ? [] : [m.flight.id])));
+    return {
+      status: "success",
+      result: {
+        rows: read.map((line) => ({
+          index: line.index,
+          errors: line.errors,
+          match: matchByIndex.get(line.index) ?? null,
+        })),
+        // In the sheet on the page's days but not on the page: on the next
+        // page, or an extra row in the sheet
+        notOnPage: existing.filter((flight) => !matchedIds.has(flight.id)),
+      },
+    };
+  } catch (error) {
+    console.error("Error previewing paper page:", error);
+    return { status: "error", error: "Sivun tarkistus epäonnistui" };
+  }
+}
+
+const paperDecisionSchema = z.object({
+  index: z.number().int().min(0),
+  action: z.enum(["new", "confirm", "correct", "skip"]),
+  id: z.uuid().nullable(),
+  inputHash: z.string().max(64).nullable(),
+});
+
+const savePaperPageSchema = paperPageSchema.extend({
+  decisions: z.array(paperDecisionSchema).max(60),
+});
+
+const toSheetInput = (row: PaperRow, id: string) => ({
+  id,
+  flightDate: row.flightDate,
+  picName: row.picName,
+  secondName: row.secondName,
+  personsOnBoard: row.personsOnBoard,
+  departure: row.departure,
+  arrival: row.arrival,
+  takeoff: row.takeoff,
+  landing: row.landing,
+  landings: row.landings,
+  purposeCode: row.purposeCode,
+  fuelLitres: null,
+  oilLitres: null,
+  hourMeter: null,
+  remarks: row.remarks,
+});
+
+/**
+ * Admin: write a checked page of the paper book into the sheet. New lines are
+ * appended, lines a pilot already entered are confirmed or corrected to match
+ * the paper, and every flight of the page gets Tila Tarkistettu and the page
+ * number.
+ */
+export async function savePaperPage(
+  input: z.input<typeof savePaperPageSchema>
+): Promise<ActionResult<{ added: number; confirmed: number; corrected: number }>> {
+  const access = await requireFlightLogAdmin();
+  if ("error" in access) {
+    return { status: "error", error: access.error };
+  }
+  const parsed = savePaperPageSchema.safeParse(input);
+  if (!parsed.success) {
+    return { status: "error", error: parsed.error.issues[0].message };
+  }
+  const { registration, logPage, grid, decisions } = parsed.data;
+
+  const page: PaperPageWrite = { append: [], corrections: [], confirms: [], logPage: logPage || null };
+  // The review log gets a line for every flight of the page
+  const notes = new Map<string, string>();
+  const pageLabel = page.logPage ? `Paperisivu ${page.logPage}` : "Paperisivu";
+  let error: string | null = null;
+  try {
+    const read = await readPage(grid);
+    const broken = read.find((line) => !line.row);
+    if (broken) {
+      return { status: "error", error: `Rivi ${broken.index + 1}: ${broken.errors[0]}` };
+    }
+    const byIndex = new Map(decisions.map((decision) => [decision.index, decision]));
+    const inSheet = new Map(
+      (
+        await getFlightsOnDates(registration, [...new Set(read.map((line) => line.row!.flightDate))])
+      ).map((flight) => [flight.id, flight])
+    );
+    for (const line of read) {
+      const decision = byIndex.get(line.index);
+      if (!decision) {
+        return { status: "error", error: "Sivu on muuttunut. Tarkista se uudelleen ennen tallennusta." };
+      }
+      if (decision.action === "new") {
+        const id = randomUUID();
+        page.append.push(toSheetInput(line.row!, id));
+        notes.set(id, `${pageLabel}, uusi`);
+      } else if (decision.action !== "skip") {
+        if (!decision.id) {
+          return { status: "error", error: `Rivi ${line.index + 1}: taulukon riviä ei ole valittu` };
+        }
+        const matched = { id: decision.id, inputHash: decision.inputHash };
+        if (decision.action === "confirm") {
+          page.confirms.push(matched);
+          notes.set(decision.id, `${pageLabel}, sama`);
+        } else {
+          page.corrections.push({ ...matched, input: toSheetInput(line.row!, decision.id) });
+          const before = inSheet.get(decision.id);
+          const changed = before ? describeDifferences(line.row!, before) : [];
+          notes.set(
+            decision.id,
+            `${pageLabel}, korjattu${changed.length > 0 ? `: ${changed.join(", ")}` : ""}`
+          );
+        }
+      }
+    }
+    if (page.append.length + page.confirms.length + page.corrections.length === 0) {
+      return { status: "error", error: "Sivulla ei ole tallennettavaa" };
+    }
+
+    const { matched } = await writePaperPage(registration, page);
+    const previous = new Map(matched.map((m) => [m.id, m.oldStatus]));
+    await pool.query(
+      `INSERT INTO flight_status_changes
+         (flight_id, registration, old_status, new_status, changed_by, note)
+       SELECT c.id, $2, NULLIF(c.old_status, ''), 'Tarkistettu', $3, c.note
+       FROM jsonb_to_recordset($1::jsonb) AS c(id uuid, old_status text, note text)`,
+      [
+        JSON.stringify(
+          [...notes].map(([id, note]) => ({ id, old_status: previous.get(id) ?? null, note }))
+        ),
+        registration,
+        access.user.id,
+      ]
+    );
+  } catch (caught) {
+    console.error("Error saving paper page:", caught);
+    error =
+      caught instanceof FlightSheetWriteError
+        ? caught.message
+        : "Sivun tallennus epäonnistui. Lentopäiväkirjan taulukkoon ei saatu yhteyttä.";
+  }
+
+  await syncFlightSheets(access.user.fullName || "ylläpito", { wait: true });
+  revalidatePath("/admin/lennot");
+  revalidatePath("/jasenalue/lentopaivakirja");
+  if (error) {
+    return { status: "error", error };
+  }
+  return {
+    status: "success",
+    result: {
+      added: page.append.length,
+      confirmed: page.confirms.length,
+      corrected: page.corrections.length,
+    },
+  };
 }

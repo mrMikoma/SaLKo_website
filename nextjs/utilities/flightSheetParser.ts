@@ -513,19 +513,26 @@ export interface SheetFlightInput {
   oilLitres: number | null;
   hourMeter: number | null;
   remarks: string | null;
+  // From bulk entry: the paper page, and Tila (the flight is checked already)
+  logPage?: string | null;
+  status?: ReviewStatus;
 }
 
-/**
- * The cells of one flight for a sheet row, as typed text for Sheets to parse
- * (USER_ENTERED): an ISO date and HH:MM times work in any spreadsheet locale.
- * Optional columns the sheet doesn't have are skipped.
- */
 // Text for a cell written with USER_ENTERED: the leading apostrophe makes
 // Sheets keep it as typed, so a remark like "=IMAGE(...)" never becomes a
 // formula in the club's sheet and an ID never turns into a number. Sheets
 // doesn't show or return the apostrophe.
 const asText = (value: string | null): string => (value ? `'${value}` : "");
 
+// A page number stays a number, as the club types them
+const logPageValue = (page: string | null): string =>
+  /^\d+$/.test(page ?? "") ? page! : asText(page);
+
+/**
+ * The cells of one flight for a sheet row, as typed text for Sheets to parse
+ * (USER_ENTERED): an ISO date and HH:MM times work in any spreadsheet locale.
+ * Optional columns the sheet doesn't have are skipped.
+ */
 export function flightCells(
   input: SheetFlightInput,
   row: number,
@@ -548,11 +555,46 @@ export function flightCells(
     remarks: asText(input.remarks),
     id: asText(input.id),
     source: asText("web"),
+    ...(input.logPage !== undefined && { logPage: logPageValue(input.logPage) }),
+    ...(input.status !== undefined && { status: asText(input.status) }),
   };
   return Object.entries(values)
     .filter(([key]) => columns[key as SheetColumn] !== undefined)
     .map(([key, value]) => ({ row, column: columns[key as SheetColumn]!, value: value! }));
 }
+
+/**
+ * Tila Tarkistettu and the paper page: what bulk entry writes on a flight that
+ * the paper book confirms as it is
+ */
+export function checkedCells(
+  row: number,
+  columns: ParsedSheet["columns"],
+  logPage: string | null
+): { row: number; column: number; value: string }[] {
+  const values: Partial<Record<SheetColumn, string>> = {
+    status: asText("Tarkistettu"),
+    ...(logPage !== null && { logPage: logPageValue(logPage) }),
+  };
+  return Object.entries(values)
+    .filter(([key]) => columns[key as SheetColumn] !== undefined)
+    .map(([key, value]) => ({ row, column: columns[key as SheetColumn]!, value: value! }));
+}
+
+// What a page of the paper book says about a flight. A correction from bulk
+// entry rewrites only these, so fuel, oil and the hour meter stay as entered.
+export const PAPER_COLUMNS: SheetColumn[] = [
+  "date",
+  "pic",
+  "second",
+  "personsOnBoard",
+  "departure",
+  "arrival",
+  "takeoff",
+  "landing",
+  "landings",
+  "purpose",
+];
 
 /** The cells to clear when a web entry is undone: its input columns and source */
 export function clearedFlightCells(
