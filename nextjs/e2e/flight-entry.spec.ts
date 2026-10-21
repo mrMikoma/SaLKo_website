@@ -88,6 +88,9 @@ test("logs a day's flights and undoes them", async ({ page, context }) => {
   await first.getByLabel("Lentoonlähtö", { exact: true }).fill("1005");
   await first.getByLabel("Lasku", { exact: true }).fill("10.45");
   await first.getByRole("button", { name: "MAT", exact: true }).click();
+  // A decimal with a comma, as Finns type it
+  await first.getByText("Tuntimittari, tankkaus, öljy, huomiot").click();
+  await first.getByLabel("Tankkaus (l)").fill("1,5");
   await expect(first.getByText("Ilmassa 0:40")).toBeVisible();
 
   // The next leg starts where the last one landed, with the same purpose
@@ -112,6 +115,14 @@ test("logs a day's flights and undoes them", async ({ page, context }) => {
   const june = ownFlights.getByRole("heading", { name: /kesäkuu 2025/i });
   await expect(june).toContainText("2 lentoa · 1:20");
   await ownFlights.close();
+  // The fuel went into the sheet as the number 1.5, not as text or a date
+  const fuel = await query(
+    `SELECT fuel_litres FROM sheet_flights
+     WHERE id IN (SELECT id FROM flight_log_web_entries WHERE user_id = (SELECT id FROM users WHERE email = $1))
+       AND fuel_litres IS NOT NULL`,
+    [accounts.admin!.email]
+  );
+  expect(fuel.map((row) => Number(row.fuel_litres))).toEqual([1.5]);
 
   // Undo removes the last flight first, then the one before it
   await page.getByRole("button", { name: "Kumoa viimeisin" }).click();

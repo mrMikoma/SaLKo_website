@@ -82,7 +82,9 @@ describe("writing to the sheet", () => {
     expect(byHeader).toMatchObject({
       "Päivämäärä": "2026-04-01",
       "Lentoonlähtöaika": "09:30",
-      "Tankkaus": "60.5",
+      // Numbers as numbers: as text, a Finnish-locale sheet reads "1.5" as a date
+      "Tankkaus": 60.5,
+      "Henkilömäärä": 2,
       "Öljy": "",
       "Päällikkö": "'T.Kuutti",
       "Oppilas / SIC": "",

@@ -27,7 +27,8 @@ import {
 export interface SheetCell {
   row: number; // 1-based
   column: number; // 0-based
-  value: string;
+  // A number is stored as a number; text is parsed as typed with `parse`
+  value: string | number;
 }
 
 export interface WriteOptions {
@@ -181,7 +182,10 @@ class FixtureFlightSheet implements FlightSheet {
 // What Sheets makes of a typed value (USER_ENTERED), for the fixture: a leading
 // apostrophe keeps the rest as text, ISO dates and HH:MM times become serial
 // numbers, numbers become numbers
-function parseLikeSheets(value: string): SheetValue {
+function parseLikeSheets(value: string | number): SheetValue {
+  if (typeof value === "number") {
+    return value;
+  }
   if (value.startsWith("'")) {
     return value.slice(1);
   }
