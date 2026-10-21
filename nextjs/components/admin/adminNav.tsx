@@ -21,6 +21,7 @@ const AdminNav = ({
       ? [
           { href: "/admin/lennot", label: "Lennot" },
           { href: "/admin/laskutus", label: "Laskutus" },
+          { href: "/admin/tilastot", label: "Tilastot" },
         ]
       : []),
     { href: "/admin/bulletins", label: "Tiedotteet" },

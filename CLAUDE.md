@@ -89,7 +89,7 @@ Tables (defined in `postgres/init/01-schema.sql`):
 - **`guest_bookings`** — contact info for unauthenticated bookings, linked 1:1 to a `bookings` row.
 - **`bullets`** — club announcements.
 - **`sheet_flights`** — read-only copy of the flight log Google Sheet (one tab per aircraft), kept in sync by `utilities/flightSync.ts`; `sheet_flight_issues` and `sheet_sync_runs` go with it. **`flight_purposes`** (purpose codes and who pays), **`aircraft_sheets`** (aircraft → tab) and **`pilot_aliases`** (sheet names → members) are owned by the site, and so are `flight_log_web_entries` and `flight_status_changes` (who entered or checked what). See `nextjs/docs/FLIGHT_LOG.md`.
-- **`billing_periods`**, **`billing_lines`** and **`billing_payers`** — billing periods and what a closed one billed to whom; **`aircraft_rates`**, **`equipment_fee_seasons`** and **`flight_log_settings`** hold the prices, the equipment-fee members per season and the free-hour setting. The rules are in `nextjs/utilities/billing.ts`.
+- **`billing_periods`**, **`billing_lines`** and **`billing_payers`** — billing periods and what a closed one billed to whom; **`aircraft_rates`**, **`equipment_fee_seasons`** and **`flight_log_settings`** hold the prices, the equipment-fee members per season and the free-hour setting. The rules are in `nextjs/utilities/billing.ts`. **`aircraft_year_totals`** holds hours per aircraft for the years before the flight log, for the statistics.
 - **`metar_data`** — METAR weather records for EFSA, upserted every 2 min by the cronjob, retained 7 days.
 - `accounts`, `sessions`, `verification_tokens` — NextAuth adapter tables (sessions themselves are JWTs).
 
@@ -125,7 +125,7 @@ Session strategy is JWT with 30-day expiry. `trustHost: true` is required becaus
 
 `utilities/roles.ts` exports `ROLES`, `PERMISSIONS`, `hasPermission()`, `canManageBooking()`, and `canDeleteBooking()`. All server actions call `auth()` and `hasPermission()` before touching the DB. Never rely on client-side role checks for access control.
 
-Roles: `admin` has the whole admin site. `treasurer` (laskuttaja) has the flight log and billing (`VIEW_ALL_FLIGHTS`, `MANAGE_FLIGHT_LOG`, `MANAGE_BILLING`) and nothing else of `/admin`: `canOpenAdminPath()` decides what `proxy.ts` lets through and what the admin nav shows, and `adminHome()` is where a treasurer lands (`/admin/laskutus`). `validateRoles()` checks the roles an admin gives, and refuses a treasurer without `user` or `admin`. Give a new role its permissions here, and add it to `ASSIGNABLE_ROLES` for the user forms.
+Roles: `admin` has the whole admin site. `treasurer` (laskuttaja) has the flight log, billing and statistics (`VIEW_ALL_FLIGHTS`, `MANAGE_FLIGHT_LOG`, `MANAGE_BILLING`, `VIEW_STATISTICS`) and nothing else of `/admin`: `canOpenAdminPath()` decides what `proxy.ts` lets through and what the admin nav shows, and `adminHome()` is where a treasurer lands (`/admin/laskutus`). `validateRoles()` checks the roles an admin gives, and refuses a treasurer without `user` or `admin`. Give a new role its permissions here, and add it to `ASSIGNABLE_ROLES` for the user forms.
 
 ### Data Flow Pattern
 
