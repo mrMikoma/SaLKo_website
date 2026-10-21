@@ -71,12 +71,12 @@ The dev database is created from scratch on every deploy. The sheet keeps the fl
 On the dev site, log in as an admin and open `/admin/lennot`:
 1. The sync card shows **Avaa taulukko · palvelutili salko-lentopaivakirja-dev@…**. Press **Synkronoi nyt**: an empty sheet gives "0 lentoa".
 2. Log a flight at `/jasenalue/lentopaivakirja/uusi`, then look at the row in the sheet:
-   - the date and the times are right-aligned, so Sheets read them as a date and times, not text, and the times are the Finnish times you typed;
+   - the date and the times are right-aligned, so Sheets read them as a date and times, not text, and the times are the Finnish times you typed (shown as 14.09);
    - with a tankkaus or tuntimittari like `1,5` filled in (under "Tuntimittari, tankkaus, öljy, huomiot"), the cell is the number 1,5, not a date;
    - the grey Ilmassa oloaika shows the time;
    - ID is filled and Lähde says `web`.
 
-   If the date or times are left-aligned text, the locale in step 1.4 is wrong. Fix it, clear the row and log the flight again.
+   If the times are left-aligned text and Ilmassa oloaika shows #VALUE!, the row was written by a site older than PR #77, which sent times as text that a Finnish sheet keeps as text. Clear the row and log the flight again.
 3. Undo it with **Kumoa viimeisin** on the confirmation. The row's typed-in cells empty and its formulas stay: it is one of the pre-filled rows again, ready for the next flight. Since it was the last flight, no gap is left. (Undo is refused once a later flight is below it.)
 
 If the sync fails, the card says what to fix:
