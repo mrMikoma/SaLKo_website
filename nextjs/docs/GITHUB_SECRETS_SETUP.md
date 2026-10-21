@@ -49,10 +49,10 @@ The dev environment's own flight log spreadsheet. Steps: `FLIGHT_LOG_SETUP.md`. 
 
 | Secret Name | Description | How to Generate | Required |
 |------------|-------------|-----------------|----------|
-| `FLIGHT_LOG_SPREADSHEET_ID` | ID of the dev spreadsheet | From its address: `/d/<ID>/edit` | Optional |
-| `FLIGHT_LOG_SERVICE_ACCOUNT_KEY` | The dev service account's JSON key, base64 | `base64 -w0 key.json` | Optional |
+| `GOOGLE_SHEETS_ID` | ID of the dev spreadsheet | From its address: `/d/<ID>/edit` | Optional |
+| `GOOGLE_SERVICE_ACCOUNT_JSON` | The dev service account's JSON key file, as downloaded | Google Cloud Console | Optional |
 
-The spreadsheet ID is a secret too: the Actions logs are public, and only secrets are masked. Production gets `_PROD` versions when the flight log goes live there.
+These two are secrets of the `development` environment, which the deploy job runs in. The spreadsheet ID is a secret too: the Actions logs are public, and only secrets are masked. The production environment gets its own when the flight log goes live there.
 
 ---
 
@@ -116,8 +116,8 @@ GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
 GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
 
 # Flight log sheet (optional, FLIGHT_LOG_SETUP.md)
-FLIGHT_LOG_SPREADSHEET_ID: ${{ secrets.FLIGHT_LOG_SPREADSHEET_ID }}
-GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.FLIGHT_LOG_SERVICE_ACCOUNT_KEY }}
+FLIGHT_LOG_SPREADSHEET_ID: ${{ secrets.GOOGLE_SHEETS_ID }}
+GOOGLE_SERVICE_ACCOUNT_KEY: base64 of ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
 ```
 
 **Deployment URL:** `https://kehitys.savonlinnanlentokerho.fi`

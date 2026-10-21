@@ -529,29 +529,31 @@ const logPageValue = (page: string | null): string =>
   /^\d+$/.test(page ?? "") ? page! : asText(page);
 
 /**
- * The cells of one flight for a sheet row, as typed text for Sheets to parse
- * (USER_ENTERED): an ISO date and HH:MM times work in any spreadsheet locale.
+ * The cells of one flight for a sheet row, written with USER_ENTERED: the
+ * date (ISO) and times (HH:MM) as text for Sheets to read as a date and
+ * times, which works in any spreadsheet locale. Numbers go as numbers, not
+ * text: a Finnish-locale sheet would read the text "1.5" as 1 May.
  * Optional columns the sheet doesn't have are skipped.
  */
 export function flightCells(
   input: SheetFlightInput,
   row: number,
   columns: ParsedSheet["columns"]
-): { row: number; column: number; value: string }[] {
-  const values: Partial<Record<SheetColumn, string>> = {
+): { row: number; column: number; value: string | number }[] {
+  const values: Partial<Record<SheetColumn, string | number>> = {
     date: input.flightDate,
     pic: asText(input.picName),
     second: asText(input.secondName),
-    personsOnBoard: String(input.personsOnBoard),
+    personsOnBoard: input.personsOnBoard,
     departure: asText(input.departure),
     arrival: asText(input.arrival),
     takeoff: input.takeoff,
     landing: input.landing,
-    landings: String(input.landings),
+    landings: input.landings,
     purpose: asText(input.purposeCode),
-    fuel: input.fuelLitres === null ? "" : String(input.fuelLitres),
-    oil: input.oilLitres === null ? "" : String(input.oilLitres),
-    hourMeter: input.hourMeter === null ? "" : String(input.hourMeter),
+    fuel: input.fuelLitres ?? "",
+    oil: input.oilLitres ?? "",
+    hourMeter: input.hourMeter ?? "",
     remarks: asText(input.remarks),
     id: asText(input.id),
     source: asText("web"),
