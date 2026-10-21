@@ -39,7 +39,7 @@ export default async function Page() {
       <PageHero
         title="Lentopäiväkirja"
         subtitle="Omat lentosi kerhon lentopäiväkirjasta"
-        breadcrumbs={["Jäsenalue", "Lentopäiväkirja"]}
+        breadcrumbs={[{ label: "Jäsenalue", link: false }, "Lentopäiväkirja"]}
         backgroundImage="bg-punkaharju-one"
         compact={true}
         showScrollIndicator={false}
