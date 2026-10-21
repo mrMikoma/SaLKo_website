@@ -189,7 +189,7 @@ export function parseDuration(value: SheetValue | undefined): number | null {
   return match[1] ? -minutes : minutes;
 }
 
-/** "T. Kuutti", "t.kuutti" and "T.Kuutti" are the same pilot */
+/** "M. Meikäläinen", "m.meikäläinen" and "M.Meikäläinen" are the same pilot */
 export const nameKey = (name: string): string =>
   name.toLowerCase().replace(/[\s.]+/g, "");
 
@@ -523,17 +523,23 @@ export interface SheetFlightInput {
 // formula in the club's sheet and an ID never turns into a number. Sheets
 // doesn't show or return the apostrophe.
 const asText = (value: string | null): string => (value ? `'${value}` : "");
+// "14:05" as a fraction of a day, the number a time cell holds
+const timeOfDay = (clock: string): number | "" => {
+  const minutes = parseTimeOfDay(clock);
+  return minutes === null ? "" : minutes / 1440;
+};
 
 // A page number stays a number, as the club types them
 const logPageValue = (page: string | null): string =>
   /^\d+$/.test(page ?? "") ? page! : asText(page);
 
 /**
- * The cells of one flight for a sheet row, written with USER_ENTERED: the
- * date (ISO) and times (HH:MM) as text for Sheets to read as a date and
- * times, which works in any spreadsheet locale. Numbers go as numbers, not
- * text: a Finnish-locale sheet would read the text "1.5" as 1 May.
- * Optional columns the sheet doesn't have are skipped.
+ * The cells of one flight for a sheet row, written with USER_ENTERED. The
+ * date goes as ISO text, which Sheets reads as a date in any locale. Times
+ * and other numbers go as numbers: a Finnish-locale sheet keeps the text
+ * "14:05" as text (its formulas then show #VALUE!) and reads "1.5" as 1 May.
+ * A time is a fraction of a day, which the sheet's time format shows as
+ * 14.05. Optional columns the sheet doesn't have are skipped.
  */
 export function flightCells(
   input: SheetFlightInput,
@@ -547,8 +553,8 @@ export function flightCells(
     personsOnBoard: input.personsOnBoard,
     departure: asText(input.departure),
     arrival: asText(input.arrival),
-    takeoff: input.takeoff,
-    landing: input.landing,
+    takeoff: timeOfDay(input.takeoff),
+    landing: timeOfDay(input.landing),
     landings: input.landings,
     purpose: asText(input.purposeCode),
     fuel: input.fuelLitres ?? "",

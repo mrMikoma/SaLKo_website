@@ -24,7 +24,7 @@ const flight = (changes: Partial<StatsFlight> = {}): StatsFlight => {
     registration: "OH-CON",
     sheetRow: row++,
     flightDate: "2025-06-14",
-    picName: "T.Kuutti",
+    picName: "M.Meikäläinen",
     secondName: null,
     purposeCode: "HAR",
     airborneMinutes: minutes,
@@ -54,19 +54,19 @@ describe("totals", () => {
   });
 
   test("pilots: a member's sheet names together, as PIC and as student", () => {
-    const aliases = new Map([["tkuutti", "u1"], ["terokuutti", "u1"]]);
-    const names = new Map([["u1", "Tero Kuutti"]]);
+    const aliases = new Map([["mmeikäläinen", "u1"], ["mattimeikäläinen", "u1"]]);
+    const names = new Map([["u1", "Matti Meikäläinen"]]);
     const pilots = byPilot(
       [
-        flight({ picName: "T.Kuutti" }),
-        flight({ picName: "Tero Kuutti", airborneMinutes: 20 }),
-        flight({ picName: "K.Opettaja", secondName: "T. Kuutti", purposeCode: "KOU" }),
+        flight({ picName: "M.Meikäläinen" }),
+        flight({ picName: "Matti Meikäläinen", airborneMinutes: 20 }),
+        flight({ picName: "K.Opettaja", secondName: "M. Meikäläinen", purposeCode: "KOU" }),
       ],
       aliases,
       names
     );
     expect(pilots[0]).toMatchObject({
-      name: "Tero Kuutti",
+      name: "Matti Meikäläinen",
       member: true,
       asPic: { flights: 2, minutes: 60 },
       asSecond: { flights: 1, minutes: 40 },
@@ -110,8 +110,8 @@ describe("intro-flight days", () => {
       flight({ purposeCode: "HAR", flightDate: "2025-07-01" }),
     ]);
     expect(days).toEqual([
-      { date: "2025-05-09", flights: 2, passengers: 3, pilots: ["T.Kuutti", "M.M"] },
-      { date: "2025-06-01", flights: 1, passengers: 0, pilots: ["T.Kuutti"] },
+      { date: "2025-05-09", flights: 2, passengers: 3, pilots: ["M.Meikäläinen", "M.M"] },
+      { date: "2025-06-01", flights: 1, passengers: 0, pilots: ["M.Meikäläinen"] },
     ]);
   });
 });

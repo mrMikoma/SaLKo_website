@@ -25,7 +25,7 @@ export function minutesBetween(takeoff: string, landing: string): number | null 
 
 /**
  * How a member's name is written in the flight log, in the sheet's usual
- * style: "Tero Kuutti" → "T.Kuutti". One-word names stay as they are.
+ * style: "Matti Meikäläinen" → "M.Meikäläinen". One-word names stay as they are.
  */
 export function sheetNameFor(fullName: string): string {
   const parts = fullName.trim().split(/\s+/);

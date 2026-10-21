@@ -15,7 +15,7 @@ const line = (cells: Partial<PaperCells>): PaperCells => ({ ...emptyPaperCells()
 const TODAY = "2026-10-21";
 
 const paper = (row: Partial<PaperRow>): PaperRow => ({
-  flightDate: "2026-06-14", picName: "T.Kuutti", secondName: null, personsOnBoard: 1,
+  flightDate: "2026-06-14", picName: "M.Meikäläinen", secondName: null, personsOnBoard: 1,
   departure: "EFSA", arrival: "EFSA", takeoff: "10:05", landing: "10:45", landings: 1,
   purposeCode: "HAR", remarks: null, ...row,
 });
@@ -36,7 +36,7 @@ describe("reading a paper page", () => {
   test("an empty date or a ditto mark repeats the line above", () => {
     const read = readPaperGrid(
       [
-        line({ date: "14.6.2025", pic: "T.Kuutti", departure: "efsa", arrival: "EFJO", takeoff: "1005", landing: "10.45", purpose: "mat" }),
+        line({ date: "14.6.2025", pic: "M.Meikäläinen", departure: "efsa", arrival: "EFJO", takeoff: "1005", landing: "10.45", purpose: "mat" }),
         line({ pic: '"', departure: "EFJO", arrival: "EFSA", takeoff: "11.10", landing: "11.50", purpose: "〃" }),
         line({}),
         line({ date: '"', pic: "K.Keikäläinen", departure: "EFSA", arrival: "EFSA", takeoff: "13:00", landing: "13:30", landings: "3", purpose: "HAR" }),
@@ -46,7 +46,7 @@ describe("reading a paper page", () => {
     expect(read.map((r) => r.index)).toEqual([0, 1, 3]);
     expect(read.every((r) => r.errors.length === 0)).toBe(true);
     expect(read[0].row).toMatchObject({ departure: "EFSA", takeoff: "10:05", purposeCode: "MAT", landings: 1 });
-    expect(read[1].row).toMatchObject({ flightDate: "2025-06-14", picName: "T.Kuutti", purposeCode: "MAT" });
+    expect(read[1].row).toMatchObject({ flightDate: "2025-06-14", picName: "M.Meikäläinen", purposeCode: "MAT" });
     expect(read[2].row).toMatchObject({ flightDate: "2025-06-14", landings: 3 });
   });
 
@@ -75,8 +75,8 @@ describe("reading a paper page", () => {
 describe("matching the page with the sheet", () => {
   test("a pilot's own entry is the same flight, even written differently", () => {
     const [match] = matchPaperRows(
-      [paper({ picName: "T. Kuutti" })],
-      [inSheet("a", { picName: "T.Kuutti" })]
+      [paper({ picName: "M. Meikäläinen" })],
+      [inSheet("a", { picName: "M.Meikäläinen" })]
     );
     expect(match).toMatchObject({ kind: "same", flight: { id: "a" } });
   });

@@ -7,7 +7,6 @@ import { parseServiceAccountKey } from "@/utilities/googleSheetsSetup";
 import {
   columnLetter,
   parseSheetDate,
-  parseTimeOfDay,
   SheetValue,
   SheetValues,
 } from "@/utilities/flightSheetParser";
@@ -33,7 +32,7 @@ export interface SheetCell {
 
 export interface WriteOptions {
   // Let Sheets parse the values as if typed (USER_ENTERED): "2026-04-01" becomes
-  // a date and "14:05" a time in any spreadsheet locale. Off writes them as-is.
+  // a date in any spreadsheet locale. Off writes them as-is.
   parse?: boolean;
 }
 
@@ -179,9 +178,9 @@ class FixtureFlightSheet implements FlightSheet {
   }
 }
 
-// What Sheets makes of a typed value (USER_ENTERED), for the fixture: a leading
-// apostrophe keeps the rest as text, ISO dates and HH:MM times become serial
-// numbers, numbers become numbers
+// What a Finnish-locale sheet makes of a typed value (USER_ENTERED), for the
+// fixture: a leading apostrophe keeps the rest as text, ISO dates become
+// serial numbers, numbers stay numbers. "14:05" stays text, as it does there.
 function parseLikeSheets(value: string | number): SheetValue {
   if (typeof value === "number") {
     return value;
@@ -193,9 +192,6 @@ function parseLikeSheets(value: string | number): SheetValue {
     const date = parseSheetDate(value)!;
     const days = (Date.parse(`${date}T00:00:00Z`) - Date.parse("1899-12-30T00:00:00Z")) / 86_400_000;
     return days;
-  }
-  if (/^\d{1,2}:\d{2}$/.test(value)) {
-    return parseTimeOfDay(value)! / 1440;
   }
   if (value !== "" && !Number.isNaN(Number(value))) {
     return Number(value);

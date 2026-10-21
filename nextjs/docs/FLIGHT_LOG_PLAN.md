@@ -125,7 +125,7 @@ Used by the member form, bulk entry and status changes.
 - `aircraft_sheets`: registration → spreadsheet ID + tab name.
 - `flight_purposes`: code, name, payer (`pic` / `student` / `none`), is_training, Traficom category, active. Seeded with the 15 codes in the sheet.
 - `aircraft_rates`: registration, valid_from, cents per minute with and without the equipment fee.
-- `pilot_aliases`: a name as written in the sheet (`T.Kuutti`) → user, nullable for non-members. Members also get a "log name" that the form writes.
+- `pilot_aliases`: a name as written in the sheet (`M.Meikäläinen`) → user, nullable for non-members. Members also get a "log name" that the form writes.
 - `equipment_fee_seasons`: member + season.
 - `sheet_flights`, `sheet_flight_issues`, `sheet_sync_runs`.
 - `billing_periods`: start, end, closed_at, closed_by. `billing_lines`: period, flight, payer, minutes, rate, amount, snapshot hash.
