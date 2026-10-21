@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import path from "path";
 import dotenv from "dotenv";
 
 // E2E_USER_EMAIL / E2E_USER_PASSWORD (optional) are read from nextjs/.env
@@ -58,8 +59,10 @@ export default defineConfig({
           PORT: String(port),
           // Features hidden in production are tested too (utilities/features.ts)
           FEATURE_FLIGHT_LOG: "true",
-          // The flight log reads a synthetic sheet, never the club's real one
+          // The flight log reads a synthetic sheet, never the club's real one.
+          // Absolute: CI's standalone server runs in .next/standalone
           FLIGHT_SHEET_SOURCE: "fixture",
+          FLIGHT_SHEET_FIXTURE: path.resolve("e2e/fixtures/flight-sheet.json"),
         },
       },
 });
