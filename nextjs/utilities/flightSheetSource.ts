@@ -3,6 +3,7 @@ import "server-only";
 import { readFileSync } from "fs";
 import path from "path";
 import { google, sheets_v4 } from "googleapis";
+import { parseServiceAccountKey } from "@/utilities/googleSheetsSetup";
 import {
   columnLetter,
   parseSheetDate,
@@ -20,13 +21,14 @@ import {
  *   FLIGHT_SHEET_SOURCE=fixture  FLIGHT_SHEET_FIXTURE (default e2e/fixtures/flight-sheet.json)
  *
  * Without FLIGHT_SHEET_SOURCE, Google is used when it is configured and the
- * fixture under `next dev`.
+ * fixture under `next dev`. Setting up the Google side: docs/FLIGHT_LOG_SETUP.md.
  */
 
 export interface SheetCell {
   row: number; // 1-based
   column: number; // 0-based
-  value: string;
+  // A number is stored as a number; text is parsed as typed with `parse`
+  value: string | number;
 }
 
 export interface WriteOptions {
@@ -46,17 +48,24 @@ export interface FlightSheet {
   tabIds(): Promise<Map<string, number>>;
   // Link to a row, given the tab's id
   rowUrl(tabId: number | null, row: number): string | null;
+  // The spreadsheet and the account the website uses it as, for the admin page
+  readonly spreadsheetUrl: string | null;
+  readonly serviceAccount: string | null;
 }
 
 const quoteTab = (tab: string) => `'${tab.replace(/'/g, "''")}'`;
 
 class GoogleFlightSheet implements FlightSheet {
   readonly kind = "google";
+  readonly spreadsheetUrl: string;
 
   constructor(
     private readonly spreadsheetId: string,
-    private readonly sheets: sheets_v4.Sheets
-  ) {}
+    private readonly sheets: sheets_v4.Sheets,
+    readonly serviceAccount: string
+  ) {
+    this.spreadsheetUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
+  }
 
   async readTab(tab: string): Promise<SheetValues> {
     const response = await this.sheets.spreadsheets.values.get({
@@ -120,6 +129,8 @@ const fixtureStore = globalThis as typeof globalThis & {
 
 class FixtureFlightSheet implements FlightSheet {
   readonly kind = "fixture";
+  readonly spreadsheetUrl = null;
+  readonly serviceAccount = null;
 
   constructor(private readonly file: string) {}
 
@@ -171,7 +182,10 @@ class FixtureFlightSheet implements FlightSheet {
 // What Sheets makes of a typed value (USER_ENTERED), for the fixture: a leading
 // apostrophe keeps the rest as text, ISO dates and HH:MM times become serial
 // numbers, numbers become numbers
-function parseLikeSheets(value: string): SheetValue {
+function parseLikeSheets(value: string | number): SheetValue {
+  if (typeof value === "number") {
+    return value;
+  }
   if (value.startsWith("'")) {
     return value.slice(1);
   }
@@ -222,12 +236,14 @@ export function getFlightSheet(): FlightSheet {
     throw new FlightSheetNotConfiguredError();
   }
 
+  const key = parseServiceAccountKey(serviceAccountKey!);
   const auth = new google.auth.GoogleAuth({
-    credentials: JSON.parse(serviceAccountKey!),
+    credentials: key,
     scopes: ["https://www.googleapis.com/auth/spreadsheets"],
   });
   return new GoogleFlightSheet(
-    spreadsheetId!,
-    google.sheets({ version: "v4", auth })
+    spreadsheetId!.trim(),
+    google.sheets({ version: "v4", auth }),
+    key.client_email
   );
 }

@@ -52,4 +52,4 @@ proxy.ts      # route protection (Next 16's replacement for middleware.ts)
 
 ## More Docs
 
-`docs/` has background on specific features: `FLIGHT_LOG.md` (the flight log sync) and `FLIGHT_LOG_PLAN.md` (the plan for flight log, billing and stats), `AUTH_SETUP.md`, `BOOKING_MODERNIZATION.md`, `BOOKING_PHASE2_IMPROVEMENTS.md`, `BOOKING_PHASE3_TODO.md`, `GITHUB_SECRETS_SETUP.md` and `METAR_SETUP.md`. They were written at different times, so check them against the code.
+`docs/` has background on specific features: `FLIGHT_LOG.md` (the flight log sync), `FLIGHT_LOG_SETUP.md` (connecting an environment to a Google Sheet, with the empty template `lentopaivakirja-pohja.xlsx`) and `FLIGHT_LOG_PLAN.md` (the plan for flight log, billing and stats), `AUTH_SETUP.md`, `BOOKING_MODERNIZATION.md`, `BOOKING_PHASE2_IMPROVEMENTS.md`, `BOOKING_PHASE3_TODO.md`, `GITHUB_SECRETS_SETUP.md` and `METAR_SETUP.md`. They were written at different times, so check them against the code.

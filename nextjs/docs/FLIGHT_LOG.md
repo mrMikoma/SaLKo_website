@@ -1,6 +1,6 @@
 # Flight log
 
-How the flight log works as of October 2026. `FLIGHT_LOG_PLAN.md` describes the whole plan, and which parts are still to come. The feature only runs where `FEATURE_FLIGHT_LOG` is on (`utilities/features.ts`): in dev, in local development and in tests, not yet in production.
+How the flight log works as of October 2026. `FLIGHT_LOG_PLAN.md` describes the whole plan, and which parts are still to come; `FLIGHT_LOG_SETUP.md` connects an environment to a Google Sheet, starting from the empty template `lentopaivakirja-pohja.xlsx`. The feature only runs where `FEATURE_FLIGHT_LOG` is on (`utilities/features.ts`): in dev, in local development and in tests, not yet in production.
 
 ## The model
 
@@ -135,7 +135,7 @@ On `/admin/lennot` (`MANAGE_FLIGHT_LOG`), the biller ticks the rows that match t
 ## Development and tests
 
 `utilities/flightSheetSource.ts` picks the source:
-- `FLIGHT_SHEET_SOURCE=google` reads the real sheet with `GOOGLE_SERVICE_ACCOUNT_KEY` and `FLIGHT_LOG_SPREADSHEET_ID`. The service account needs editor access to the spreadsheet.
+- `FLIGHT_SHEET_SOURCE=google` reads a Google Sheet with `GOOGLE_SERVICE_ACCOUNT_KEY` (the key file, as JSON or base64) and `FLIGHT_LOG_SPREADSHEET_ID`. The service account needs editor access to the spreadsheet; `FLIGHT_LOG_SETUP.md` has the steps. When Google refuses, the sync card on `/admin/lennot` says what to fix (`utilities/googleSheetsSetup.ts`).
 - `FLIGHT_SHEET_SOURCE=fixture` reads `e2e/fixtures/flight-sheet.json`, a synthetic tab with no real flights or names. It's held in memory, so the IDs the sync writes and the flights the form enters last until the server restarts. The fixture keeps values only, so a number in the airborne-time column stands for a formula row.
 
 Without the variable, Google is used when it's configured, and the fixture otherwise under `next dev`. Playwright always uses the fixture, so tests never touch the club's sheet.

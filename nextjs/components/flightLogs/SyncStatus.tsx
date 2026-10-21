@@ -11,6 +11,8 @@ interface SyncStatusProps {
   rowsRead: number | null;
   issues: number | null;
   sheetKind: "google" | "fixture" | null;
+  spreadsheetUrl: string | null;
+  serviceAccount: string | null;
 }
 
 /**
@@ -22,6 +24,8 @@ const SyncStatus = ({
   rowsRead,
   issues,
   sheetKind,
+  spreadsheetUrl,
+  serviceAccount,
 }: SyncStatusProps) => {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -57,6 +61,26 @@ const SyncStatus = ({
           <p className="text-sm text-gray-600">
             {rowsRead ?? 0} lentoa · {issues ?? 0} tarkistettavaa
             {sheetKind === "fixture" && " · testiaineisto, ei oikea taulukko"}
+          </p>
+        )}
+        {sheetKind === "google" && (
+          <p className="text-sm text-gray-600">
+            {spreadsheetUrl && (
+              <a
+                href={spreadsheetUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sblue hover:underline"
+              >
+                Avaa taulukko
+              </a>
+            )}
+            {serviceAccount && <> · palvelutili {serviceAccount}</>}
+          </p>
+        )}
+        {sheetKind === null && (
+          <p className="text-sm text-gray-600">
+            Google-taulukkoa ei ole määritetty (ohje: nextjs/docs/FLIGHT_LOG_SETUP.md).
           </p>
         )}
         {latestError && (
