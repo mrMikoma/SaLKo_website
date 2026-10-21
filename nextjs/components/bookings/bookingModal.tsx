@@ -17,8 +17,8 @@ import {
   guestBookingSchema,
   GuestBookingFormValues,
 } from "@/schemas/bookingSchema";
-import { downloadICalEvent } from "@/utilities/calendarExport";
 import { isFullDayBooking } from "@/utilities/bookingHelpers";
+import BookingCalendarLinks from "@/components/bookings/BookingCalendarLinks";
 
 interface BookingModalProps {
   mode: "create" | "update" | "view";
@@ -51,6 +51,11 @@ const BookingModal = memo(
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [conflicts, setConflicts] = useState<BookingConflict[] | null>(null);
     const [deleteError, setDeleteError] = useState<string | null>(null);
+    // A new booking that was saved: the modal then offers the calendar links
+    const [saved, setSaved] = useState<{
+      booking: BookingType;
+      count?: number;
+    } | null>(null);
     // Full-day booking state: when true, show date-only pickers and store midnight times
     const [isFullDay, setIsFullDay] = useState(() => isFullDayBooking(booking));
     const [fullDayStart, setFullDayStart] = useState(() =>
@@ -335,9 +340,18 @@ const BookingModal = memo(
           allowOverlap,
         });
 
-        if (outcome.status === "conflict") {
+        if (outcome.status === "success") {
+          if (mode === "create") {
+            setSaved({
+              booking: { ...updatedBooking, id: outcome.result.id },
+              count: outcome.result.count,
+            });
+          } else {
+            onCancel();
+          }
+        } else if (outcome.status === "conflict") {
           setConflicts(outcome.conflicts);
-        } else if (outcome.status === "error") {
+        } else {
           setSubmitError(outcome.error);
         }
       } catch (error) {
@@ -372,16 +386,61 @@ const BookingModal = memo(
       }
     };
 
-    const handleExportToCalendar = () => {
-      try {
-        if (booking.id >= 0 && booking.start_time && booking.end_time) {
-          downloadICalEvent(booking);
-        }
-      } catch (error) {
-        console.error("Error exporting to calendar:", error);
-        // You could show a toast/notification here if needed
-      }
-    };
+    if (saved) {
+      const start = DateTime.fromISO(saved.booking.start_time);
+      const end = DateTime.fromISO(saved.booking.end_time);
+      return (
+        <Modal
+          title={
+            <div className="text-xl font-semibold text-gray-900">
+              Varaus tallennettu
+            </div>
+          }
+          open={true}
+          onCancel={onCancel}
+          centered
+          width={640}
+          className="booking-modal"
+          footer={
+            <div className="flex justify-end w-full pt-4 border-t border-gray-200">
+              <Button
+                type="primary"
+                size="large"
+                onClick={onCancel}
+                className="w-full sm:w-auto rounded-lg font-medium"
+              >
+                Valmis
+              </Button>
+            </div>
+          }
+        >
+          <div className="space-y-5">
+            <div className="rounded-xl p-4 border border-green-200 bg-green-50">
+              <p className="text-lg font-semibold text-gray-900">
+                {saved.booking.plane}: {saved.booking.title}
+              </p>
+              <p className="text-gray-700 mt-1">
+                {start.setLocale("fi").toFormat("ccc d.M.yyyy HH:mm")}
+                {" – "}
+                {end.hasSame(start, "day")
+                  ? end.toFormat("HH:mm")
+                  : end.setLocale("fi").toFormat("ccc d.M.yyyy HH:mm")}
+              </p>
+              {saved.count && saved.count > 1 && (
+                <p className="text-sm text-gray-600 mt-1">
+                  Toistuu {saved.count} päivänä
+                </p>
+              )}
+            </div>
+            <BookingCalendarLinks
+              booking={saved.booking}
+              isLoggedIn={isLoggedIn}
+              seriesCount={saved.count}
+            />
+          </div>
+        </Modal>
+      );
+    }
 
     return (
       <>
@@ -412,17 +471,6 @@ const BookingModal = memo(
                   >
                     Sulje
                   </Button>
-                  <Button
-                    key="calendar"
-                    onClick={handleExportToCalendar}
-                    disabled={
-                      booking.id < 0 || !booking.start_time || !booking.end_time
-                    }
-                    size="large"
-                    className="w-full sm:w-auto rounded-lg font-medium bg-gradient-to-r from-sblue to-sblued text-white hover:opacity-90 transition-opacity disabled:opacity-50"
-                  >
-                    Lisää kalenteriin
-                  </Button>
                 </>
               ) : (
                 <>
@@ -445,17 +493,6 @@ const BookingModal = memo(
                       className="w-full sm:w-auto rounded-lg font-medium hover:bg-red-600 transition-colors"
                     >
                       Poista
-                    </Button>
-                  )}
-                  {mode === "update" && booking.id >= 0 && (
-                    <Button
-                      key="calendar"
-                      onClick={handleExportToCalendar}
-                      disabled={!booking.start_time || !booking.end_time}
-                      size="large"
-                      className="w-full sm:w-auto rounded-lg font-medium border-sblue text-sblue hover:bg-sbluel/10 transition-colors"
-                    >
-                      Lisää kalenteriin
                     </Button>
                   )}
                   <Button
@@ -1021,6 +1058,12 @@ const BookingModal = memo(
                     )}
                   </div>
                 )}
+              </div>
+            )}
+
+            {mode !== "create" && isLoggedIn && booking.id >= 0 && (
+              <div className="pt-5 mt-5 border-t-2 border-gray-200">
+                <BookingCalendarLinks booking={booking} isLoggedIn={isLoggedIn} />
               </div>
             )}
 

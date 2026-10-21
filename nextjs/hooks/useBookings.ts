@@ -21,7 +21,8 @@ export interface SaveBookingRequest {
   allowOverlap?: boolean;
 }
 
-export type SaveBookingOutcome = BookingResult<unknown>;
+// count is set for a repeating series, id is its first booking
+export type SaveBookingOutcome = BookingResult<{ id: number; count?: number }>;
 
 /**
  * Fetches bookings for all bookable planes over the range the dates span,

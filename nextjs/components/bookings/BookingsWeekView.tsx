@@ -1,11 +1,15 @@
 "use client";
 
+import { useMemo, memo } from "react";
 import { DateTime } from "@/utilities/clubTime";
 import { BookingType } from "@/utilities/bookings";
 import { FlightTypeConfig } from "@/types/bookings";
-import { useMemo, memo } from "react";
 import { getPlaneDisplayName, BOOKABLE_PLANES } from "@/utilities/planeHelpers";
-import { getBookingDisplayName, getBookingDays } from "@/utilities/bookingHelpers";
+import {
+  getBookingDisplayName,
+  getBookingDays,
+  isFullDayBooking,
+} from "@/utilities/bookingHelpers";
 
 interface BookingsWeekViewProps {
   bookings: BookingType[];
@@ -16,179 +20,170 @@ interface BookingsWeekViewProps {
   getFlightTypeColor: (type: string) => string;
 }
 
-const START_HOUR = 6;
-const END_HOUR = 23;
+// A booking started from a day's free space begins at this hour; the times
+// can be changed in the booking modal
+const DEFAULT_START_HOUR = "9:00";
 
-export const BookingsWeekView = memo(({
-  bookings,
-  selectedDate,
-  onCellClick,
-  onBookingClick,
-  getFlightTypeColor,
-}: BookingsWeekViewProps) => {
-  // Calculate week start (Monday) and generate 7 days
-  const weekStart = selectedDate.startOf("week");
-  const weekDays = useMemo(
-    () => Array.from({ length: 7 }, (_, i) => weekStart.plus({ days: i })),
-    [weekStart]
-  );
+/**
+ * The time a booking shows on one day: "Koko päivä", or its hours with "…"
+ * where it continues from the day before or into the next day
+ */
+const getTimeLabel = (booking: BookingType, day: string): string => {
+  const bookingDays = getBookingDays(booking);
+  const isFirstDay = bookingDays[0] === day;
+  const isLastDay = bookingDays[bookingDays.length - 1] === day;
 
-  const hours = useMemo(
-    () => Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => START_HOUR + i),
-    []
-  );
+  // Full-day bookings, and the middle days of longer ones
+  if (isFullDayBooking(booking) || (!isFirstDay && !isLastDay)) {
+    return "Koko päivä";
+  }
 
-  // Group bookings by date (including multiday bookings) - OPTIMIZED with memoization
-  const bookingsByDate = useMemo(() => {
-    const result: Record<string, BookingType[]> = {};
+  const start = isFirstDay
+    ? DateTime.fromISO(booking.start_time).toFormat("HH:mm")
+    : "…";
+  const end = isLastDay
+    ? DateTime.fromISO(booking.end_time).toFormat("HH:mm")
+    : "…";
+  return `${start}–${end}`;
+};
 
-    bookings.forEach((booking) => {
-      getBookingDays(booking).forEach((date) => {
-        if (!result[date]) {
-          result[date] = [];
+/**
+ * The week at a glance: a row per aircraft, a column per day, and each day
+ * lists its bookings in time order. Click a booking to open it, or + to book
+ * that day.
+ */
+export const BookingsWeekView = memo(
+  ({
+    bookings,
+    selectedDate,
+    onCellClick,
+    onBookingClick,
+    getFlightTypeColor,
+  }: BookingsWeekViewProps) => {
+    const weekStart = selectedDate.startOf("week");
+    const weekDays = useMemo(
+      () => Array.from({ length: 7 }, (_, i) => weekStart.plus({ days: i })),
+      [weekStart]
+    );
+
+    // "plane|YYYY-MM-DD" → that day's bookings, earliest first
+    const bookingsByPlaneAndDay = useMemo(() => {
+      const result: Record<string, BookingType[]> = {};
+      const sorted = [...bookings].sort((a, b) =>
+        a.start_time.localeCompare(b.start_time)
+      );
+      for (const booking of sorted) {
+        for (const day of getBookingDays(booking)) {
+          const key = `${booking.plane}|${day}`;
+          (result[key] ??= []).push(booking);
         }
-        result[date].push(booking);
-      });
-    });
+      }
+      return result;
+    }, [bookings]);
 
-    return result;
-  }, [bookings]);
+    const today = DateTime.now().toISODate();
 
-  // Get bookings for a specific day and plane
-  const getBookingsForDay = (plane: string, date: string): BookingType[] => {
-    const dayBookings = bookingsByDate[date] || [];
-    return dayBookings.filter((b) => b.plane === plane);
-  };
-
-  const today = DateTime.now().toISODate();
-
-  return (
-    <div className="overflow-auto bg-white rounded-lg shadow">
-      {/* Week header */}
-      <div className="grid grid-cols-7 gap-2 p-4 bg-gray-50 border-b border-gray-200">
-        {weekDays.map((day) => {
-          const dateString = day.toISODate();
-          const isToday = dateString === today;
-
-          return (
-            <div
-              key={dateString}
-              className={`text-center p-2 rounded ${
-                isToday ? "bg-blue-500 text-white" : "bg-white"
-              }`}
-            >
-              <div className="font-bold text-lg">
-                {day.setLocale("fi").toFormat("ccc")}
-              </div>
-              <div className={`text-sm ${isToday ? "text-white" : "text-gray-600"}`}>
-                {day.toFormat("dd.MM")}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Grid for each plane */}
-      <div className="p-4 space-y-6">
-        {BOOKABLE_PLANES.map((plane) => (
-          <div key={plane} className="border border-gray-200 rounded-lg overflow-hidden">
-            <div className="bg-gray-100 p-2 font-bold text-lg text-center border-b border-gray-200">
-              {getPlaneDisplayName(plane)}
-            </div>
-
-            <div className="grid grid-cols-7 divide-x divide-gray-200">
+    return (
+      <div className="overflow-x-auto bg-white rounded-lg shadow">
+        <table className="w-full min-w-[900px] table-fixed border-collapse">
+          <thead>
+            <tr>
+              <th
+                scope="col"
+                className="w-36 bg-gray-100 border border-gray-200 p-2 text-left text-sm text-sblack"
+              >
+                Kone
+              </th>
               {weekDays.map((day) => {
                 const dateString = day.toISODate();
-                if (!dateString) return null;
-
-                const dayBookings = getBookingsForDay(plane, dateString);
                 const isToday = dateString === today;
-
                 return (
-                  <div
+                  <th
                     key={dateString}
-                    className={`min-h-[200px] p-2 ${
-                      isToday ? "bg-blue-50" : "bg-white"
+                    scope="col"
+                    className={`border border-gray-200 p-2 text-center ${
+                      isToday ? "bg-sblue text-white" : "bg-gray-100 text-sblack"
                     }`}
                   >
-                    {/* Time slots grid */}
-                    <div className="space-y-1">
-                      {hours.map((hour) => {
-                        // Find bookings that overlap with this hour
-                        const hourBookings = dayBookings.filter((booking) => {
-                          const start = DateTime.fromISO(booking.start_time);
-                          const end = DateTime.fromISO(booking.end_time);
-                          const hourStart = DateTime.fromISO(dateString).set({ hour });
-                          const hourEnd = hourStart.plus({ hours: 1 });
-                          return start < hourEnd && end > hourStart;
-                        });
-
-                        if (hourBookings.length === 0) {
-                          return (
-                            <div
-                              key={hour}
-                              className="relative h-[56px] rounded cursor-pointer flex items-center border border-dashed border-gray-300 transition-all hover:border-sblue hover:ring-2 hover:ring-sbluel"
-                              onClick={() =>
-                                onCellClick(plane, `${hour}:00`, dateString)
-                              }
-                              title={`Luo varaus klo ${hour}:00`}
-                            >
-                              <div className="text-xs text-gray-400 p-1">
-                                {hour}:00
-                              </div>
-                            </div>
-                          );
-                        }
-
-                        // Overlapping bookings share the slot side by side
-                        return (
-                          <div key={hour} className="relative h-[56px] flex gap-0.5">
-                            {hourBookings.map((booking) => {
-                              const bookingDays = getBookingDays(booking);
-                              const isMultiday = bookingDays.length > 1;
-                              const isStartDay = bookingDays[0] === dateString;
-                              const isEndDay =
-                                bookingDays[bookingDays.length - 1] === dateString;
-
-                              return (
-                                <button
-                                  key={booking.id}
-                                  type="button"
-                                  onClick={() => onBookingClick(booking)}
-                                  className="flex-1 min-w-0 p-2 rounded text-white text-xs text-left overflow-hidden cursor-pointer transition-all hover:ring-2 hover:ring-sbluel"
-                                  style={{
-                                    backgroundColor: getFlightTypeColor(booking.type),
-                                  }}
-                                  title={`${booking.title} - ${getBookingDisplayName(booking)}\n${DateTime.fromISO(booking.start_time).toFormat("dd.MM HH:mm")} - ${DateTime.fromISO(booking.end_time).toFormat("dd.MM HH:mm")}${isMultiday ? " (Monipäiväinen)" : ""}`}
-                                  aria-label={`Varaus: ${booking.title}, ${getBookingDisplayName(booking)}, tyyppi ${booking.type}`}
-                                >
-                                  <div className="font-semibold truncate flex items-center gap-1">
-                                    {isMultiday && (
-                                      <span className="text-[10px] opacity-75">
-                                        {isStartDay ? "▶" : isEndDay ? "◀" : "◆"}
-                                      </span>
-                                    )}
-                                    {booking.title}
-                                  </div>
-                                  <div className="text-xs opacity-90 truncate">
-                                    {isStartDay || !isMultiday ? DateTime.fromISO(booking.start_time).toFormat("HH:mm") : "..."} - {isEndDay || !isMultiday ? DateTime.fromISO(booking.end_time).toFormat("HH:mm") : "..."}
-                                  </div>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        );
-                      })}
+                    <div className="font-bold capitalize">
+                      {day.setLocale("fi").toFormat("ccc")}
                     </div>
-                  </div>
+                    <div
+                      className={`text-sm font-normal ${
+                        isToday ? "text-white" : "text-gray-600"
+                      }`}
+                    >
+                      {day.toFormat("d.M.")}
+                    </div>
+                  </th>
                 );
               })}
-            </div>
-          </div>
-        ))}
+            </tr>
+          </thead>
+          <tbody>
+            {BOOKABLE_PLANES.map((plane) => (
+              <tr key={plane}>
+                <th
+                  scope="row"
+                  className="bg-gray-50 border border-gray-200 p-2 text-left text-sm font-bold text-sblack align-top"
+                >
+                  {getPlaneDisplayName(plane)}
+                </th>
+                {weekDays.map((day) => {
+                  const dateString = day.toISODate();
+                  if (!dateString) return null;
+                  const dayBookings =
+                    bookingsByPlaneAndDay[`${plane}|${dateString}`] ?? [];
+
+                  return (
+                    <td
+                      key={dateString}
+                      className={`border border-gray-200 p-1 align-top ${
+                        dateString === today ? "bg-sbluel/5" : ""
+                      }`}
+                    >
+                      <div className="flex flex-col gap-1 min-h-[88px]">
+                        {dayBookings.map((booking) => (
+                          <button
+                            key={booking.id}
+                            type="button"
+                            onClick={() => onBookingClick(booking)}
+                            className="w-full rounded px-2 py-1 text-left text-xs text-sblack transition-shadow hover:ring-2 hover:ring-sbluel focus:outline-none focus:ring-2 focus:ring-sblue"
+                            style={{
+                              backgroundColor: getFlightTypeColor(booking.type),
+                            }}
+                            title={`${booking.title} - ${getBookingDisplayName(booking)}`}
+                            aria-label={`Varaus: ${booking.title}, ${getBookingDisplayName(booking)}, tyyppi ${booking.type}`}
+                          >
+                            <span className="block font-semibold tabular-nums">
+                              {getTimeLabel(booking, dateString)}
+                            </span>
+                            <span className="block truncate">{booking.title}</span>
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onCellClick(plane, DEFAULT_START_HOUR, dateString)
+                          }
+                          className="flex-1 min-h-8 rounded border border-dashed border-gray-300 text-sm text-gray-400 transition-colors hover:border-sblue hover:text-sblue focus:outline-none focus:ring-2 focus:ring-sblue"
+                          aria-label={`Luo varaus koneelle ${plane} ${day
+                            .setLocale("fi")
+                            .toFormat("ccc d.M.")}`}
+                        >
+                          +
+                        </button>
+                      </div>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
-    </div>
-  );
-});
+    );
+  }
+);
 
 BookingsWeekView.displayName = "BookingsWeekView";

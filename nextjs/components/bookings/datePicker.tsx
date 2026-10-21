@@ -60,7 +60,7 @@ const DatePicker = ({ viewMode = "day" }: DatePickerProps) => {
             {date.setLocale("fi").toFormat("LLLL yyyy")}
           </div>
           <div className="text-sm text-white/90 mt-1">
-            {date.daysInMonth} päivää
+            Valitse päivä nähdäksesi varaukset
           </div>
         </div>
       );

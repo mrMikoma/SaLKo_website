@@ -104,7 +104,7 @@ const BookingCell = memo(
             <button
               key={`${plane}-${hour}-${booking.id}`}
               onClick={() => onBookingClick(booking)}
-              className="absolute cursor-pointer text-white px-1 overflow-hidden flex flex-col justify-center hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-blue-500 focus:z-10"
+              className="absolute cursor-pointer text-sblack px-1 overflow-hidden flex flex-col justify-center hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-blue-500 focus:z-10"
               style={{
                 left: `${index * bookingWidth}%`,
                 width: `${bookingWidth}%`,
@@ -113,7 +113,7 @@ const BookingCell = memo(
                 backgroundColor: getFlightTypeColor(booking.type),
                 borderRight:
                   index < maxBookings - 1
-                    ? "1px solid rgba(255,255,255,0.5)"
+                    ? "1px solid rgba(12,24,33,0.25)"
                     : "none",
                 fontSize: maxBookings > 2 ? "10px" : "12px",
                 opacity: fullDay ? 0.9 : 1,
