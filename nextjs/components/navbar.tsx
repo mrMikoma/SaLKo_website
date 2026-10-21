@@ -150,14 +150,28 @@ const Navbar = ({ flightLog }: { flightLog: boolean }) => {
                         </Link>
                       </MenuItem>
                       <MenuItem>
-                        <span className="block py-3 px-4 text-swhite/40 cursor-not-allowed">
+                        <Link
+                          href="/kerho/hallit"
+                          className="block py-3 px-4 text-swhite hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
+                        >
                           Hallit
-                        </span>
+                        </Link>
                       </MenuItem>
                       <MenuItem>
-                        <span className="block py-3 px-4 text-swhite/40 cursor-not-allowed">
+                        <Link
+                          href="/kerho/historiaa"
+                          className="block py-3 px-4 text-swhite hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
+                        >
                           Historiaa
-                        </span>
+                        </Link>
+                      </MenuItem>
+                      <MenuItem>
+                        <Link
+                          href="/tiedotteet"
+                          className="block py-3 px-4 text-swhite hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
+                        >
+                          Tiedotteet
+                        </Link>
                       </MenuItem>
                     </MenuItems>
                   </div>
