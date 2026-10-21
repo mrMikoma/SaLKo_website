@@ -161,7 +161,7 @@ Copy `nextjs/.env.example` to `nextjs/.env` (Claude's hooks block editing `.env`
 
 CI/CD runs on GitHub Actions. Build jobs run on GitHub-hosted runners; jobs that touch the server create a temporary self-hosted runner in Hetzner Cloud (`create-runner` / `delete-runner`). `main` is production and `dev` is the development environment. Changes reach either one only through a PR and these workflows, never by hand on the server.
 
-- `build-and-publish-dev.yaml` runs on pushes to `dev` that touch `nextjs/`, pushes the image to GHCR and triggers `deploy-app-dev.yaml`.
+- `build-and-publish-dev.yaml` runs on pushes to `dev` that touch `nextjs/`, pushes the image to GHCR and starts `deploy-app-dev.yaml` from the same branch (`workflow_dispatch`), so changes to the dev deploy take effect on `dev` without waiting for `main`.
 - `build-and-publish-prod.yaml` (manual, from `main`) builds the prod image; `deploy-app-prod.yaml` (manual or `repository_dispatch`) runs `docker compose pull && up` on the server.
 - `db-migrate.yaml` applies `postgres/migrations/` to the dev or prod database (see Schema Changes).
 - `test.yaml` runs lint, types and the e2e suite on PRs (see Testing and Browser Checks).
