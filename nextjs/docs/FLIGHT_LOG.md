@@ -5,13 +5,14 @@ How the flight log works as of October 2026. `FLIGHT_LOG_PLAN.md` describes the 
 ## The model
 
 - **Master:** the aircraft's paper journey log (matkapäiväkirja).
-- **Digital copy:** the club's Google Sheet, one tab per aircraft (`OH-CON Matkapäiväkirja`). Pilots and the biller enter flights there; the website will write rows into it too (coming later).
+- **Digital copy:** the club's Google Sheet, one tab per aircraft (`OH-CON Matkapäiväkirja`). Pilots and the biller enter flights there, and members can also enter them on the website, which writes the rows into the sheet.
 - **Website:** reads the sheet into `sheet_flights` and shows it. `sheet_flights` is a read-only copy. A flight is never edited in the database, only in the sheet. That keeps it one-way, with no two-way sync.
 
 The website owns what isn't in the sheet:
 - the purpose codes and who pays for each (`flight_purposes`);
 - which tab belongs to which aircraft (`aircraft_sheets`);
 - which sheet name is which member (`pilot_aliases`);
+- which member entered which row on the website (`flight_log_web_entries`);
 - later, the billing periods.
 
 ## The sheet
@@ -41,7 +42,7 @@ Row 1 has the headers and row 2 the opening totals; flights start on row 3 (`air
 3. Parses the rows with `parseFlightSheet()`. Rows without a date are formula-only and are skipped.
    - Times are Finnish wall-clock times. Durations are rounded to whole minutes; the sheet has float drift such as 12:32:59.
    - A landing earlier than the takeoff is after midnight.
-4. Writes a new UUID into the ID column of every row that has none, or that has an ID copied from another row. This is the only thing the sync ever writes to the sheet.
+4. Writes a new UUID into the ID column of every row that has none, or that has an ID copied from another row. This is the only thing the sync writes to the sheet; the entry form below writes flights.
 5. In one transaction per tab:
    - upserts the rows into `sheet_flights` (unchanged rows aren't rewritten);
    - marks rows that disappeared with `missing_since`;
@@ -51,7 +52,10 @@ Row 1 has the headers and row 2 the opening totals; flights start on row 3 (`air
 It runs in three ways:
 - when `/admin/lennot` or `/jasenalue/lentopaivakirja` opens and the copy is more than 10 minutes old (`ensureFreshSync`);
 - from the **Synkronoi nyt** button;
-- after a pilot name is matched to a member.
+- after a pilot name is matched to a member;
+- after a member enters or undoes a flight.
+
+The last three wait up to 30 s for a sync that is already running, instead of skipping.
 
 A failing sheet doesn't break the pages: they show the last copy and the error.
 
@@ -66,21 +70,49 @@ A failing sheet doesn't break the pages: they show the last copy and the error.
 
 A training flight without a student is not an issue: on a solo flight the student is the PIC.
 
+## Entering flights on the website
+
+`/jasenalue/lentopaivakirja/uusi` (`LOG_OWN_FLIGHT`) is one screen for a day's flights on one aircraft. The paper book stays the master: the form is for pilots who want their flights in the sheet before the biller copies the book.
+
+- **Who:** the member is the PIC, or the student with the instructor as the other pilot. The other pilot is typed as written in the sheet, with the names already in it as suggestions.
+- **Date:** Tänään and Eilen chips or any earlier date, never one in the future (Finnish time).
+- **Legs:** "+ Seuraava lento samana päivänä" adds a leg that starts where the last one landed, with the same purpose. Times take `1405`, `14.05`, `14,05` or `14:05`, and "Nyt" fills in the current Finnish time. A landing earlier than the takeoff is after midnight. Hour meter, fuel, oil and remarks are optional.
+- **Footer:** total time, and an estimate for billed purposes from the per-minute price in `data/prices.json`. Billing itself comes later.
+
+**Sheet name.** The form writes the member's `pilot_aliases` name. A member without one gets the club's usual form, `T.Kuutti` from "Tero Kuutti" (`sheetNameFor`), or else the full name, saved as their alias so the flights match at once. Only a name that isn't in the sheet or in `pilot_aliases` yet is taken this way: an existing "T.Kuutti" may be another pilot, and taking it would give the member that pilot's flights and bills. When both names are in use, the form asks the member to have the biller match their name on `/admin/lennot`.
+
+**Writing** (`utilities/flightSheetWriter.ts`):
+1. A Postgres advisory lock per aircraft, so two members never get the same rows.
+2. Reads the tab, and the airborne-time column as formulas. The flights go into the formula rows after the last flight (`findWritableRows`): rows where the formula is there and every typed-in column is empty. It stops at the first row someone has typed into, so it never writes past a half-filled row.
+3. Writes only the typed-in columns, plus `ID` and `Lähde` = `web`, with `USER_ENTERED`: ISO dates and `HH:MM` times, which Sheets reads as a date and a time. Names, remarks and other text get a leading apostrophe, so Sheets keeps them as typed and a remark can never become a formula. The formulas stay.
+4. Reads the rows back and checks the IDs, then records the rows in `flight_log_web_entries` and syncs.
+5. When the formula rows run out, it refuses and asks the member to tell the biller, who drags the formulas further down.
+
+If the save fails, the form keeps what was typed so it can be sent again.
+
+**Undo.** "Kumoa viimeisin" on the confirmation clears a flight the member entered, while it is still the last flight in the tab, came from the website and has no Tila. Clearing empties the typed-in cells and keeps the formulas. Anything older is fixed by the biller in the sheet, so the running totals never get a gap.
+
+Before this is turned on against the real sheet, try it on a copy of the spreadsheet: `USER_ENTERED` follows the spreadsheet's locale.
+
 ## Pages
 
 - **`/admin/lennot`** (`VIEW_ALL_FLIGHTS`; changes need `MANAGE_FLIGHT_LOG`):
   - the sync status and the issues;
   - matching sheet names to members;
   - one month of flights per aircraft, with totals and links into the sheet.
-- **`/jasenalue/lentopaivakirja`:** the member's own flights, as PIC or as the second pilot or student, by month, with this year's total.
+- **`/jasenalue/lentopaivakirja`:** the member's own flights, as PIC or as the second pilot or student, by month, with this year's total. Linked from the user menu ("Lentopäiväkirja") when the feature is on.
+- **`/jasenalue/lentopaivakirja/uusi`:** the entry form above.
 
 ## Development and tests
 
 `utilities/flightSheetSource.ts` picks the source:
 - `FLIGHT_SHEET_SOURCE=google` reads the real sheet with `GOOGLE_SERVICE_ACCOUNT_KEY` and `FLIGHT_LOG_SPREADSHEET_ID`. The service account needs editor access to the spreadsheet.
-- `FLIGHT_SHEET_SOURCE=fixture` reads `e2e/fixtures/flight-sheet.json`, a synthetic tab with no real flights or names. It's held in memory, so the IDs the sync writes last until the server restarts.
+- `FLIGHT_SHEET_SOURCE=fixture` reads `e2e/fixtures/flight-sheet.json`, a synthetic tab with no real flights or names. It's held in memory, so the IDs the sync writes and the flights the form enters last until the server restarts. The fixture keeps values only, so a number in the airborne-time column stands for a formula row.
 
 Without the variable, Google is used when it's configured, and the fixture otherwise under `next dev`. Playwright always uses the fixture, so tests never touch the club's sheet.
 
-- `bun run test:unit` runs the parser tests in `tests/unit/`.
+- `bun run test:unit` runs the parser and form-input tests in `tests/unit/`.
 - `e2e/flight-log.spec.ts` covers the admin page, the sync, name matching and the member's list.
+- `e2e/flight-entry.spec.ts` enters two flights as the e2e admin, checks them in the own list and undoes them.
+
+Migration `007_flight_log_web_entries.sql` adds `flight_log_web_entries`.

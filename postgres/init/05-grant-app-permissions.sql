@@ -20,6 +20,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON pilot_aliases TO :app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON sheet_flights TO :app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON sheet_flight_issues TO :app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON sheet_sync_runs TO :app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON flight_log_web_entries TO :app_user;
 
 -- Grant usage on sequences for the IDENTITY columns
 GRANT USAGE, SELECT ON SEQUENCE bullets_id_seq TO :app_user;

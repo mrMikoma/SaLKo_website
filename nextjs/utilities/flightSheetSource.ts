@@ -3,7 +3,13 @@ import "server-only";
 import { readFileSync } from "fs";
 import path from "path";
 import { google, sheets_v4 } from "googleapis";
-import { columnLetter, SheetValues } from "@/utilities/flightSheetParser";
+import {
+  columnLetter,
+  parseSheetDate,
+  parseTimeOfDay,
+  SheetValue,
+  SheetValues,
+} from "@/utilities/flightSheetParser";
 
 /**
  * Where the flight log lives. In production that is the club's Google Sheet;
@@ -23,10 +29,19 @@ export interface SheetCell {
   value: string;
 }
 
+export interface WriteOptions {
+  // Let Sheets parse the values as if typed (USER_ENTERED): "2026-04-01" becomes
+  // a date and "14:05" a time in any spreadsheet locale. Off writes them as-is.
+  parse?: boolean;
+}
+
 export interface FlightSheet {
   readonly kind: "google" | "fixture";
   readTab(tab: string): Promise<SheetValues>;
-  writeCells(tab: string, cells: SheetCell[]): Promise<void>;
+  writeCells(tab: string, cells: SheetCell[], options?: WriteOptions): Promise<void>;
+  // One column as formulas ("=H5-G5"), to find the rows that are pre-filled
+  // with formulas; index 0 is row 1
+  readFormulas(tab: string, column: number): Promise<string[]>;
   // Google's numeric id of each tab, for links into the sheet
   tabIds(): Promise<Map<string, number>>;
   // Link to a row, given the tab's id
@@ -53,18 +68,28 @@ class GoogleFlightSheet implements FlightSheet {
     return (response.data.values ?? []) as SheetValues;
   }
 
-  async writeCells(tab: string, cells: SheetCell[]): Promise<void> {
+  async writeCells(tab: string, cells: SheetCell[], options: WriteOptions = {}): Promise<void> {
     if (cells.length === 0) return;
     await this.sheets.spreadsheets.values.batchUpdate({
       spreadsheetId: this.spreadsheetId,
       requestBody: {
-        valueInputOption: "RAW",
+        valueInputOption: options.parse ? "USER_ENTERED" : "RAW",
         data: cells.map((cell) => ({
           range: `${quoteTab(tab)}!${columnLetter(cell.column)}${cell.row}`,
           values: [[cell.value]],
         })),
       },
     });
+  }
+
+  async readFormulas(tab: string, column: number): Promise<string[]> {
+    const letter = columnLetter(column);
+    const response = await this.sheets.spreadsheets.values.get({
+      spreadsheetId: this.spreadsheetId,
+      range: `${quoteTab(tab)}!${letter}:${letter}`,
+      valueRenderOption: "FORMULA",
+    });
+    return (response.data.values ?? []).map((row) => String(row?.[0] ?? ""));
   }
 
   async tabIds(): Promise<Map<string, number>> {
@@ -114,7 +139,7 @@ class FixtureFlightSheet implements FlightSheet {
     return values.map((row) => [...row]);
   }
 
-  async writeCells(tab: string, cells: SheetCell[]): Promise<void> {
+  async writeCells(tab: string, cells: SheetCell[], options: WriteOptions = {}): Promise<void> {
     const values = this.tabs()[tab];
     if (!values) {
       throw new Error(`Välilehteä ${tab} ei löydy taulukosta`);
@@ -123,8 +148,15 @@ class FixtureFlightSheet implements FlightSheet {
       while (values.length < cell.row) values.push([]);
       const row = values[cell.row - 1];
       while (row.length <= cell.column) row.push("");
-      row[cell.column] = cell.value;
+      row[cell.column] = options.parse ? parseLikeSheets(cell.value) : cell.value;
     }
+  }
+
+  async readFormulas(tab: string, column: number): Promise<string[]> {
+    const values = await this.readTab(tab);
+    // The fixture keeps computed values only; a number in the column stands
+    // for a formula (the pre-filled rows hold 0)
+    return values.map((row) => (typeof row[column] === "number" ? "=fixture" : ""));
   }
 
   async tabIds(): Promise<Map<string, number>> {
@@ -134,6 +166,27 @@ class FixtureFlightSheet implements FlightSheet {
   rowUrl(): string | null {
     return null;
   }
+}
+
+// What Sheets makes of a typed value (USER_ENTERED), for the fixture: a leading
+// apostrophe keeps the rest as text, ISO dates and HH:MM times become serial
+// numbers, numbers become numbers
+function parseLikeSheets(value: string): SheetValue {
+  if (value.startsWith("'")) {
+    return value.slice(1);
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const date = parseSheetDate(value)!;
+    const days = (Date.parse(`${date}T00:00:00Z`) - Date.parse("1899-12-30T00:00:00Z")) / 86_400_000;
+    return days;
+  }
+  if (/^\d{1,2}:\d{2}$/.test(value)) {
+    return parseTimeOfDay(value)! / 1440;
+  }
+  if (value !== "" && !Number.isNaN(Number(value))) {
+    return Number(value);
+  }
+  return value;
 }
 
 export class FlightSheetNotConfiguredError extends Error {

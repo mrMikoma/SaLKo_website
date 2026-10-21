@@ -18,7 +18,7 @@ import { useNavbar } from "@/providers/NavbarContextProvider";
 import Login from "@/components/auth/login";
 import Logout from "@/components/auth/logout";
 
-const NavbarMobile = (handleLogoutProp: { handleLogout: () => void }) => {
+const NavbarMobile = (handleLogoutProp: { handleLogout: () => void; flightLog: boolean }) => {
   const { data: session } = useSession();
   const { isMobileMenuOpen, setIsMobileMenuOpen } = useNavbar();
   const pathName = usePathname();
@@ -230,6 +230,15 @@ const NavbarMobile = (handleLogoutProp: { handleLogout: () => void }) => {
                       >
                         Omat tiedot
                       </Link>
+                      {handleLogoutProp.flightLog && (
+                        <Link
+                          href="/jasenalue/lentopaivakirja"
+                          className="block w-full py-2.5 px-8 text-base text-swhite/95 hover:bg-sblue/40 hover:text-swhite hover:pl-10 transition-all duration-200 border-l-2 border-transparent hover:border-sred backdrop-blur-sm"
+                          onClick={handleClose}
+                        >
+                          Lentopäiväkirja
+                        </Link>
+                      )}
                       {isAdmin && (
                         <Link
                           href="/admin"

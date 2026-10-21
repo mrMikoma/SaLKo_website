@@ -277,6 +277,19 @@ CREATE INDEX IF NOT EXISTS idx_sheet_flights_aircraft_date
 CREATE INDEX IF NOT EXISTS idx_sheet_flights_pic_key ON sheet_flights (pic_key);
 CREATE INDEX IF NOT EXISTS idx_sheet_flights_second_key ON sheet_flights (second_key);
 
+-- Flights members entered on the website: who wrote which sheet row, so they
+-- can undo their own latest entry
+CREATE TABLE IF NOT EXISTS flight_log_web_entries (
+  id UUID PRIMARY KEY, -- the row's ID in the sheet
+  user_id TEXT NOT NULL REFERENCES users (id),
+  registration TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  undone_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_flight_log_web_entries_user
+  ON flight_log_web_entries (user_id, created_at DESC);
+
 -- Problems the sync found in the sheet, recomputed on every sync
 CREATE TABLE IF NOT EXISTS sheet_flight_issues (
   id SERIAL PRIMARY KEY,

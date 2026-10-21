@@ -20,7 +20,8 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useNavbar } from "@/providers/NavbarContextProvider";
 
-const Navbar = () => {
+// flightLog: whether the flight log feature is on (utilities/features.ts)
+const Navbar = ({ flightLog }: { flightLog: boolean }) => {
   const { data: session } = useSession();
   // Logout is a server action, so useSession() keeps returning the old session
   // until it refetches. Remember which session was logged out and hide it.
@@ -82,7 +83,7 @@ const Navbar = () => {
             </span>
           </Link>{" "}
           {/* Mobile menu toggle button */}
-          <NavbarMobile handleLogout={handleLogout} />
+          <NavbarMobile handleLogout={handleLogout} flightLog={flightLog} />
         </div>
 
         {/* Desktop Navigation Menu */}
@@ -273,6 +274,16 @@ const Navbar = () => {
                       Omat tiedot
                     </Link>
                   </MenuItem>
+                  {flightLog && (
+                    <MenuItem>
+                      <Link
+                        href="/jasenalue/lentopaivakirja"
+                        className="block px-4 py-3 text-swhite font-semibold hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
+                      >
+                        Lentopäiväkirja
+                      </Link>
+                    </MenuItem>
+                  )}
                   {isAdmin && (
                     <MenuItem>
                       <Link
