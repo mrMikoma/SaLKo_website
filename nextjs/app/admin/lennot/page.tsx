@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { hasPermission } from "@/utilities/roles";
-import { isFlightLogEnabled } from "@/utilities/features";
+import { isFlightLogEnabled, isSampleFlightsEnabled } from "@/utilities/features";
 import { ensureFreshSync } from "@/utilities/flightSync";
 import { getFlightSheet } from "@/utilities/flightSheetSource";
 import {
@@ -24,6 +24,7 @@ import { formatDateTime, formatFullDate, formatMonth } from "@/utilities/flightF
 import SyncStatus from "@/components/flightLogs/SyncStatus";
 import PilotMatching from "@/components/flightLogs/PilotMatching";
 import FlightTable from "@/components/flightLogs/FlightTable";
+import SampleFlights from "@/components/flightLogs/SampleFlights";
 
 export const metadata = {
   title: "Lennot | Ylläpito",
@@ -123,6 +124,10 @@ export default async function FlightsAdminPage({ searchParams }: PageProps) {
         issues={sync.lastSuccess?.issues ?? null}
         {...sheetInfo()}
       />
+
+      {canReview && isSampleFlightsEnabled() && aircraft.length > 0 && (
+        <SampleFlights aircraft={aircraft.map((a) => a.registration)} />
+      )}
 
       {otherIssues.length > 0 && (
         <div className="bg-white rounded-lg shadow p-6">

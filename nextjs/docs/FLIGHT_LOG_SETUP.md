@@ -79,6 +79,8 @@ On the dev site, log in as an admin and open `/admin/lennot`:
    If the date or times are left-aligned text, the locale in step 1.4 is wrong. Fix it, clear the row and log the flight again.
 3. Undo it with **Kumoa viimeisin** on the confirmation. The row's typed-in cells empty and its formulas stay: it is one of the pre-filled rows again, ready for the next flight. Since it was the last flight, no gap is left. (Undo is refused once a later flight is below it.)
 
+4. To try billing and statistics, fill the sheet with made-up flights: **Esimerkkilennot (kehitys)** on `/admin/lennot` writes about a year of flights for the chosen aircraft, with placeholder pilots (M.Meikäläinen, K.Opettaja…) and Lähde `esimerkki`. It only writes into a tab with no flights from that year, so undo your test flight first. The button is there only where `FLIGHT_LOG_SAMPLE_DATA=true` (the dev deploy sets it).
+
 If the sync fails, the card says what to fix:
 
 | Message on the card | Fix |

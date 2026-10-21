@@ -516,6 +516,8 @@ export interface SheetFlightInput {
   // From bulk entry: the paper page, and Tila (the flight is checked already)
   logPage?: string | null;
   status?: ReviewStatus;
+  // Lähde: "web" unless said otherwise (sample flights are "esimerkki")
+  source?: string;
 }
 
 // Text for a cell written with USER_ENTERED: the leading apostrophe makes
@@ -562,7 +564,7 @@ export function flightCells(
     hourMeter: input.hourMeter ?? "",
     remarks: asText(input.remarks),
     id: asText(input.id),
-    source: asText("web"),
+    source: asText(input.source ?? "web"),
     ...(input.logPage !== undefined && { logPage: logPageValue(input.logPage) }),
     ...(input.status !== undefined && { status: asText(input.status) }),
   };

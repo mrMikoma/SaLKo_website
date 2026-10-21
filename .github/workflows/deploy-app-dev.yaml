@@ -206,6 +206,8 @@ jobs:
             echo "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" >> .env.dev
             # Unfinished features, on in dev only (nextjs/utilities/features.ts)
             echo "FEATURE_FLIGHT_LOG=true" >> .env.dev
+            # The "Esimerkkilennot" button on /admin/lennot (made-up flights into the sheet)
+            echo "FLIGHT_LOG_SAMPLE_DATA=true" >> .env.dev
             # The dev flight log Google Sheet (nextjs/docs/FLIGHT_LOG_SETUP.md), from
             # the development environment's secrets: the spreadsheet's ID and the
             # service account's JSON key file as is. The key is base64-encoded here,
