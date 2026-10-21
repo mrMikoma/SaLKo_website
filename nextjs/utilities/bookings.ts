@@ -34,7 +34,7 @@ export interface BookingType {
   description: string;
   repeat_group_id?: string; // UUID to group repeating bookings together
   is_guest?: boolean; // True if this is a guest booking
-  guest_contact_name?: string; // Members and admins only
+  guest_contact_name?: string; // The guest's name, shown to everyone like the booker's
   guest_contact_email?: string; // Admins only (VIEW_BOOKING_CONTACT_INFO)
   guest_contact_phone?: string; // Admins only (VIEW_BOOKING_CONTACT_INFO)
 }
@@ -142,7 +142,6 @@ function buildRepeatSlots(
 async function findConflicts(
   plane: string,
   slots: Slot[],
-  viewer: SessionUser | null,
   excludeId?: number
 ): Promise<BookingConflict[]> {
   const response = await connectionPool.query(
@@ -169,8 +168,8 @@ async function findConflicts(
     plane: row.plane,
     start_time: toIso(row.start_time),
     end_time: toIso(row.end_time),
-    title: viewer ? row.title : "Varattu",
-    booker: viewer ? row.contact_name ?? row.full_name : "",
+    title: row.title,
+    booker: row.contact_name ?? row.full_name,
   }));
 }
 
@@ -183,8 +182,8 @@ async function findConflicts(
  * (month view: 35 days × 5 planes). Dates are club-time days, YYYY-MM-DD,
  * both inclusive; multi-day bookings that overlap the range are included.
  *
- * What each booking reveals depends on the viewer: anonymous visitors only see
- * that the aircraft is taken, logged-in members see who booked it, why and how
+ * What each booking reveals depends on the viewer: everyone sees who booked it
+ * and why (title, description, the booker's name), logged-in members also how
  * to reach them, and only VIEW_BOOKING_CONTACT_INFO sees guest contact details.
  */
 export async function fetchBookingsForDateRange(
@@ -242,14 +241,15 @@ export async function fetchBookingsForDateRange(
         return {
           id: row.id,
           user_id: "",
-          title: "Varattu",
+          title: row.title,
           start_time,
           end_time,
-          full_name: "",
+          full_name: row.full_name,
           type: row.type,
           plane: row.plane,
-          description: "",
+          description: row.description,
           is_guest: row.is_guest,
+          guest_contact_name: row.guest_contact_name,
         };
       }
 
@@ -308,8 +308,7 @@ export async function addBooking(
     if (!options.allowOverlap) {
       const conflicts = await findConflicts(
         booking.plane,
-        [{ start: booking.start_time, end: booking.end_time }],
-        user
+        [{ start: booking.start_time, end: booking.end_time }]
       );
       if (conflicts.length > 0) {
         return { status: "conflict", conflicts };
@@ -374,7 +373,7 @@ export async function addRepeatingBookings(
   const client = await connectionPool.connect();
   try {
     if (!options.allowOverlap) {
-      const conflicts = await findConflicts(booking.plane, slots, user);
+      const conflicts = await findConflicts(booking.plane, slots);
       if (conflicts.length > 0) {
         return { status: "conflict", conflicts };
       }
@@ -441,8 +440,7 @@ export async function addGuestBooking(
     if (!options.allowOverlap) {
       const conflicts = await findConflicts(
         booking.plane,
-        [{ start: booking.start_time, end: booking.end_time }],
-        null
+        [{ start: booking.start_time, end: booking.end_time }]
       );
       if (conflicts.length > 0) {
         return { status: "conflict", conflicts };
@@ -534,7 +532,6 @@ export async function updateBooking(
       const conflicts = await findConflicts(
         booking.plane,
         [{ start: booking.start_time, end: booking.end_time }],
-        user,
         id
       );
       if (conflicts.length > 0) {

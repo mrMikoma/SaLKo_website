@@ -33,7 +33,7 @@ The database stores UTC (`timestamptz`). Date ranges, day boundaries and recurri
 
 | | Anonymous | Member | Admin |
 |---|---|---|---|
-| See bookings | "Varattu" + aircraft + type | Title, description, booker's name, email and phone | Same, plus guest contact details |
+| See bookings | Title, description, booker's name, aircraft and type | Same, plus the booker's email and phone | Same, plus guest contact details |
 | Create | Guest booking (with contact details), not recurring | Own bookings, recurring too | Same |
 | Update / delete | — | Own bookings | Any booking |
 | Calendar export | Google link right after their own guest booking | Google link and `.ics` | Same |
