@@ -29,6 +29,11 @@ export interface SheetFlight {
   source: string | null;
   status: string | null;
   sheetUrl: string | null;
+  // What the biller saw, sent back when they set Tila (flightSync.inputHash)
+  inputHash: string | null;
+  // The latest Tila change made on the website (admin pages only)
+  statusChangedBy: string | null;
+  statusChangedAt: string | null;
 }
 
 export interface FlightIssueRow {
@@ -82,12 +87,29 @@ const FLIGHT_COLUMNS = `
   f.id, f.registration, f.sheet_row, f.flight_date, f.pic_name, f.second_name,
   f.persons_on_board, f.departure, f.arrival, f.takeoff_at, f.landing_at,
   f.airborne_minutes, f.landings, f.purpose_code, p.name_fi AS purpose_name,
-  f.remarks, f.source, f.status, a.sheet_gid`;
+  f.remarks, f.source, f.status, f.input_hash, a.sheet_gid`;
 
 const FLIGHT_JOINS = `
   FROM sheet_flights f
   LEFT JOIN flight_purposes p ON p.code = f.purpose_code
   LEFT JOIN aircraft_sheets a ON a.registration = f.registration`;
+
+// For the admin pages: who last changed Tila on the website, and when
+const STATUS_CHANGE = `
+  LEFT JOIN LATERAL (
+    SELECT u.full_name AS status_changed_by, c.changed_at AS status_changed_at
+    FROM flight_status_changes c
+    LEFT JOIN users u ON u.id = c.changed_by
+    WHERE c.flight_id = f.id
+    ORDER BY c.changed_at DESC
+    LIMIT 1
+  ) sc ON TRUE`;
+
+// Not yet compared with the paper book: Kirjattu, Korjattava or a Tila the
+// sync doesn't know
+const UNCHECKED = `
+  (f.status IS NULL
+   OR lower(trim(f.status)) NOT IN ('tarkistettu', 'laskutettu', 'ei laskuteta', 'maksettu'))`;
 
 function toFlight(
   row: Record<string, unknown>,
@@ -113,6 +135,9 @@ function toFlight(
     source: (row.source as string) ?? null,
     status: (row.status as string) ?? null,
     sheetUrl: rowUrl(row.sheet_gid as string | null, row.sheet_row as number),
+    inputHash: (row.input_hash as string) ?? null,
+    statusChangedBy: (row.status_changed_by as string) ?? null,
+    statusChangedAt: toIso((row.status_changed_at as Date) ?? null),
   };
 }
 
@@ -172,13 +197,38 @@ export async function getFlightsForMonth(
 ): Promise<SheetFlight[]> {
   const rowUrl = sheetUrlFor();
   const response = await connectionPool.query(
-    `SELECT ${FLIGHT_COLUMNS} ${FLIGHT_JOINS}
+    `SELECT ${FLIGHT_COLUMNS}, sc.* ${FLIGHT_JOINS} ${STATUS_CHANGE}
      WHERE f.registration = $1 AND f.missing_since IS NULL
        AND to_char(f.flight_date, 'YYYY-MM') = $2
      ORDER BY f.sheet_row`,
     [registration, month]
   );
   return response.rows.map((row) => toFlight(row, rowUrl));
+}
+
+// One page of the review list; more than this is a backlog to clear month by month
+export const UNCHECKED_LIMIT = 500;
+
+/** An aircraft's flights not yet compared with the paper book, in sheet order */
+export async function getUncheckedFlights(registration: string): Promise<SheetFlight[]> {
+  const rowUrl = sheetUrlFor();
+  const response = await connectionPool.query(
+    `SELECT ${FLIGHT_COLUMNS}, sc.* ${FLIGHT_JOINS} ${STATUS_CHANGE}
+     WHERE f.registration = $1 AND f.missing_since IS NULL AND ${UNCHECKED}
+     ORDER BY f.sheet_row
+     LIMIT ${UNCHECKED_LIMIT}`,
+    [registration]
+  );
+  return response.rows.map((row) => toFlight(row, rowUrl));
+}
+
+export async function getUncheckedCount(registration: string): Promise<number> {
+  const response = await connectionPool.query(
+    `SELECT count(*)::int AS count FROM sheet_flights f
+     WHERE f.registration = $1 AND f.missing_since IS NULL AND ${UNCHECKED}`,
+    [registration]
+  );
+  return response.rows[0].count;
 }
 
 export async function getFlightIssues(registration: string): Promise<FlightIssueRow[]> {

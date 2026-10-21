@@ -9,12 +9,19 @@ import { auth } from "@/auth";
 import { hasPermission } from "@/utilities/roles";
 import { isFlightLogEnabled } from "@/utilities/features";
 import { syncFlightSheets, SyncSummary } from "@/utilities/flightSync";
-import { nameKey, SHEET_ZONE, SheetFlightInput } from "@/utilities/flightSheetParser";
+import {
+  nameKey,
+  REVIEW_STATUSES,
+  SHEET_ZONE,
+  SheetFlightInput,
+} from "@/utilities/flightSheetParser";
 import { normalizeClock, sheetNameFor } from "@/utilities/flightFormInput";
 import {
   appendFlightsToSheet,
   clearWebFlight,
   FlightSheetWriteError,
+  setFlightStatuses,
+  StatusChange,
 } from "@/utilities/flightSheetWriter";
 
 type ActionResult<T = null> =
@@ -324,4 +331,66 @@ export async function undoFlight(id: string): Promise<ActionResult> {
   revalidatePath("/jasenalue/lentopaivakirja");
   revalidatePath("/admin/lennot");
   return { status: "success", result: null };
+}
+
+const setFlightStatusSchema = z.object({
+  registration: z.string().min(1),
+  status: z.enum(REVIEW_STATUSES),
+  flights: z
+    .array(z.object({ id: z.uuid(), inputHash: z.string().max(64).nullable() }))
+    .min(1, "Valitse ensin lennot")
+    .max(500, "Enintään 500 lentoa kerralla"),
+});
+
+/**
+ * Admin: set Tila on flights compared with the paper book (Tarkistettu,
+ * Korjattava, or back to Kirjattu). Written into the sheet, which stays the
+ * source; flight_status_changes keeps who changed it and when.
+ */
+export async function setFlightStatus(
+  input: z.input<typeof setFlightStatusSchema>
+): Promise<ActionResult<{ changed: number }>> {
+  const access = await requireFlightLogAdmin();
+  if ("error" in access) {
+    return { status: "error", error: access.error };
+  }
+  const parsed = setFlightStatusSchema.safeParse(input);
+  if (!parsed.success) {
+    return { status: "error", error: parsed.error.issues[0].message };
+  }
+  const { registration, status, flights } = parsed.data;
+
+  let changes: StatusChange[] = [];
+  let error: string | null = null;
+  try {
+    changes = await setFlightStatuses(registration, flights, status);
+    if (changes.length > 0) {
+      await pool.query(
+        `INSERT INTO flight_status_changes (flight_id, registration, old_status, new_status, changed_by)
+         SELECT c.id, $2, NULLIF(c.old_status, ''), NULLIF($3, ''), $4
+         FROM jsonb_to_recordset($1::jsonb) AS c(id uuid, old_status text)`,
+        [
+          JSON.stringify(changes.map((c) => ({ id: c.id, old_status: c.oldStatus }))),
+          registration,
+          status,
+          access.user.id,
+        ]
+      );
+    }
+  } catch (caught) {
+    console.error("Error setting flight status:", caught);
+    error =
+      caught instanceof FlightSheetWriteError
+        ? caught.message
+        : "Tilan tallennus epäonnistui. Lentopäiväkirjan taulukkoon ei saatu yhteyttä.";
+  }
+
+  // Sync either way: after a refusal the page then shows what changed
+  await syncFlightSheets(access.user.fullName || "ylläpito", { wait: true });
+  revalidatePath("/admin/lennot");
+  revalidatePath("/jasenalue/lentopaivakirja");
+  if (error) {
+    return { status: "error", error };
+  }
+  return { status: "success", result: { changed: changes.length } };
 }

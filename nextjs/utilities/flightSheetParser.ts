@@ -70,6 +70,16 @@ export const FLIGHT_STATUSES = [
   "Maksettu",
 ] as const;
 
+// The statuses the biller sets by hand while comparing flights with the paper
+// book ("" is Kirjattu). The others are set when a billing period closes, and
+// a flight that has one is no longer changed from the review page.
+export const REVIEW_STATUSES = ["", "Korjattava", "Tarkistettu"] as const;
+export type ReviewStatus = (typeof REVIEW_STATUSES)[number];
+
+export const isBilledStatus = (status: string | null): boolean =>
+  status !== null &&
+  ["laskutettu", "ei laskuteta", "maksettu"].includes(status.trim().toLowerCase());
+
 export interface ParsedFlight {
   id: string | null; // null until the sync writes one into the ID column
   row: number; // 1-based sheet row

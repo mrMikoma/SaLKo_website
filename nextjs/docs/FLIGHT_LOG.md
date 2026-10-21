@@ -13,6 +13,7 @@ The website owns what isn't in the sheet:
 - which tab belongs to which aircraft (`aircraft_sheets`);
 - which sheet name is which member (`pilot_aliases`);
 - which member entered which row on the website (`flight_log_web_entries`);
+- who changed a flight's Tila on the website, and when (`flight_status_changes`);
 - later, the billing periods.
 
 ## The sheet
@@ -33,6 +34,8 @@ Row 1 has the headers and row 2 the opening totals; flights start on row 3 (`air
 - Tarkistettu: matches the paper book;
 - Laskutettu or Ei laskuteta: set when a billing period closes;
 - Maksettu.
+
+The first three are set on `/admin/lennot` (below) or in the sheet. A row with one of the last three belongs to billing and is no longer changed from the website.
 
 ## Sync
 
@@ -92,14 +95,26 @@ If the save fails, the form keeps what was typed so it can be sent again.
 
 **Undo.** "Kumoa viimeisin" on the confirmation clears a flight the member entered, while it is still the last flight in the tab, came from the website and has no Tila. Clearing empties the typed-in cells and keeps the formulas. Anything older is fixed by the biller in the sheet, so the running totals never get a gap.
 
-Before this is turned on against the real sheet, try it on a copy of the spreadsheet: `USER_ENTERED` follows the spreadsheet's locale.
+Try it on a copy of the spreadsheet before it writes to the real one (see the checklist at the end).
+
+## Checking flights against the paper book
+
+On `/admin/lennot` (`MANAGE_FLIGHT_LOG`), the biller ticks the rows that match the paper book and sets their Tila: **Merkitse tarkistetuksi**, **Korjattava**, or **Palauta kirjatuksi** (empty again). The **Tarkistamatta** view lists every flight of the aircraft that isn't Tarkistettu yet or already in billing, oldest first, across months; **Kuukausittain** is one month, as before.
+
+`setFlightStatuses()` in `utilities/flightSheetWriter.ts`:
+1. Takes the aircraft's lock and reads the tab.
+2. Finds each flight by its ID, so a row that moved still gets the right status.
+3. Refuses the whole change when a flight changed in the sheet after the page was opened. The page sends each row's `input_hash`, a hash of the typed-in fields only (`utilities/flightInputHash.ts`), so a fix in a row above, which moves the running totals, doesn't count. A Tarkistettu mark therefore always means "matches what I saw".
+4. Refuses rows that are Laskutettu, Ei laskuteta or Maksettu.
+5. Writes only the Tila cells, as plain text, and records each change in `flight_status_changes` with the admin and the time. The table shows the latest one under the status.
+6. Syncs, also after a refusal, so the reloaded page shows what changed.
 
 ## Pages
 
 - **`/admin/lennot`** (`VIEW_ALL_FLIGHTS`; changes need `MANAGE_FLIGHT_LOG`):
   - the sync status and the issues;
   - matching sheet names to members;
-  - one month of flights per aircraft, with totals and links into the sheet.
+  - one month of flights per aircraft, or every flight still to check, with totals, links into the sheet and the Tila actions above.
 - **`/jasenalue/lentopaivakirja`:** the member's own flights, as PIC or as the second pilot or student, by month, with this year's total. Linked from the user menu ("Lentopäiväkirja") when the feature is on.
 - **`/jasenalue/lentopaivakirja/uusi`:** the entry form above.
 
@@ -114,5 +129,12 @@ Without the variable, Google is used when it's configured, and the fixture other
 - `bun run test:unit` runs the parser and form-input tests in `tests/unit/`.
 - `e2e/flight-log.spec.ts` covers the admin page, the sync, name matching and the member's list.
 - `e2e/flight-entry.spec.ts` enters two flights as the e2e admin, checks them in the own list and undoes them.
+- `e2e/flight-review.spec.ts` marks two flights checked, including the refusal when a row changed, and puts them back.
 
-Migration `007_flight_log_web_entries.sql` adds `flight_log_web_entries`.
+Migration `007_flight_log_web_entries.sql` adds `flight_log_web_entries`, and `008_flight_status_changes.sql` adds `flight_status_changes` and `sheet_flights.input_hash`.
+
+## Before switching it on for the real sheet
+
+1. Add the ID, Lähde, Tila and Laskutusjakso headers at the right edge of each aircraft's tab, and give the service account editor access.
+2. Fill Tila down as **Laskutettu** for every flight that has already been billed the old way. Otherwise they all show up under Tarkistamatta, and later as unbilled.
+3. On a copy of the spreadsheet, try one save, one undo and one status change: `USER_ENTERED` follows the spreadsheet's locale.
