@@ -18,6 +18,7 @@ import XCrossIcon from "./icons/xCross";
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useNavbar } from "@/providers/NavbarContextProvider";
+import { hasPermission } from "@/utilities/roles";
 
 // flightLog: whether the flight log feature is on (utilities/features.ts)
 const Navbar = ({ flightLog }: { flightLog: boolean }) => {
@@ -28,6 +29,8 @@ const Navbar = ({ flightLog }: { flightLog: boolean }) => {
   const authenticated = Boolean(user);
   const userName = user?.name || "";
   const isAdmin = user?.roles?.includes("admin") || false;
+  // A treasurer's way into the admin site is billing
+  const isTreasurer = !isAdmin && flightLog && hasPermission(user?.roles ?? [], "MANAGE_BILLING");
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
   const { isFullscreenMode } = useNavbar();
@@ -287,6 +290,16 @@ const Navbar = ({ flightLog }: { flightLog: boolean }) => {
                         className="block px-4 py-3 text-swhite font-semibold hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
                       >
                         Admin sivut
+                      </Link>
+                    </MenuItem>
+                  )}
+                  {isTreasurer && (
+                    <MenuItem>
+                      <Link
+                        href="/admin/laskutus"
+                        className="block px-4 py-3 text-swhite font-semibold hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
+                      >
+                        Laskutus
                       </Link>
                     </MenuItem>
                   )}

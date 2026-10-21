@@ -14,10 +14,11 @@ test.describe.configure({ timeout: 90_000 });
 // a pilot name matched to the e2e member, the equipment fee, closing, payment
 // and the CSV. Each run uses a day in 2024 and a pilot name of its own; the
 // flights stay in the dev server's copy of the fixture, and the database rows
-// are removed afterwards. Local database only.
+// are removed afterwards. Local database only. Run as the treasurer, who
+// does the whole job without the rest of the admin site.
 test.skip(!isLocalDatabase(), "writes billing rows: local database only");
-test.skip(!accounts.admin || !accounts.user, "needs the admin and member accounts");
-test.use({ storageState: accounts.admin?.storageState });
+test.skip(!accounts.treasurer || !accounts.user, "needs the treasurer and member accounts");
+test.use({ storageState: accounts.treasurer?.storageState });
 
 async function query(sql: string, params: unknown[] = []) {
   const pool = new Pool({

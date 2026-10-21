@@ -5,11 +5,17 @@
 
 export const ROLES = {
   ADMIN: "admin",
+  // Laskuttaja: the flight log and billing, not the rest of the admin site.
+  // An extra role on top of "user".
+  TREASURER: "treasurer",
   USER: "user",
   GUEST: "guest",
 } as const;
 
 export type Role = (typeof ROLES)[keyof typeof ROLES];
+
+// The roles an admin can give, in the order the user forms show them
+export const ASSIGNABLE_ROLES: Role[] = [ROLES.ADMIN, ROLES.TREASURER, ROLES.USER, ROLES.GUEST];
 
 /**
  * Permission definitions
@@ -45,15 +51,15 @@ export const PERMISSIONS = {
   // Flight logging
   LOG_OWN_FLIGHT: ["admin", "user"] as Role[],
   VIEW_OWN_FLIGHTS: ["admin", "user"] as Role[],
-  VIEW_ALL_FLIGHTS: ["admin"] as Role[],
+  VIEW_ALL_FLIGHTS: ["admin", "treasurer"] as Role[],
   EDIT_ANY_FLIGHT: ["admin"] as Role[],
   // Sync the sheet and match pilot names to members
-  MANAGE_FLIGHT_LOG: ["admin"] as Role[],
+  MANAGE_FLIGHT_LOG: ["admin", "treasurer"] as Role[],
 
   // Billing: members see what they were billed; admins run the periods,
   // mark payments and set the prices
   VIEW_OWN_BILLING: ["admin", "user"] as Role[],
-  MANAGE_BILLING: ["admin"] as Role[],
+  MANAGE_BILLING: ["admin", "treasurer"] as Role[],
 };
 
 /**
@@ -136,9 +142,49 @@ export function canDeleteBooking(
 export function getRoleDisplayName(role: Role | string): string {
   const displayNames: Record<string, string> = {
     admin: "Järjestelmänvalvoja",
+    treasurer: "Laskuttaja",
     user: "Käyttäjä",
     guest: "Vieras",
   };
 
   return displayNames[role] || role;
+}
+
+/**
+ * The roles an admin gives an account, without unknown names. The treasurer
+ * role is an extra: it opens billing, not the member pages, so it comes with
+ * "user" (or "admin").
+ */
+export function validateRoles(roles: string[]): { roles: Role[] } | { error: string } {
+  const valid = ASSIGNABLE_ROLES.filter((role) => roles.includes(role));
+  if (valid.length === 0) {
+    return { error: "Käyttäjällä täytyy olla vähintään yksi rooli" };
+  }
+  if (valid.includes(ROLES.TREASURER) && !valid.includes(ROLES.USER) && !valid.includes(ROLES.ADMIN)) {
+    return { error: "Laskuttajalla pitää olla myös Käyttäjä-rooli" };
+  }
+  return { roles: valid };
+}
+
+// The parts of the admin site that roles other than admin can open, by the
+// permission each needs. An admin opens all of /admin.
+const ADMIN_SECTIONS: { path: string; permission: keyof typeof PERMISSIONS }[] = [
+  { path: "/admin/laskutus", permission: "MANAGE_BILLING" },
+  { path: "/admin/lennot", permission: "VIEW_ALL_FLIGHTS" },
+];
+
+/** Whether these roles may open a path under /admin */
+export function canOpenAdminPath(roles: string[], pathname: string): boolean {
+  if (hasPermission(roles, "ACCESS_ADMIN_SITE")) return true;
+  return ADMIN_SECTIONS.some(
+    (section) =>
+      (pathname === section.path || pathname.startsWith(`${section.path}/`)) &&
+      hasPermission(roles, section.permission)
+  );
+}
+
+/** Where the admin site starts for these roles, or null if they have none of it */
+export function adminHome(roles: string[]): string | null {
+  if (hasPermission(roles, "ACCESS_ADMIN_SITE")) return "/admin";
+  return ADMIN_SECTIONS.find((section) => hasPermission(roles, section.permission))?.path ?? null;
 }

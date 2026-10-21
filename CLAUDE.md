@@ -40,7 +40,7 @@ Playwright e2e tests live in `nextjs/e2e/` (config: `nextjs/playwright.config.ts
 
 - `smoke.spec.ts` checks that every public page renders an `h1`, that protected routes redirect anonymous visitors to `/`, and that the login dialog opens.
 - Every test fails on an uncaught page error or a `console.error` (auto fixture in `e2e/fixtures.ts`), so import `test`/`expect` from `./fixtures`, not from `@playwright/test`.
-- `auth.setup.ts` creates two credentials accounts in the local database, `e2e-user@salko.invalid` (member) and `e2e-admin@salko.invalid` (admin), both with password `E2e-local-pass1!`. It logs in as each and saves the sessions to `nextjs/playwright/.auth/{user,admin}.json` for `member.spec.ts` and `admin.spec.ts`. It only writes to a database on localhost or a Docker bridge address (172.16.0.0/12). For any other database, set `E2E_USER_EMAIL`/`E2E_USER_PASSWORD` and `E2E_ADMIN_EMAIL`/`E2E_ADMIN_PASSWORD` in `nextjs/.env` to existing accounts, or those specs are skipped.
+- `auth.setup.ts` creates three credentials accounts in the local database, `e2e-user@salko.invalid` (member), `e2e-admin@salko.invalid` (admin) and `e2e-treasurer@salko.invalid` (member and treasurer), all with password `E2e-local-pass1!`. It logs in as each and saves the sessions to `nextjs/playwright/.auth/{user,admin,treasurer}.json` for `member.spec.ts`, `admin.spec.ts`, `treasurer.spec.ts` and the flight-log specs. It only writes to a database on localhost or a Docker bridge address (172.16.0.0/12). For any other database, set `E2E_USER_EMAIL`/`E2E_USER_PASSWORD`, `E2E_ADMIN_EMAIL`/`E2E_ADMIN_PASSWORD` and `E2E_TREASURER_EMAIL`/`E2E_TREASURER_PASSWORD` in `nextjs/.env` to existing accounts, or those specs are skipped.
 - A dev server already listening on :3000 is reused. In a worktree, when another checkout's server owns :3000, run `PORT=3001 bun run test:e2e` so the tests hit this tree's code.
 
 After changing UI, check it in a real browser with Playwright CLI (the `playwright-cli` skill), run from `nextjs/` where its config lives. In Claude Code sessions the SessionStart hook puts `nextjs/node_modules/.bin` on PATH, so `playwright-cli` is the pinned dev dependency. In a plain terminal use `bunx --no-install playwright-cli`; without `--no-install`, bunx downloads the deprecated unscoped `playwright-cli` package when run outside `nextjs/`.
@@ -84,7 +84,7 @@ traefik/       # Reverse proxy config
 ### Database
 
 Tables (defined in `postgres/init/01-schema.sql`):
-- **`users`** — `roles` is a text array of `admin | user | guest`. `auth_provider` is `credentials | google | system`. Accounts whose only role is `guest` cannot log in.
+- **`users`** — `roles` is a text array of `admin | treasurer | user | guest`; `treasurer` (laskuttaja) comes on top of `user`. `auth_provider` is `credentials | google | system`. Accounts whose only role is `guest` cannot log in.
 - **`bookings`** — aircraft reservations; `repeat_group_id` (UUID) groups recurring bookings. `plane` is a registration from `nextjs/data/planes.json` (OH-CON, OH-386, OH-PDX, OH-816, OH-829, OH-475).
 - **`guest_bookings`** — contact info for unauthenticated bookings, linked 1:1 to a `bookings` row.
 - **`bullets`** — club announcements.
@@ -124,6 +124,8 @@ Session strategy is JWT with 30-day expiry. `trustHost: true` is required becaus
 ### Authorization (RBAC)
 
 `utilities/roles.ts` exports `ROLES`, `PERMISSIONS`, `hasPermission()`, `canManageBooking()`, and `canDeleteBooking()`. All server actions call `auth()` and `hasPermission()` before touching the DB. Never rely on client-side role checks for access control.
+
+Roles: `admin` has the whole admin site. `treasurer` (laskuttaja) has the flight log and billing (`VIEW_ALL_FLIGHTS`, `MANAGE_FLIGHT_LOG`, `MANAGE_BILLING`) and nothing else of `/admin`: `canOpenAdminPath()` decides what `proxy.ts` lets through and what the admin nav shows, and `adminHome()` is where a treasurer lands (`/admin/laskutus`). `validateRoles()` checks the roles an admin gives, and refuses a treasurer without `user` or `admin`. Give a new role its permissions here, and add it to `ASSIGNABLE_ROLES` for the user forms.
 
 ### Data Flow Pattern
 
