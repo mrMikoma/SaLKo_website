@@ -15,6 +15,7 @@ import ArrowDownIcon from "@/components/icons/arrowDown";
 import XCrossIcon from "@/components/icons/xCross";
 import MenuIcon from "@/components/icons/menu";
 import { useNavbar } from "@/providers/NavbarContextProvider";
+import { hasPermission } from "@/utilities/roles";
 import Login from "@/components/auth/login";
 import Logout from "@/components/auth/logout";
 
@@ -24,6 +25,11 @@ const NavbarMobile = (handleLogoutProp: { handleLogout: () => void; flightLog: b
   const pathName = usePathname();
   const authenticated = Boolean(session?.user);
   const isAdmin = session?.user?.roles?.includes("admin") || false;
+  // A treasurer's way into the admin site is billing
+  const isTreasurer =
+    !isAdmin &&
+    handleLogoutProp.flightLog &&
+    hasPermission(session?.user?.roles ?? [], "MANAGE_BILLING");
 
   // Toggle menu visibility
   const handleToggle = () => {
@@ -246,6 +252,15 @@ const NavbarMobile = (handleLogoutProp: { handleLogout: () => void; flightLog: b
                           onClick={handleClose}
                         >
                           Admin sivut
+                        </Link>
+                      )}
+                      {isTreasurer && (
+                        <Link
+                          href="/admin/laskutus"
+                          className="block w-full py-2.5 px-8 text-base text-swhite/95 hover:bg-sblue/40 hover:text-swhite hover:pl-10 transition-all duration-200 border-l-2 border-transparent hover:border-sred backdrop-blur-sm"
+                          onClick={handleClose}
+                        >
+                          Laskutus
                         </Link>
                       )}
                       <div className="block w-full py-2.5 px-8 text-base text-sred/95 hover:bg-sblue/40 hover:text-sred hover:pl-10 transition-all duration-200 border-l-2 border-transparent hover:border-sred backdrop-blur-sm">

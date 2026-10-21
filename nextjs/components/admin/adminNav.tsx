@@ -2,8 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { canOpenAdminPath, ROLES } from "@/utilities/roles";
 
-const AdminNav = ({ showFlightLog = false }: { showFlightLog?: boolean }) => {
+const AdminNav = ({
+  showFlightLog = false,
+  roles,
+}: {
+  showFlightLog?: boolean;
+  roles: string[];
+}) => {
   const pathname = usePathname();
 
   const navItems = [
@@ -18,7 +25,8 @@ const AdminNav = ({ showFlightLog = false }: { showFlightLog?: boolean }) => {
       : []),
     { href: "/admin/bulletins", label: "Tiedotteet" },
     { href: "/admin/settings", label: "Asetukset" },
-  ];
+    // A treasurer sees only their own sections
+  ].filter((item) => canOpenAdminPath(roles, item.href));
 
   const isActive = (href: string, exact?: boolean) => {
     if (exact) {
@@ -52,7 +60,9 @@ const AdminNav = ({ showFlightLog = false }: { showFlightLog?: boolean }) => {
             </div>
           </div>
           <div className="flex items-center space-x-4">
-            <span className="text-sm text-blue-200">Admin</span>
+            <span className="text-sm text-blue-200">
+              {roles.includes(ROLES.ADMIN) ? "Admin" : "Laskuttaja"}
+            </span>
             <Link
               href="/jasenalue/profiili"
               className="text-blue-100 hover:text-white text-sm"

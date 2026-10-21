@@ -7,12 +7,11 @@ import {
   deleteUser,
   resetUserPassword,
 } from "@/utilities/adminUserActions";
-import { getRoleDisplayName } from "@/utilities/roles";
+import { ASSIGNABLE_ROLES, getRoleDisplayName } from "@/utilities/roles";
 import RoleBadge from "./RoleBadge";
 import AuthProviderBadge from "./AuthProviderBadge";
 import EditGuestInfoForm from "./EditGuestInfoForm";
 
-const AVAILABLE_ROLES = ["admin", "user", "guest"] as const;
 
 interface UserTableRowProps {
   user: User;
@@ -102,7 +101,7 @@ const UserTableRow = ({ user, onSuccess, onError }: UserTableRowProps) => {
         <td className="px-6 py-4 whitespace-nowrap">
           {editingRoles ? (
             <div className="flex flex-col gap-1">
-              {AVAILABLE_ROLES.map((role) => (
+              {ASSIGNABLE_ROLES.map((role) => (
                 <label key={role} className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"

@@ -34,7 +34,7 @@ proxy.ts      # route protection (Next 16's replacement for middleware.ts)
   3. queries with `pool` from `@/utilities/db`, always parameterized (`$1`, `$2`, …);
   4. calls `revalidatePath()` for pages that show the changed data;
   5. returns `{ status: "success" | "error", error?, result? }`. Error messages are user-facing and in Finnish; log details with `console.error`.
-- **Access control:** `proxy.ts` redirects anonymous users away from `/jasenalue/*` and non-admins away from `/admin/*`. That is only a UI guard. The server action check above is what protects data.
+- **Access control:** `proxy.ts` redirects anonymous users away from `/jasenalue/*`, and keeps `/admin/*` to admins, except the flight log and billing sections, which treasurers can also open (`canOpenAdminPath()` in `utilities/roles.ts`). That is only a UI guard. The server action check above is what protects data.
 - **Forms** call server actions through `useActionState` (`components/auth/login.tsx`, `components/profile/*Form.tsx`).
 - **Client data** that needs caching or refetching goes through TanStack Query hooks in `hooks/` (see `useBookings.ts`).
 - **Dates:** use Luxon. Postgres runs in UTC, so set `Europe/Helsinki` explicitly when you format times for people.
