@@ -132,7 +132,7 @@ const FlightEntryForm = ({ options, today, yesterday }: FlightEntryFormProps) =>
           personsOnBoard: leg.personsOnBoard,
           purposeCode: leg.purposeCode,
           fuelLitres: decimal(leg.fuel),
-          oilLitres: decimal(leg.oil),
+          oilQuarts: decimal(leg.oil),
           hourMeter: decimal(leg.meter),
           remarks: leg.remarks.trim() || null,
         })),
@@ -509,7 +509,7 @@ const FlightEntryForm = ({ options, today, yesterday }: FlightEntryFormProps) =>
                     [
                       ["meter", "Tuntimittari", "5949.4"],
                       ["fuel", "Tankkaus (l)", "60"],
-                      ["oil", "Öljy (l)", "1"],
+                      ["oil", "Öljy (qt)", "1"],
                     ] as const
                   ).map(([field, label, placeholder]) => (
                     <div key={field}>

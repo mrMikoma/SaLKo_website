@@ -94,7 +94,7 @@ export function sampleFlights({ registration, from, until, newId }: SampleOption
           landings: 1,
           purposeCode: "HAR",
           fuelLitres: rand() < 0.25 ? between(30, 70) : null,
-          oilLitres: null,
+          oilQuarts: null,
           hourMeter: null,
           remarks: null,
           source: SAMPLE_SOURCE,

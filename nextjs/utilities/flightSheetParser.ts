@@ -97,7 +97,7 @@ export interface ParsedFlight {
   totalLandings: number | null;
   purposeCode: string | null;
   fuelLitres: number | null;
-  oilLitres: number | null;
+  oilQuarts: number | null;
   hourMeter: number | null;
   remarks: string | null;
   logPage: string | null;
@@ -297,7 +297,7 @@ export function parseFlightSheet(
       totalLandings: numberOrNull(cell(row, "landingsTotal")),
       purposeCode: text(cell(row, "purpose"))?.toUpperCase() ?? null,
       fuelLitres: numberOrNull(cell(row, "fuel")),
-      oilLitres: numberOrNull(cell(row, "oil")),
+      oilQuarts: numberOrNull(cell(row, "oil")),
       hourMeter: numberOrNull(cell(row, "hourMeter")),
       remarks: text(cell(row, "remarks")),
       logPage: text(cell(row, "logPage")),
@@ -510,7 +510,7 @@ export interface SheetFlightInput {
   landings: number;
   purposeCode: string;
   fuelLitres: number | null;
-  oilLitres: number | null;
+  oilQuarts: number | null;
   hourMeter: number | null;
   remarks: string | null;
   // From bulk entry: the paper page, and Tila (the flight is checked already)
@@ -560,7 +560,7 @@ export function flightCells(
     landings: input.landings,
     purpose: asText(input.purposeCode),
     fuel: input.fuelLitres ?? "",
-    oil: input.oilLitres ?? "",
+    oil: input.oilQuarts ?? "",
     hourMeter: input.hourMeter ?? "",
     remarks: asText(input.remarks),
     id: asText(input.id),
