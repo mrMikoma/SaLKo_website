@@ -122,6 +122,6 @@ To cut the website off from a spreadsheet at once, remove the service account fr
 ## Production, later
 
 1. Make a separate service account (`salko-lentopaivakirja`) and share the club's real sheet with it.
-2. Add `GOOGLE_SHEETS_ID` and `GOOGLE_SERVICE_ACCOUNT_JSON` to the production environment's secrets, and the same two lines to `deploy-app-prod.yaml`.
-3. Turn on `FEATURE_FLIGHT_LOG`.
-4. Go through the checklist at the end of `FLIGHT_LOG.md` first.
+2. Add `GOOGLE_SHEETS_ID` and `GOOGLE_SERVICE_ACCOUNT_JSON` to the production environment's secrets. `deploy-app-prod.yaml` already passes them on.
+3. Go through the checklist at the end of `FLIGHT_LOG.md` first.
+4. Turn on the flight log with the production environment's variable `FEATURE_FLIGHT_LOG=true` and a redeploy (`GO_LIVE.md`, stage B).
