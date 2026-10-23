@@ -16,3 +16,9 @@ function isEnabled(variable: string | undefined): boolean {
 export function isFlightLogEnabled(): boolean {
   return isEnabled(process.env.FEATURE_FLIGHT_LOG)
 }
+
+// Development only: the button on /admin/lennot that fills an aircraft's tab
+// with made-up flights (utilities/sampleFlights.ts). Off in production.
+export function isSampleFlightsEnabled(): boolean {
+  return isEnabled(process.env.FLIGHT_LOG_SAMPLE_DATA)
+}
