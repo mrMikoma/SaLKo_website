@@ -29,6 +29,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON billing_periods TO :app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON billing_payers TO :app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON billing_lines TO :app_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON aircraft_year_totals TO :app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON email_outbox TO :app_user;
 
 -- Grant usage on sequences for the IDENTITY columns
 GRANT USAGE, SELECT ON SEQUENCE bullets_id_seq TO :app_user;
@@ -38,3 +39,4 @@ GRANT USAGE, SELECT ON SEQUENCE sheet_sync_runs_id_seq TO :app_user;
 GRANT USAGE, SELECT ON SEQUENCE flight_status_changes_id_seq TO :app_user;
 GRANT USAGE, SELECT ON SEQUENCE billing_periods_id_seq TO :app_user;
 GRANT USAGE, SELECT ON SEQUENCE billing_lines_id_seq TO :app_user;
+GRANT USAGE, SELECT ON SEQUENCE email_outbox_id_seq TO :app_user;

@@ -220,6 +220,14 @@ jobs:
             # Unset secrets leave the flight log pages saying the sheet isn't set up.
             echo "FLIGHT_LOG_SPREADSHEET_ID=${{ secrets.GOOGLE_SHEETS_ID }}" >> .env.dev
             echo "GOOGLE_SERVICE_ACCOUNT_KEY=$(printf '%s' '${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}' | base64 -w0)" >> .env.dev
+            # Email (nextjs/docs/MAIL_SETUP.md): kehitys sends every message to
+            # MAIL_REDIRECT_TO, never to its recipient; the dev database's seed has
+            # real addresses. Without that secret, mail stays off and is only stored.
+            echo "MAIL_MODE=redirect" >> .env.dev
+            echo "MAIL_REDIRECT_TO=${{ secrets.MAIL_REDIRECT_TO }}" >> .env.dev
+            echo "MAIL_GMAIL_CLIENT_ID=${{ secrets.MAIL_GMAIL_CLIENT_ID }}" >> .env.dev
+            echo "MAIL_GMAIL_CLIENT_SECRET=${{ secrets.MAIL_GMAIL_CLIENT_SECRET }}" >> .env.dev
+            echo "MAIL_BILLING_REFRESH_TOKEN=${{ secrets.MAIL_BILLING_REFRESH_TOKEN }}" >> .env.dev
 
             # Ensure the environment variables are written before proceeding
             echo ".env.dev file created with environment variables."

@@ -54,12 +54,20 @@ export default async function BillingPage() {
             ne ja merkitsee lennot taulukkoon laskutetuiksi.
           </p>
         </div>
-        <Link
-          href="/admin/laskutus/asetukset"
-          className="shrink-0 min-h-11 inline-flex items-center px-4 rounded-lg bg-white border border-gray-300 text-gray-800 font-medium hover:bg-gray-50"
-        >
-          Hinnat ja asetukset
-        </Link>
+        <div className="flex flex-wrap gap-3 shrink-0">
+          <Link
+            href="/admin/laskutus/viestit"
+            className="min-h-11 inline-flex items-center px-4 rounded-lg bg-white border border-gray-300 text-gray-800 font-medium hover:bg-gray-50"
+          >
+            Sähköpostit
+          </Link>
+          <Link
+            href="/admin/laskutus/asetukset"
+            className="min-h-11 inline-flex items-center px-4 rounded-lg bg-white border border-gray-300 text-gray-800 font-medium hover:bg-gray-50"
+          >
+            Hinnat ja asetukset
+          </Link>
+        </div>
       </div>
 
       <NewPeriodForm suggestion={nextPeriod(periods)} />
