@@ -35,6 +35,7 @@ Stage A doesn't depend on B or C and carries security fixes, so it shouldn't wai
   - Every container restarts by itself (`restart: unless-stopped`).
 - [ ] **Ansible dry run:** Actions → **Ansible Provision** → branch `dev`, tick "Dry run".
   - Nothing changes. From any branch but `main`, the workflow refuses to run without the tick.
+  - The diff shows a key removed from `salko`'s `authorized_keys`. That's expected: a dry run skips the shell step that adds the GitHub keys back.
   - Read the diff, especially the package list of the first task, `apt upgrade: dist`. If it upgrades `docker-ce` or `containerd.io`, Docker restarts during the release (step 1). Docker's packages come from Docker's own repository, which unattended upgrades never touch, so they are probably months behind.
 - [ ] **Accounts whose emails differ only in capitals.** Production stored emails as typed, and two such accounts would compete at login. Count them, read-only; the query prints no member data:
   ```
