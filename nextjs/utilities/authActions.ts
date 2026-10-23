@@ -3,6 +3,7 @@
 import { signIn } from "@/auth";
 import { AuthError } from "next-auth";
 import { LoginFormSchema } from "@/utilities/definitions";
+import { safeRedirect } from "@/utilities/safeRedirect";
 
 export interface LoginState {
   errors?: {
@@ -44,7 +45,8 @@ export async function loginWithCredentials(
     await signIn("credentials", {
       email,
       password,
-      redirectTo: "/",
+      // Back to the page the login was opened from, e.g. the booking calendar
+      redirectTo: safeRedirect(formData.get("redirectTo")),
     });
 
     // This line should not be reached if login is successful
@@ -86,10 +88,10 @@ export async function loginWithCredentials(
 /**
  * Server action for Google OAuth login
  */
-export async function loginWithGoogle() {
+export async function loginWithGoogle(formData?: FormData) {
   try {
     await signIn("google", {
-      redirectTo: "/",
+      redirectTo: safeRedirect(formData?.get("redirectTo")),
     });
   } catch (error) {
     if (error instanceof AuthError) {
