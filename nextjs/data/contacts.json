@@ -2,6 +2,7 @@
   "general": {
     "name": "Savonlinnan Lentokerho r.y.",
     "email": "info@savonlinnanlentokerho.fi",
+    "billingEmail": "laskutus@savonlinnanlentokerho.fi",
     "address": "Lentoasemantie 50",
     "city": "Savonlinna",
     "postalCode": "57310",

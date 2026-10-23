@@ -8,6 +8,8 @@ import { hasPermission } from "@/utilities/roles";
 import { isFlightLogEnabled } from "@/utilities/features";
 import { SHEET_ZONE } from "@/utilities/flightSheetParser";
 import { getBillingSettings } from "@/utilities/billingData";
+import { getMailOverview } from "@/utilities/mailData";
+import MailStatus from "@/components/mail/MailStatus";
 import {
   EquipmentFees,
   FreeHour,
@@ -97,6 +99,14 @@ export default async function BillingSettingsPage({ searchParams }: PageProps) {
       <section className={card}>
         <h2 className="text-xl font-semibold">Kuka maksaa</h2>
         <PurposePayers purposes={settings.purposes} />
+      </section>
+
+      <section className={card}>
+        <h2 className="text-xl font-semibold">Sähköposti</h2>
+        <MailStatus overview={getMailOverview()} />
+        <Link href="/admin/laskutus/viestit" className="inline-block text-sblue hover:underline">
+          Lähetetyt viestit ja testiviesti
+        </Link>
       </section>
     </div>
   );
