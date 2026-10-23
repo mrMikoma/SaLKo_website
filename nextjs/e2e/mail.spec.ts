@@ -20,5 +20,7 @@ test("a test message is stored, not sent, while mail is off", async ({ page }) =
   await expect(latest).toContainText(`Testiviesti · E2E treasurer <${accounts.treasurer!.email}>`);
   await expect(latest).toContainText("Ei lähetetty");
   await latest.getByText("Näytä viesti").click();
-  await expect(latest).toContainText("Laskut lähtevät osoitteesta laskutus@savonlinnanlentokerho.fi");
+  await expect(latest).toContainText(
+    'Laskuissa lähettäjänä näkyy "Savonlinnan Lentokerho, laskutus", ja vastaukset menevät osoitteeseen laskutus@savonlinnanlentokerho.fi.'
+  );
 });

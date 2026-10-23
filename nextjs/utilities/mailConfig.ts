@@ -26,49 +26,40 @@ export function mailMode(env: Env = process.env): MailMode {
   return "off";
 }
 
-export const SENDER_KEYS = ["billing"] as const;
-export type SenderKey = (typeof SENDER_KEYS)[number];
+/**
+ * The club's one mail account, which sends everything: MAIL_FROM, with the
+ * token it gave the website (scripts/mail-authorize.ts) and the OAuth client
+ * it gave it to
+ */
+export function mailAccount(env: Env = process.env) {
+  return {
+    address: value(env.MAIL_FROM),
+    refreshToken: value(env.MAIL_REFRESH_TOKEN),
+    clientId: value(env.MAIL_GMAIL_CLIENT_ID),
+    clientSecret: value(env.MAIL_GMAIL_CLIENT_SECRET),
+  };
+}
 
-export interface Sender {
-  key: SenderKey;
-  address: string;
-  name: string;
-  refreshToken: string | null;
+export function isMailConfigured(env: Env = process.env): boolean {
+  const account = mailAccount(env);
+  return Boolean(account.address && account.refreshToken && account.clientId && account.clientSecret);
 }
 
 export class MailConfigError extends Error {}
 
+// "Savonlinnan Lentokerho r.y." → "Savonlinnan Lentokerho"
+const CLUB = contacts.general.name.replace(/\s+r\.?\s?y\.?$/i, "");
+
 /**
- * The mailboxes the website sends from. Each one has authorised the website
- * to send as it (scripts/mail-authorize.ts) and has a token of its own. Bills
- * go from laskutus@, the address members already know and the treasurer
- * reads. Invitations and the chairman's letters get a sender of their own
- * (e.g. info@) when they come, so replies to them don't land in billing.
+ * What a message is about sets the sender's name and where replies go. The
+ * address it comes from is always the club's mail account.
  */
-export function getSender(key: string, env: Env = process.env): Sender {
-  switch (key) {
-    case "billing":
-      return {
-        key,
-        address: value(env.MAIL_BILLING_FROM) ?? "laskutus@savonlinnanlentokerho.fi",
-        name: contacts.general.name,
-        refreshToken: value(env.MAIL_BILLING_REFRESH_TOKEN),
-      };
-    default:
-      throw new MailConfigError(`Tuntematon lähettäjä: ${key}`);
-  }
-}
+export const MAIL_PURPOSES = {
+  billing: { name: `${CLUB}, laskutus`, replyTo: contacts.general.billingEmail },
+  info: { name: CLUB, replyTo: contacts.general.email },
+} as const;
 
-/** The OAuth client the senders authorised; one for all of them */
-export const gmailClient = (env: Env = process.env) => ({
-  clientId: value(env.MAIL_GMAIL_CLIENT_ID),
-  clientSecret: value(env.MAIL_GMAIL_CLIENT_SECRET),
-});
-
-export function isSenderConfigured(key: SenderKey, env: Env = process.env): boolean {
-  const { clientId, clientSecret } = gmailClient(env);
-  return Boolean(clientId && clientSecret && getSender(key, env).refreshToken);
-}
+export type MailPurpose = keyof typeof MAIL_PURPOSES;
 
 export interface MessageContent {
   to: { address: string; name?: string | null };
@@ -102,15 +93,16 @@ type GoogleError = {
 };
 
 /** A failed send as what to do about it, in Finnish */
-export function describeMailError(error: unknown, senderAddress: string): string {
+export function describeMailError(error: unknown, accountAddress: string | null): string {
   if (error instanceof MailConfigError) return error.message;
+  const account = accountAddress ?? "kerhon sähköpostitili";
   const e = (error ?? {}) as GoogleError;
   const data = e.response?.data?.error;
   const message = [e.message, typeof data === "string" ? data : data?.message].filter(Boolean).join(" ");
   const status = Number(e.status ?? e.response?.status ?? e.code);
 
   if (/invalid_grant/i.test(message)) {
-    return `Osoitteen ${senderAddress} lupa lähettää ei enää kelpaa: se on peruttu, tai tilin salasana on vaihdettu. Valtuuta osoite uudelleen (docs/MAIL_SETUP.md).`;
+    return `Tilin ${account} lupa lähettää ei enää kelpaa: se on peruttu, tai tilin salasana on vaihdettu. Valtuuta tili uudelleen (docs/MAIL_SETUP.md).`;
   }
   if (/invalid_client|unauthorized_client/i.test(message)) {
     return "OAuth-asiakkaan tunnus tai salaisuus on väärin (MAIL_GMAIL_CLIENT_ID, MAIL_GMAIL_CLIENT_SECRET).";
@@ -119,7 +111,7 @@ export function describeMailError(error: unknown, senderAddress: string): string
     return "Gmail API ei ole käytössä Google Cloud -projektissa. Ota se käyttöön (docs/MAIL_SETUP.md).";
   }
   if (/insufficient.*scope|SCOPE_INSUFFICIENT/i.test(message)) {
-    return `Osoitteen ${senderAddress} lupa ei kata lähettämistä. Valtuuta se uudelleen (docs/MAIL_SETUP.md).`;
+    return `Tilin ${account} lupa ei kata lähettämistä. Valtuuta se uudelleen (docs/MAIL_SETUP.md).`;
   }
   if (status === 429 || /rate limit|quota/i.test(message)) {
     return "Gmailin lähetysraja tuli täyteen. Yritä myöhemmin uudelleen.";

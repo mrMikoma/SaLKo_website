@@ -450,7 +450,10 @@ CREATE TABLE IF NOT EXISTS aircraft_year_totals (
 -- never sent twice.
 CREATE TABLE IF NOT EXISTS email_outbox (
   id SERIAL PRIMARY KEY,
-  sender TEXT NOT NULL, -- the mailbox it goes from: a key of SENDERS in utilities/mail.ts
+  -- It comes from the club's mail account (MAIL_FROM); what it is about sets
+  -- the sender's name and where replies go (MAIL_PURPOSES in utilities/mailConfig.ts)
+  from_name TEXT NOT NULL,
+  reply_to TEXT,
   kind TEXT NOT NULL, -- what it is: 'test', 'invoice', ...
   to_address TEXT NOT NULL,
   to_name TEXT,
