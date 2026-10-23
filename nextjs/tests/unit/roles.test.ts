@@ -18,6 +18,8 @@ describe("the treasurer role", () => {
     expect(canOpenAdminPath(treasurer, "/admin/laskutus")).toBe(true);
     expect(canOpenAdminPath(treasurer, "/admin/laskutus/3/csv")).toBe(true);
     expect(canOpenAdminPath(treasurer, "/admin/lennot/tuonti")).toBe(true);
+    expect(canOpenAdminPath(treasurer, "/admin/laskut/12")).toBe(true);
+    expect(canOpenAdminPath(["user"], "/admin/laskut")).toBe(false);
     expect(canOpenAdminPath(treasurer, "/admin")).toBe(false);
     expect(canOpenAdminPath(treasurer, "/admin/users")).toBe(false);
     // A prefix of a section's path is not the section

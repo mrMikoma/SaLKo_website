@@ -21,6 +21,7 @@ const AdminNav = ({
       ? [
           { href: "/admin/lennot", label: "Lennot" },
           { href: "/admin/laskutus", label: "Laskutus" },
+          { href: "/admin/laskut", label: "Laskut" },
           { href: "/admin/tilastot", label: "Tilastot" },
         ]
       : []),
@@ -32,7 +33,8 @@ const AdminNav = ({
     if (exact) {
       return pathname === href;
     }
-    return pathname.startsWith(href);
+    // "/admin/laskut" isn't active on "/admin/laskutus"
+    return pathname === href || pathname.startsWith(`${href}/`);
   };
 
   // Wraps onto two rows on a phone instead of overflowing the screen

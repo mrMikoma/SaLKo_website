@@ -176,6 +176,7 @@ export function validateRoles(roles: string[]): { roles: Role[] } | { error: str
 // permission each needs. An admin opens all of /admin.
 const ADMIN_SECTIONS: { path: string; permission: keyof typeof PERMISSIONS }[] = [
   { path: "/admin/laskutus", permission: "MANAGE_BILLING" },
+  { path: "/admin/laskut", permission: "MANAGE_BILLING" },
   { path: "/admin/lennot", permission: "VIEW_ALL_FLIGHTS" },
   { path: "/admin/tilastot", permission: "VIEW_STATISTICS" },
 ];

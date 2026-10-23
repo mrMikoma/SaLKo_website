@@ -11,6 +11,9 @@ import { euros } from "@/utilities/billing";
 import { formatDateTime, formatFullDate, formatMinutes } from "@/utilities/flightFormat";
 import BillLines, { signedMinutes } from "@/components/billing/BillLines";
 import { OpenPeriodActions, PaidToggle } from "@/components/billing/PeriodActions";
+import { getPeriodInvoices } from "@/utilities/invoiceData";
+import { InvoiceStatusBadge } from "@/components/invoices/InvoiceDocument";
+import { CreatePeriodInvoicesButton } from "@/components/invoices/InvoiceActions";
 
 export const metadata = {
   title: "Laskutusjakso | Ylläpito",
@@ -46,6 +49,11 @@ export default async function BillingPeriodPage({ params }: PageProps) {
   const { period, bill, payers } = view;
   const open = !period.closedAt;
   const unbilledMinutes = bill.unbilled.reduce((sum, line) => sum + line.minutes, 0);
+  const invoices = open ? {} : await getPeriodInvoices(period.id);
+  // Payers who still need an invoice: something to pay, not paid already
+  const uninvoiced = bill.payers.filter(
+    (payer) => payer.totalCents > 0 && !payers[payer.key]?.paidAt && !invoices[payer.key]
+  ).length;
 
   return (
     <div className="space-y-6 text-gray-900">
@@ -112,6 +120,28 @@ export default async function BillingPeriodPage({ params }: PageProps) {
         </div>
       )}
 
+      {!open && bill.payers.length > 0 && (
+        <div className="bg-white rounded-lg shadow p-6 space-y-3">
+          <h2 className="text-xl font-semibold">Laskut</h2>
+          <p className="text-gray-700">
+            {uninvoiced > 0
+              ? `${uninvoiced} maksajalle ei ole vielä laskua. Luonnokset tarkistetaan ja lähetetään Laskut-sivulla.`
+              : "Jokaisella maksajalla on lasku, tai maksu on jo merkitty."}
+          </p>
+          <div className="flex flex-wrap items-start gap-3">
+            {uninvoiced > 0 && <CreatePeriodInvoicesButton periodId={period.id} />}
+            {Object.keys(invoices).length > 0 && (
+              <Link
+                href={`/admin/laskut?nakyma=kaikki&jakso=${period.id}`}
+                className="min-h-11 inline-flex items-center px-4 rounded-lg bg-white border border-gray-300 text-gray-800 font-medium hover:bg-gray-50"
+              >
+                Jakson laskut ({Object.keys(invoices).length})
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
+
       {view.changedSince.length > 0 && (
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-semibold text-orange-900">Muuttunut laskutuksen jälkeen</h2>
@@ -162,7 +192,15 @@ export default async function BillingPeriodPage({ params }: PageProps) {
                       <BillLines lines={payer.lines} totalCents={payer.totalCents} />
                     </div>
                   </details>
-                  {!open && (
+                  {!open && invoices[payer.key] && (
+                    <p className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+                      <Link href={`/admin/laskut/${invoices[payer.key].id}`} className="text-sblue hover:underline">
+                        {invoices[payer.key].number ? `Lasku ${invoices[payer.key].number}` : "Laskuluonnos"}
+                      </Link>
+                      <InvoiceStatusBadge status={invoices[payer.key].status} overdue={false} />
+                    </p>
+                  )}
+                  {!open && !invoices[payer.key] && (
                     <div className="mt-2">
                       <PaidToggle
                         periodId={period.id}

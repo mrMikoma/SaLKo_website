@@ -39,6 +39,10 @@ const pilot = `Laskutus Testi ${seconds}`;
 const period = `E2E-${seconds}`;
 
 const cleanUp = async () => {
+  // Invoices keep their period
+  const invoices = "SELECT i.id FROM invoices i JOIN billing_periods p ON p.id = i.period_id WHERE p.name LIKE 'E2E-%'";
+  await query(`DELETE FROM email_outbox WHERE invoice_id IN (${invoices})`);
+  await query(`DELETE FROM invoices WHERE id IN (${invoices})`);
   await query("DELETE FROM billing_periods WHERE name LIKE 'E2E-%'");
   await query(
     `DELETE FROM equipment_fee_seasons
@@ -116,8 +120,28 @@ test("bills a period: minimum, unbilled flights, closing and payment", async ({ 
     { status: "Laskutettu", billing_period: period },
   ]);
 
-  await page.getByRole("button", { name: "Merkitse maksetuksi: E2E user" }).click();
-  await expect(page.getByRole("button", { name: "Peru maksu: E2E user" })).toBeVisible();
+  // The invoice: a draft with the period's lines, sent (mail is off in tests)
+  // and paid, which marks the flights Maksettu in the sheet
+  await page.getByRole("button", { name: "Luo laskuluonnokset" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "1 luonnos luotu" })).toBeVisible();
+  await page.getByRole("link", { name: "Laskuluonnos" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Luonnos: E2E user" })).toBeVisible({ timeout: 30_000 });
+  const invoice = page.getByRole("article");
+  await expect(invoice).toContainText(`Lentolasku ${period}`);
+  await expect(invoice).toContainText("OH-CON Minimilaskutus 30 min (lento 20 min)");
+  await expect(invoice.getByRole("row").filter({ hasText: "Yhteensä" })).toContainText("217,00 €");
+  await page.getByRole("button", { name: /^(Lähetä lasku|Viimeistele lasku)/ }).click();
+  await expect(page.getByRole("heading", { level: 1, name: /^Lasku \d{8}$/ })).toBeVisible();
+  await page.getByRole("button", { name: "Merkitse maksetuksi" }).click();
+  await expect(page.getByRole("button", { name: "Peru maksu" })).toBeVisible();
+  const paid = await query(
+    `SELECT status FROM sheet_flights
+     WHERE flight_date = $1 AND missing_since IS NULL ORDER BY sheet_row`,
+    [isoDay]
+  );
+  expect(paid.map((row) => row.status)).toEqual(["Maksettu", "Ei laskuteta", "Maksettu"]);
+  await page.goto(periodUrl);
+  await expect(page.getByRole("listitem").filter({ hasText: "E2E user" })).toContainText("Maksettu");
 
   const csv = await (await page.request.get(`${periodUrl}/csv?taso=maksajat`)).text();
   expect(csv).toContain(`${period};E2E user;${accounts.user!.email};kyllä;2;60;3;217,00;`);
@@ -129,5 +153,7 @@ test("bills a period: minimum, unbilled flights, closing and payment", async ({ 
   const bill = memberPage.locator("summary").filter({ hasText: `Jakso ${period}` });
   await expect(bill).toContainText("217,00 €");
   await expect(bill).toContainText("Maksettu");
+  await bill.click();
+  await expect(memberPage.getByRole("link", { name: /^Lasku \d{8} ja maksutiedot$/ })).toBeVisible();
   await member.close();
 });

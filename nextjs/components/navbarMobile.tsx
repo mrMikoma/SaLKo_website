@@ -260,6 +260,15 @@ const NavbarMobile = (handleLogoutProp: { handleLogout: () => void; flightLog: b
                           Lentopäiväkirja
                         </Link>
                       )}
+                      {handleLogoutProp.flightLog && (
+                        <Link
+                          href="/jasenalue/laskut"
+                          className="block w-full py-2.5 px-8 text-base text-swhite/95 hover:bg-sblue/40 hover:text-swhite hover:pl-10 transition-all duration-200 border-l-2 border-transparent hover:border-sred backdrop-blur-sm"
+                          onClick={handleClose}
+                        >
+                          Laskut
+                        </Link>
+                      )}
                       {isAdmin && (
                         <Link
                           href="/admin"

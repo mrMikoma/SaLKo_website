@@ -11,7 +11,7 @@ type genericContact = {
   city: string;
   postalCode: string;
   country: string;
-  buseinessId: string;
+  businessId: string;
   IBAN: string;
   BIC: string;
   bank: string;
@@ -105,7 +105,7 @@ export default function Page() {
                     Y-tunnus:
                   </td>
                   <td className="py-2 px-1 text-swhite">
-                    {contacts.general.buseinessId}
+                    {contacts.general.businessId}
                   </td>
                 </tr>
                 <tr className="border-b border-swhite/10">

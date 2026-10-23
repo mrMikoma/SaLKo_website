@@ -446,6 +446,8 @@ export interface MyBill {
   totalCents: number;
   paidAt: string | null;
   lines: BillLine[];
+  // The invoice sent for it, once there is one
+  invoice: { id: number; number: number } | null;
 }
 
 /** A member's bills from closed periods, newest first */
@@ -453,8 +455,10 @@ export async function getMyBills(userId: string): Promise<MyBill[]> {
   const key = `user:${userId}`;
   const [payers, lines] = await Promise.all([
     connectionPool.query(
-      `SELECT p.id, p.name, p.closed_at, b.total_cents, b.paid_at
+      `SELECT p.id, p.name, p.closed_at, b.total_cents, b.paid_at, i.id AS invoice_id, i.number AS invoice_number
        FROM billing_payers b JOIN billing_periods p ON p.id = b.period_id
+       LEFT JOIN invoices i ON i.period_id = b.period_id AND i.payer_key = b.payer_key
+         AND i.status IN ('open', 'paid')
        WHERE b.payer_key = $1 AND p.closed_at IS NOT NULL
        ORDER BY p.starts_on DESC`,
       [key]
@@ -471,6 +475,7 @@ export async function getMyBills(userId: string): Promise<MyBill[]> {
     totalCents: row.total_cents,
     paidAt: row.paid_at ? (row.paid_at as Date).toISOString() : null,
     lines: lines.rows.filter((line) => line.period_id === row.id).map(toLine),
+    invoice: row.invoice_id ? { id: row.invoice_id, number: row.invoice_number } : null,
   }));
 }
 

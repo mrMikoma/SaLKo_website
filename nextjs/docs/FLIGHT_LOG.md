@@ -150,13 +150,14 @@ OH-CON starts at 3,10 / 5,00 €/min, as in `data/prices.json`. That file is the
 - **Open period:** it is worked out from the synced flights each time it is shown. It includes the flights dated in it that the website hasn't billed and whose Tila isn't already Laskutettu, Ei laskuteta or Maksettu (those were billed by hand). The first open period also takes late entries, flights dated inside a period that has already closed.
 - **Blockers:** unchecked flights (not Tarkistettu), names not matched to a member, unknown purposes, missing airborne time, and aircraft without a price. Each links to where it is fixed.
 - **Sulje jakso:** syncs, then stores the lines (`billing_lines`) and per-payer totals (`billing_payers`). It writes Tila Laskutettu or Ei laskuteta and the period's name in Laskutusjakso for every flight of the period, checking each row's `input_hash`, and commits the database only after the sheet write has succeeded. A closed period can't be reopened or removed.
-- **Merkitse maksetuksi:** per payer, writes Maksettu for their flights. "Peru" puts back Laskutettu.
+- **Invoices:** "Luo laskuluonnokset" on a closed period makes a draft invoice per payer, to send from `/admin/laskut` (`INVOICES.md`).
+- **Merkitse maksetuksi:** per payer, on the period or on their invoice, writes Maksettu for their flights. "Peru" puts back Laskutettu.
 - **Changes after closing:** a flight that changes in the sheet after its period closed is flagged there ("Muuttunut laskutuksen jälkeen"). The first open period then gets a "Korjaus" line with the difference: a new payer is credited and billed separately, and a removed flight is credited. Corrections leave out the minimum and the free hour.
 
 **Output:**
 - CSV of every line, or one row per payer (`?taso=maksajat`), in Finnish Excel format, for the accounting software;
 - printable summaries, one page per payer (`/admin/laskutus/[id]/tuloste`);
-- members see their closed periods, with lines and whether they are paid, on `/jasenalue/lentopaivakirja` (`VIEW_OWN_BILLING`).
+- members see their closed periods, with lines and whether they are paid, on `/jasenalue/lentopaivakirja` (`VIEW_OWN_BILLING`), linked to their invoices on `/jasenalue/laskut`.
 
 **Settings** (`/admin/laskutus/asetukset`): prices per aircraft from a date, the equipment-fee members per season, the free hour, and who pays for each purpose.
 
