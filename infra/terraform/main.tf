@@ -62,6 +62,32 @@ resource "cloudflare_dns_record" "dev" {
   proxied = true
 }
 
+# Mail. The club's mail is Google Workspace; its MX record was added by hand.
+# SPF and DMARC tell receivers that the domain's mail comes only from Google,
+# so the bills the website sends (nextjs/docs/MAIL_SETUP.md) aren't taken for
+# spam. The DKIM key (google._domainkey) comes from the Google Admin console
+# and is added here once generated.
+
+resource "cloudflare_dns_record" "spf" {
+  zone_id = var.cloudflare_zone_id
+  comment = "SPF: the domain's mail is sent only through Google Workspace"
+  content = "\"v=spf1 include:_spf.google.com ~all\""
+  name    = "@"
+  type    = "TXT"
+  ttl     = 1
+}
+
+# p=none: receivers check the domain's mail but don't act on failures yet.
+# Raise to quarantine once DKIM is on and mail from Google passes.
+resource "cloudflare_dns_record" "dmarc" {
+  zone_id = var.cloudflare_zone_id
+  comment = "DMARC for mail from the domain"
+  content = "\"v=DMARC1; p=none\""
+  name    = "_dmarc"
+  type    = "TXT"
+  ttl     = 1
+}
+
 #################################################################
 # GitHub
 #################################################################
