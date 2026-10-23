@@ -1,8 +1,7 @@
 import type { MailOverview } from "@/utilities/mailData";
 
-/** Whether the website sends mail, from which address, and where it goes */
+/** Whether the website sends mail, from which account, and where replies go */
 const MailStatus = ({ overview }: { overview: MailOverview }) => {
-  const billing = overview.senders.find((sender) => sender.key === "billing");
   const mode =
     overview.mode === "send"
       ? { tone: "border-green-300 bg-green-50 text-green-900", text: "Käytössä: viestit menevät vastaanottajille." }
@@ -19,17 +18,17 @@ const MailStatus = ({ overview }: { overview: MailOverview }) => {
   return (
     <div className="space-y-3">
       <p className={`rounded-lg border px-4 py-3 ${mode.tone}`}>{mode.text}</p>
-      {billing && (
-        <p className="text-sm text-gray-700">
-          Laskut lähtevät osoitteesta <strong>{billing.address}</strong>.
-          {overview.mode !== "off" && !billing.configured && (
-            <span className="text-red-700">
-              {" "}
-              Lähetystä siitä ei ole määritetty (docs/MAIL_SETUP.md), joten viestit epäonnistuvat.
-            </span>
-          )}
-        </p>
-      )}
+      <p className="text-sm text-gray-700">
+        Kaikki kerhon viestit lähtevät tililtä{" "}
+        <strong>{overview.account ?? "(MAIL_FROM puuttuu)"}</strong>. Vastaukset laskuihin menevät osoitteeseen{" "}
+        {overview.billingReplyTo}, muihin viesteihin osoitteeseen {overview.infoReplyTo}.
+        {overview.mode !== "off" && !overview.configured && (
+          <span className="text-red-700">
+            {" "}
+            Tiliä ei ole määritetty kokonaan (docs/MAIL_SETUP.md), joten viestit epäonnistuvat.
+          </span>
+        )}
+      </p>
     </div>
   );
 };

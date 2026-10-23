@@ -1,7 +1,8 @@
 -- Migration: Email outbox
 -- Date: 2026-10-23
--- Description: The website sends email (first, bills) through the club's
---              Google Workspace. Each message is stored before it goes out.
+-- Description: The website sends email (first, bills) from the club's one
+--              Google Workspace mail account. Each message is stored before
+--              it goes out.
 -- init/01-schema.sql already has the table.
 
 -- Email the website sends (nextjs/utilities/mail.ts). Each message is stored
@@ -9,7 +10,10 @@
 -- never sent twice.
 CREATE TABLE IF NOT EXISTS email_outbox (
   id SERIAL PRIMARY KEY,
-  sender TEXT NOT NULL, -- the mailbox it goes from: a key of SENDERS in utilities/mail.ts
+  -- It comes from the club's mail account (MAIL_FROM); what it is about sets
+  -- the sender's name and where replies go (MAIL_PURPOSES in utilities/mailConfig.ts)
+  from_name TEXT NOT NULL,
+  reply_to TEXT,
   kind TEXT NOT NULL, -- what it is: 'test', 'invoice', ...
   to_address TEXT NOT NULL,
   to_name TEXT,

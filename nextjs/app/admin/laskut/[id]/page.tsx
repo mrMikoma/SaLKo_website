@@ -7,7 +7,7 @@ import { hasPermission } from "@/utilities/roles";
 import { isFlightLogEnabled } from "@/utilities/features";
 import { getInvoice, getInvoiceSettings, InvoiceDelivery } from "@/utilities/invoiceData";
 import { invoicePresets } from "@/utilities/invoices";
-import { getSender, mailMode } from "@/utilities/mailConfig";
+import { MAIL_PURPOSES, mailMode } from "@/utilities/mailConfig";
 import { formatDateTime } from "@/utilities/flightFormat";
 import InvoiceDocument, { InvoiceStatusBadge } from "@/components/invoices/InvoiceDocument";
 import {
@@ -78,7 +78,7 @@ export default async function InvoicePage({ params }: PageProps) {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem] items-start">
-        <InvoiceDocument invoice={invoice} contactEmail={getSender("billing").address} footer={settings.footer} />
+        <InvoiceDocument invoice={invoice} contactEmail={MAIL_PURPOSES.billing.replyTo} footer={settings.footer} />
 
         <div className="space-y-6 print:hidden">
           {invoice.status === "draft" && (

@@ -2,20 +2,20 @@ import "server-only";
 
 import connectionPool from "@/utilities/db";
 import {
-  getSender,
-  isSenderConfigured,
+  isMailConfigured,
+  MAIL_PURPOSES,
+  mailAccount,
   mailMode,
   MailMode,
   redirectAddress,
-  SENDER_KEYS,
-  SenderKey,
 } from "@/utilities/mailConfig";
 
 /** Reads for the admin's mail pages; the pages check permissions first */
 
 export interface OutboxMessage {
   id: number;
-  sender: string;
+  fromName: string;
+  replyTo: string | null;
   kind: string;
   toAddress: string;
   toName: string | null;
@@ -33,18 +33,21 @@ export interface OutboxMessage {
 export interface MailOverview {
   mode: MailMode;
   redirectTo: string | null;
-  senders: { key: SenderKey; address: string; configured: boolean }[];
+  // The club's mail account, which sends everything
+  account: string | null;
+  configured: boolean;
+  billingReplyTo: string;
+  infoReplyTo: string;
 }
 
 export function getMailOverview(): MailOverview {
   return {
     mode: mailMode(),
     redirectTo: redirectAddress(),
-    senders: SENDER_KEYS.map((key) => ({
-      key,
-      address: getSender(key).address,
-      configured: isSenderConfigured(key),
-    })),
+    account: mailAccount().address,
+    configured: isMailConfigured(),
+    billingReplyTo: MAIL_PURPOSES.billing.replyTo,
+    infoReplyTo: MAIL_PURPOSES.info.replyTo,
   };
 }
 
@@ -61,7 +64,8 @@ export async function getOutbox(limit = 100): Promise<OutboxMessage[]> {
   );
   return response.rows.map((row) => ({
     id: row.id,
-    sender: row.sender,
+    fromName: row.from_name,
+    replyTo: row.reply_to,
     kind: row.kind,
     toAddress: row.to_address,
     toName: row.to_name,

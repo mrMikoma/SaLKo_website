@@ -1,8 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import {
   describeMailError,
-  getSender,
-  isSenderConfigured,
+  isMailConfigured,
+  MAIL_PURPOSES,
+  mailAccount,
   mailMode,
   MailConfigError,
   redirected,
@@ -22,18 +23,31 @@ describe("the mail mode", () => {
   });
 });
 
-describe("senders", () => {
-  test("bills go from laskutus@ unless set otherwise", () => {
-    expect(getSender("billing", {}).address).toBe("laskutus@savonlinnanlentokerho.fi");
-    expect(getSender("billing", { MAIL_BILLING_FROM: "test@example.fi" }).address).toBe("test@example.fi");
-    expect(() => getSender("newsletter", {})).toThrow(MailConfigError);
+describe("the club's mail account", () => {
+  const env = {
+    MAIL_FROM: " posti@example.fi ",
+    MAIL_REFRESH_TOKEN: "token",
+    MAIL_GMAIL_CLIENT_ID: "id",
+    MAIL_GMAIL_CLIENT_SECRET: "secret",
+  };
+
+  test("sends everything once all four are set", () => {
+    expect(mailAccount(env).address).toBe("posti@example.fi");
+    expect(isMailConfigured(env)).toBe(true);
+    for (const key of Object.keys(env)) {
+      expect(isMailConfigured({ ...env, [key]: "" })).toBe(false);
+    }
   });
 
-  test("a sender is configured with the client and its own token", () => {
-    const env = { MAIL_GMAIL_CLIENT_ID: "id", MAIL_GMAIL_CLIENT_SECRET: "secret" };
-    expect(isSenderConfigured("billing", env)).toBe(false);
-    expect(isSenderConfigured("billing", { ...env, MAIL_BILLING_REFRESH_TOKEN: "token" })).toBe(true);
-    expect(isSenderConfigured("billing", { MAIL_BILLING_REFRESH_TOKEN: "token" })).toBe(false);
+  test("bills and other mail differ only in the sender's name and where replies go", () => {
+    expect(MAIL_PURPOSES.billing).toEqual({
+      name: "Savonlinnan Lentokerho, laskutus",
+      replyTo: "laskutus@savonlinnanlentokerho.fi",
+    });
+    expect(MAIL_PURPOSES.info).toEqual({
+      name: "Savonlinnan Lentokerho",
+      replyTo: "info@savonlinnanlentokerho.fi",
+    });
   });
 });
 
@@ -64,12 +78,12 @@ describe("the dev environment's redirect", () => {
 describe("errors", () => {
   test("say what to do, in Finnish", () => {
     const grant = { message: "invalid_grant", response: { status: 400, data: { error: "invalid_grant" } } };
-    expect(describeMailError(grant, "laskutus@example.fi")).toContain("Valtuuta osoite uudelleen");
+    expect(describeMailError(grant, "posti@example.fi")).toContain("Valtuuta tili uudelleen");
     expect(describeMailError({ message: "Gmail API has not been used in project 123" }, "x")).toContain(
       "Gmail API ei ole käytössä"
     );
     expect(describeMailError({ status: 429, message: "Too many" }, "x")).toContain("lähetysraja");
-    expect(describeMailError(new MailConfigError("Ei määritetty"), "x")).toBe("Ei määritetty");
+    expect(describeMailError(new MailConfigError("Ei määritetty"), null)).toBe("Ei määritetty");
     expect(describeMailError(new Error("socket hang up"), "x")).toBe("Lähetys epäonnistui: socket hang up");
   });
 });

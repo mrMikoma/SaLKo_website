@@ -129,7 +129,8 @@ export default async function BillingPeriodPage({ params }: PageProps) {
               : "Jokaisella maksajalla on lasku, tai maksu on jo merkitty."}
           </p>
           <div className="flex flex-wrap items-start gap-3">
-            {uninvoiced > 0 && <CreatePeriodInvoicesButton periodId={period.id} />}
+            {/* Always there, so it can say how creating went once the drafts exist */}
+            <CreatePeriodInvoicesButton periodId={period.id} uninvoiced={uninvoiced} />
             {Object.keys(invoices).length > 0 && (
               <Link
                 href={`/admin/laskut?nakyma=kaikki&jakso=${period.id}`}

@@ -1,12 +1,12 @@
-// Authorises the website to send mail as one of the club's Google Workspace
-// mailboxes and prints the refresh token to store as that sender's secret
-// (docs/MAIL_SETUP.md). Run from nextjs/, with the OAuth client's
-// MAIL_GMAIL_CLIENT_ID and MAIL_GMAIL_CLIENT_SECRET in .env or the shell:
+// Authorises the website to send mail as the club's mail account and prints
+// the refresh token to store as MAIL_REFRESH_TOKEN (docs/MAIL_SETUP.md). Run
+// from nextjs/, with the OAuth client's MAIL_GMAIL_CLIENT_ID and
+// MAIL_GMAIL_CLIENT_SECRET in .env or the shell:
 //
-//   bun run mail:authorize laskutus@savonlinnanlentokerho.fi
+//   bun run mail:authorize posti@savonlinnanlentokerho.fi
 //
-// Open the printed link and sign in as that mailbox. The website gets only
-// the gmail.send permission: it can send as the mailbox, but not read it.
+// Open the printed link and sign in as that account. The website gets only
+// the gmail.send permission: it can send as the account, but not read it.
 import http from "http";
 import type { AddressInfo } from "net";
 import { randomBytes } from "crypto";
@@ -77,8 +77,8 @@ server.listen(0, "127.0.0.1", () => {
       }
       finish(true, "");
       console.log(
-        `Authorised ${mailbox}. Store this refresh token as the sender's secret ` +
-          `(MAIL_BILLING_REFRESH_TOKEN for the billing address), and don't share it anywhere else:\n\n` +
+        `Authorised ${mailbox}. Store this refresh token as the secret MAIL_REFRESH_TOKEN, ` +
+          `with MAIL_FROM=${mailbox}, and don't keep it anywhere else:\n\n` +
           `${tokens.refresh_token}\n`
       );
     } catch (error) {

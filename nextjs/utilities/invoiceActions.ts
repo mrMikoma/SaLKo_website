@@ -13,7 +13,7 @@ import { formatFullDate } from "@/utilities/flightFormat";
 import { getPeriodView } from "@/utilities/billingData";
 import { writePayerPaid } from "@/utilities/billingPayments";
 import { deliverEmails, queueEmail } from "@/utilities/mail";
-import { getSender, mailMode } from "@/utilities/mailConfig";
+import { MAIL_PURPOSES, mailMode } from "@/utilities/mailConfig";
 import { renderInvoiceEmail } from "@/utilities/invoiceEmail";
 import { getInvoice, getInvoiceSettings, InvoiceSettings, postalAddress } from "@/utilities/invoiceData";
 import {
@@ -409,7 +409,7 @@ interface EmailSource {
 function invoiceEmail(invoice: EmailSource, settings: InvoiceSettings) {
   return renderInvoiceEmail(invoice, {
     issuer: ISSUER,
-    contactEmail: getSender("billing").address,
+    contactEmail: MAIL_PURPOSES.billing.replyTo,
     footer: settings.footer,
     // Only members can log in to see it
     url: invoice.userId ? `${siteUrl()}/jasenalue/laskut/${invoice.id}` : null,
@@ -521,7 +521,7 @@ export async function sendInvoices(
         );
         queued.push(
           await queueEmail(client, {
-            sender: "billing",
+            purpose: "billing",
             kind: "invoice",
             to: { address: row.recipient_email, name: row.recipient_name },
             ...email,
@@ -593,7 +593,7 @@ export async function resendInvoice(
     await getInvoiceSettings()
   );
   const outboxId = await queueEmail(pool, {
-    sender: "billing",
+    purpose: "billing",
     kind: "invoice",
     to: { address: to, name: invoice.recipientName },
     ...email,

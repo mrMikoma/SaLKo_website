@@ -6,7 +6,7 @@ import { auth } from "@/auth"
 import { isFlightLogEnabled } from "@/utilities/features"
 import { hasPermission } from "@/utilities/roles"
 import { getMyInvoices } from "@/utilities/invoiceData"
-import { getSender } from "@/utilities/mailConfig"
+import { MAIL_PURPOSES } from "@/utilities/mailConfig"
 import { euros } from "@/utilities/billing"
 import { formatFullDate } from "@/utilities/flightFormat"
 import PageHero from "@/components/pageHero"
@@ -73,7 +73,7 @@ export default async function Page() {
               </ul>
             )}
             <p className="px-4 py-3 text-sm text-gray-600 border-t border-gray-200">
-              Laskut tulevat myös sähköpostiisi. Kysyttävää laskuista: {getSender("billing").address}
+              Laskut tulevat myös sähköpostiisi. Kysyttävää laskuista: {MAIL_PURPOSES.billing.replyTo}
             </p>
           </section>
         </div>

@@ -70,9 +70,19 @@ test("a membership fee from the price list: written, sent, seen and paid", async
   const [invoice] = await query("SELECT reference, status, total_cents FROM invoices WHERE id = $1", [id]);
   expect(invoice).toMatchObject({ status: "open", total_cents: 6000 });
   expect(invoice.reference.slice(0, 8)).toBe(number);
-  const outbox = await query("SELECT status, to_address, subject, body_text FROM email_outbox WHERE invoice_id = $1", [id]);
+  const outbox = await query(
+    "SELECT status, from_name, reply_to, to_address, subject, body_text FROM email_outbox WHERE invoice_id = $1",
+    [id]
+  );
   expect(outbox).toHaveLength(1);
-  expect(outbox[0]).toMatchObject({ status: "held", to_address: accounts.user!.email, subject: `Lasku ${number}: ${title}` });
+  expect(outbox[0]).toMatchObject({
+    status: "held",
+    // From the club's mail account as billing; replies to the treasurer
+    from_name: "Savonlinnan Lentokerho, laskutus",
+    reply_to: "laskutus@savonlinnanlentokerho.fi",
+    to_address: accounts.user!.email,
+    subject: `Lasku ${number}: ${title}`,
+  });
   expect(outbox[0].body_text).toContain("FI51 4108 0011 8965 14");
   expect(outbox[0].body_text).toMatch(/Virtuaaliviivakoodi: 4\d{53}/);
   await expect(page.getByText("Ei lähetetty (sähköposti ei käytössä)")).toBeVisible();

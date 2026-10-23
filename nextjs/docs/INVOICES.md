@@ -1,6 +1,6 @@
 # Invoices
 
-The website issues and sends the club's bills (laskut) by email: flight bills from a closed billing period (`FLIGHT_LOG.md`, "Billing"), and other charges such as membership, equipment and hangar fees. Sending goes through the club's Google Workspace, from `laskutus@` (`MAIL_SETUP.md`). It sits behind `FEATURE_FLIGHT_LOG`, like the rest of billing, and needs `MANAGE_BILLING` (admins and the treasurer).
+The website issues and sends the club's bills (laskut) by email: flight bills from a closed billing period (`FLIGHT_LOG.md`, "Billing"), and other charges such as membership, equipment and hangar fees. They go from the club's Google Workspace mail account as "Savonlinnan Lentokerho, laskutus", with replies to `laskutus@` (`MAIL_SETUP.md`). It sits behind `FEATURE_FLIGHT_LOG`, like the rest of billing, and needs `MANAGE_BILLING` (admins and the treasurer).
 
 ## The life of an invoice
 
@@ -29,7 +29,7 @@ An invoice past its due date shows as **Erääntynyt**.
   - the **virtual barcode** (virtuaaliviivakoodi, version 4), which the member pastes into a bank app;
   - a link to the invoice on the site.
 
-  Replies go to `laskutus@`.
+  Replies go to `laskutus@`, which the invoice also gives for questions.
 - **`/jasenalue/laskut`** lists a member's own sent invoices. Each one opens as a printable page with the same payment details. Drafts and other members' invoices give a 404. The member's flight log page links each period's bill to its invoice.
 
 The club's details on the invoice (name, address, business ID, IBAN, BIC) come from `data/contacts.json`, the same as the Yhteystiedot page. The payment term and an optional closing note, for example about late payment, are set on `/admin/laskutus/asetukset`.

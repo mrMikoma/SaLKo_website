@@ -6,7 +6,7 @@ import { auth } from "@/auth";
 import { hasPermission } from "@/utilities/roles";
 import { isFlightLogEnabled } from "@/utilities/features";
 import { deliverEmails, DeliveryStatus, queueEmail } from "@/utilities/mail";
-import { getSender, mailMode, redirectAddress } from "@/utilities/mailConfig";
+import { MAIL_PURPOSES, mailMode, redirectAddress } from "@/utilities/mailConfig";
 
 type ActionResult<T = null> =
   | { status: "success"; result: T }
@@ -35,7 +35,7 @@ const DELIVERY_TEXT: Record<Exclude<DeliveryStatus, "failed">, string> = {
   skipped: "Viesti on jo lähetetty tai lähdössä.",
 };
 
-/** Sends a test message from the billing address to the admin themself */
+/** Sends a test message, as a bill would go, to the admin themself */
 export async function sendTestEmail(): Promise<ActionResult<{ text: string }>> {
   const access = await requireMailAdmin();
   if ("error" in access) return { status: "error", error: access.error };
@@ -44,19 +44,21 @@ export async function sendTestEmail(): Promise<ActionResult<{ text: string }>> {
   const to = user.rows[0];
   if (!to?.email) return { status: "error", error: "Tililläsi ei ole sähköpostiosoitetta" };
 
-  const sender = getSender("billing");
+  const { billing, info } = MAIL_PURPOSES;
   const mode = mailMode();
   const id = await queueEmail(pool, {
-    sender: "billing",
+    purpose: "billing",
     kind: "test",
     to: { address: to.email, name: to.full_name },
     subject: "Testiviesti kerhon verkkosivuilta",
     text: [
       "Hei,",
       "",
-      `tämä on testiviesti Savonlinnan Lentokerhon verkkosivuilta. Laskut lähtevät osoitteesta ${sender.address} näin.`,
+      "tämä on testiviesti Savonlinnan Lentokerhon verkkosivuilta. Kaikki kerhon viestit lähtevät samalta tililtä.",
+      `Laskuissa lähettäjänä näkyy "${billing.name}", ja vastaukset menevät osoitteeseen ${billing.replyTo}.`,
+      `Muihin viesteihin vastaukset menevät osoitteeseen ${info.replyTo}.`,
       "",
-      "Jos viesti meni roskapostiin, katso docs/MAIL_SETUP.md (SPF, DKIM ja DMARC).",
+      "Vastaa tähän viestiin, niin näet, minne vastaus menee. Jos viesti meni roskapostiin, katso docs/MAIL_SETUP.md (SPF, DKIM ja DMARC).",
     ].join("\n"),
     createdBy: access.user.id,
   });

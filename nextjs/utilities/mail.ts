@@ -5,30 +5,29 @@ import connectionPool from "@/utilities/db";
 import { buildMime, Mailbox } from "@/utilities/mime";
 import {
   describeMailError,
-  getSender,
-  gmailClient,
+  MAIL_PURPOSES,
+  mailAccount,
   mailMode,
   MailConfigError,
+  MailPurpose,
   MessageContent,
   redirectAddress,
   redirected,
-  Sender,
-  SenderKey,
 } from "@/utilities/mailConfig";
 
 /**
- * Sending email through the club's Google Workspace (docs/MAIL_SETUP.md).
- * A message is first stored in email_outbox, usually in the same transaction
- * as whatever it is about, and then delivered. Delivery claims the row first,
- * so a double click or two treasurers at once can't send it twice. Callers
- * check permissions; this module doesn't.
+ * Sending email from the club's one Google Workspace mail account
+ * (docs/MAIL_SETUP.md). A message is first stored in email_outbox, usually
+ * in the same transaction as whatever it is about, and then delivered.
+ * Delivery claims the row first, so a double click or two treasurers at once
+ * can't send it twice. Callers check permissions; this module doesn't.
  */
 
 type Queryable = { query: NonNullable<typeof connectionPool>["query"] };
 type OAuth2Client = InstanceType<typeof google.auth.OAuth2>;
 
 export interface OutgoingEmail {
-  sender: SenderKey;
+  purpose: MailPurpose; // sets the sender's name and where replies go
   kind: string; // "test", "invoice", ...
   to: Mailbox;
   subject: string;
@@ -40,11 +39,13 @@ export interface OutgoingEmail {
 
 /** Stores a message to send; deliverEmails sends it */
 export async function queueEmail(db: Queryable, email: OutgoingEmail): Promise<number> {
+  const purpose = MAIL_PURPOSES[email.purpose];
   const response = await db.query(
-    `INSERT INTO email_outbox (sender, kind, to_address, to_name, subject, body_text, body_html, created_by, invoice_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+    `INSERT INTO email_outbox (from_name, reply_to, kind, to_address, to_name, subject, body_text, body_html, created_by, invoice_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
     [
-      email.sender,
+      purpose.name,
+      purpose.replyTo,
       email.kind,
       email.to.address,
       email.to.name ?? null,
@@ -58,29 +59,26 @@ export async function queueEmail(db: Queryable, email: OutgoingEmail): Promise<n
   return response.rows[0].id;
 }
 
-// One OAuth client per sender and token; it keeps its access token between sends
-const clients = new Map<string, OAuth2Client>();
+// The OAuth client for the account's token; it keeps its access token between sends
+let cached: { key: string; client: OAuth2Client } | null = null;
 
-function oauthFor(sender: Sender): OAuth2Client {
-  const { clientId, clientSecret } = gmailClient();
-  if (!clientId || !clientSecret || !sender.refreshToken) {
-    throw new MailConfigError(
-      `Sähköpostin lähetystä osoitteesta ${sender.address} ei ole määritetty (docs/MAIL_SETUP.md).`
-    );
+function accountClient(): { address: string; client: OAuth2Client } {
+  const account = mailAccount();
+  if (!account.address || !account.refreshToken || !account.clientId || !account.clientSecret) {
+    throw new MailConfigError("Kerhon sähköpostitiliä ei ole määritetty (docs/MAIL_SETUP.md).");
   }
-  const key = `${sender.key}:${clientId}:${sender.refreshToken}`;
-  let client = clients.get(key);
-  if (!client) {
-    client = new google.auth.OAuth2(clientId, clientSecret);
-    client.setCredentials({ refresh_token: sender.refreshToken });
-    clients.set(key, client);
+  const key = `${account.clientId}:${account.refreshToken}`;
+  if (cached?.key !== key) {
+    const client = new google.auth.OAuth2(account.clientId, account.clientSecret);
+    client.setCredentials({ refresh_token: account.refreshToken });
+    cached = { key, client };
   }
-  return client;
+  return { address: account.address, client: cached.client };
 }
 
-/** Sends raw MIME as the sender's mailbox; returns Gmail's message id */
-async function sendWithGmail(sender: Sender, mime: string): Promise<string | null> {
-  const gmail = google.gmail({ version: "v1", auth: oauthFor(sender) });
+/** Sends raw MIME as the account; returns Gmail's message id */
+async function sendWithGmail(client: OAuth2Client, mime: string): Promise<string | null> {
+  const gmail = google.gmail({ version: "v1", auth: client });
   const response = await gmail.users.messages.send({
     userId: "me",
     requestBody: { raw: Buffer.from(mime).toString("base64url") },
@@ -108,7 +106,7 @@ async function deliverOne(id: number): Promise<Delivery> {
      WHERE id = $1
        AND (status IN ('queued', 'failed')
             OR (status = 'sending' AND attempted_at < NOW() - INTERVAL '10 minutes'))
-     RETURNING sender, to_address, to_name, subject, body_text, body_html`,
+     RETURNING from_name, reply_to, to_address, to_name, subject, body_text, body_html`,
     [id]
   );
   const row = claimed.rows[0];
@@ -120,10 +118,8 @@ async function deliverOne(id: number): Promise<Delivery> {
     return { id, status: "held" };
   }
 
-  let senderAddress = "";
   try {
-    const sender = getSender(row.sender);
-    senderAddress = sender.address;
+    const account = accountClient();
     let message: MessageContent = {
       to: { address: row.to_address, name: row.to_name },
       subject: row.subject,
@@ -134,8 +130,12 @@ async function deliverOne(id: number): Promise<Delivery> {
       message = redirected(message, redirectAddress()!);
     }
     const providerId = await sendWithGmail(
-      sender,
-      buildMime({ from: { address: sender.address, name: sender.name }, ...message })
+      account.client,
+      buildMime({
+        from: { address: account.address, name: row.from_name },
+        replyTo: row.reply_to ? { address: row.reply_to } : undefined,
+        ...message,
+      })
     );
     await connectionPool.query(
       `UPDATE email_outbox SET status = 'sent', sent_at = NOW(), delivered_to = $2, provider_id = $3
@@ -144,7 +144,7 @@ async function deliverOne(id: number): Promise<Delivery> {
     );
     return { id, status: "sent" };
   } catch (error) {
-    const text = describeMailError(error, senderAddress);
+    const text = describeMailError(error, mailAccount().address);
     // Only the message: a Google error object also carries the request
     console.error(`Email ${id} was not sent:`, (error as Error)?.message ?? error);
     await connectionPool.query(

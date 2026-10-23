@@ -330,27 +330,39 @@ export const SendDraftsButton = ({ ids, mailOn }: { ids: number[]; mailOn: boole
   );
 };
 
-/** On a closed period: a draft invoice for each payer */
-export const CreatePeriodInvoicesButton = ({ periodId }: { periodId: number }) => {
+/**
+ * On a closed period: a draft invoice for each payer still without one.
+ * After creating, only the result shows.
+ */
+export const CreatePeriodInvoicesButton = ({
+  periodId,
+  uninvoiced,
+}: {
+  periodId: number;
+  uninvoiced: number;
+}) => {
   const { run, isPending, messageText } = useInvoiceAction();
+  if (uninvoiced === 0 && !messageText && !isPending) return null;
   return (
     <div className="space-y-2">
-      <button
-        type="button"
-        onClick={() =>
-          run(
-            () => createPeriodInvoices(periodId),
-            (result) => {
-              const { created, paid } = resultOf(result) as { created: number; paid: number };
-              return `${created} ${created === 1 ? "luonnos" : "luonnosta"} luotu${paid > 0 ? `; ${paid} jo maksanutta ohitettiin` : ""}.`;
-            }
-          )
-        }
-        disabled={isPending}
-        className={primaryButton}
-      >
-        {isPending ? "Luodaan…" : "Luo laskuluonnokset"}
-      </button>
+      {uninvoiced > 0 && (
+        <button
+          type="button"
+          onClick={() =>
+            run(
+              () => createPeriodInvoices(periodId),
+              (result) => {
+                const { created, paid } = resultOf(result) as { created: number; paid: number };
+                return `${created} ${created === 1 ? "luonnos" : "luonnosta"} luotu${paid > 0 ? `; ${paid} jo maksanutta ohitettiin` : ""}.`;
+              }
+            )
+          }
+          disabled={isPending}
+          className={primaryButton}
+        >
+          {isPending ? "Luodaan…" : "Luo laskuluonnokset"}
+        </button>
+      )}
       {messageText}
     </div>
   );

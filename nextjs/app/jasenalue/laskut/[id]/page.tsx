@@ -6,7 +6,7 @@ import { auth } from "@/auth"
 import { isFlightLogEnabled } from "@/utilities/features"
 import { hasPermission } from "@/utilities/roles"
 import { getInvoiceSettings, getMyInvoice } from "@/utilities/invoiceData"
-import { getSender } from "@/utilities/mailConfig"
+import { MAIL_PURPOSES } from "@/utilities/mailConfig"
 import InvoiceDocument from "@/components/invoices/InvoiceDocument"
 import PrintButton from "@/components/billing/PrintButton"
 
@@ -45,7 +45,7 @@ export default async function Page({ params }: PageProps) {
           </Link>
           <PrintButton />
         </div>
-        <InvoiceDocument invoice={invoice} contactEmail={getSender("billing").address} footer={settings.footer} />
+        <InvoiceDocument invoice={invoice} contactEmail={MAIL_PURPOSES.billing.replyTo} footer={settings.footer} />
       </div>
     </div>
   )
