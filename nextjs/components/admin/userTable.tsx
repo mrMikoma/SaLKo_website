@@ -12,8 +12,8 @@ interface UserTableProps {
   currentUserId: string;
 }
 
-const headerClassName =
-  "px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider";
+// As in the flight log's tables
+const headerClassName = "px-4 py-2 text-left text-sm font-medium text-gray-600";
 
 const UserTable = ({ users, currentUserId }: UserTableProps) => {
   const [error, setError] = useState<string | null>(null);
@@ -39,10 +39,14 @@ const UserTable = ({ users, currentUserId }: UserTableProps) => {
   return (
     <div>
       {error && (
-        <div className="mx-6 mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+        <div
+          role="alert"
+          className="mx-4 sm:mx-6 mt-4 rounded-lg border border-red-300 bg-red-50 p-3 text-red-800"
+        >
           {error}
           <button
             onClick={() => setError(null)}
+            aria-label="Sulje"
             className="float-right font-bold"
           >
             &times;
@@ -50,17 +54,20 @@ const UserTable = ({ users, currentUserId }: UserTableProps) => {
         </div>
       )}
       {success && (
-        <div className="mx-6 mt-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
+        <div
+          role="status"
+          className="mx-4 sm:mx-6 mt-4 rounded-lg border border-green-300 bg-green-50 p-3 text-green-900"
+        >
           {success}
         </div>
       )}
 
       {/* Create User Button and Form */}
-      <div className="mx-6 my-4">
+      <div className="mx-4 sm:mx-6 my-4">
         {!showCreateForm ? (
           <button
             onClick={() => setShowCreateForm(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+            className="min-h-11 px-4 rounded-lg bg-sblue text-white font-medium hover:bg-sblued transition-colors"
           >
             + Luo uusi käyttäjä
           </button>

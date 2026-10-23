@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { DateTime } from "luxon";
 import { RecentUser } from "@/utilities/adminStats";
-import { getRoleDisplayName } from "@/utilities/roles";
+import RoleBadge from "@/components/admin/users/RoleBadge";
 
 // Rendered on the server too, so the zone is explicit (the server runs in UTC)
 const inHelsinki = (iso: string) =>
@@ -23,7 +23,7 @@ const RecentUsersTable = ({ users }: RecentUsersTableProps) => {
           </h2>
           <Link
             href="/admin/users"
-            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+            className="min-h-11 inline-flex items-center px-3 rounded-lg border border-gray-300 text-sm font-medium text-gray-800 hover:bg-gray-50"
           >
             Näytä kaikki →
           </Link>
@@ -33,19 +33,19 @@ const RecentUsersTable = ({ users }: RecentUsersTableProps) => {
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-2 text-left text-sm font-medium text-gray-600">
                 Nimi
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-2 text-left text-sm font-medium text-gray-600">
                 Sähköposti
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-2 text-left text-sm font-medium text-gray-600">
                 Rooli
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-2 text-left text-sm font-medium text-gray-600">
                 Liittynyt
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-2 text-left text-sm font-medium text-gray-600">
                 Viimeisin kirjautuminen
               </th>
             </tr>
@@ -64,18 +64,7 @@ const RecentUsersTable = ({ users }: RecentUsersTableProps) => {
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex flex-wrap gap-1">
                     {user.roles?.map((role: string) => (
-                      <span
-                        key={role}
-                        className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          role === "admin"
-                            ? "bg-purple-100 text-purple-800"
-                            : role === "user"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        {getRoleDisplayName(role)}
-                      </span>
+                      <RoleBadge key={role} role={role} />
                     ))}
                   </div>
                 </td>

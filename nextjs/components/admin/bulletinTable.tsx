@@ -17,6 +17,20 @@ interface BulletinTableProps {
   bulletins: AdminBulletin[];
 }
 
+// Buttons and fields as on the flight log and billing pages
+const primaryButton =
+  "min-h-11 px-4 rounded-lg bg-sblue text-white font-medium hover:bg-sblued transition-colors disabled:opacity-60";
+const secondaryButton =
+  "min-h-11 px-4 rounded-lg border border-gray-300 bg-white text-gray-800 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50";
+const rowButton =
+  "min-h-11 px-3 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50";
+const rowPrimaryButton =
+  "min-h-11 px-3 rounded-lg bg-sblue text-sm text-white font-medium hover:bg-sblued transition-colors disabled:opacity-60";
+const rowDangerButton =
+  "min-h-11 px-3 rounded-lg border border-red-300 bg-white text-sm text-red-700 font-medium hover:bg-red-50 transition-colors disabled:opacity-50";
+const textField =
+  "w-full min-h-11 rounded-lg border border-gray-300 bg-white px-3 text-base text-gray-900 disabled:bg-gray-50";
+
 // ─── Markdown editor with toolbar ────────────────────────────────────────────
 
 interface MarkdownEditorProps {
@@ -86,7 +100,7 @@ function MarkdownEditor({
   const dividerClass = "w-px h-5 bg-gray-300 mx-1";
 
   return (
-    <div className="border border-gray-300 rounded-md overflow-hidden">
+    <div className="border border-gray-300 rounded-lg overflow-hidden">
       {/* Toolbar */}
       <div className="flex items-center flex-wrap gap-0.5 bg-gray-50 px-2 py-1.5 border-b border-gray-300">
         <button
@@ -179,7 +193,7 @@ function MarkdownEditor({
           disabled={disabled}
           className={`px-3 py-1 text-sm rounded border transition-colors ${
             preview
-              ? "bg-blue-600 text-white border-blue-600"
+              ? "bg-sblue text-white border-sblue"
               : "bg-white text-gray-600 border-gray-300 hover:bg-gray-100"
           }`}
         >
@@ -302,26 +316,33 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
   return (
     <div>
       {error && (
-        <div className="mx-6 mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded flex justify-between items-start">
+        <div
+          role="alert"
+          className="mx-4 sm:mx-6 mt-4 rounded-lg border border-red-300 bg-red-50 p-3 text-red-800 flex justify-between items-start"
+        >
           <span>{error}</span>
-          <button onClick={() => setError(null)} className="font-bold ml-4 flex-shrink-0">
+          <button
+            onClick={() => setError(null)}
+            aria-label="Sulje"
+            className="font-bold ml-4 flex-shrink-0"
+          >
             &times;
           </button>
         </div>
       )}
       {success && (
-        <div className="mx-6 mt-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
+        <div
+          role="status"
+          className="mx-4 sm:mx-6 mt-4 rounded-lg border border-green-300 bg-green-50 p-3 text-green-900"
+        >
           {success}
         </div>
       )}
 
       {/* Create form */}
-      <div className="mx-6 mt-4">
+      <div className="mx-4 sm:mx-6 mt-4">
         {!showCreateForm ? (
-          <button
-            onClick={() => setShowCreateForm(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
-          >
+          <button onClick={() => setShowCreateForm(true)} className={primaryButton}>
             + Luo uusi tiedote
           </button>
         ) : (
@@ -347,7 +368,7 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
                   onChange={(e) =>
                     setNewBulletin({ ...newBulletin, title: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className={textField}
                   required
                   disabled={isPending}
                   placeholder="Tiedotteen otsikko"
@@ -365,19 +386,15 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
                   placeholder="Kirjoita tiedotteen sisältö tähän..."
                 />
               </div>
-              <div className="flex gap-2">
-                <button
-                  type="submit"
-                  disabled={isPending}
-                  className="bg-white text-gray-800 border border-gray-300 px-4 py-2 rounded-md hover:bg-gray-100 disabled:bg-gray-200 transition-colors"
-                >
+              <div className="flex flex-wrap gap-2">
+                <button type="submit" disabled={isPending} className={secondaryButton}>
                   Tallenna luonnoksena
                 </button>
                 <button
                   type="button"
                   onClick={() => handleCreate(true)}
                   disabled={isPending}
-                  className="bg-green-700 text-white px-4 py-2 rounded-md hover:bg-green-800 disabled:bg-gray-400 transition-colors"
+                  className={primaryButton}
                 >
                   Julkaise
                 </button>
@@ -388,7 +405,7 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
                     setNewBulletin({ title: "", content: "" });
                   }}
                   disabled={isPending}
-                  className="bg-gray-300 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-400 disabled:bg-gray-200 transition-colors"
+                  className={secondaryButton}
                 >
                   Peruuta
                 </button>
@@ -405,14 +422,14 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
             Ei tiedotteita. Luo ensimmäinen tiedote yllä olevalla painikkeella.
           </div>
         ) : (
-          <div className="space-y-4 px-6">
+          <div className="space-y-4 px-4 sm:px-6 pb-4 sm:pb-6">
             {bulletins.map((bulletin) => (
               <div
                 key={bulletin.id}
                 className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden"
               >
                 {editingId === bulletin.id ? (
-                  <div className="p-4 bg-blue-50">
+                  <div className="p-4 bg-gray-50">
                     <h4 className="text-md font-semibold mb-4 text-gray-900">
                       Muokkaa tiedotetta
                     </h4>
@@ -434,7 +451,7 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
                               title: e.target.value,
                             })
                           }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className={textField}
                           disabled={isPending}
                         />
                       </div>
@@ -454,18 +471,18 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
                           disabled={isPending}
                         />
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
                         <button
                           onClick={() => handleUpdate(bulletin.id)}
                           disabled={isPending}
-                          className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 disabled:bg-gray-400 transition-colors"
+                          className={primaryButton}
                         >
                           {isPending ? "Tallennetaan..." : "Tallenna"}
                         </button>
                         <button
                           onClick={() => setEditingId(null)}
                           disabled={isPending}
-                          className="bg-gray-300 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-400 disabled:bg-gray-200 transition-colors"
+                          className={secondaryButton}
                         >
                           Peruuta
                         </button>
@@ -474,8 +491,9 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
                   </div>
                 ) : (
                   <div className="p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
+                    {/* On a phone the actions go under the title */}
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-2">
+                      <div className="min-w-0">
                         <h3 className="text-lg font-semibold text-gray-900 break-words">
                           {bulletin.title}
                         </h3>
@@ -493,31 +511,31 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
                           {bulletin.author && <span>• {bulletin.author}</span>}
                         </div>
                       </div>
-                      <div className="flex flex-wrap justify-end gap-3 flex-shrink-0 ml-4">
+                      <div className="flex flex-wrap gap-2 sm:justify-end sm:shrink-0">
                         <button
                           onClick={() => handlePublish(bulletin.id, bulletin.status !== "published")}
                           disabled={isPending}
-                          className="text-green-800 hover:text-green-950 disabled:text-gray-400 text-sm font-medium"
+                          className={bulletin.status === "published" ? rowButton : rowPrimaryButton}
                         >
                           {bulletin.status === "published" ? "Palauta luonnokseksi" : "Julkaise"}
                         </button>
                         <button
                           onClick={() => handleEdit(bulletin)}
                           disabled={isPending}
-                          className="text-blue-600 hover:text-blue-900 disabled:text-gray-400 text-sm font-medium"
+                          className={rowButton}
                         >
                           Muokkaa
                         </button>
                         <button
                           onClick={() => handleDelete(bulletin.id, bulletin.title)}
                           disabled={isPending}
-                          className="text-red-600 hover:text-red-900 disabled:text-gray-400 text-sm font-medium"
+                          className={rowDangerButton}
                         >
                           Poista
                         </button>
                       </div>
                     </div>
-                    <div className="text-gray-700 mt-3 border-t border-gray-100 pt-3 text-sm leading-relaxed [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mb-1 [&_strong]:font-bold [&_h2]:text-base [&_h2]:font-bold [&_h2]:mt-3 [&_h2]:mb-1 [&_h3]:text-sm [&_h3]:font-semibold [&_a]:text-blue-600 [&_a]:underline [&_p]:mb-2 [&_hr]:border-gray-300 [&_hr]:my-2">
+                    <div className="text-gray-700 mt-3 border-t border-gray-100 pt-3 text-sm leading-relaxed [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mb-1 [&_strong]:font-bold [&_h2]:text-base [&_h2]:font-bold [&_h2]:mt-3 [&_h2]:mb-1 [&_h3]:text-sm [&_h3]:font-semibold [&_a]:text-sblue [&_a]:underline [&_p]:mb-2 [&_hr]:border-gray-300 [&_hr]:my-2">
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>
                         {bulletin.content}
                       </ReactMarkdown>

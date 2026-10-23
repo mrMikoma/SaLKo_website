@@ -28,8 +28,8 @@ export default async function BulletinsPage() {
       </div>
 
       <div className="bg-white rounded-lg shadow">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-between">
+        <div className="p-4 sm:p-6 border-b border-gray-200">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold text-gray-900">
                 Kaikki tiedotteet
@@ -39,7 +39,7 @@ export default async function BulletinsPage() {
                 näkyy 5 uusinta julkaistua, kaikki sivulla /tiedotteet.
               </p>
             </div>
-            <span className="bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full">
+            <span className="self-start whitespace-nowrap bg-gray-100 text-gray-800 text-sm font-medium px-3 py-1 rounded-full">
               {published} julkaistu · {bulletins.length - published} luonnosta
             </span>
           </div>

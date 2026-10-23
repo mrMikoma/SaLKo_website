@@ -28,7 +28,13 @@ interface UserTableRowProps {
   onError: (error: string) => void;
 }
 
-const actionClassName = "hover:underline disabled:text-gray-400 disabled:no-underline";
+// Row actions as small buttons, as on the flight log and billing pages
+const actionClassName =
+  "min-h-11 px-3 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-800 hover:bg-gray-50 transition-colors disabled:opacity-50";
+const dangerActionClassName =
+  "min-h-11 px-3 rounded-lg border border-red-300 bg-white text-sm font-medium text-red-700 hover:bg-red-50 transition-colors disabled:opacity-50";
+const saveActionClassName =
+  "min-h-11 px-3 rounded-lg bg-sblue text-sm font-medium text-white hover:bg-sblued transition-colors disabled:opacity-60";
 
 const UserTableRow = ({ user, isSelf, onSuccess, onError }: UserTableRowProps) => {
   const [isPending, startTransition] = useTransition();
@@ -169,24 +175,24 @@ const UserTableRow = ({ user, isSelf, onSuccess, onError }: UserTableRowProps) =
           {isSystemUser ? (
             <span className="text-gray-400 font-normal">Järjestelmäkäyttäjä</span>
           ) : editingRoles ? (
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-2">
               <button
                 onClick={handleRoleSave}
                 disabled={isPending}
-                className={`text-green-700 ${actionClassName}`}
+                className={saveActionClassName}
               >
                 Tallenna
               </button>
               <button
                 onClick={() => setEditingRoles(false)}
                 disabled={isPending}
-                className={`text-gray-700 ${actionClassName}`}
+                className={actionClassName}
               >
                 Peruuta
               </button>
             </div>
           ) : (
-            <div className="flex flex-col items-start gap-1 text-sblue">
+            <div className="flex flex-wrap gap-2 w-80">
               <button
                 onClick={() => setEditingInfo(true)}
                 disabled={isPending}
@@ -224,7 +230,7 @@ const UserTableRow = ({ user, isSelf, onSuccess, onError }: UserTableRowProps) =
                   <button
                     onClick={() => run(() => setUserActive(user.id, false), "Käyttäjä poistettu käytöstä")}
                     disabled={isPending}
-                    className={`text-red-700 ${actionClassName}`}
+                    className={dangerActionClassName}
                   >
                     Poista käytöstä
                   </button>
@@ -233,7 +239,7 @@ const UserTableRow = ({ user, isSelf, onSuccess, onError }: UserTableRowProps) =
                 <button
                   onClick={handleAnonymize}
                   disabled={isPending}
-                  className={`text-red-700 ${actionClassName}`}
+                  className={dangerActionClassName}
                 >
                   Anonymisoi
                 </button>
@@ -242,7 +248,7 @@ const UserTableRow = ({ user, isSelf, onSuccess, onError }: UserTableRowProps) =
                 <button
                   onClick={handleDelete}
                   disabled={isPending}
-                  className={`text-red-700 ${actionClassName}`}
+                  className={dangerActionClassName}
                 >
                   Poista pysyvästi
                 </button>
@@ -252,7 +258,7 @@ const UserTableRow = ({ user, isSelf, onSuccess, onError }: UserTableRowProps) =
         </td>
       </tr>
       {resetLink && (
-        <tr className="bg-blue-50">
+        <tr className="bg-gray-50">
           <td colSpan={8} className="px-4 py-4 text-sm text-gray-900">
             <p className="font-medium">
               Salasanan vaihtolinkki käyttäjälle {user.full_name} (voimassa vuorokauden, toimii kerran):
@@ -263,20 +269,20 @@ const UserTableRow = ({ user, isSelf, onSuccess, onError }: UserTableRowProps) =
                 value={resetLink}
                 aria-label="Salasanan vaihtolinkki"
                 onFocus={(e) => e.target.select()}
-                className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-base bg-white"
+                className="flex-1 min-h-11 rounded-lg border border-gray-300 bg-white px-3 text-base text-gray-900"
               />
               <button
                 onClick={() => {
                   navigator.clipboard?.writeText(resetLink);
                   onSuccess("Linkki kopioitu");
                 }}
-                className="min-h-11 px-4 rounded-md bg-sblue text-white hover:bg-sblued"
+                className="min-h-11 px-4 rounded-lg bg-sblue text-white font-medium hover:bg-sblued"
               >
                 Kopioi
               </button>
               <button
                 onClick={() => setResetLink(null)}
-                className="min-h-11 px-4 rounded-md bg-gray-200 text-gray-800 hover:bg-gray-300"
+                className="min-h-11 px-4 rounded-lg border border-gray-300 bg-white text-gray-800 font-medium hover:bg-gray-50"
               >
                 Sulje
               </button>
