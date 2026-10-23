@@ -171,7 +171,7 @@ test.describe("anonymous visitor", () => {
     expect(response.status()).toBe(401);
   });
 
-  test("makes a guest booking and sees it only as taken", async ({ page }) => {
+  test("makes a guest booking and sees its title and name, not the contact details", async ({ page }) => {
     const dialog = await openNewBooking(page, "2027-03-12", "OH-CON", "14:00");
     await expect(dialog.getByLabel("Toistuva varaus")).toHaveCount(0);
 
@@ -187,8 +187,13 @@ test.describe("anonymous visitor", () => {
     await expect(saved.getByRole("link", { name: "Apple / Outlook (.ics)" })).toHaveCount(0);
     await closeSavedScreen(page);
 
-    await expect(page.getByRole("button", { name: /^Varaus: Varattu/ })).toBeVisible();
-    await expect(page.getByText("Testi Vieras")).toHaveCount(0);
+    // Everyone sees what the booking is and who made it, not how to reach them
+    await page.getByRole("button", { name: /^Varaus: E2E-vieras \(Testi Vieras\)/ }).first().click();
+    const details = page.getByRole("dialog");
+    await expect(details.getByText("Varaaja")).toBeVisible();
+    await expect(details.getByText("Testi Vieras", { exact: true })).toBeVisible();
+    await expect(details.getByText("vieras@salko.invalid")).toHaveCount(0);
+    await expect(details.getByText("040 000 0000")).toHaveCount(0);
 
     const rows = await query<{ contact_name: string }>(
       `SELECT gb.contact_name FROM guest_bookings gb
