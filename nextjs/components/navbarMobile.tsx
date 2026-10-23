@@ -137,12 +137,27 @@ const NavbarMobile = (handleLogoutProp: { handleLogout: () => void; flightLog: b
                       {" "}
                       Kotikenttä
                     </Link>
-                    <span className="block w-full py-2.5 px-8 text-base text-swhite/40 cursor-not-allowed border-l-2 border-transparent backdrop-blur-sm">
+                    <Link
+                      href="/kerho/hallit"
+                      className="block w-full py-2.5 px-8 text-base text-swhite/95 hover:bg-sblue/40 hover:text-swhite hover:pl-10 transition-all duration-200 border-l-2 border-transparent hover:border-sred backdrop-blur-sm"
+                      onClick={handleClose}
+                    >
                       Hallit
-                    </span>
-                    <span className="block w-full py-2.5 px-8 text-base text-swhite/40 cursor-not-allowed border-l-2 border-transparent backdrop-blur-sm">
+                    </Link>
+                    <Link
+                      href="/kerho/historiaa"
+                      className="block w-full py-2.5 px-8 text-base text-swhite/95 hover:bg-sblue/40 hover:text-swhite hover:pl-10 transition-all duration-200 border-l-2 border-transparent hover:border-sred backdrop-blur-sm"
+                      onClick={handleClose}
+                    >
                       Historiaa
-                    </span>
+                    </Link>
+                    <Link
+                      href="/tiedotteet"
+                      className="block w-full py-2.5 px-8 text-base text-swhite/95 hover:bg-sblue/40 hover:text-swhite hover:pl-10 transition-all duration-200 border-l-2 border-transparent hover:border-sred backdrop-blur-sm"
+                      onClick={handleClose}
+                    >
+                      Tiedotteet
+                    </Link>
                   </DisclosurePanel>
                 </div>
               )}
