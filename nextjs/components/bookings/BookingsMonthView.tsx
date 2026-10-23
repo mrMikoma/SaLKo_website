@@ -1,5 +1,6 @@
 "use client";
 
+import { LeftOutlined, RightOutlined } from "@ant-design/icons";
 import { DateTime } from "@/utilities/clubTime";
 import { BookingType } from "@/utilities/bookings";
 import { FlightTypeConfig } from "@/types/bookings";
@@ -10,6 +11,9 @@ interface BookingsMonthViewProps {
   bookings: BookingType[];
   selectedDate: DateTime;
   onDayClick: (date: string) => void;
+  // Given on phones: the month and its arrows head the calendar
+  onPreviousMonth?: () => void;
+  onNextMonth?: () => void;
   flightTypes: FlightTypeConfig[];
   getFlightTypeColor: (type: string) => string;
 }
@@ -19,6 +23,8 @@ export const BookingsMonthView = memo(
     bookings,
     selectedDate,
     onDayClick,
+    onPreviousMonth,
+    onNextMonth,
     getFlightTypeColor,
   }: BookingsMonthViewProps) => {
     // Get first day of month and calculate calendar grid
@@ -58,6 +64,28 @@ export const BookingsMonthView = memo(
 
     return (
       <div className="bg-swhite rounded-lg shadow overflow-hidden">
+        {onPreviousMonth && onNextMonth && (
+          <div className="flex items-center justify-between gap-2 bg-sblue px-1 py-1 text-swhite">
+            <button
+              type="button"
+              onClick={onPreviousMonth}
+              className="flex items-center justify-center w-11 h-11 rounded-lg hover:bg-swhite/15 active:bg-swhite/25 focus:outline-none focus:ring-2 focus:ring-swhite/60"
+              aria-label="Edellinen kuukausi"
+            >
+              <LeftOutlined className="text-lg" />
+            </button>
+            <span className="font-bold capitalize">{selectedDate.setLocale("fi").toFormat("LLLL yyyy")}</span>
+            <button
+              type="button"
+              onClick={onNextMonth}
+              className="flex items-center justify-center w-11 h-11 rounded-lg hover:bg-swhite/15 active:bg-swhite/25 focus:outline-none focus:ring-2 focus:ring-swhite/60"
+              aria-label="Seuraava kuukausi"
+            >
+              <RightOutlined className="text-lg" />
+            </button>
+          </div>
+        )}
+
         {/* Calendar grid */}
         <div className="grid grid-cols-7 gap-0">
           {/* Weekday headers */}

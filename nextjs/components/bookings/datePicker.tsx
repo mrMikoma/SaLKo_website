@@ -138,32 +138,17 @@ const DatePicker = ({ viewMode = "day" }: DatePickerProps) => {
           >
             <RightOutlined className="text-lg" />
           </button>
-
-          {/* Today button — inline on desktop */}
-          <button
-            type="button"
-            onClick={goToToday}
-            disabled={isToday}
-            className={`hidden lg:flex items-center justify-center px-5 py-2.5 font-semibold rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 shadow-lg whitespace-nowrap ${
-              isToday
-                ? "bg-swhite/20 text-swhite/50 cursor-not-allowed"
-                : "bg-swhite text-sblue hover:bg-swhite/95 hover:shadow-xl hover:scale-105 active:scale-95 focus:ring-swhite/60 focus:ring-offset-2 focus:ring-offset-sblue"
-            }`}
-            aria-label="Siirry tähän päivään"
-          >
-            Tänään
-          </button>
         </div>
 
-        {/* Today button — full width below nav, mobile only */}
+        {/* Today: full width under the arrows and low, so it isn't mistaken for one of them */}
         <button
           type="button"
           onClick={goToToday}
           disabled={isToday}
-          className={`lg:hidden mt-2.5 w-full py-2 font-semibold rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 shadow-md text-sm ${
+          className={`mt-3 w-full py-1.5 font-semibold rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 shadow-md text-sm ${
             isToday
               ? "bg-swhite/20 text-swhite/50 cursor-not-allowed"
-              : "bg-swhite text-sblue hover:bg-swhite/95 hover:shadow-xl hover:scale-[1.01] active:scale-95 focus:ring-swhite/60 focus:ring-offset-2 focus:ring-offset-sblue"
+              : "bg-swhite text-sblue hover:bg-swhite/95 hover:shadow-xl active:scale-[0.99] focus:ring-swhite/60 focus:ring-offset-2 focus:ring-offset-sblue"
           }`}
           aria-label="Siirry tähän päivään"
         >

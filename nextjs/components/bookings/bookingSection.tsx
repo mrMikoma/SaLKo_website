@@ -4,6 +4,7 @@ import { useMemo, lazy, Suspense } from "react";
 import { ConfigProvider, ThemeConfig } from "antd";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import DatePicker from "@/components/bookings/datePicker";
+import GuestBanner from "@/components/bookings/GuestBanner";
 import ViewSelector, { ViewMode } from "@/components/bookings/viewSelector";
 import { BookingType } from "@/utilities/bookings";
 import {
@@ -67,7 +68,7 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { date, dateString } = useDateFromUrl();
+  const { date, dateString, setDate } = useDateFromUrl();
   const { viewMode, setViewMode } = useViewMode();
   const isMobile = useIsMobile();
   // On mobile, treat "week" as "day" since week grid doesn't fit
@@ -232,17 +233,8 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
   return (
     <ConfigProvider theme={ANTD_THEME}>
       <div className="px-2 py-3 lg:p-4 text-black" role="main" aria-label="Varauskalenteri">
-        {/* Guest Booking Info Banner */}
-        {!isLoggedIn && (
-          <div className="mb-3 lg:w-1/2 lg:mx-auto px-4 py-2.5 bg-white/95 border border-sblue/30 rounded-xl shadow-sm text-center">
-            <p className="text-sm text-gray-700">
-              Voit varata ilman kirjautumista.{" "}
-              <span className="font-semibold text-sblue">Jäsenalue</span>
-              -valikon kautta voit kirjautua sisään varataksesi käyttäjänä.
-            </p>
-          </div>
-        )}
-        
+        {!isLoggedIn && <GuestBanner />}
+
         {/* Date Picker and View Selector - side by side on desktop */}
         <div className="flex flex-col lg:flex-row gap-3 items-center justify-between mb-3 lg:mb-6">
           <div className="w-full lg:flex-1">
@@ -256,8 +248,6 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
             />
           </div>
         </div>
-
-
 
         {/* Loading State */}
         {isLoading && <BookingsSkeleton />}
@@ -273,10 +263,13 @@ const BookingSection = ({ userContext }: BookingSectionProps) => {
             {/* Responsive Booking View */}
             {isMobile ? (
               effectiveViewMode === "month" ? (
+                // On a phone the month arrows sit on the calendar too, under the thumb
                 <BookingsMonthView
                   bookings={bookings}
                   selectedDate={date}
                   onDayClick={handleDayClick}
+                  onPreviousMonth={() => setDate(date.minus({ months: 1 }))}
+                  onNextMonth={() => setDate(date.plus({ months: 1 }))}
                   flightTypes={FLIGHT_TYPES}
                   getFlightTypeColor={getFlightTypeColor}
                 />
