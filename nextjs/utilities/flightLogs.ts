@@ -175,7 +175,7 @@ export type LogFlightsInput = z.input<typeof logFlightsSchema>;
 
 /**
  * How the member is written in the flight log. Their matched sheet name if
- * they have one; otherwise "T.Kuutti" from their full name, or the full name,
+ * they have one; otherwise "M.Meikäläinen" from their full name, or the full name,
  * whichever nobody uses yet, matched to them now. A name already in the sheet
  * or in pilot_aliases is never claimed here: it may be another pilot's, and
  * matching it would hand them that pilot's flights and bills. The admin

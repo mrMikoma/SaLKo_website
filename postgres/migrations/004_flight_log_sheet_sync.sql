@@ -55,9 +55,9 @@ INSERT INTO aircraft_sheets (registration, sheet_name)
 VALUES ('OH-CON', 'OH-CON Matkapäiväkirja')
 ON CONFLICT (registration) DO NOTHING;
 
--- Pilot names as written in the sheet ("T.Kuutti") matched to member accounts.
--- name_key is the name in lower case without spaces and dots, so "T. Kuutti"
--- and "t.kuutti" are the same pilot (nameKey() in utilities/flightSheetParser.ts).
+-- Pilot names as written in the sheet ("M.Meikäläinen") matched to member accounts.
+-- name_key is the name in lower case without spaces and dots, so "M. Meikäläinen"
+-- and "m.meikäläinen" are the same pilot (nameKey() in utilities/flightSheetParser.ts).
 CREATE TABLE IF NOT EXISTS pilot_aliases (
   name_key TEXT PRIMARY KEY,
   name TEXT NOT NULL,

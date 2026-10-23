@@ -11,7 +11,7 @@ interface PilotMatchingProps {
 }
 
 /**
- * Matches the pilot names written in the sheet ("T.Kuutti") to member
+ * Matches the pilot names written in the sheet ("M.Meikäläinen") to member
  * accounts, so members see their flights and get their bills
  */
 const PilotMatching = ({ unmatched, matched, members }: PilotMatchingProps) => {
@@ -37,7 +37,7 @@ const PilotMatching = ({ unmatched, matched, members }: PilotMatchingProps) => {
         <h2 className="text-xl font-semibold text-gray-900">Lentäjien nimet</h2>
         <p className="text-sm text-gray-600 mt-1">
           Yhdistä taulukon nimi jäseneen, niin jäsen näkee lentonsa ja laskunsa.
-          Kirjoitusasu ei haittaa: &quot;T. Kuutti&quot; ja &quot;T.Kuutti&quot; ovat sama nimi.
+          Kirjoitusasu ei haittaa: &quot;M. Meikäläinen&quot; ja &quot;M.Meikäläinen&quot; ovat sama nimi.
         </p>
       </div>
 

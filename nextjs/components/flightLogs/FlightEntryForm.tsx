@@ -327,14 +327,14 @@ const FlightEntryForm = ({ options, today, yesterday }: FlightEntryFormProps) =>
               list="pilot-names"
               value={otherPilot}
               onChange={(e) => setOtherPilot(e.target.value)}
-              placeholder="esim. T.Kuutti"
+              placeholder="esim. M.Meikäläinen"
               autoComplete="off"
               className={inputClassName}
             />
           </div>
           <p className="text-sm text-gray-600">
             Nimesi taulukossa:{" "}
-            <strong>{options.sheetName ?? "muodostetaan nimestäsi (esim. T.Kuutti)"}</strong>
+            <strong>{options.sheetName ?? "muodostetaan nimestäsi (esim. M.Meikäläinen)"}</strong>
           </p>
         </fieldset>
 
