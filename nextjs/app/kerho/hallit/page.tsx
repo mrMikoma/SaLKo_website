@@ -1,4 +1,9 @@
+// The flag is read per request: the production image is built without it
+export const dynamic = "force-dynamic";
+
 import Link from "next/link";
+import { notFound } from "next/navigation";
+import { isPagesInReviewEnabled } from "@/utilities/features";
 import PageHero from "@/components/pageHero";
 import ContentSection from "@/components/contentSection";
 import pricesData from "@/data/prices.json";
@@ -12,6 +17,11 @@ export const metadata = {
 };
 
 export default function Page() {
+  // Waiting for the club members' review: hidden in production until then
+  if (!isPagesInReviewEnabled()) {
+    notFound();
+  }
+
   const email = contactsData.general.email;
 
   return (

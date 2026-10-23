@@ -59,6 +59,7 @@ export default defineConfig({
           PORT: String(port),
           // Features hidden in production are tested too (utilities/features.ts)
           FEATURE_FLIGHT_LOG: "true",
+          FEATURE_PAGES_IN_REVIEW: "true",
           // The flight log reads a synthetic sheet, never the club's real one.
           // Absolute: CI's standalone server runs in .next/standalone
           FLIGHT_SHEET_SOURCE: "fixture",

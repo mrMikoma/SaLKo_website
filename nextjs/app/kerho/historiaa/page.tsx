@@ -1,4 +1,9 @@
+// The flag is read per request: the production image is built without it
+export const dynamic = "force-dynamic";
+
 import Link from "next/link";
+import { notFound } from "next/navigation";
+import { isPagesInReviewEnabled } from "@/utilities/features";
 import PageHero from "@/components/pageHero";
 import ContentSection from "@/components/contentSection";
 import HistoryTimeline from "@/components/historyTimeline";
@@ -21,6 +26,11 @@ const slug = (title: string) =>
     .replace(/(^-|-$)/g, "");
 
 export default function Page() {
+  // Waiting for the club members' review: hidden in production until then
+  if (!isPagesInReviewEnabled()) {
+    notFound();
+  }
+
   const { intro, sections, aircraft, documents, source } = historyData;
 
   return (

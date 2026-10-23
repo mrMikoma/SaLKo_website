@@ -20,8 +20,9 @@ import { useSession } from "next-auth/react";
 import { useNavbar } from "@/providers/NavbarContextProvider";
 import { hasPermission } from "@/utilities/roles";
 
-// flightLog: whether the flight log feature is on (utilities/features.ts)
-const Navbar = ({ flightLog }: { flightLog: boolean }) => {
+// flightLog: whether the flight log feature is on; pagesInReview: whether
+// Hallit and Historiaa are shown before the club's review (utilities/features.ts)
+const Navbar = ({ flightLog, pagesInReview }: { flightLog: boolean; pagesInReview: boolean }) => {
   const { data: session } = useSession();
   // Hide the user as soon as they click logout; signOut() then reloads the page
   const [loggedOutSession, setLoggedOutSession] = useState<typeof session>(null);
@@ -82,7 +83,7 @@ const Navbar = ({ flightLog }: { flightLog: boolean }) => {
             </span>
           </Link>{" "}
           {/* Mobile menu toggle button */}
-          <NavbarMobile handleLogout={handleLogout} flightLog={flightLog} />
+          <NavbarMobile handleLogout={handleLogout} flightLog={flightLog} pagesInReview={pagesInReview} />
         </div>
 
         {/* Desktop Navigation Menu */}
@@ -149,22 +150,24 @@ const Navbar = ({ flightLog }: { flightLog: boolean }) => {
                           Kotikenttä
                         </Link>
                       </MenuItem>
-                      <MenuItem>
-                        <Link
-                          href="/kerho/hallit"
-                          className="block py-3 px-4 text-swhite hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
-                        >
-                          Hallit
-                        </Link>
-                      </MenuItem>
-                      <MenuItem>
-                        <Link
-                          href="/kerho/historiaa"
-                          className="block py-3 px-4 text-swhite hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
-                        >
-                          Historiaa
-                        </Link>
-                      </MenuItem>
+                      {/* Waiting for the club's review: greyed out until then */}
+                      {[
+                        { href: "/kerho/hallit", label: "Hallit" },
+                        { href: "/kerho/historiaa", label: "Historiaa" },
+                      ].map((page) => (
+                        <MenuItem key={page.href}>
+                          {pagesInReview ? (
+                            <Link
+                              href={page.href}
+                              className="block py-3 px-4 text-swhite hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
+                            >
+                              {page.label}
+                            </Link>
+                          ) : (
+                            <span className="block py-3 px-4 text-swhite/40 cursor-not-allowed">{page.label}</span>
+                          )}
+                        </MenuItem>
+                      ))}
                       <MenuItem>
                         <Link
                           href="/tiedotteet"

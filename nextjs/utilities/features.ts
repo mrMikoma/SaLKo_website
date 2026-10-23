@@ -22,3 +22,10 @@ export function isFlightLogEnabled(): boolean {
 export function isSampleFlightsEnabled(): boolean {
   return isEnabled(process.env.FLIGHT_LOG_SAMPLE_DATA)
 }
+
+// Pages written from the old site that wait for the club members' review:
+// Historiaa and Hallit. Shown in the dev environment, where members read them,
+// and hidden in production until the review is done (docs/GO_LIVE.md).
+export function isPagesInReviewEnabled(): boolean {
+  return isEnabled(process.env.FEATURE_PAGES_IN_REVIEW)
+}
