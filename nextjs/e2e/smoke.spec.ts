@@ -42,3 +42,16 @@ test("login dialog opens from the navbar", async ({ page }) => {
   await expect(page.getByRole("textbox", { name: "Sähköposti" })).toBeVisible();
   await expect(page.getByRole("textbox", { name: "Salasana" })).toBeVisible();
 });
+
+test("the Kerho menu leads to the club's pages", async ({ page }) => {
+  for (const [label, path] of [
+    ["Hallit", "/kerho/hallit"],
+    ["Historiaa", "/kerho/historiaa"],
+    ["Tiedotteet", "/tiedotteet"],
+  ]) {
+    await page.goto("/");
+    await page.getByRole("button", { name: "Kerho" }).click();
+    await page.getByRole("menuitem", { name: label }).click();
+    await expect(page).toHaveURL(path);
+  }
+});
