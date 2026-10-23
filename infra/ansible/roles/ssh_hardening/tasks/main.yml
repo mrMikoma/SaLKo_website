@@ -29,6 +29,13 @@
     insertafter: EOF
   notify: Restart SSH
 
+# The drop-in was checked on its own; check everything sshd will read
+# together, so a bad combination stops the play before the restart
+- name: Check the whole sshd configuration
+  ansible.builtin.command: /usr/sbin/sshd -t
+  changed_when: false
+  when: not ansible_check_mode
+
 - name: Apply SSH configuration changes
   ansible.builtin.meta: flush_handlers
 

@@ -97,6 +97,8 @@ jobs:
 
             # Stop the current containers
             echo "Stopping the current containers..."
+            # Pull first, so the sites are down only for the restart, not the download
+            docker compose --env-file .env.traefik -f docker-compose.traefik.yaml pull
             docker compose --env-file .env.traefik -f docker-compose.traefik.yaml down || true
 
             # Start the containers using Docker Compose
