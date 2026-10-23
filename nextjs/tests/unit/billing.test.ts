@@ -26,15 +26,15 @@ const ctx = (changes: Partial<BillingContext> = {}): BillingContext => ({
     { registration: "OH-CON", validFrom: "2000-01-01", centsWithFee: 310, centsWithoutFee: 500, minimumLocalMinutes: 30 },
     { registration: "OH-CON", validFrom: "2026-07-01", centsWithFee: 330, centsWithoutFee: 520, minimumLocalMinutes: 30 },
   ],
-  // T.Kuutti and K.Opettaja are members; V.Vieras is a known non-member
+  // M.Meikäläinen and K.Opettaja are members; V.Vieras is a known non-member
   aliases: new Map([
-    ["tkuutti", "u1"],
+    ["mmeikäläinen", "u1"],
     ["kopettaja", "u2"],
     ["oppilas", "u3"],
     ["vvieras", null],
   ]),
   userNames: new Map([
-    ["u1", "Tero Kuutti"],
+    ["u1", "Matti Meikäläinen"],
     ["u2", "Kalle Opettaja"],
     ["u3", "Olli Oppilas"],
   ]),
@@ -49,7 +49,7 @@ const flight = (changes: Partial<BillingFlight> = {}): BillingFlight => ({
   registration: "OH-CON",
   sheetRow: row++,
   flightDate: "2026-06-14",
-  picName: "T.Kuutti",
+  picName: "M.Meikäläinen",
   secondName: null,
   departure: "EFSA",
   arrival: "EFJO",
@@ -70,7 +70,7 @@ describe("who pays and how much", () => {
   test("the PIC, at the lower price with the season's equipment fee", () => {
     const result = bill([flight()]);
     expect(result.payers).toHaveLength(1);
-    expect(result.payers[0]).toMatchObject({ key: "user:u1", name: "Tero Kuutti", minutes: 40, totalCents: 40 * 310 });
+    expect(result.payers[0]).toMatchObject({ key: "user:u1", name: "Matti Meikäläinen", minutes: 40, totalCents: 40 * 310 });
     expect(result.blockers).toEqual([]);
   });
 

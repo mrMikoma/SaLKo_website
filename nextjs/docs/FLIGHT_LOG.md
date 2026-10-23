@@ -22,7 +22,7 @@ Columns are found by header text (`SHEET_COLUMNS` in `utilities/flightSheetParse
 
 | Kind | Columns | Notes |
 |---|---|---|
-| Typed in | Päivämäärä, Päällikkö, Oppilas / SIC, Henkilömäärä, Lentoonlähtöpaikka, Laskupaikka, Lentoonlähtöaika, Laskuaika, Laskujen määrä, Lennon tarkoitus, Tankkaus, Öljy, Tuntimittari, Huomiot, Sivunumero, Total matkapäiväkirja, Virhe kirjassa, Huolto | |
+| Typed in | Päivämäärä, Päällikkö, Oppilas / SIC, Henkilömäärä, Lentoonlähtöpaikka, Laskupaikka, Lentoonlähtöaika, Laskuaika, Laskujen määrä, Lennon tarkoitus, Tankkaus, Öljy, Tuntimittari, Huomiot, Sivunumero, Total matkapäiväkirja, Virhe kirjassa, Huolto | Tankkaus is in litres, Öljy in quarts (1/4 US gallon), as the club adds oil. |
 | Formulas | Ilmassa oloaika (H−G), Kokonais ilmassaoloaika, Laskujen kokonaismäärä (running totals), Kuukausi, Vuosi | Pre-filled about 1,000 rows down. The next flight goes into the first row with an empty date, never appended below. |
 | For the website | **ID**, **Lähde** (`web` / empty), **Tila**, **Laskutusjakso** | Add these four headers at the right edge before the first sync. |
 
@@ -82,7 +82,7 @@ A training flight without a student is not an issue: on a solo flight the studen
 - **Legs:** "+ Seuraava lento samana päivänä" adds a leg that starts where the last one landed, with the same purpose. Times take `1405`, `14.05`, `14,05` or `14:05`, and "Nyt" fills in the current Finnish time. A landing earlier than the takeoff is after midnight. Hour meter, fuel, oil and remarks are optional.
 - **Footer:** total time, and an estimate for billed purposes from the per-minute price in `data/prices.json`. Billing itself comes later.
 
-**Sheet name.** The form writes the member's `pilot_aliases` name. A member without one gets the club's usual form, `T.Kuutti` from "Tero Kuutti" (`sheetNameFor`), or else the full name, saved as their alias so the flights match at once. Only a name that isn't in the sheet or in `pilot_aliases` yet is taken this way: an existing "T.Kuutti" may be another pilot, and taking it would give the member that pilot's flights and bills. When both names are in use, the form asks the member to have the biller match their name on `/admin/lennot`.
+**Sheet name.** The form writes the member's `pilot_aliases` name. A member without one gets the club's usual form, `M.Meikäläinen` from "Matti Meikäläinen" (`sheetNameFor`), or else the full name, saved as their alias so the flights match at once. Only a name that isn't in the sheet or in `pilot_aliases` yet is taken this way: an existing "M.Meikäläinen" may be another pilot, and taking it would give the member that pilot's flights and bills. When both names are in use, the form asks the member to have the biller match their name on `/admin/lennot`.
 
 **Writing** (`utilities/flightSheetWriter.ts`):
 1. A Postgres advisory lock per aircraft, so two members never get the same rows.

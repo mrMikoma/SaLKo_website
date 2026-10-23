@@ -155,6 +155,7 @@ Copy `nextjs/.env.example` to `nextjs/.env` (Claude's hooks block editing `.env`
 | `GOOGLE_SERVICE_ACCOUNT_KEY` / `FLIGHT_LOG_SPREADSHEET_ID` | The flight log Google Sheet: the service account's key file (JSON or base64) and the spreadsheet's ID. Setup in `nextjs/docs/FLIGHT_LOG_SETUP.md` (optional) |
 | `FLIGHT_SHEET_SOURCE` / `FLIGHT_SHEET_FIXTURE` | `google` or `fixture` (the synthetic `e2e/fixtures/flight-sheet.json`, used by Playwright and by default under `bun dev` without Google) |
 | `FEATURE_FLIGHT_LOG` | `true` turns on the unfinished flight log (`utilities/features.ts`). Set in dev by `deploy-app-dev.yaml`, unset in prod; defaults to on under `bun dev` |
+| `FLIGHT_LOG_SAMPLE_DATA` | `true` shows the "Esimerkkilennot" button on `/admin/lennot`, which writes a year of made-up flights into an aircraft's tab (`utilities/sampleFlights.ts`). Set in dev, never in prod; defaults to on under `bun dev` |
 | `E2E_USER_*` / `E2E_ADMIN_*` | `_EMAIL` and `_PASSWORD` of existing accounts for e2e tests against a non-local database (optional) |
 
 ## Deployment

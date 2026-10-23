@@ -13,7 +13,7 @@ export function inputHash(flight: ParsedFlight): string {
   const typed = [
     flight.flightDate, flight.picName, flight.secondName, flight.personsOnBoard,
     flight.departure, flight.arrival, flight.takeoffAt, flight.landingAt,
-    flight.landings, flight.purposeCode, flight.fuelLitres, flight.oilLitres,
+    flight.landings, flight.purposeCode, flight.fuelLitres, flight.oilQuarts,
     flight.hourMeter, flight.remarks,
   ];
   return createHash("sha256").update(JSON.stringify(typed)).digest("hex").slice(0, 16);

@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
 import pool from "@/utilities/db";
 import { auth } from "@/auth";
 import { hasPermission } from "@/utilities/roles";
-import { isFlightLogEnabled } from "@/utilities/features";
+import { isFlightLogEnabled, isSampleFlightsEnabled } from "@/utilities/features";
 import { syncFlightSheets, SyncSummary } from "@/utilities/flightSync";
 import {
   nameKey,
@@ -26,6 +26,7 @@ import {
   writePaperPage,
 } from "@/utilities/flightSheetWriter";
 import { getFlightsOnDates } from "@/utilities/flightLogData";
+import { sampleFlights } from "@/utilities/sampleFlights";
 import {
   describeDifferences,
   ExistingFlight,
@@ -70,6 +71,65 @@ export async function runFlightSync(): Promise<ActionResult<SyncSummary>> {
     return { status: "error", error: summary.error ?? "Synkronointi epäonnistui" };
   }
   return { status: "success", result: summary };
+}
+
+/**
+ * Development only (FLIGHT_LOG_SAMPLE_DATA): writes about a year of made-up
+ * flights into an aircraft's tab, through the same writer as the entry form,
+ * so the flight log, billing and statistics have something to show. The sheet
+ * runs in date order, so a tab that already has flights from that year is
+ * left alone.
+ */
+export async function addSampleFlights(registration: string): Promise<ActionResult<{ added: number }>> {
+  const access = await requireFlightLogAdmin();
+  if ("error" in access) {
+    return { status: "error", error: access.error };
+  }
+  if (!isSampleFlightsEnabled()) {
+    return { status: "error", error: "Esimerkkilennot ovat käytössä vain kehitysympäristössä" };
+  }
+
+  const today = DateTime.now().setZone(SHEET_ZONE).startOf("day");
+  const from = today.minus({ months: 12 }).startOf("month");
+  try {
+    const aircraft = await pool.query(
+      `SELECT a.registration,
+              (SELECT max(f.flight_date) FROM sheet_flights f
+               WHERE f.registration = a.registration AND f.missing_since IS NULL) AS latest
+       FROM aircraft_sheets a WHERE a.registration = $1`,
+      [registration]
+    );
+    if (aircraft.rows.length === 0) {
+      return { status: "error", error: "Konetta ei löytynyt lentopäiväkirjasta" };
+    }
+    const latest = aircraft.rows[0].latest as Date | null;
+    if (latest && DateTime.fromJSDate(latest).toISODate()! >= from.toISODate()!) {
+      return {
+        status: "error",
+        error: `${registration}:n taulukossa on jo lentoja ${from.toFormat("d.M.yyyy")} jälkeen. Esimerkkilennot lisätään vain taulukkoon, jossa ei ole tämän vuoden lentoja.`,
+      };
+    }
+
+    const inputs = sampleFlights({
+      registration,
+      from,
+      until: today.minus({ days: 1 }),
+      newId: randomUUID,
+    });
+    await appendFlightsToSheet(registration, inputs);
+    await syncFlightSheets(access.user.fullName || "ylläpitäjä", { wait: true });
+    revalidatePath("/admin/lennot");
+    return { status: "success", result: { added: inputs.length } };
+  } catch (error) {
+    console.error("Error adding sample flights:", error);
+    return {
+      status: "error",
+      error:
+        error instanceof FlightSheetWriteError
+          ? error.message
+          : "Esimerkkilentojen lisäys epäonnistui. Lentopäiväkirjan taulukkoon ei saatu yhteyttä.",
+    };
+  }
 }
 
 const pilotAliasSchema = z.object({
@@ -157,7 +217,7 @@ const legSchema = z.object({
   personsOnBoard: z.number().int().min(1, "Henkilöitä vähintään 1").max(6, "Henkilöitä enintään 6"),
   purposeCode: z.string().trim().toUpperCase().min(1, "Valitse lennon tarkoitus"),
   fuelLitres: optionalNumber(500, "Tarkista tankkausmäärä"),
-  oilLitres: optionalNumber(20, "Tarkista öljymäärä"),
+  oilQuarts: optionalNumber(20, "Tarkista öljymäärä"),
   hourMeter: optionalNumber(99999.9, "Tarkista tuntimittarin lukema"),
   remarks: z.string().trim().max(300, "Huomiot voivat olla enintään 300 merkkiä").nullable(),
 });
@@ -175,7 +235,7 @@ export type LogFlightsInput = z.input<typeof logFlightsSchema>;
 
 /**
  * How the member is written in the flight log. Their matched sheet name if
- * they have one; otherwise "T.Kuutti" from their full name, or the full name,
+ * they have one; otherwise "M.Meikäläinen" from their full name, or the full name,
  * whichever nobody uses yet, matched to them now. A name already in the sheet
  * or in pilot_aliases is never claimed here: it may be another pilot's, and
  * matching it would hand them that pilot's flights and bills. The admin
@@ -271,7 +331,7 @@ export async function logFlights(
       landings: leg.landings,
       purposeCode: leg.purposeCode,
       fuelLitres: leg.fuelLitres,
-      oilLitres: leg.oilLitres,
+      oilQuarts: leg.oilQuarts,
       hourMeter: leg.hourMeter,
       remarks: leg.remarks || null,
     }));
@@ -530,7 +590,7 @@ const toSheetInput = (row: PaperRow, id: string) => ({
   landings: row.landings,
   purposeCode: row.purposeCode,
   fuelLitres: null,
-  oilLitres: null,
+  oilQuarts: null,
   hourMeter: null,
   remarks: row.remarks,
 });

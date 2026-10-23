@@ -66,7 +66,7 @@ function toRecord(flight: ParsedFlight) {
     total_landings: round(flight.totalLandings),
     purpose_code: flight.purposeCode,
     fuel_litres: flight.fuelLitres,
-    oil_litres: flight.oilLitres,
+    oil_quarts: flight.oilQuarts,
     hour_meter: flight.hourMeter,
     remarks: flight.remarks,
     log_page: flight.logPage,
@@ -86,21 +86,21 @@ const UPSERT_FLIGHTS = `
   INSERT INTO sheet_flights (
     id, registration, sheet_row, flight_date, pic_name, pic_key, second_name, second_key,
     persons_on_board, departure, arrival, takeoff_at, landing_at, airborne_minutes,
-    airframe_minutes, landings, total_landings, purpose_code, fuel_litres, oil_litres,
+    airframe_minutes, landings, total_landings, purpose_code, fuel_litres, oil_quarts,
     hour_meter, remarks, log_page, book_total, book_error, maintenance, source, status,
     billing_period, raw, content_hash, input_hash, synced_at, missing_since
   )
   SELECT
     f.id, $2, f.sheet_row, f.flight_date, f.pic_name, f.pic_key, f.second_name, f.second_key,
     f.persons_on_board, f.departure, f.arrival, f.takeoff_at, f.landing_at, f.airborne_minutes,
-    f.airframe_minutes, f.landings, f.total_landings, f.purpose_code, f.fuel_litres, f.oil_litres,
+    f.airframe_minutes, f.landings, f.total_landings, f.purpose_code, f.fuel_litres, f.oil_quarts,
     f.hour_meter, f.remarks, f.log_page, f.book_total, f.book_error, f.maintenance, f.source, f.status,
     f.billing_period, f.raw, f.content_hash, f.input_hash, NOW(), NULL
   FROM jsonb_to_recordset($1::jsonb) AS f(
     id uuid, sheet_row int, flight_date date, pic_name text, pic_key text, second_name text,
     second_key text, persons_on_board smallint, departure text, arrival text,
     takeoff_at timestamptz, landing_at timestamptz, airborne_minutes int, airframe_minutes int,
-    landings int, total_landings int, purpose_code text, fuel_litres numeric, oil_litres numeric,
+    landings int, total_landings int, purpose_code text, fuel_litres numeric, oil_quarts numeric,
     hour_meter numeric, remarks text, log_page text, book_total text, book_error text,
     maintenance text, source text, status text, billing_period text, raw jsonb, content_hash text,
     input_hash text
@@ -114,7 +114,7 @@ const UPSERT_FLIGHTS = `
     airborne_minutes = EXCLUDED.airborne_minutes, airframe_minutes = EXCLUDED.airframe_minutes,
     landings = EXCLUDED.landings, total_landings = EXCLUDED.total_landings,
     purpose_code = EXCLUDED.purpose_code, fuel_litres = EXCLUDED.fuel_litres,
-    oil_litres = EXCLUDED.oil_litres, hour_meter = EXCLUDED.hour_meter, remarks = EXCLUDED.remarks,
+    oil_quarts = EXCLUDED.oil_quarts, hour_meter = EXCLUDED.hour_meter, remarks = EXCLUDED.remarks,
     log_page = EXCLUDED.log_page, book_total = EXCLUDED.book_total,
     book_error = EXCLUDED.book_error, maintenance = EXCLUDED.maintenance, source = EXCLUDED.source,
     status = EXCLUDED.status, billing_period = EXCLUDED.billing_period, raw = EXCLUDED.raw,

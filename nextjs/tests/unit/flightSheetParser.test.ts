@@ -96,8 +96,8 @@ describe("cell values", () => {
   });
 
   test("name keys ignore case, spaces and dots", () => {
-    expect(nameKey("T. Kuutti")).toBe(nameKey("t.kuutti"));
-    expect(nameKey("Bodis Bence")).toBe("bodisbence");
+    expect(nameKey("M. Meikäläinen")).toBe(nameKey("m.meikäläinen"));
+    expect(nameKey("Keikäläinen Kalle")).toBe("keikäläinenkalle");
   });
 
   test("column letters", () => {
