@@ -210,6 +210,22 @@ jobs:
             echo "UMAMI_DB_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env.prod
             echo "UMAMI_INTERNAL_URL=${{ env.UMAMI_INTERNAL_URL }}" >> .env.prod
             echo "NEXT_PUBLIC_UMAMI_WEBSITE_ID=${{ secrets.NEXT_PUBLIC_UMAMI_WEBSITE_ID }}" >> .env.prod
+            # Switched on stage by stage with the production environment's
+            # variables (nextjs/docs/GO_LIVE.md); unset means off. The flight
+            # log, billing and invoices need FEATURE_FLIGHT_LOG=true; email needs
+            # MAIL_MODE=send (or redirect, to send everything to MAIL_REDIRECT_TO).
+            echo "FEATURE_FLIGHT_LOG=${{ vars.FEATURE_FLIGHT_LOG }}" >> .env.prod
+            echo "MAIL_MODE=${{ vars.MAIL_MODE }}" >> .env.prod
+            # The club's flight log sheet (nextjs/docs/FLIGHT_LOG_SETUP.md); the key
+            # is base64-encoded so its quotes and line breaks survive the env file
+            echo "FLIGHT_LOG_SPREADSHEET_ID=${{ secrets.GOOGLE_SHEETS_ID }}" >> .env.prod
+            echo "GOOGLE_SERVICE_ACCOUNT_KEY=$(printf '%s' '${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}' | base64 -w0)" >> .env.prod
+            # The club's mail account (nextjs/docs/MAIL_SETUP.md)
+            echo "MAIL_FROM=${{ secrets.MAIL_FROM }}" >> .env.prod
+            echo "MAIL_REFRESH_TOKEN=${{ secrets.MAIL_REFRESH_TOKEN }}" >> .env.prod
+            echo "MAIL_GMAIL_CLIENT_ID=${{ secrets.MAIL_GMAIL_CLIENT_ID }}" >> .env.prod
+            echo "MAIL_GMAIL_CLIENT_SECRET=${{ secrets.MAIL_GMAIL_CLIENT_SECRET }}" >> .env.prod
+            echo "MAIL_REDIRECT_TO=${{ secrets.MAIL_REDIRECT_TO }}" >> .env.prod
 
             # Ensure the environment variables are written before proceeding
             echo ".env.prod file created with environment variables."

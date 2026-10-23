@@ -1,0 +1,152 @@
+# Production go-live
+
+How everything waiting in `dev` reaches savonlinnanlentokerho.fi, in three stages that can be days apart. Production is the `main` branch; nothing reaches it except through the workflows below. Steps marked **Approve** wait for a reviewer of the `production` environment in GitHub.
+
+| Stage | What goes live | Switch |
+|---|---|---|
+| **A. Release** | Next.js security update (prod runs 16.2.6; 16.4.1 fixed critical remote-code bugs), the booking permission fix and new calendar, admin user tools, bulletin drafts, Historiaa and Hallit, server maintenance and SSH hardening, the SPF and DMARC records | merge `dev` → `main` (#47), migrate, deploy |
+| **B. Flight log** | the club's real sheet, members logging flights, the treasurer checking them | production variable `FEATURE_FLIGHT_LOG=true`, redeploy |
+| **C. Billing and email** | billing periods and invoices emailed to members | production variable `MAIL_MODE=send`, redeploy |
+
+Stage A doesn't depend on B or C and carries security fixes, so it shouldn't wait for them. The flight log, billing, invoices and email stay hidden or off until their stage.
+
+## Stage A: release
+
+### Days before
+
+- [ ] Everything meant for this release is merged into `dev` and tested on kehitys:
+  - bookings as a guest and as a member, including a recurring one;
+  - a bulletin from draft to published;
+  - deactivating a user and changing roles;
+  - the Historiaa and Hallit pages.
+- [ ] CI is green on #47.
+- [ ] **SSH:** the release turns off password logins to the server (`PasswordAuthentication no`) and TCP and agent forwarding (`infra/ansible/roles/ssh_hardening`).
+  - Check that your key works on its own: `ssh -o PasswordAuthentication=no salko@savonlinnanlentokerho.fi true`.
+  - Anyone else who logs in with a password needs a key in `authorized_keys` first.
+  - VS Code Remote-SSH stops working, because it needs TCP forwarding.
+- [ ] **Reboots:** the release turns on automatic security updates, with a reboot window on Sundays at 04:30 when an update needs one.
+  - The server has not rebooted for months, so expect a reboot on the first Sunday after.
+  - Every container restarts by itself (`restart: unless-stopped`).
+- [ ] Dry-run the server changes from `dev`, which changes nothing: Actions → **Ansible Provision** → branch `dev`, tick "Dry run". Read the diff.
+- [ ] Pick a quiet evening. The website is down for a few minutes during the deploy, and Traefik's restart briefly takes down every site on the server.
+
+### Release, about 30 minutes
+
+1. **Merge #47** (`dev` → `main`):
+   ```
+   gh pr merge -R mrMikoma/SaLKo_website 47 --merge --admin
+   ```
+   The merge starts these by itself:
+   - **Terraform Plan and Apply**: the DNS records and the Cloudflare provider pin. **Approve** it after reading the plan: it should only add the SPF and DMARC records.
+   - **Ansible Provision**: maintenance and SSH hardening.
+   - **Deploy Monitoring Stack**. **Approve**.
+
+   Let them finish. The website itself doesn't change yet.
+2. **Build the prod image:** Actions → **Build and Publish Production** → branch `main`. Note the version it prints (`v0.0.N`).
+3. **Migrate the database**, right before the deploy:
+   1. Actions → **Database Migrations** → branch `main`, environment `prod`, *Only list pending migrations* ticked. It should list 001–014.
+   2. Run it again without the tick. **Approve**.
+
+   It first saves a dump to `/home/salko/backups/migrations/salko-postgres-prod-<time>.dump`. From now until step 4, the old site can't read users' roles (migration 001 replaces `users.role` with `users.roles`), so logins and the admin pages may fail. Keep the gap short.
+4. **Deploy:** Actions → **Deploy production from main branch** (`deploy-app-prod`) → branch `main`, the version from step 2. **Approve**.
+5. **Cronjobs:** Actions → **Deploy Background Cronjobs** → branch `main`. This applies the METAR job fix (the dev and prod schedulers no longer run each other's jobs). **Approve**.
+6. **Traefik:** Actions → **Deploy Traefik** from `main`. This moves it from 3.6.1 to 3.7.14, and every site blinks for a moment.
+
+### Check
+
+- [ ] savonlinnanlentokerho.fi opens, and the front page shows the latest bulletins. Existing bulletins are published with their original dates.
+- [ ] Logging in works with Google and with a password. Admins reach `/admin`, and roles are as before.
+- [ ] Booking calendar:
+  - an existing future booking shows at the same hour as before;
+  - create a test booking, then delete it;
+  - as a guest, you can see a booking's title and booker, but not their contact details.
+- [ ] Every public page answers 200. `--doh-url` looks the name up in public DNS, so the check goes through Cloudflare as visitors do. On the club's private network the name points at the server's private address instead.
+  ```
+  for p in / /kerho /kerho/hallit /kerho/historiaa /kerho/hinnasto /kerho/kentta /kalusto /kalusto/varauskalenteri /koulutus /esittelylennot /yhteystiedot /tiedotteet; do printf "%-28s " "$p"; curl -s --doh-url https://1.1.1.1/dns-query -o /dev/null -w "%{http_code} %{time_total}s\n" "https://savonlinnanlentokerho.fi$p"; done
+  ```
+- [ ] https://savonlinnanlentokerho.fi/robots.txt allows crawling. The prod build sets `ALLOW_INDEXING=true`.
+- [ ] DNS: on https://mxtoolbox.com, "SPF Record Lookup" and "DMARC Lookup" for `savonlinnanlentokerho.fi` find the records.
+- [ ] Grafana shows every container up. The next morning, METAR data is still updating on `/kerho/kentta`.
+
+### If it goes wrong
+
+- **The app fails but the database is fine:** fix forward. Push a fix through `dev` → `main` and deploy the new version. The previous image can't run on the migrated database, because it reads `users.role`.
+- **The migration fails:** each file runs in one transaction, so a failed file leaves nothing behind. The old site keeps running on the files before it. Fix the migration in `dev` and run again.
+- **The data must go back:** restore the dump from step 3 with `pg_restore`, together with the previous image. This is a manual change on the server, so decide it explicitly; don't run it as a routine step.
+
+## Stage B: flight log
+
+### Prepare
+
+- [ ] **Service account:** create the production one, `salko-lentopaivakirja`, with its own JSON key (`FLIGHT_LOG_SETUP.md`, steps 2–3). Never reuse the dev key.
+- [ ] **The real sheet:**
+  - add the website's four columns (ID, Lähde, Tila, Laskutusjakso) at the right edge of the `OH-CON Matkapäiväkirja` tab, whose name must stay exactly that;
+  - share the sheet with the service account as an editor;
+  - check that File → Settings says Finland and Helsinki.
+- [ ] **Hand-billed flights:** fill Tila as **Laskutettu**, or Maksettu, for every flight already billed the old way. Otherwise they show as unchecked and later as unbilled.
+- [ ] **Try a copy first:** on a copy of the sheet, try one save, one undo and one status change (`FLIGHT_LOG.md`, "Before switching it on").
+- [ ] **Secrets:** add `GOOGLE_SHEETS_ID` and `GOOGLE_SERVICE_ACCOUNT_JSON` (the key file as is) to the `production` environment's secrets.
+- [ ] **Treasurer:** give their account the Laskuttaja role on `/admin/users`, together with Käyttäjä.
+
+### Switch on
+
+1. Settings → Environments → `production` → Variables: `FEATURE_FLIGHT_LOG` = `true`.
+2. Actions → **Deploy production from main branch** with the current version. No new build is needed. **Approve**.
+
+### Check
+
+- [ ] On `/admin/lennot`, the sync succeeds, and the flight count and this year's hours match the sheet.
+- [ ] Pilot names are matched to members ("Yhdistä nimet").
+- [ ] The Tarkistamatta list holds only flights not yet billed.
+- [ ] A member sees Lentopäiväkirja in the menu, logs a flight, and the flight appears in the sheet. Undo it if it was a test.
+- [ ] `/admin/tilastot` agrees with the sheet's Tilastot tab.
+
+To switch it off again, clear the variable and redeploy. The data stays.
+
+## Stage C: billing and email
+
+### Prepare
+
+- [ ] **Mail account:** the club's mail account exists and is authorised (`MAIL_SETUP.md`, steps 2–4).
+- [ ] **DKIM:**
+  1. Generate the key in the Google Admin console.
+  2. Add it to `infra/terraform/main.tf` through `dev` → `main`.
+  3. Once the record is live, press "Start authentication".
+- [ ] **Secrets:** add `MAIL_FROM`, `MAIL_REFRESH_TOKEN`, `MAIL_GMAIL_CLIENT_ID` and `MAIL_GMAIL_CLIENT_SECRET` to the `production` environment's secrets. Optionally add `MAIL_REDIRECT_TO`, for a dry run.
+- [ ] **Club details on invoices:** Yhteystiedot (`data/contacts.json`) has the right IBAN, BIC and business ID.
+- [ ] **On `/admin/laskutus/asetukset`:**
+  - the prices: OH-CON 3,10 / 5,00 €/min, with a 30 min minimum;
+  - this season's equipment-fee payers;
+  - the free hour;
+  - who pays for each purpose;
+  - the invoice payment term and closing note.
+- [ ] **Backups:** invoices are bookkeeping records that must be kept for six years. Before the first real invoice, decide on Postgres backups off the server (the R2 to-do). Hetzner's server backups alone keep only a week.
+- [ ] **Bookkeeping:** tell the bookkeeper:
+  - invoices now come from the site, numbered `2026NNNN`, with their own reference numbers;
+  - `/admin/laskut/csv` lists them for the accounting software;
+  - stop numbering invoices in the old software.
+
+### Switch on
+
+1. Set the variable `MAIL_MODE` to `send`, or to `redirect` for a dry run where all mail goes to `MAIL_REDIRECT_TO`.
+2. Redeploy with the current version. **Approve**.
+3. On `/admin/laskutus/viestit`, press "Lähetä testiviesti itselleni" and check the message:
+   - it comes from "Savonlinnan Lentokerho, laskutus";
+   - replying goes to `laskutus@`;
+   - Gmail's "Show original" says SPF, DKIM and DMARC: PASS.
+4. Send one small invoice from `/admin/laskut/uusi` to the treasurer's own account. Pay it with the virtual barcode in a bank app, and check that the payment arrives with the reference number.
+
+A dry run's invoices get real numbers but never reach members, so use `redirect` only with test invoices.
+
+### First billing period
+
+- [ ] Create the first period starting right after the last flight billed by hand. Flights before it, and those with Tila Laskutettu, aren't billed again.
+- [ ] Check it on `/admin/laskutus/[id]`, close it, then press "Luo laskuluonnokset".
+- [ ] Look through the drafts, add the missing postal addresses, then send them from `/admin/laskut`.
+- [ ] Tell members that bills now come by email from the club's mail account, and that replies go to the treasurer.
+
+To stop sending, clear `MAIL_MODE` and redeploy. Messages are then stored but not sent.
+
+## Every later release
+
+The same as stage A, steps 1–4: merge `dev` → `main`, build, migrate if `postgres/migrations` has new files (dry run first), and deploy.
