@@ -215,6 +215,8 @@ jobs:
             # log, billing and invoices need FEATURE_FLIGHT_LOG=true; email needs
             # MAIL_MODE=send (or redirect, to send everything to MAIL_REDIRECT_TO).
             echo "FEATURE_FLIGHT_LOG=${{ vars.FEATURE_FLIGHT_LOG }}" >> .env.prod
+            # Historiaa and Hallit, once the club members have reviewed them
+            echo "FEATURE_PAGES_IN_REVIEW=${{ vars.FEATURE_PAGES_IN_REVIEW }}" >> .env.prod
             echo "MAIL_MODE=${{ vars.MAIL_MODE }}" >> .env.prod
             # The club's flight log sheet (nextjs/docs/FLIGHT_LOG_SETUP.md); the key
             # is base64-encoded so its quotes and line breaks survive the env file

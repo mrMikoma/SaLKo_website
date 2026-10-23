@@ -4,11 +4,16 @@ How everything waiting in `dev` reaches savonlinnanlentokerho.fi, in three stage
 
 | Stage | What goes live | Switch |
 |---|---|---|
-| **A. Release** | Next.js security update (prod runs 16.2.6; 16.4.1 fixed critical remote-code bugs), the booking permission fix and new calendar, admin user tools, bulletin drafts, Historiaa and Hallit, server maintenance and SSH hardening, the SPF and DMARC records | merge `dev` → `main` (#47), migrate, deploy |
+| **A. Release** | Next.js and Bun security updates, the booking permission fix and new calendar, admin user tools, bulletin drafts, server maintenance and SSH hardening, the SPF and DMARC records | merge `dev` → `main` (#47), migrate, deploy |
 | **B. Flight log** | the club's real sheet, members logging flights, the treasurer checking them | production variable `FEATURE_FLIGHT_LOG=true`, redeploy |
 | **C. Billing and email** | billing periods and invoices emailed to members | production variable `MAIL_MODE=send`, redeploy |
 
 Stage A doesn't depend on B or C and carries security fixes, so it shouldn't wait for them. The flight log, billing, invoices and email stay hidden or off until their stage.
+
+**Historiaa and Hallit wait for the club members' review.** They were written from the old website and club records, and they are shown on kehitys for members to read. In production they stay greyed out in the menu, with no page, until the review is done. Then:
+1. Fix what the members pointed out, through `dev` as usual.
+2. Set the production variable `FEATURE_PAGES_IN_REVIEW` = `true`.
+3. Redeploy.
 
 ## Stage A: release
 
@@ -54,6 +59,7 @@ Stage A doesn't depend on B or C and carries security fixes, so it shouldn't wai
 
 ### Check
 
+- [ ] Historiaa and Hallit are greyed out in the Kerho menu, and `/kerho/historiaa` gives the "page doesn't exist yet" page, until the members' review.
 - [ ] savonlinnanlentokerho.fi opens, and the front page shows the latest bulletins. Existing bulletins are published with their original dates.
 - [ ] Logging in works with Google and with a password. Admins reach `/admin`, and roles are as before.
 - [ ] Booking calendar:
