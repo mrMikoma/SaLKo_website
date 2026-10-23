@@ -17,6 +17,11 @@ on:
   repository_dispatch:
     types: [deploy-dev]
 
+# One deploy at a time; a newer one waits for the running one to finish
+concurrency:
+  group: deploy-app-dev
+  cancel-in-progress: false
+
 env:
   NAME_PREFIX: "salko"
   SITE_PREFIX: "kehitys"

@@ -21,6 +21,12 @@ on:
       - ".github/workflows/deploy-app-dev.yaml"
   workflow_dispatch: {}
 
+# Merges in quick succession: only the newest build runs, so the version
+# numbers don't race and an older image can't deploy over a newer one
+concurrency:
+  group: build-and-publish-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: mrmikoma/salko_website-nextjs-${{ github.head_ref || github.ref_name }}
@@ -115,17 +121,17 @@ jobs:
       contents: write
       actions: write
     steps:
-      - name: Trigger deployment via repository dispatch
-        uses: peter-evans/repository-dispatch@v4.0.1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          event-type: deploy-dev
-          client-payload: |
-            {
-              "branch_name": "${{ github.head_ref || github.ref_name }}",
-              "image_tag_name": "${{ env.REGISTRY }}/${{ needs.build-and-publish.outputs.image_name }}",
-              "image_version": "${{ needs.build-and-publish.outputs.new_version }}"
-            }
+      # A workflow_dispatch on the branch runs the branch's own deploy workflow.
+      # A repository_dispatch always ran the one on the default branch (main),
+      # so changes to deploy-app-dev.yaml reached kehitys only after a release.
+      - name: Trigger deployment
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ github.head_ref || github.ref_name }}
+          VERSION: ${{ needs.build-and-publish.outputs.new_version }}
+        run: |
+          gh workflow run deploy-app-dev.yaml --repo "${{ github.repository }}" --ref "$BRANCH" \
+            -f image_version="$VERSION" -f branch_name="$BRANCH"
 
       - name: Notify deployment
         run: |
