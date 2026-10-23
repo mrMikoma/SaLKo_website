@@ -70,7 +70,7 @@
     {
       "type": "Esittelylento",
       "description": "Tutustumislento lentokoneella (20 min). Laskutetaan lennon yhteydessä.",
-      "price": "80",
+      "price": "90",
       "unit": "€"
     },
     {

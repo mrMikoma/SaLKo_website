@@ -72,7 +72,7 @@ export default function Page() {
                   Lennoista ilmoitetaan kerhon sivuilla.
                 </p>
                 <p className="text-sbluel font-semibold">
-                  Hinta: 80 € / 20 min
+                  Hinta: 90 € / 20 min
                 </p>
               </div>
 
