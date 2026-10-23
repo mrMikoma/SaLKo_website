@@ -4,6 +4,9 @@ import { signIn } from "@/auth";
 import { AuthError } from "next-auth";
 import { LoginFormSchema } from "@/utilities/definitions";
 import { safeRedirect } from "@/utilities/safeRedirect";
+import { clientIp, waitText } from "@/utilities/rateLimit";
+import { loginBlockedFor, TOO_MANY_ATTEMPTS } from "@/utilities/loginLimits";
+import { headers } from "next/headers";
 
 export interface LoginState {
   errors?: {
@@ -12,6 +15,8 @@ export interface LoginState {
     general?: string[];
   };
   status?: "success" | "error";
+  // What was typed, so the form keeps it after a failed attempt
+  email?: string;
 }
 
 /**
@@ -34,6 +39,7 @@ export async function loginWithCredentials(
         password?: string[];
       },
       status: "error",
+      email: String(formData.get("email") ?? ""),
     };
   }
 
@@ -63,6 +69,19 @@ export async function loginWithCredentials(
     }
 
     if (error instanceof AuthError) {
+      // Too many failed logins (auth.ts): say how long to wait
+      if ((error as AuthError & { code?: string }).code === TOO_MANY_ATTEMPTS) {
+        const wait = loginBlockedFor(email, clientIp(await headers()));
+        return {
+          errors: {
+            general: [
+              `Liian monta epäonnistunutta kirjautumista. Yritä uudelleen ${waitText(wait)} kuluttua.`,
+            ],
+          },
+          status: "error",
+          email,
+        };
+      }
       switch (error.type) {
         case "CredentialsSignin":
           return {
@@ -70,6 +89,7 @@ export async function loginWithCredentials(
               general: ["Virheellinen sähköpostiosoite tai salasana."],
             },
             status: "error",
+            email,
           };
         default:
           return {
@@ -77,6 +97,7 @@ export async function loginWithCredentials(
               general: ["Kirjautuminen epäonnistui. Yritä uudelleen."],
             },
             status: "error",
+            email,
           };
       }
     }

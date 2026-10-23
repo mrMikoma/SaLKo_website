@@ -195,6 +195,8 @@ const BookingModal = memo(
 
     // Full-day booking handlers
     const handleFullDayToggle = () => {
+      // The overlap warning was for the earlier dates
+      setConflicts(null);
       const newIsFullDay = !isFullDay;
       setIsFullDay(newIsFullDay);
 
@@ -221,6 +223,8 @@ const BookingModal = memo(
     };
 
     const handleFullDayStartChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      // The overlap warning was for the earlier dates
+      setConflicts(null);
       const newStart = e.target.value;
       setFullDayStart(newStart);
       if (newStart) {
@@ -235,6 +239,8 @@ const BookingModal = memo(
     };
 
     const handleFullDayEndChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      // The overlap warning was for the earlier dates
+      setConflicts(null);
       const newEnd = e.target.value; // "last day" the plane is booked
       setFullDayEnd(newEnd);
       if (newEnd) {

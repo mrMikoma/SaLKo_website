@@ -3,7 +3,7 @@ import ContentSection from "@/components/contentSection";
 import ResetPasswordForm from "@/components/auth/resetPasswordForm";
 
 export const metadata = {
-  title: "Uusi salasana | SaLKo",
+  title: "Uusi salasana",
   robots: { index: false, follow: false },
 };
 

@@ -10,11 +10,18 @@ import { DateTime, CLUB_ZONE } from "@/utilities/clubTime";
 import { isBookablePlane } from "@/utilities/planeHelpers";
 import {
   bookingInputSchema,
+  GUEST_MAX_DAYS,
+  guestBookingTitle,
   guestContactSchema,
   repeatEndDateSchema,
   type BookingInput,
   type GuestContactInput,
 } from "@/schemas/bookingSchema";
+import { headers } from "next/headers";
+import { clientIp, RateLimiter, waitText } from "@/utilities/rateLimit";
+
+// Guest bookings from one address: 10 an hour, then an hour's wait
+const guestBookingsByIp = new RateLimiter("guest-bookings", 10, 60 * 60_000, 60 * 60_000);
 
 /*
  * Types
@@ -98,7 +105,11 @@ function parseBooking(
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Virheelliset varaustiedot" };
   }
-  return { booking: parsed.data };
+  // Stored in UTC; a time without an offset is club time
+  const utc = (iso: string) => DateTime.fromISO(iso, { zone: CLUB_ZONE }).toUTC().toISO()!;
+  return {
+    booking: { ...parsed.data, start_time: utc(parsed.data.start_time), end_time: utc(parsed.data.end_time) },
+  };
 }
 
 function isValidId(id: unknown): id is number {
@@ -432,7 +443,25 @@ export async function addGuestBooking(
 
   const contact = guestContactSchema.safeParse(contactInfo);
   if (!contact.success) {
-    return { status: "error", error: contact.error.issues[0].message };
+    return { status: "error", error: contact.error.issues[0]?.message ?? "Virheelliset yhteystiedot" };
+  }
+
+  // Anonymous guests can't fill the calendar: from today on, at most
+  // GUEST_MAX_DAYS long, and a limited number from one address
+  const start = DateTime.fromISO(booking.start_time);
+  if (start < DateTime.now().startOf("day")) {
+    return { status: "error", error: "Varaus ei voi alkaa menneisyydessä" };
+  }
+  if (DateTime.fromISO(booking.end_time).diff(start, "days").days > GUEST_MAX_DAYS) {
+    return { status: "error", error: `Vierasvaraus voi olla enintään ${GUEST_MAX_DAYS} päivää` };
+  }
+  const ip = clientIp(await headers());
+  const wait = guestBookingsByIp.blockedFor(ip);
+  if (wait > 0) {
+    return {
+      status: "error",
+      error: `Liian monta varausta lyhyessä ajassa. Yritä uudelleen ${waitText(wait)} kuluttua.`,
+    };
   }
 
   const client = await connectionPool.connect();
@@ -467,7 +496,7 @@ export async function addGuestBooking(
         booking.start_time,
         booking.end_time,
         booking.type,
-        `${booking.title} (${contact.data.contactName})`,
+        guestBookingTitle(booking.title, contact.data.contactName),
         booking.description ?? "",
       ]
     );
@@ -485,6 +514,7 @@ export async function addGuestBooking(
     );
 
     await client.query("COMMIT");
+    guestBookingsByIp.hit(ip);
     return { status: "success", result: { id: bookingId } };
   } catch (error) {
     await client.query("ROLLBACK");

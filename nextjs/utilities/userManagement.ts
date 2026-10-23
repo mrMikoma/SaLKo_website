@@ -225,14 +225,15 @@ export async function changePassword(
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
     // Update password in database
-    await pool.query("UPDATE users SET password = $1 WHERE id = $2", [
+    // Ends every session of the account, this one too: the member logs in again
+    await pool.query("UPDATE users SET password = $1, sessions_revoked_at = NOW() WHERE id = $2", [
       hashedPassword,
       session.user.id,
     ]);
 
     return {
       status: "success",
-      message: "Salasana vaihdettu onnistuneesti",
+      message: "Salasana vaihdettu. Kirjaudu sisään uudella salasanalla.",
     };
   } catch (error) {
     console.error("Error changing password:", error);

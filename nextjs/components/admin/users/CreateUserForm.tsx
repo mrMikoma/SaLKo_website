@@ -2,16 +2,18 @@
 
 import React, { useState, useTransition } from "react";
 import { createCredentialUser } from "@/utilities/adminUserActions";
-import { ASSIGNABLE_ROLES, getRoleDisplayName } from "@/utilities/roles";
+import { getRoleDisplayName, type Role } from "@/utilities/roles";
 
 
 interface CreateUserFormProps {
+  assignableRoles: Role[];
   onSuccess: () => void;
   onCancel: () => void;
   onError: (error: string) => void;
 }
 
 const CreateUserForm = ({
+  assignableRoles,
   onSuccess,
   onCancel,
   onError,
@@ -146,7 +148,7 @@ const CreateUserForm = ({
               Roolit *
             </legend>
             <div className="flex flex-wrap gap-3 mt-1">
-              {ASSIGNABLE_ROLES.map((role) => (
+              {assignableRoles.map((role) => (
                 <label
                   key={role}
                   className="flex items-center gap-2 cursor-pointer"

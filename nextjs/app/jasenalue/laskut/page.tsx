@@ -24,8 +24,8 @@ export default async function Page() {
     notFound()
   }
   const session = await auth()
-  if (!session?.user) {
-    redirect("/auth/login")
+  if (!session?.user?.id) {
+    redirect("/")
   }
   if (!hasPermission(session.user.roles, "VIEW_OWN_BILLING")) {
     redirect("/")

@@ -146,6 +146,20 @@ export type BookingInput = z.infer<typeof bookingInputSchema>;
 
 export const guestContactSchema = z.object(guestContactFields);
 
+/**
+ * A guest booking's title as stored: the title and the guest's name, within
+ * the 100 characters the booking form allows, so an admin can still edit it.
+ * The name is also kept in guest_bookings.
+ */
+export function guestBookingTitle(title: string, contactName: string): string {
+  const suffix = ` (${contactName})`;
+  if (suffix.length > 60) return title.slice(0, 100);
+  return `${title.slice(0, 100 - suffix.length).trimEnd()}${suffix}`;
+}
+
+/** Anonymous guests book from today on, for at most this long */
+export const GUEST_MAX_DAYS = 14;
+
 export type GuestContactInput = z.infer<typeof guestContactSchema>;
 
 export const repeatEndDateSchema = z

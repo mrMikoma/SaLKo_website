@@ -16,6 +16,7 @@ import { useDateFromUrl } from "@/hooks/useDateFromUrl";
 import { useBookingModal } from "@/hooks/useBookingModal";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useViewMode } from "@/hooks/useViewMode";
+import { useSyncSession } from "@/hooks/useSyncSession";
 import { BookingsSkeleton } from "./BookingsSkeleton";
 import { BookingsError } from "./BookingsError";
 import { BookingsMobileView } from "./BookingsMobileView";
@@ -63,6 +64,8 @@ interface BookingSectionProps {
 
 const BookingSection = ({ userContext }: BookingSectionProps) => {
   const { isLoggedIn, userId, userRole } = userContext;
+  // After logging in from the guest banner, the navbar catches up too
+  useSyncSession(isLoggedIn ? userId : null);
 
   // Custom hooks for state management
   const router = useRouter();

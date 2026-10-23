@@ -64,7 +64,7 @@ export async function resetPasswordWithToken(
 
     const userId = found.rows[0].identifier.slice(IDENTIFIER_PREFIX.length);
     const updated = await client.query(
-      `UPDATE users SET password = $1
+      `UPDATE users SET password = $1, sessions_revoked_at = NOW()
        WHERE id = $2 AND auth_provider = 'credentials' AND deactivated_at IS NULL`,
       [await bcrypt.hash(parsed.data.password, 10), userId]
     );

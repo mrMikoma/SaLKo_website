@@ -22,12 +22,15 @@ const summaryOf = (event: CalendarEvent) => `${event.plane}: ${event.title}`;
 const toUtcStamp = (iso: string) =>
   DateTime.fromISO(iso).toUTC().toFormat("yyyyMMdd'T'HHmmss'Z'");
 
+// Every line break, a bare CR included, becomes \n, and other control
+// characters go, so a title can't start lines of its own in the file
 const escapeText = (text: string) =>
   text
     .replace(/\\/g, "\\\\")
     .replace(/;/g, "\\;")
     .replace(/,/g, "\\,")
-    .replace(/\r?\n/g, "\\n");
+    .replace(/\r\n|\r|\n/g, "\\n")
+    .replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, "");
 
 // Lines longer than 75 octets are folded: CRLF plus a space starts the next
 // part (RFC 5545 3.1). Split on characters so ä/ö aren't cut in half.

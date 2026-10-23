@@ -35,6 +35,25 @@ test.afterAll(removeUser);
 
 const userRow = (page: Page) => page.getByRole("row").filter({ hasText: FULL_NAME });
 
+// A browser context logged in as the test user, to see whether its session survives
+async function loggedInContext(browser: Browser, email: string, password: string) {
+  const context = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+  const page = await context.newPage();
+  await page.goto("/");
+  await page.getByRole("button", { name: "Jäsenalue" }).click();
+  await page.getByRole("textbox", { name: "Sähköposti" }).fill(email);
+  await page.getByRole("textbox", { name: "Salasana" }).fill(password);
+  await page.getByRole("button", { name: "Kirjaudu sisään" }).click();
+  await expect(page.getByText("Et ole kirjautunut jäsenalueelle")).toBeHidden();
+  return { context, page };
+}
+
+// Whether the session still opens the member area (it redirects to / otherwise)
+async function sessionWorks(page: Page) {
+  await page.goto("/jasenalue/profiili");
+  return new URL(page.url()).pathname === "/jasenalue/profiili";
+}
+
 // Logs in from a fresh browser context and tells whether it worked
 async function canLogIn(browser: Browser, email: string, password: string) {
   const context = await browser.newContext({ storageState: { cookies: [], origins: [] } });
@@ -81,18 +100,27 @@ test("doesn't offer actions on your own row", async ({ page }) => {
 
 test("a deactivated user can't log in until reactivated", async ({ page, browser }) => {
   expect(await canLogIn(browser, TYPED_EMAIL, PASSWORD)).toBe(true);
+  const before = await loggedInContext(browser, EMAIL, PASSWORD);
+  expect(await sessionWorks(before.page)).toBe(true);
 
   await page.goto("/admin/users");
   await userRow(page).getByRole("button", { name: "Poista käytöstä" }).click();
   await expect(userRow(page).getByText("Poistettu käytöstä")).toBeVisible();
   expect(await canLogIn(browser, EMAIL, PASSWORD)).toBe(false);
+  expect(await sessionWorks(before.page)).toBe(false);
 
   await userRow(page).getByRole("button", { name: "Palauta käyttöön" }).click();
   await expect(userRow(page).getByText("Poistettu käytöstä")).toHaveCount(0);
   expect(await canLogIn(browser, EMAIL, PASSWORD)).toBe(true);
+  // A session from before the lock doesn't come back with the account
+  expect(await sessionWorks(before.page)).toBe(false);
+  await before.context.close();
 });
 
-test("a reset link sets a new password once", async ({ page, browser }) => {
+test("a reset link sets a new password once, and ends the old sessions", async ({ page, browser }) => {
+  const before = await loggedInContext(browser, EMAIL, PASSWORD);
+  expect(await sessionWorks(before.page)).toBe(true);
+
   await page.goto("/admin/users");
   await userRow(page).getByRole("button", { name: "Salasanan vaihtolinkki" }).click();
   const link = await page.getByLabel("Salasanan vaihtolinkki").inputValue();
@@ -115,6 +143,9 @@ test("a reset link sets a new password once", async ({ page, browser }) => {
   await visitor.close();
 
   expect(await canLogIn(browser, EMAIL, NEW_PASSWORD)).toBe(true);
+  // Whoever was logged in before the reset is logged out
+  expect(await sessionWorks(before.page)).toBe(false);
+  await before.context.close();
 });
 
 test("anonymising removes the personal details", async ({ page }) => {
@@ -132,4 +163,11 @@ test("anonymising removes the personal details", async ({ page }) => {
     email: `poistettu-${userId}@salko.invalid`,
     deactivated: true,
   });
+
+  // Nothing left to do with it but delete it
+  const row = page.getByRole("row").filter({ hasText: `poistettu-${userId}@salko.invalid` });
+  await expect(row.getByText("Anonymisoitu")).toBeVisible();
+  for (const name of ["Palauta käyttöön", "Muokkaa tietoja", "Anonymisoi"]) {
+    await expect(row.getByRole("button", { name })).toHaveCount(0);
+  }
 });
