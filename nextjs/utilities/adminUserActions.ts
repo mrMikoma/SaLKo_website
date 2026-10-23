@@ -4,7 +4,8 @@ import { createHash, randomBytes } from "crypto";
 import { z } from "zod";
 import { auth } from "@/auth";
 import pool from "@/utilities/db";
-import { hasPermission, PERMISSIONS, validateRoles } from "@/utilities/roles";
+import { hasPermission, PERMISSIONS, ROLES, validateRoles } from "@/utilities/roles";
+import { isFlightLogEnabled } from "@/utilities/features";
 import { PasswordSchema } from "@/utilities/definitions";
 import { revalidatePath } from "next/cache";
 import * as bcrypt from "bcrypt";
@@ -26,10 +27,14 @@ export interface User {
   last_login: string | null;
   created_at: string;
   deactivated_at: string | null;
-  // Bookings, bulletins and invoices that keep the user from being deleted outright
+  // Anonymised on request: only a permanent delete is left
+  is_anonymised: boolean;
+  // Bookings, bulletins, invoices and flights entered on the website keep the
+  // user from being deleted outright
   booking_count: number;
   bulletin_count: number;
   invoice_count: number;
+  flight_entry_count: number;
 }
 
 type ActionResult = { success: boolean; error?: string };
@@ -41,9 +46,18 @@ const USER_COLUMNS = `
   id, name, full_name, email, roles, phone, address, city, postal_code,
   auth_provider, google_id, avatar_url, email_verified, last_login, created_at,
   deactivated_at,
+  email LIKE 'poistettu-%@salko.invalid' AS is_anonymised,
   (SELECT count(*)::int FROM bookings b WHERE b.user_id = users.id) AS booking_count,
   (SELECT count(*)::int FROM bullets bl WHERE bl.user_id = users.id) AS bulletin_count,
-  (SELECT count(*)::int FROM invoices i WHERE i.user_id = users.id) AS invoice_count`;
+  (SELECT count(*)::int FROM invoices i WHERE i.user_id = users.id) AS invoice_count,
+  (SELECT count(*)::int FROM flight_log_web_entries f WHERE f.user_id = users.id) AS flight_entry_count`;
+
+// The treasurer role works only with the flight log, which production
+// switches on later; until then it isn't offered or accepted
+const refuseInactiveRoles = (roles: string[]) =>
+  roles.includes(ROLES.TREASURER) && !isFlightLogEnabled()
+    ? "Laskuttaja-rooli otetaan käyttöön lentopäiväkirjan kanssa"
+    : null;
 
 const isSystemUser = (user: { auth_provider: string; email: string }) =>
   user.auth_provider === "system" || user.email === SYSTEM_GUEST_EMAIL;
@@ -62,12 +76,13 @@ async function requirePermission(permission: keyof typeof PERMISSIONS) {
 
 /**
  * Loads the target of an admin action and refuses the actions nobody may do:
- * on the system guest account, and (unless allowed) on your own account
+ * on the system guest account, (unless allowed) on your own account, and on
+ * an anonymised account other than deleting it
  */
 async function loadTarget(
   userId: string,
   actorId: string,
-  { allowSelf = false } = {}
+  { allowSelf = false, allowAnonymised = false } = {}
 ): Promise<{ user: User } | { error: string }> {
   const result = await pool.query(`SELECT ${USER_COLUMNS} FROM users WHERE id = $1`, [userId]);
   if (result.rows.length === 0) {
@@ -79,6 +94,9 @@ async function loadTarget(
   }
   if (!allowSelf && user.id === actorId) {
     return { error: "Et voi tehdä tätä omalle tilillesi" };
+  }
+  if (!allowAnonymised && user.is_anonymised) {
+    return { error: "Anonymisoitua käyttäjää ei voi muuttaa" };
   }
   return { user };
 }
@@ -98,7 +116,8 @@ export async function getAllUsers(searchQuery?: string): Promise<User[] | null> 
        FROM users
        WHERE $1::text IS NULL OR name ILIKE $1 OR full_name ILIKE $1 OR email ILIKE $1
        ORDER BY deactivated_at IS NOT NULL, created_at DESC`,
-      [search ? `%${search}%` : null]
+      // % and _ in the search are plain characters, not wildcards
+      [search ? `%${search.replace(/[\\%_]/g, "\\$&")}%` : null]
     );
 
     return users.rows as User[];
@@ -128,6 +147,10 @@ export async function updateUserRoles(
     const checked = validateRoles(newRoles);
     if ("error" in checked) {
       return { success: false, error: checked.error };
+    }
+    const inactive = refuseInactiveRoles(checked.roles);
+    if (inactive) {
+      return { success: false, error: inactive };
     }
     const filteredRoles = checked.roles;
 
@@ -166,7 +189,10 @@ export async function setUserActive(
     }
 
     await pool.query(
+      // Deactivating also ends the sessions for good: restoring the account
+      // later doesn't bring them back (auth.ts)
       `UPDATE users SET deactivated_at = ${active ? "NULL" : "COALESCE(deactivated_at, NOW())"}
+         ${active ? "" : ", sessions_revoked_at = NOW()"}
        WHERE id = $1`,
       [userId]
     );
@@ -204,7 +230,7 @@ export async function anonymizeUser(userId: string): Promise<ActionResult> {
          email = 'poistettu-' || id || '@salko.invalid',
          phone = '', address = '', city = '', postal_code = '',
          password = NULL, google_id = NULL, avatar_url = NULL,
-         deactivated_at = COALESCE(deactivated_at, NOW())
+         deactivated_at = COALESCE(deactivated_at, NOW()), sessions_revoked_at = NOW()
        WHERE id = $1`,
       [userId]
     );
@@ -234,16 +260,16 @@ export async function deleteUser(userId: string): Promise<ActionResult> {
       return { success: false, error: "Ei oikeuksia" };
     }
 
-    const target = await loadTarget(userId, actor.id);
+    const target = await loadTarget(userId, actor.id, { allowAnonymised: true });
     if ("error" in target) {
       return { success: false, error: target.error };
     }
 
-    const { booking_count, bulletin_count, invoice_count } = target.user;
-    if (booking_count > 0 || bulletin_count > 0 || invoice_count > 0) {
+    const { booking_count, bulletin_count, invoice_count, flight_entry_count } = target.user;
+    if (booking_count > 0 || bulletin_count > 0 || invoice_count > 0 || flight_entry_count > 0) {
       return {
         success: false,
-        error: `Käyttäjällä on ${booking_count} varausta, ${bulletin_count} tiedotetta ja ${invoice_count} laskua. Poista käyttäjä käytöstä tai anonymisoi hänet.`,
+        error: `Käyttäjällä on historiaa: ${booking_count} varausta, ${bulletin_count} tiedotetta, ${invoice_count} laskua ja ${flight_entry_count} kirjattua lentoa. Poista käyttäjä käytöstä tai anonymisoi hänet.`,
       };
     }
 
@@ -321,6 +347,10 @@ export async function createCredentialUser(formData: {
     const checked = validateRoles(parsed.data.roles);
     if ("error" in checked) {
       return { success: false, error: checked.error };
+    }
+    const inactive = refuseInactiveRoles(checked.roles);
+    if (inactive) {
+      return { success: false, error: inactive };
     }
     const filteredRoles = checked.roles;
 

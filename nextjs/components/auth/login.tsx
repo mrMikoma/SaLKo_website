@@ -43,6 +43,8 @@ const Login = ({ redirectTo }: { redirectTo?: string }) => {
               type="email"
               required
               autoComplete="email"
+              // Kept after a failed attempt; React empties the form otherwise
+              defaultValue={state?.email}
               placeholder="Sähköposti"
               className="block w-full rounded-lg bg-white/95 px-4 py-2.5 text-base text-sblued border-2 border-sblue/30 placeholder:text-gray-400 focus:border-sred focus:ring-2 focus:ring-sred/20 focus:outline-none transition-all duration-200 shadow-md"
             />

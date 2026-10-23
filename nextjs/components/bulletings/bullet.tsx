@@ -57,7 +57,7 @@ const Bullet = ({ item }: BulletProps) => {
               </span>
               <span className="text-sm">{item.author || "Tuntematon"}</span>
             </div>
-            <div className="text-base leading-relaxed">
+            <div className="text-base leading-relaxed [overflow-wrap:anywhere]">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={bulletinMarkdown}

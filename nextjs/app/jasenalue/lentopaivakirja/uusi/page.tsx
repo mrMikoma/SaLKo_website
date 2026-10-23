@@ -23,8 +23,8 @@ export default async function Page() {
   }
 
   const session = await auth()
-  if (!session?.user) {
-    redirect("/auth/login")
+  if (!session?.user?.id) {
+    redirect("/")
   }
   if (!hasPermission(session.user.roles, "LOG_OWN_FLIGHT")) {
     redirect("/")

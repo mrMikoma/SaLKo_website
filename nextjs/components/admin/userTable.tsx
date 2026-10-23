@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { User } from "@/utilities/adminUserActions";
 import CreateUserForm from "./users/CreateUserForm";
+import type { Role } from "@/utilities/roles";
 import UserTableRow from "./users/UserTableRow";
 
 interface UserTableProps {
@@ -10,12 +11,13 @@ interface UserTableProps {
   // The admin viewing the page: their own row has no role, deactivate or
   // delete actions, which the server would refuse anyway
   currentUserId: string;
+  assignableRoles: Role[];
 }
 
 // As in the flight log's tables
 const headerClassName = "px-4 py-2 text-left text-sm font-medium text-gray-600";
 
-const UserTable = ({ users, currentUserId }: UserTableProps) => {
+const UserTable = ({ users, currentUserId, assignableRoles }: UserTableProps) => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -73,6 +75,7 @@ const UserTable = ({ users, currentUserId }: UserTableProps) => {
           </button>
         ) : (
           <CreateUserForm
+            assignableRoles={assignableRoles}
             onSuccess={handleCreateSuccess}
             onCancel={() => setShowCreateForm(false)}
             onError={handleError}
@@ -116,6 +119,7 @@ const UserTable = ({ users, currentUserId }: UserTableProps) => {
                 key={user.id}
                 user={user}
                 isSelf={user.id === currentUserId}
+                assignableRoles={assignableRoles}
                 onSuccess={handleSuccess}
                 onError={handleError}
               />

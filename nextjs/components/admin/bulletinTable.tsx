@@ -204,7 +204,7 @@ function MarkdownEditor({
       {/* Editor / Preview */}
       {preview ? (
         // As members will see it on the site
-        <div className="min-h-[200px] px-6 py-4 bg-sblued text-swhite/90 text-base leading-relaxed">
+        <div className="min-h-[200px] px-6 py-4 bg-sblued text-swhite/90 text-base leading-relaxed [overflow-wrap:anywhere]">
           {value.trim() ? (
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={bulletinMarkdown}>
               {value}
@@ -535,7 +535,7 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
                         </button>
                       </div>
                     </div>
-                    <div className="text-gray-700 mt-3 border-t border-gray-100 pt-3 text-sm leading-relaxed [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mb-1 [&_strong]:font-bold [&_h2]:text-base [&_h2]:font-bold [&_h2]:mt-3 [&_h2]:mb-1 [&_h3]:text-sm [&_h3]:font-semibold [&_a]:text-sblue [&_a]:underline [&_p]:mb-2 [&_hr]:border-gray-300 [&_hr]:my-2">
+                    <div className="text-gray-700 mt-3 border-t border-gray-100 pt-3 text-sm leading-relaxed [overflow-wrap:anywhere] [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mb-1 [&_strong]:font-bold [&_h2]:text-base [&_h2]:font-bold [&_h2]:mt-3 [&_h2]:mb-1 [&_h3]:text-sm [&_h3]:font-semibold [&_a]:text-sblue [&_a]:underline [&_p]:mb-2 [&_hr]:border-gray-300 [&_hr]:my-2">
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>
                         {bulletin.content}
                       </ReactMarkdown>

@@ -202,4 +202,15 @@ test.describe("anonymous visitor", () => {
     );
     expect(rows).toEqual([{ contact_name: "Testi Vieras" }]);
   });
+
+  test("can't make a guest booking in the past", async ({ page }) => {
+    const dialog = await openNewBooking(page, "2020-03-12", "OH-CON", "14:00");
+    await dialog.getByLabel("Otsikko *").fill("E2E-menneisyys");
+    await dialog.getByLabel("Nimi *").fill("Testi Vieras");
+    await dialog.getByLabel("Sähköposti *").fill("vieras@salko.invalid");
+    await dialog.getByLabel("Puhelinnumero *").fill("040 000 0000");
+    await dialog.getByRole("button", { name: "Tallenna" }).click();
+    await expect(page.getByText("Varaus ei voi alkaa menneisyydessä")).toBeVisible();
+    expect(await query("SELECT 1 FROM bookings WHERE title LIKE 'E2E-menneisyys%'")).toHaveLength(0);
+  });
 });

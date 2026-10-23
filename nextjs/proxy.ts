@@ -4,7 +4,9 @@ import { adminHome, canOpenAdminPath } from "./utilities/roles";
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
-  const session = req.auth;
+  // A session the session callback refused (a deactivated user, or one from
+  // before a password change) still arrives as a bare session without an id
+  const session = req.auth?.user?.id ? req.auth : null;
 
   // Protected routes requiring authentication (user or admin)
   const protectedRoutes = ["/jasenalue"];

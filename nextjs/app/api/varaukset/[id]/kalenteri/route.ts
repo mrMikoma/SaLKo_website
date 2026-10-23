@@ -19,7 +19,7 @@ export async function GET(
 
   const { id } = await params;
   const bookingId = Number(id);
-  if (!Number.isInteger(bookingId) || bookingId < 0) {
+  if (!Number.isInteger(bookingId) || bookingId < 0 || bookingId > 2_147_483_647) {
     return new Response("Varausta ei löytynyt", { status: 404 });
   }
 

@@ -10,7 +10,7 @@ import {
   deleteUser,
   createPasswordResetLink,
 } from "@/utilities/adminUserActions";
-import { ASSIGNABLE_ROLES, getRoleDisplayName } from "@/utilities/roles";
+import { getRoleDisplayName, type Role } from "@/utilities/roles";
 import RoleBadge from "./RoleBadge";
 import AuthProviderBadge from "./AuthProviderBadge";
 import EditUserForm from "./EditUserForm";
@@ -24,6 +24,7 @@ const inHelsinki = (iso: string) =>
 interface UserTableRowProps {
   user: User;
   isSelf: boolean;
+  assignableRoles: Role[];
   onSuccess: (message: string) => void;
   onError: (error: string) => void;
 }
@@ -36,7 +37,7 @@ const dangerActionClassName =
 const saveActionClassName =
   "min-h-11 px-3 rounded-lg bg-sblue text-sm font-medium text-white hover:bg-sblued transition-colors disabled:opacity-60";
 
-const UserTableRow = ({ user, isSelf, onSuccess, onError }: UserTableRowProps) => {
+const UserTableRow = ({ user, isSelf, assignableRoles, onSuccess, onError }: UserTableRowProps) => {
   const [isPending, startTransition] = useTransition();
   const [editingRoles, setEditingRoles] = useState(false);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
@@ -46,7 +47,10 @@ const UserTableRow = ({ user, isSelf, onSuccess, onError }: UserTableRowProps) =
   const isSystemUser =
     user.auth_provider === "system" || user.email === SYSTEM_GUEST_EMAIL;
   const isDeactivated = Boolean(user.deactivated_at);
-  const hasHistory = user.booking_count > 0 || user.bulletin_count > 0 || user.invoice_count > 0;
+  // Anonymised: nothing left to do but delete it, if it has no history
+  const isAnonymised = user.is_anonymised;
+  const hasHistory =
+    user.booking_count > 0 || user.bulletin_count > 0 || user.invoice_count > 0 || user.flight_entry_count > 0;
 
   const run = (
     action: () => Promise<{ success: boolean; error?: string }>,
@@ -120,7 +124,7 @@ const UserTableRow = ({ user, isSelf, onSuccess, onError }: UserTableRowProps) =
           <div className="text-sm text-gray-500">{user.name}</div>
           {isDeactivated && (
             <span className="mt-1 inline-block rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-700">
-              Poistettu käytöstä
+              {isAnonymised ? "Anonymisoitu" : "Poistettu käytöstä"}
             </span>
           )}
         </td>
@@ -129,7 +133,7 @@ const UserTableRow = ({ user, isSelf, onSuccess, onError }: UserTableRowProps) =
           {editingRoles ? (
             <fieldset className="flex flex-col gap-1">
               <legend className="sr-only">Roolit: {user.full_name}</legend>
-              {ASSIGNABLE_ROLES.map((role) => (
+              {[...new Set([...assignableRoles, ...(user.roles as Role[])])].map((role) => (
                 <label key={role} className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
@@ -193,13 +197,15 @@ const UserTableRow = ({ user, isSelf, onSuccess, onError }: UserTableRowProps) =
             </div>
           ) : (
             <div className="flex flex-wrap gap-2 w-80">
-              <button
-                onClick={() => setEditingInfo(true)}
-                disabled={isPending}
-                className={actionClassName}
-              >
-                Muokkaa tietoja
-              </button>
+              {!isAnonymised && (
+                <button
+                  onClick={() => setEditingInfo(true)}
+                  disabled={isPending}
+                  className={actionClassName}
+                >
+                  Muokkaa tietoja
+                </button>
+              )}
               {!isSelf && !isDeactivated && (
                 <button
                   onClick={() => {
@@ -217,7 +223,7 @@ const UserTableRow = ({ user, isSelf, onSuccess, onError }: UserTableRowProps) =
                   Salasanan vaihtolinkki
                 </button>
               )}
-              {!isSelf &&
+              {!isSelf && !isAnonymised &&
                 (isDeactivated ? (
                   <button
                     onClick={() => run(() => setUserActive(user.id, true), "Käyttäjä palautettu käyttöön")}
@@ -235,7 +241,7 @@ const UserTableRow = ({ user, isSelf, onSuccess, onError }: UserTableRowProps) =
                     Poista käytöstä
                   </button>
                 ))}
-              {!isSelf && (
+              {!isSelf && !isAnonymised && (
                 <button
                   onClick={handleAnonymize}
                   disabled={isPending}
