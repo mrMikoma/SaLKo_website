@@ -1,4 +1,5 @@
--- Insert system admin user (always created in all environments)
+-- Insert system admin user (always created in all environments). Also a
+-- treasurer (laskuttaja), so the default account sees billing as one does.
 INSERT INTO
   users (
     roles,
@@ -15,7 +16,7 @@ INSERT INTO
   )
 VALUES
   (
-    ARRAY['admin']::TEXT[],
+    ARRAY['admin', 'treasurer']::TEXT[],
     'Admin',
     'Järjestelmän Valvoja',
     '1234567890',
