@@ -156,6 +156,11 @@ jobs:
           ANSIBLE_FORCE_COLOR: True
           CHECK_MODE: ${{ inputs.check_mode }}
         run: |
+          # Only main changes the server; another branch may only dry-run
+          if [ "$CHECK_MODE" != "true" ] && [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "❌ Real runs only from main (this run is on $GITHUB_REF). Tick \"Dry run\" to check another branch."
+            exit 1
+          fi
           chmod +x infra/ansible/inventory.py 
           check_args=()
           if [ "$CHECK_MODE" = "true" ]; then

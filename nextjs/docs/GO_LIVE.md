@@ -26,14 +26,27 @@ Stage A doesn't depend on B or C and carries security fixes, so it shouldn't wai
   - the Historiaa and Hallit pages.
 - [ ] CI is green on #47.
 - [ ] **SSH:** the release turns off password logins to the server (`PasswordAuthentication no`) and TCP and agent forwarding (`infra/ansible/roles/ssh_hardening`).
-  - Check that your key works on its own: `ssh -o PasswordAuthentication=no salko@savonlinnanlentokerho.fi true`.
-  - Anyone else who logs in with a password needs a key in `authorized_keys` first.
+  - **Only these keys work afterwards.** Ansible rewrites `salko`'s `authorized_keys` on every run, from the `VPS_PUBLIC_KEY` secret and the keys on GitHub account mrMikoma (https://github.com/mrMikoma.keys). A key added to the server by hand disappears in the same run that turns off passwords.
+  - So add your key to that GitHub account, or to `infra/ansible/roles/base` through a PR, first.
+  - Check it with `ssh -o PasswordAuthentication=no salko@savonlinnanlentokerho.fi true` now, and again after the release.
   - VS Code Remote-SSH stops working, because it needs TCP forwarding.
 - [ ] **Reboots:** the release turns on automatic security updates, with a reboot window on Sundays at 04:30 when an update needs one.
   - The server has not rebooted for months, so expect a reboot on the first Sunday after.
   - Every container restarts by itself (`restart: unless-stopped`).
-- [ ] Dry-run the server changes from `dev`, which changes nothing: Actions → **Ansible Provision** → branch `dev`, tick "Dry run". Read the diff.
-- [ ] Pick a quiet evening. The website is down for a few minutes during the deploy, and Traefik's restart briefly takes down every site on the server.
+- [ ] **Ansible dry run:** Actions → **Ansible Provision** → branch `dev`, tick "Dry run".
+  - Nothing changes. From any branch but `main`, the workflow refuses to run without the tick.
+  - Read the diff, especially the package list of the first task, `apt upgrade: dist`. If it upgrades `docker-ce` or `containerd.io`, Docker restarts during the release (step 1). Docker's packages come from Docker's own repository, which unattended upgrades never touch, so they are probably months behind.
+- [ ] **Accounts whose emails differ only in capitals.** Production stored emails as typed, and two such accounts would compete at login. Count them, read-only; the query prints no member data:
+  ```
+  ssh salko@savonlinnanlentokerho.fi 'docker exec salko-postgres-prod sh -c '"'"'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SELECT count(*) FROM (SELECT 1 FROM users GROUP BY lower(email) HAVING count(*) > 1) d"'"'"''
+  ```
+  If it isn't 0:
+  - The release logs in with the exact spelling first, so nobody gets someone else's account.
+  - After the release, still give each extra account its own address, or deactivate it, on `/admin/users`. Searching for the address shows both.
+- [ ] Pick a quiet evening. All the sites on the server can be down for a few minutes, several times:
+  - when Ansible upgrades Docker (step 1);
+  - during the deploy (steps 3–4);
+  - while Traefik restarts (step 6).
 
 ### Release, about 30 minutes
 
@@ -42,20 +55,34 @@ Stage A doesn't depend on B or C and carries security fixes, so it shouldn't wai
    gh pr merge -R mrMikoma/SaLKo_website 47 --merge --admin
    ```
    The merge starts these by itself:
-   - **Terraform Plan and Apply**: the DNS records and the Cloudflare provider pin. **Approve** it after reading the plan: it should only add the SPF and DMARC records.
-   - **Ansible Provision**: maintenance and SSH hardening.
-   - **Deploy Monitoring Stack**. **Approve**.
+   - **Ansible Provision** (no approval): maintenance and SSH hardening.
+     - It starts with a full package upgrade. If that upgrades Docker, dockerd restarts, and with it every container: production, kehitys, monitoring and Traefik, for a minute or two.
+     - Wait until it is green before anything else, then check the SSH key again.
+   - **Terraform Plan and Apply**: the DNS records and the Cloudflare provider pin. Read the plan before you **Approve**.
+     - It should only *create* two records: `cloudflare_dns_record.spf` and `.dmarc`. **Reject** anything else, above all any change or replacement of `hcloud_server`, which would wipe the database.
+     - This is the first plan since January, with new Terraform and provider versions.
+     - The apply job makes a fresh plan and applies it without showing it again. If the plan you approved looked wrong, cancel instead.
+   - **Deploy Monitoring Stack**. **Approve** it only after Ansible Provision has finished, so it doesn't run during the Docker restart.
 
-   Let them finish. The website itself doesn't change yet.
+   The website's code doesn't change yet, but the Docker restart briefly takes it down with everything else.
 2. **Build the prod image:** Actions → **Build and Publish Production** → branch `main`. Note the version it prints (`v0.0.N`).
 3. **Migrate the database**, right before the deploy:
-   1. Actions → **Database Migrations** → branch `main`, environment `prod`, *Only list pending migrations* ticked. It should list 001–014.
+   1. Actions → **Database Migrations** → branch `main`, environment `prod`, *Only list pending migrations* ticked. **Approve**: the dry run needs approval too. It should list 001–015.
    2. Run it again without the tick. **Approve**.
 
-   It first saves a dump to `/home/salko/backups/migrations/salko-postgres-prod-<time>.dump`. From now until step 4, the old site can't read users' roles (migration 001 replaces `users.role` with `users.roles`), so logins and the admin pages may fail. Keep the gap short.
+   It first saves a dump to `/home/salko/backups/migrations/salko-postgres-prod-<time>.dump`.
+
+   From now until step 4, the old site can't read users' roles (migration 001 replaces `users.role` with `users.roles`):
+   - nobody can log in, sessions read as logged out, and the admin pages redirect;
+   - guest bookings and editing or deleting bookings fail;
+   - public pages and the calendar view keep working.
+
+   Members' sessions come back after the deploy. Run step 4 right after this.
 4. **Deploy:** Actions → **Deploy production from main branch** (`deploy-app-prod`) → branch `main`, the version from step 2. **Approve**.
 5. **Cronjobs:** Actions → **Deploy Background Cronjobs** → branch `main`. This applies the METAR job fix (the dev and prod schedulers no longer run each other's jobs). **Approve**.
-6. **Traefik:** Actions → **Deploy Traefik** from `main`. This moves it from 3.6.1 to 3.7.14, and every site blinks for a moment.
+6. **Traefik:** Actions → **Deploy Traefik** from `main`. This moves it from 3.6.1 to 3.7.14.
+   - It pulls the new image first, then restarts. Every site is down for the restart, about half a minute.
+   - The workflow asks no approval, so run it only from `main`.
 
 ### Check
 
@@ -68,17 +95,30 @@ Stage A doesn't depend on B or C and carries security fixes, so it shouldn't wai
   - as a guest, you can see a booking's title and booker, but not their contact details.
 - [ ] Every public page answers 200. `--doh-url` looks the name up in public DNS, so the check goes through Cloudflare as visitors do. On the club's private network the name points at the server's private address instead.
   ```
-  for p in / /kerho /kerho/hallit /kerho/historiaa /kerho/hinnasto /kerho/kentta /kalusto /kalusto/varauskalenteri /koulutus /esittelylennot /yhteystiedot /tiedotteet; do printf "%-28s " "$p"; curl -s --doh-url https://1.1.1.1/dns-query -o /dev/null -w "%{http_code} %{time_total}s\n" "https://savonlinnanlentokerho.fi$p"; done
+  for p in / /kerho /kerho/hinnasto /kerho/kentta /kalusto /kalusto/varauskalenteri /koulutus /esittelylennot /yhteystiedot /tiedotteet; do printf "%-28s " "$p"; curl -s --doh-url https://1.1.1.1/dns-query -o /dev/null -w "%{http_code} %{time_total}s\n" "https://savonlinnanlentokerho.fi$p"; done
   ```
 - [ ] https://savonlinnanlentokerho.fi/robots.txt allows crawling. The prod build sets `ALLOW_INDEXING=true`.
 - [ ] DNS: on https://mxtoolbox.com, "SPF Record Lookup" and "DMARC Lookup" for `savonlinnanlentokerho.fi` find the records.
 - [ ] Grafana shows every container up. The next morning, METAR data is still updating on `/kerho/kentta`.
+- [ ] **Docker's log size caps** take effect only after the next Docker restart, and then only for containers created after it, at each one's next deploy.
+- [ ] **The first Sunday at 04:30**, the server reboots for the first time in months, to apply the kernel from the upgrade. That boot is the first test of the network setup, the firewall and Docker's networks at startup. Check Grafana and the site that morning.
 
 ### If it goes wrong
 
 - **The app fails but the database is fine:** fix forward. Push a fix through `dev` → `main` and deploy the new version. The previous image can't run on the migrated database, because it reads `users.role`.
-- **The migration fails:** each file runs in one transaction, so a failed file leaves nothing behind. The old site keeps running on the files before it. Fix the migration in `dev` and run again.
-- **The data must go back:** restore the dump from step 3 with `pg_restore`, together with the previous image. This is a manual change on the server, so decide it explicitly; don't run it as a routine step.
+- **A migration fails:** the failed file leaves nothing behind, but the files before it stay applied. After 001, the old site is in the gap from step 3, so a failure later in the list leaves it broken until either:
+  - a fixed migration runs, through `dev` → `main`; or
+  - the dump is restored (below).
+- **The data must go back:** restore the dump from step 3 together with the previous image (the last `v0.0.N` before this release).
+  - This is a manual change on the server, so decide it explicitly; it's not a routine step.
+  - A plain `pg_restore --clean` doesn't work, because the new tables reference `users`. Re-create the database instead:
+    ```
+    ssh salko@savonlinnanlentokerho.fi
+    docker stop salko-nextjs-prod
+    docker exec salko-postgres-prod sh -c 'dropdb -U "$POSTGRES_USER" --force "$POSTGRES_DB" && createdb -U "$POSTGRES_USER" -O "$POSTGRES_USER" "$POSTGRES_DB"'
+    docker exec -i salko-postgres-prod sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < /home/salko/backups/migrations/salko-postgres-prod-<time>.dump
+    ```
+  - Then deploy the previous version with **Deploy production from main branch**.
 
 ## Stage B: flight log
 
