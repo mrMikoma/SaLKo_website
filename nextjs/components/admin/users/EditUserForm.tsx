@@ -53,11 +53,11 @@ const EditUserForm = ({ user, onSuccess, onCancel, onError }: EditUserFormProps)
   };
 
   return (
-    <tr className="bg-orange-50">
+    <tr className="bg-gray-50">
       <td colSpan={8} className="px-4 py-4">
         <form
           onSubmit={handleSubmit}
-          className="bg-white p-4 rounded-lg border border-orange-200"
+          className="bg-white p-4 rounded-lg border border-gray-200"
         >
           <h4 className="text-md font-semibold mb-4 text-gray-900">
             Muokkaa käyttäjän {user.full_name} tietoja
@@ -79,8 +79,8 @@ const EditUserForm = ({ user, onSuccess, onCancel, onError }: EditUserFormProps)
                     onChange={(e) => setEdited({ ...edited, [key]: e.target.value })}
                     readOnly={readOnly}
                     aria-describedby={readOnly ? `${id}-note` : undefined}
-                    className={`w-full px-3 py-2 border border-gray-300 rounded-md text-base text-gray-900 ${
-                      readOnly ? "bg-gray-100" : ""
+                    className={`w-full min-h-11 rounded-lg border border-gray-300 px-3 text-base text-gray-900 ${
+                      readOnly ? "bg-gray-100" : "bg-white"
                     }`}
                     disabled={isPending}
                   />
@@ -93,11 +93,11 @@ const EditUserForm = ({ user, onSuccess, onCancel, onError }: EditUserFormProps)
               );
             })}
           </div>
-          <div className="flex gap-2 mt-4">
+          <div className="flex flex-wrap gap-2 mt-4">
             <button
               type="submit"
               disabled={isPending}
-              className="bg-green-700 text-white px-4 py-2 rounded-md hover:bg-green-800 disabled:bg-gray-400"
+              className="min-h-11 px-4 rounded-lg bg-sblue text-white font-medium hover:bg-sblued transition-colors disabled:opacity-60"
             >
               {isPending ? "Tallennetaan..." : "Tallenna"}
             </button>
@@ -105,7 +105,7 @@ const EditUserForm = ({ user, onSuccess, onCancel, onError }: EditUserFormProps)
               type="button"
               onClick={onCancel}
               disabled={isPending}
-              className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300 disabled:bg-gray-100"
+              className="min-h-11 px-4 rounded-lg border border-gray-300 bg-white text-gray-800 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
             >
               Peruuta
             </button>
