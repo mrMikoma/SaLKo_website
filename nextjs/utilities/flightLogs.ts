@@ -217,7 +217,7 @@ const legSchema = z.object({
   personsOnBoard: z.number().int().min(1, "Henkilöitä vähintään 1").max(6, "Henkilöitä enintään 6"),
   purposeCode: z.string().trim().toUpperCase().min(1, "Valitse lennon tarkoitus"),
   fuelLitres: optionalNumber(500, "Tarkista tankkausmäärä"),
-  oilLitres: optionalNumber(20, "Tarkista öljymäärä"),
+  oilQuarts: optionalNumber(20, "Tarkista öljymäärä"),
   hourMeter: optionalNumber(99999.9, "Tarkista tuntimittarin lukema"),
   remarks: z.string().trim().max(300, "Huomiot voivat olla enintään 300 merkkiä").nullable(),
 });
@@ -331,7 +331,7 @@ export async function logFlights(
       landings: leg.landings,
       purposeCode: leg.purposeCode,
       fuelLitres: leg.fuelLitres,
-      oilLitres: leg.oilLitres,
+      oilQuarts: leg.oilQuarts,
       hourMeter: leg.hourMeter,
       remarks: leg.remarks || null,
     }));
@@ -590,7 +590,7 @@ const toSheetInput = (row: PaperRow, id: string) => ({
   landings: row.landings,
   purposeCode: row.purposeCode,
   fuelLitres: null,
-  oilLitres: null,
+  oilQuarts: null,
   hourMeter: null,
   remarks: row.remarks,
 });

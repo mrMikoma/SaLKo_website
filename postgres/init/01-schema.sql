@@ -261,7 +261,7 @@ CREATE TABLE IF NOT EXISTS sheet_flights (
   total_landings INT,
   purpose_code TEXT,
   fuel_litres NUMERIC(8, 2),
-  oil_litres NUMERIC(6, 2),
+  oil_quarts NUMERIC(6, 2), -- quarts (1/4 US gallon), as oil is added
   hour_meter NUMERIC(9, 1),
   remarks TEXT,
   log_page TEXT,
