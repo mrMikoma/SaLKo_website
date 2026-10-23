@@ -8,6 +8,7 @@ import { hasPermission } from "@/utilities/roles";
 import { isFlightLogEnabled } from "@/utilities/features";
 import { syncFlightSheets } from "@/utilities/flightSync";
 import { computeOpenPeriod, getBillingPeriod } from "@/utilities/billingData";
+import { writePayerPaid } from "@/utilities/billingPayments";
 import {
   BillingCellUpdate,
   FlightSheetWriteError,
@@ -31,6 +32,8 @@ async function requireBillingAdmin() {
 
 const revalidateBilling = () => {
   revalidatePath("/admin/laskutus", "layout");
+  revalidatePath("/admin/laskut", "layout");
+  revalidatePath("/jasenalue/laskut", "layout");
   revalidatePath("/admin/lennot");
   revalidatePath("/jasenalue/lentopaivakirja");
 };
@@ -217,7 +220,10 @@ export async function closeBillingPeriod(
   return { status: "success", result: { payers: bill.payers.length, totalCents: bill.totalCents } };
 }
 
-/** Marks a payer's bill in a closed period paid (Maksettu in the sheet), or not */
+/**
+ * Marks a payer's bill in a closed period paid (Maksettu in the sheet), or
+ * not. Their invoice, if they have one, follows.
+ */
 export async function setPayerPaid(
   periodId: number,
   payerKey: string,
@@ -226,45 +232,8 @@ export async function setPayerPaid(
   const access = await requireBillingAdmin();
   if ("error" in access) return { status: "error", error: access.error };
 
-  const flights = await pool.query(
-    `SELECT l.flight_id, l.registration FROM billing_lines l
-     JOIN sheet_flights f ON f.id = l.flight_id AND f.missing_since IS NULL
-     WHERE l.period_id = $1 AND l.payer_key = $2 AND l.kind = 'flight'`,
-    [periodId, payerKey]
-  );
-  const updates = new Map<string, BillingCellUpdate[]>();
-  for (const row of flights.rows) {
-    updates.set(row.registration, [
-      ...(updates.get(row.registration) ?? []),
-      { id: row.flight_id, inputHash: null, status: paid ? "Maksettu" : "Laskutettu" },
-    ]);
-  }
-
-  const client = await pool.connect();
-  try {
-    await client.query("BEGIN");
-    const updated = await client.query(
-      `UPDATE billing_payers SET paid_at = CASE WHEN $3 THEN NOW() END, paid_by = CASE WHEN $3 THEN $4 END
-       WHERE period_id = $1 AND payer_key = $2`,
-      [periodId, payerKey, paid, access.user.id]
-    );
-    if (updated.rowCount === 0) {
-      throw new FlightSheetWriteError("Maksajaa ei löytynyt jaksosta");
-    }
-    for (const [registration, cells] of updates) {
-      await writeBillingCells(registration, cells, ["Laskutettu", "Maksettu"]);
-    }
-    await client.query("COMMIT");
-  } catch (error) {
-    await client.query("ROLLBACK").catch(() => undefined);
-    console.error("Error marking a payment:", error);
-    return {
-      status: "error",
-      error: error instanceof FlightSheetWriteError ? error.message : "Tallennus epäonnistui",
-    };
-  } finally {
-    client.release();
-  }
+  const failed = await writePayerPaid(periodId, payerKey, paid, access.user.id);
+  if (failed) return { status: "error", error: failed.error };
 
   await syncFlightSheets(access.user.fullName || "laskuttaja", { wait: true });
   revalidateBilling();

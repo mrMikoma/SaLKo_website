@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { MyBill } from "@/utilities/billingData";
 import { euros } from "@/utilities/billing";
 import BillLines from "@/components/billing/BillLines";
@@ -28,12 +29,21 @@ const MyBills = ({ bills }: { bills: MyBill[] }) => {
               <div className="mt-3 overflow-x-auto">
                 <BillLines lines={bill.lines} totalCents={bill.totalCents} />
               </div>
+              {bill.invoice && (
+                <Link href={`/jasenalue/laskut/${bill.invoice.id}`} className="mt-2 inline-block text-sblue hover:underline">
+                  Lasku {bill.invoice.number} ja maksutiedot
+                </Link>
+              )}
             </details>
           </li>
         ))}
       </ul>
       <p className="px-4 py-3 text-sm text-gray-600 border-t border-gray-200">
-        Laskun lähettää kerhon kirjanpito. Kysy laskutuksesta laskuttajalta.
+        Laskut tulevat sähköpostiisi, ja ne löytyvät myös{" "}
+        <Link href="/jasenalue/laskut" className="text-sblue hover:underline">
+          Laskut-sivulta
+        </Link>
+        .
       </p>
     </section>
   );

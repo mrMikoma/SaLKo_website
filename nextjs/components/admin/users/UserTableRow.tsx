@@ -46,7 +46,7 @@ const UserTableRow = ({ user, isSelf, onSuccess, onError }: UserTableRowProps) =
   const isSystemUser =
     user.auth_provider === "system" || user.email === SYSTEM_GUEST_EMAIL;
   const isDeactivated = Boolean(user.deactivated_at);
-  const hasHistory = user.booking_count > 0 || user.bulletin_count > 0;
+  const hasHistory = user.booking_count > 0 || user.bulletin_count > 0 || user.invoice_count > 0;
 
   const run = (
     action: () => Promise<{ success: boolean; error?: string }>,

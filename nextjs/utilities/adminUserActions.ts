@@ -26,9 +26,10 @@ export interface User {
   last_login: string | null;
   created_at: string;
   deactivated_at: string | null;
-  // Bookings and bulletins that keep the user from being deleted outright
+  // Bookings, bulletins and invoices that keep the user from being deleted outright
   booking_count: number;
   bulletin_count: number;
+  invoice_count: number;
 }
 
 type ActionResult = { success: boolean; error?: string };
@@ -41,7 +42,8 @@ const USER_COLUMNS = `
   auth_provider, google_id, avatar_url, email_verified, last_login, created_at,
   deactivated_at,
   (SELECT count(*)::int FROM bookings b WHERE b.user_id = users.id) AS booking_count,
-  (SELECT count(*)::int FROM bullets bl WHERE bl.user_id = users.id) AS bulletin_count`;
+  (SELECT count(*)::int FROM bullets bl WHERE bl.user_id = users.id) AS bulletin_count,
+  (SELECT count(*)::int FROM invoices i WHERE i.user_id = users.id) AS invoice_count`;
 
 const isSystemUser = (user: { auth_provider: string; email: string }) =>
   user.auth_provider === "system" || user.email === SYSTEM_GUEST_EMAIL;
@@ -221,8 +223,9 @@ export async function anonymizeUser(userId: string): Promise<ActionResult> {
 }
 
 /**
- * Delete a user for good (admin only). Only for accounts without bookings or
- * bulletins; anyone with history is deactivated or anonymised instead.
+ * Delete a user for good (admin only). Only for accounts without bookings,
+ * bulletins or invoices; anyone with history is deactivated or anonymised
+ * instead.
  */
 export async function deleteUser(userId: string): Promise<ActionResult> {
   try {
@@ -236,11 +239,11 @@ export async function deleteUser(userId: string): Promise<ActionResult> {
       return { success: false, error: target.error };
     }
 
-    const { booking_count, bulletin_count } = target.user;
-    if (booking_count > 0 || bulletin_count > 0) {
+    const { booking_count, bulletin_count, invoice_count } = target.user;
+    if (booking_count > 0 || bulletin_count > 0 || invoice_count > 0) {
       return {
         success: false,
-        error: `Käyttäjällä on ${booking_count} varausta ja ${bulletin_count} tiedotetta. Poista käyttäjä käytöstä tai anonymisoi hänet.`,
+        error: `Käyttäjällä on ${booking_count} varausta, ${bulletin_count} tiedotetta ja ${invoice_count} laskua. Poista käyttäjä käytöstä tai anonymisoi hänet.`,
       };
     }
 

@@ -297,6 +297,16 @@ const Navbar = ({ flightLog }: { flightLog: boolean }) => {
                       </Link>
                     </MenuItem>
                   )}
+                  {flightLog && (
+                    <MenuItem>
+                      <Link
+                        href="/jasenalue/laskut"
+                        className="block px-4 py-3 text-swhite font-semibold hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
+                      >
+                        Laskut
+                      </Link>
+                    </MenuItem>
+                  )}
                   {isAdmin && (
                     <MenuItem>
                       <Link

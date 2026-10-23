@@ -10,6 +10,9 @@ import { SHEET_ZONE } from "@/utilities/flightSheetParser";
 import { getBillingSettings } from "@/utilities/billingData";
 import { getMailOverview } from "@/utilities/mailData";
 import MailStatus from "@/components/mail/MailStatus";
+import { getInvoiceSettings } from "@/utilities/invoiceData";
+import { formatIban, ISSUER } from "@/utilities/invoices";
+import InvoiceSettingsForm from "@/components/invoices/InvoiceSettingsForm";
 import {
   EquipmentFees,
   FreeHour,
@@ -37,7 +40,7 @@ export default async function BillingSettingsPage({ searchParams }: PageProps) {
   const thisYear = DateTime.now().setZone(SHEET_ZONE).year;
   const requested = Number((await searchParams).kausi);
   const season = Number.isInteger(requested) && requested >= 2000 && requested <= 2100 ? requested : thisYear;
-  const settings = await getBillingSettings(season);
+  const [settings, invoiceSettings] = await Promise.all([getBillingSettings(season), getInvoiceSettings()]);
 
   const card = "bg-white rounded-lg shadow p-6 space-y-4 text-gray-900";
   return (
@@ -99,6 +102,26 @@ export default async function BillingSettingsPage({ searchParams }: PageProps) {
       <section className={card}>
         <h2 className="text-xl font-semibold">Kuka maksaa</h2>
         <PurposePayers purposes={settings.purposes} />
+      </section>
+
+      <section className={card}>
+        <h2 className="text-xl font-semibold">Laskut</h2>
+        <p className="text-sm text-gray-600">
+          Laskuttajan tiedot tulevat Yhteystiedot-sivulta (data/contacts.json):
+        </p>
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+          <dt className="text-gray-600">Saaja</dt>
+          <dd>
+            {ISSUER.name}, {ISSUER.address}, {ISSUER.postalCode} {ISSUER.city}
+          </dd>
+          <dt className="text-gray-600">Y-tunnus</dt>
+          <dd>{ISSUER.businessId}</dd>
+          <dt className="text-gray-600">Tili</dt>
+          <dd>
+            {formatIban(ISSUER.iban)} ({ISSUER.bic}, {ISSUER.bank})
+          </dd>
+        </dl>
+        <InvoiceSettingsForm settings={invoiceSettings} />
       </section>
 
       <section className={card}>

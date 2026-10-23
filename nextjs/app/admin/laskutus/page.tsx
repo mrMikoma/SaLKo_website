@@ -56,6 +56,12 @@ export default async function BillingPage() {
         </div>
         <div className="flex flex-wrap gap-3 shrink-0">
           <Link
+            href="/admin/laskut"
+            className="min-h-11 inline-flex items-center px-4 rounded-lg bg-white border border-gray-300 text-gray-800 font-medium hover:bg-gray-50"
+          >
+            Laskut
+          </Link>
+          <Link
             href="/admin/laskutus/viestit"
             className="min-h-11 inline-flex items-center px-4 rounded-lg bg-white border border-gray-300 text-gray-800 font-medium hover:bg-gray-50"
           >
