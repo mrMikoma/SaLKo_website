@@ -92,7 +92,7 @@ jobs:
       - name: Lint Ansible Playbook
         run: |
           ansible-lint infra/ansible/playbook.yml || exit_code=$?
-          if [ "$exit_code" -ne 0 ]; then
+          if [ "${exit_code:-0}" -ne 0 ]; then
             echo "❌ Linting failed with exit code $exit_code"
             exit $exit_code
           else
@@ -120,7 +120,7 @@ jobs:
             --private-key ~/.ssh/id_ed25519 \
             --extra-vars "ansible_ssh_common_args='-o ControlMaster=auto -o ControlPersist=60s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'" || exit_code=$?
 
-          if [ "$exit_code" -ne 0 ]; then
+          if [ "${exit_code:-0}" -ne 0 ]; then
             echo "❌ Ping failed with exit code $exit_code"
             exit $exit_code
           else
@@ -175,7 +175,7 @@ jobs:
             "${check_args[@]}" \
             --extra-vars "ansible_ssh_common_args='-o ControlMaster=auto -o ControlPersist=60s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'" || exit_code=$?
           
-          if [ "$exit_code" -ne 0 ]; then
+          if [ "${exit_code:-0}" -ne 0 ]; then
             echo "❌ Ansible playbook execution failed with exit code $exit_code"
             exit $exit_code
           else
