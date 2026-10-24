@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { hasPermission } from "@/utilities/roles";
-import { isFlightLogEnabled } from "@/utilities/features";
+import { isBillingEnabled } from "@/utilities/features";
 import { ensureFreshSync } from "@/utilities/flightSync";
 import { getPeriodView } from "@/utilities/billingData";
 import { euros } from "@/utilities/billing";
@@ -33,11 +33,11 @@ const FIX_LINKS = {
 };
 
 export default async function BillingPeriodPage({ params }: PageProps) {
-  if (!isFlightLogEnabled()) {
+  if (!isBillingEnabled()) {
     notFound();
   }
   const session = await auth();
-  if (!session?.user?.roles || !hasPermission(session.user.roles, "MANAGE_BILLING")) {
+  if (!session?.user?.id || !hasPermission(session.user.roles, "MANAGE_BILLING")) {
     redirect("/");
   }
 

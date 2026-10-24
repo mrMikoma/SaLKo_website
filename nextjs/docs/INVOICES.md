@@ -1,6 +1,6 @@
 # Invoices
 
-The website issues and sends the club's bills (laskut) by email: flight bills from a closed billing period (`FLIGHT_LOG.md`, "Billing"), and other charges such as membership, equipment and hangar fees. They go from the club's Google Workspace mail account as "Savonlinnan Lentokerho, laskutus", with replies to `laskutus@` (`MAIL_SETUP.md`). It sits behind `FEATURE_FLIGHT_LOG`, like the rest of billing, and needs `MANAGE_BILLING` (admins and the treasurer).
+The website issues and sends the club's bills (laskut) by email: flight bills from a closed billing period (`FLIGHT_LOG.md`, "Billing"), and other charges such as membership, equipment and hangar fees. They go from the club's Google Workspace mail account as "Savonlinnan Lentokerho, laskutus", with replies to `laskutus@` (`MAIL_SETUP.md`). It sits behind `FEATURE_BILLING` (which needs `FEATURE_FLIGHT_LOG` too), like the rest of billing, and needs `MANAGE_BILLING` (admins and the treasurer).
 
 ## The life of an invoice
 

@@ -6,9 +6,11 @@ import { canOpenAdminPath, ROLES } from "@/utilities/roles";
 
 const AdminNav = ({
   showFlightLog = false,
+  showBilling = false,
   roles,
 }: {
   showFlightLog?: boolean;
+  showBilling?: boolean;
   roles: string[];
 }) => {
   const pathname = usePathname();
@@ -16,15 +18,16 @@ const AdminNav = ({
   const navItems = [
     { href: "/admin", label: "Etusivu", exact: true },
     { href: "/admin/users", label: "Käyttäjät" },
-    // The flight log is only on where FEATURE_FLIGHT_LOG is (utilities/features.ts)
-    ...(showFlightLog
+    // The flight log and billing are only on where FEATURE_FLIGHT_LOG and
+    // FEATURE_BILLING are (utilities/features.ts)
+    ...(showFlightLog ? [{ href: "/admin/lennot", label: "Lennot" }] : []),
+    ...(showBilling
       ? [
-          { href: "/admin/lennot", label: "Lennot" },
           { href: "/admin/laskutus", label: "Laskutus" },
           { href: "/admin/laskut", label: "Laskut" },
-          { href: "/admin/tilastot", label: "Tilastot" },
         ]
       : []),
+    ...(showFlightLog ? [{ href: "/admin/tilastot", label: "Tilastot" }] : []),
     { href: "/admin/bulletins", label: "Tiedotteet" },
     // A treasurer sees only their own sections
   ].filter((item) => canOpenAdminPath(roles, item.href));

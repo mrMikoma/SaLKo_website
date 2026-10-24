@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { hasPermission } from "@/utilities/roles";
-import { isFlightLogEnabled } from "@/utilities/features";
+import { isBillingEnabled } from "@/utilities/features";
 import { getPeriodView } from "@/utilities/billingData";
 import { euros } from "@/utilities/billing";
 import { formatFullDate, formatMinutes } from "@/utilities/flightFormat";
@@ -21,11 +21,11 @@ interface PageProps {
 
 /** One page per payer, to print or save as PDF, like the sheet's TEMPLATE tab */
 export default async function BillingPrintPage({ params }: PageProps) {
-  if (!isFlightLogEnabled()) {
+  if (!isBillingEnabled()) {
     notFound();
   }
   const session = await auth();
-  if (!session?.user?.roles || !hasPermission(session.user.roles, "MANAGE_BILLING")) {
+  if (!session?.user?.id || !hasPermission(session.user.roles, "MANAGE_BILLING")) {
     redirect("/");
   }
   const id = Number((await params).id);

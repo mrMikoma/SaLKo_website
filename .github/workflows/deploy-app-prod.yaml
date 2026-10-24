@@ -212,9 +212,11 @@ jobs:
             echo "NEXT_PUBLIC_UMAMI_WEBSITE_ID=${{ secrets.NEXT_PUBLIC_UMAMI_WEBSITE_ID }}" >> .env.prod
             # Switched on stage by stage with the production environment's
             # variables (nextjs/docs/GO_LIVE.md); unset means off. The flight
-            # log, billing and invoices need FEATURE_FLIGHT_LOG=true; email needs
-            # MAIL_MODE=send (or redirect, to send everything to MAIL_REDIRECT_TO).
+            # log needs FEATURE_FLIGHT_LOG=true (stage B); billing and invoices
+            # FEATURE_BILLING=true as well (stage C); email needs MAIL_MODE=send
+            # (or redirect, to send everything to MAIL_REDIRECT_TO).
             echo "FEATURE_FLIGHT_LOG=${{ vars.FEATURE_FLIGHT_LOG }}" >> .env.prod
+            echo "FEATURE_BILLING=${{ vars.FEATURE_BILLING }}" >> .env.prod
             # Historiaa and Hallit, once the club members have reviewed them
             echo "FEATURE_PAGES_IN_REVIEW=${{ vars.FEATURE_PAGES_IN_REVIEW }}" >> .env.prod
             echo "MAIL_MODE=${{ vars.MAIL_MODE }}" >> .env.prod

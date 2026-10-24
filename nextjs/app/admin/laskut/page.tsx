@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { hasPermission } from "@/utilities/roles";
-import { isFlightLogEnabled } from "@/utilities/features";
+import { isBillingEnabled } from "@/utilities/features";
 import { getInvoices, InvoiceSummary, InvoiceView, VIEW_STATUS } from "@/utilities/invoiceData";
 import { getBillingPeriod } from "@/utilities/billingData";
 import { mailMode } from "@/utilities/mailConfig";
@@ -39,11 +39,11 @@ interface PageProps {
 }
 
 export default async function InvoicesPage({ searchParams }: PageProps) {
-  if (!isFlightLogEnabled()) {
+  if (!isBillingEnabled()) {
     notFound();
   }
   const session = await auth();
-  if (!session?.user?.roles || !hasPermission(session.user.roles, "MANAGE_BILLING")) {
+  if (!session?.user?.id || !hasPermission(session.user.roles, "MANAGE_BILLING")) {
     redirect("/");
   }
 

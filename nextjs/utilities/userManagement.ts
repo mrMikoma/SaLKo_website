@@ -9,7 +9,8 @@ import { ChangePasswordSchema } from "./definitions";
 
 // Validation schema for profile updates
 const UpdateProfileSchema = z.object({
-  full_name: z.string().min(1, "Koko nimi vaaditaan"),
+  // The name also goes into the flight log sheet, bills and CSV files
+  full_name: z.string().trim().min(1, "Koko nimi vaaditaan").max(100, "Nimi on liian pitkä"),
   phone: z.string().optional(),
   address: z.string().optional(),
   city: z.string().optional(),

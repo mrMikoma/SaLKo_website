@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic"
 
 import { auth } from "@/auth"
 import { notFound, redirect } from "next/navigation"
-import { isFlightLogEnabled } from "@/utilities/features"
+import { isBillingEnabled, isFlightLogEnabled } from "@/utilities/features"
 import { hasPermission } from "@/utilities/roles"
 import { ensureFreshSync } from "@/utilities/flightSync"
 import { getMyFlights } from "@/utilities/flightLogData"
@@ -36,7 +36,9 @@ export default async function Page() {
   await ensureFreshSync()
   const [flights, bills] = await Promise.all([
     getMyFlights(session.user.id),
-    hasPermission(session.user.roles, "VIEW_OWN_BILLING") ? getMyBills(session.user.id) : [],
+    isBillingEnabled() && hasPermission(session.user.roles, "VIEW_OWN_BILLING")
+      ? getMyBills(session.user.id)
+      : [],
   ])
 
   return (

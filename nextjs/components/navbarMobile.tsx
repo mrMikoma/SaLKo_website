@@ -22,6 +22,7 @@ import Logout from "@/components/auth/logout";
 const NavbarMobile = (handleLogoutProp: {
   handleLogout: () => void;
   flightLog: boolean;
+  billing: boolean;
   pagesInReview: boolean;
 }) => {
   const { data: session } = useSession();
@@ -29,11 +30,15 @@ const NavbarMobile = (handleLogoutProp: {
   const pathName = usePathname();
   const authenticated = Boolean(session?.user);
   const isAdmin = session?.user?.roles?.includes("admin") || false;
-  // A treasurer's way into the admin site is billing
+  // A treasurer's way into the admin site: billing, or the flight log
+  // before billing is on
   const isTreasurer =
     !isAdmin &&
     handleLogoutProp.flightLog &&
-    hasPermission(session?.user?.roles ?? [], "MANAGE_BILLING");
+    hasPermission(session?.user?.roles ?? [], "MANAGE_FLIGHT_LOG");
+  const treasurerLink = handleLogoutProp.billing
+    ? { href: "/admin/laskutus", label: "Laskutus" }
+    : { href: "/admin/lennot", label: "Lentojen tarkistus" };
 
   // Toggle menu visibility
   const handleToggle = () => {
@@ -273,7 +278,7 @@ const NavbarMobile = (handleLogoutProp: {
                           Lentopäiväkirja
                         </Link>
                       )}
-                      {handleLogoutProp.flightLog && (
+                      {handleLogoutProp.billing && (
                         <Link
                           href="/jasenalue/laskut"
                           className="block w-full py-2.5 px-8 text-base text-swhite/95 hover:bg-sblue/40 hover:text-swhite hover:pl-10 transition-all duration-200 border-l-2 border-transparent hover:border-sred backdrop-blur-sm"
@@ -293,11 +298,11 @@ const NavbarMobile = (handleLogoutProp: {
                       )}
                       {isTreasurer && (
                         <Link
-                          href="/admin/laskutus"
+                          href={treasurerLink.href}
                           className="block w-full py-2.5 px-8 text-base text-swhite/95 hover:bg-sblue/40 hover:text-swhite hover:pl-10 transition-all duration-200 border-l-2 border-transparent hover:border-sred backdrop-blur-sm"
                           onClick={handleClose}
                         >
-                          Laskutus
+                          {treasurerLink.label}
                         </Link>
                       )}
                       <div className="block w-full py-2.5 px-8 text-base text-sred/95 hover:bg-sblue/40 hover:text-sred hover:pl-10 transition-all duration-200 border-l-2 border-transparent hover:border-sred backdrop-blur-sm">

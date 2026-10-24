@@ -5,7 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { DateTime } from "luxon";
 import { auth } from "@/auth";
 import { hasPermission } from "@/utilities/roles";
-import { isFlightLogEnabled } from "@/utilities/features";
+import { isBillingEnabled } from "@/utilities/features";
 import { SHEET_ZONE } from "@/utilities/flightSheetParser";
 import { getBillingSettings } from "@/utilities/billingData";
 import { getMailOverview } from "@/utilities/mailData";
@@ -29,11 +29,11 @@ interface PageProps {
 }
 
 export default async function BillingSettingsPage({ searchParams }: PageProps) {
-  if (!isFlightLogEnabled()) {
+  if (!isBillingEnabled()) {
     notFound();
   }
   const session = await auth();
-  if (!session?.user?.roles || !hasPermission(session.user.roles, "MANAGE_BILLING")) {
+  if (!session?.user?.id || !hasPermission(session.user.roles, "MANAGE_BILLING")) {
     redirect("/");
   }
 

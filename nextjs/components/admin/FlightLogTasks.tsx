@@ -8,9 +8,9 @@ import { formatDateTime } from "@/utilities/flightFormat";
 
 /**
  * The admin front page's flight-log panel: what needs doing, each with a
- * link to where it's done
+ * link to where it's done. Billing's task only while billing is on.
  */
-const FlightLogTasks = async () => {
+const FlightLogTasks = async ({ billing }: { billing: boolean }) => {
   const year = thisYear();
   const [sync, counts, periods] = await Promise.all([
     getLatestSyncRuns(),
@@ -19,14 +19,15 @@ const FlightLogTasks = async () => {
          (SELECT count(*)::int FROM sheet_flights f
           WHERE f.missing_since IS NULL
             AND (f.status IS NULL OR lower(trim(f.status)) NOT IN
-                 ('tarkistettu', 'laskutettu', 'ei laskuteta', 'maksettu'))) AS unchecked,
+                 ('tarkistettu', 'laskutettu', 'ei laskuteta', 'maksettu'))
+            AND NOT EXISTS (SELECT 1 FROM billing_lines b WHERE b.flight_id = f.id)) AS unchecked,
          (SELECT count(*)::int FROM sheet_flight_issues) AS issues,
          (SELECT count(DISTINCT flight_date)::int FROM sheet_flights
           WHERE missing_since IS NULL AND purpose_code = 'ESI'
             AND extract(year FROM flight_date)::int = $1) AS intro_days`,
       [year]
     ),
-    getBillingOverview(),
+    billing ? getBillingOverview() : [],
   ]);
   const { unchecked, issues, intro_days: introDays } = counts.rows[0];
   const open = periods.filter((p) => !p.period.closedAt);
@@ -56,7 +57,7 @@ const FlightLogTasks = async () => {
       detail: issues === 0 ? "Ei huomautettavaa" : `${issues} riviä`,
       attention: issues > 0,
     },
-    {
+    ...(billing ? [{
       href: open[0] ? `/admin/laskutus/${open[0].period.id}` : "/admin/laskutus",
       label: "Laskutus",
       detail: open[0]
@@ -65,7 +66,7 @@ const FlightLogTasks = async () => {
           ? `${unpaid.reduce((sum, p) => sum + p.payers - p.paid, 0)} maksamatonta laskua`
           : "Ei avoimia jaksoja",
       attention: open.length > 0 || unpaid.length > 0,
-    },
+    }] : []),
     {
       href: `/admin/tilastot?vuosi=${year}`,
       label: `Esittelylentopäivät ${year}`,

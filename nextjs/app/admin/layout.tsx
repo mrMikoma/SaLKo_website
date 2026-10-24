@@ -1,6 +1,6 @@
 import AdminNav from "@/components/admin/adminNav";
 import PageHero from "@/components/pageHero";
-import { isFlightLogEnabled } from "@/utilities/features";
+import { isBillingEnabled, isFlightLogEnabled } from "@/utilities/features";
 import { auth } from "@/auth";
 import { ReactNode } from "react";
 
@@ -15,7 +15,11 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           compact={true}
           showScrollIndicator={false}
         >
-          <AdminNav showFlightLog={isFlightLogEnabled()} roles={session?.user?.roles ?? []} />
+          <AdminNav
+            showFlightLog={isFlightLogEnabled()}
+            showBilling={isBillingEnabled()}
+            roles={session?.user?.roles ?? []}
+          />
         </PageHero>
       </div>
       <div className="container mx-auto px-4 py-8 print:p-0 print:max-w-none">

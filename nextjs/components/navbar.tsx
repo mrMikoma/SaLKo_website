@@ -20,9 +20,17 @@ import { useSession } from "next-auth/react";
 import { useNavbar } from "@/providers/NavbarContextProvider";
 import { hasPermission } from "@/utilities/roles";
 
-// flightLog: whether the flight log feature is on; pagesInReview: whether
+// flightLog and billing: whether those features are on; pagesInReview: whether
 // Hallit and Historiaa are shown before the club's review (utilities/features.ts)
-const Navbar = ({ flightLog, pagesInReview }: { flightLog: boolean; pagesInReview: boolean }) => {
+const Navbar = ({
+  flightLog,
+  billing,
+  pagesInReview,
+}: {
+  flightLog: boolean;
+  billing: boolean;
+  pagesInReview: boolean;
+}) => {
   const { data: session } = useSession();
   // Hide the user as soon as they click logout; signOut() then reloads the page
   const [loggedOutSession, setLoggedOutSession] = useState<typeof session>(null);
@@ -30,8 +38,12 @@ const Navbar = ({ flightLog, pagesInReview }: { flightLog: boolean; pagesInRevie
   const authenticated = Boolean(user);
   const userName = user?.name || "";
   const isAdmin = user?.roles?.includes("admin") || false;
-  // A treasurer's way into the admin site is billing
-  const isTreasurer = !isAdmin && flightLog && hasPermission(user?.roles ?? [], "MANAGE_BILLING");
+  // A treasurer's way into the admin site: billing, or the flight log
+  // before billing is on
+  const isTreasurer = !isAdmin && flightLog && hasPermission(user?.roles ?? [], "MANAGE_FLIGHT_LOG");
+  const treasurerLink = billing
+    ? { href: "/admin/laskutus", label: "Laskutus" }
+    : { href: "/admin/lennot", label: "Lentojen tarkistus" };
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
   const { isFullscreenMode } = useNavbar();
@@ -83,7 +95,12 @@ const Navbar = ({ flightLog, pagesInReview }: { flightLog: boolean; pagesInRevie
             </span>
           </Link>{" "}
           {/* Mobile menu toggle button */}
-          <NavbarMobile handleLogout={handleLogout} flightLog={flightLog} pagesInReview={pagesInReview} />
+          <NavbarMobile
+            handleLogout={handleLogout}
+            flightLog={flightLog}
+            billing={billing}
+            pagesInReview={pagesInReview}
+          />
         </div>
 
         {/* Desktop Navigation Menu */}
@@ -300,7 +317,7 @@ const Navbar = ({ flightLog, pagesInReview }: { flightLog: boolean; pagesInRevie
                       </Link>
                     </MenuItem>
                   )}
-                  {flightLog && (
+                  {billing && (
                     <MenuItem>
                       <Link
                         href="/jasenalue/laskut"
@@ -323,10 +340,10 @@ const Navbar = ({ flightLog, pagesInReview }: { flightLog: boolean; pagesInRevie
                   {isTreasurer && (
                     <MenuItem>
                       <Link
-                        href="/admin/laskutus"
+                        href={treasurerLink.href}
                         className="block px-4 py-3 text-swhite font-semibold hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
                       >
-                        Laskutus
+                        {treasurerLink.label}
                       </Link>
                     </MenuItem>
                   )}

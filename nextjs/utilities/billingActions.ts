@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import pool from "@/utilities/db";
 import { auth } from "@/auth";
 import { hasPermission } from "@/utilities/roles";
-import { isFlightLogEnabled } from "@/utilities/features";
+import { isBillingEnabled } from "@/utilities/features";
 import { syncFlightSheets } from "@/utilities/flightSync";
 import { computeOpenPeriod, getBillingPeriod } from "@/utilities/billingData";
 import { writePayerPaid } from "@/utilities/billingPayments";
@@ -20,7 +20,7 @@ type ActionResult<T = null> =
   | { status: "error"; error: string };
 
 async function requireBillingAdmin() {
-  if (!isFlightLogEnabled()) {
+  if (!isBillingEnabled()) {
     return { error: "Laskutus ei ole vielä käytössä" };
   }
   const session = await auth();
@@ -39,6 +39,19 @@ const revalidateBilling = () => {
 };
 
 const pgCode = (error: unknown) => (error as { code?: string })?.code;
+
+// A Google error carries the request, so only its message goes to the log
+const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error));
+
+/** Runs a settings change; a database error is logged and answered in Finnish */
+async function saving(what: string, work: () => Promise<ActionResult>): Promise<ActionResult> {
+  try {
+    return await work();
+  } catch (error) {
+    console.error(`Error saving ${what}:`, errorText(error));
+    return { status: "error", error: "Tallennus epäonnistui" };
+  }
+}
 
 /*
  * Periods
@@ -75,7 +88,7 @@ export async function createBillingPeriod(
     if (pgCode(error) === "23P01") {
       return { status: "error", error: "Jakso menee päällekkäin toisen jakson kanssa" };
     }
-    console.error("Error creating billing period:", error);
+    console.error("Error creating billing period:", errorText(error));
     return { status: "error", error: "Jakson luonti epäonnistui" };
   }
 }
@@ -84,15 +97,20 @@ export async function createBillingPeriod(
 export async function deleteBillingPeriod(id: number): Promise<ActionResult> {
   const access = await requireBillingAdmin();
   if ("error" in access) return { status: "error", error: access.error };
-  const response = await pool.query(
-    "DELETE FROM billing_periods WHERE id = $1 AND closed_at IS NULL",
-    [id]
-  );
-  if (response.rowCount === 0) {
-    return { status: "error", error: "Suljettua jaksoa ei voi poistaa" };
+  if (!z.number().int().positive().safeParse(id).success) {
+    return { status: "error", error: "Jaksoa ei löytynyt" };
   }
-  revalidateBilling();
-  return { status: "success", result: null };
+  return saving("billing period", async () => {
+    const response = await pool.query(
+      "DELETE FROM billing_periods WHERE id = $1 AND closed_at IS NULL",
+      [id]
+    );
+    if (response.rowCount === 0) {
+      return { status: "error", error: "Suljettua jaksoa ei voi poistaa" };
+    }
+    revalidateBilling();
+    return { status: "success", result: null };
+  });
 }
 
 /**
@@ -203,7 +221,7 @@ export async function closeBillingPeriod(
     await client.query("COMMIT");
   } catch (error) {
     await client.query("ROLLBACK").catch(() => undefined);
-    console.error("Error closing billing period:", error);
+    console.error("Error closing billing period:", errorText(error));
     return {
       status: "error",
       error:
@@ -265,27 +283,38 @@ export async function saveRate(input: z.input<typeof rateSchema>): Promise<Actio
   const parsed = rateSchema.safeParse(input);
   if (!parsed.success) return { status: "error", error: parsed.error.issues[0].message };
   const { registration, validFrom, withFee, withoutFee, minimumLocalMinutes } = parsed.data;
-  await pool.query(
-    `INSERT INTO aircraft_rates (registration, valid_from, cents_with_fee, cents_without_fee, minimum_local_minutes)
-     VALUES ($1, $2, $3, $4, $5)
-     ON CONFLICT (registration, valid_from) DO UPDATE
-       SET cents_with_fee = EXCLUDED.cents_with_fee, cents_without_fee = EXCLUDED.cents_without_fee,
-           minimum_local_minutes = EXCLUDED.minimum_local_minutes`,
-    [registration, validFrom, withFee, withoutFee, minimumLocalMinutes]
-  );
-  revalidateBilling();
-  return { status: "success", result: null };
+  return saving("rate", async () => {
+    await pool.query(
+      `INSERT INTO aircraft_rates (registration, valid_from, cents_with_fee, cents_without_fee, minimum_local_minutes)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (registration, valid_from) DO UPDATE
+         SET cents_with_fee = EXCLUDED.cents_with_fee, cents_without_fee = EXCLUDED.cents_without_fee,
+             minimum_local_minutes = EXCLUDED.minimum_local_minutes`,
+      [registration, validFrom, withFee, withoutFee, minimumLocalMinutes]
+    );
+    revalidateBilling();
+    return { status: "success", result: null };
+  });
 }
+
+const rateKeySchema = z.object({
+  registration: z.string().trim().min(1).max(20),
+  validFrom: z.iso.date(),
+});
 
 export async function deleteRate(registration: string, validFrom: string): Promise<ActionResult> {
   const access = await requireBillingAdmin();
   if ("error" in access) return { status: "error", error: access.error };
-  await pool.query("DELETE FROM aircraft_rates WHERE registration = $1 AND valid_from = $2", [
-    registration,
-    validFrom,
-  ]);
-  revalidateBilling();
-  return { status: "success", result: null };
+  const parsed = rateKeySchema.safeParse({ registration, validFrom });
+  if (!parsed.success) return { status: "error", error: "Hintaa ei löytynyt" };
+  return saving("rate", async () => {
+    await pool.query("DELETE FROM aircraft_rates WHERE registration = $1 AND valid_from = $2", [
+      parsed.data.registration,
+      parsed.data.validFrom,
+    ]);
+    revalidateBilling();
+    return { status: "success", result: null };
+  });
 }
 
 const feeSchema = z.object({
@@ -300,20 +329,22 @@ export async function setEquipmentFee(input: z.input<typeof feeSchema>): Promise
   const parsed = feeSchema.safeParse(input);
   if (!parsed.success) return { status: "error", error: parsed.error.issues[0].message };
   const { userId, season, paid } = parsed.data;
-  if (paid) {
-    await pool.query(
-      `INSERT INTO equipment_fee_seasons (user_id, season, created_by) VALUES ($1, $2, $3)
-       ON CONFLICT DO NOTHING`,
-      [userId, season, access.user.id]
-    );
-  } else {
-    await pool.query("DELETE FROM equipment_fee_seasons WHERE user_id = $1 AND season = $2", [
-      userId,
-      season,
-    ]);
-  }
-  revalidateBilling();
-  return { status: "success", result: null };
+  return saving("equipment fee", async () => {
+    if (paid) {
+      await pool.query(
+        `INSERT INTO equipment_fee_seasons (user_id, season, created_by) VALUES ($1, $2, $3)
+         ON CONFLICT DO NOTHING`,
+        [userId, season, access.user.id]
+      );
+    } else {
+      await pool.query("DELETE FROM equipment_fee_seasons WHERE user_id = $1 AND season = $2", [
+        userId,
+        season,
+      ]);
+    }
+    revalidateBilling();
+    return { status: "success", result: null };
+  });
 }
 
 const freeHourSchema = z.object({
@@ -328,15 +359,17 @@ export async function saveFreeHour(input: z.input<typeof freeHourSchema>): Promi
   if ("error" in access) return { status: "error", error: access.error };
   const parsed = freeHourSchema.safeParse(input);
   if (!parsed.success) return { status: "error", error: parsed.error.issues[0].message };
-  await pool.query(
-    `INSERT INTO flight_log_settings (key, value, updated_at, updated_by)
-     VALUES ('free_hour', $1, NOW(), $2)
-     ON CONFLICT (key) DO UPDATE
-       SET value = EXCLUDED.value, updated_at = NOW(), updated_by = EXCLUDED.updated_by`,
-    [JSON.stringify(parsed.data), access.user.id]
-  );
-  revalidateBilling();
-  return { status: "success", result: null };
+  return saving("free hour", async () => {
+    await pool.query(
+      `INSERT INTO flight_log_settings (key, value, updated_at, updated_by)
+       VALUES ('free_hour', $1, NOW(), $2)
+       ON CONFLICT (key) DO UPDATE
+         SET value = EXCLUDED.value, updated_at = NOW(), updated_by = EXCLUDED.updated_by`,
+      [JSON.stringify(parsed.data), access.user.id]
+    );
+    revalidateBilling();
+    return { status: "success", result: null };
+  });
 }
 
 export async function setPurposePayer(
@@ -347,11 +380,16 @@ export async function setPurposePayer(
   if ("error" in access) return { status: "error", error: access.error };
   const parsed = z.enum(["pic", "student", "none"]).safeParse(payer);
   if (!parsed.success) return { status: "error", error: "Tuntematon maksaja" };
-  const updated = await pool.query("UPDATE flight_purposes SET payer = $2 WHERE code = $1", [
-    code,
-    parsed.data,
-  ]);
-  if (updated.rowCount === 0) return { status: "error", error: "Tuntematon lennon tarkoitus" };
-  revalidateBilling();
-  return { status: "success", result: null };
+  if (!z.string().min(1).max(20).safeParse(code).success) {
+    return { status: "error", error: "Tuntematon lennon tarkoitus" };
+  }
+  return saving("purpose payer", async () => {
+    const updated = await pool.query("UPDATE flight_purposes SET payer = $2 WHERE code = $1", [
+      code,
+      parsed.data,
+    ]);
+    if (updated.rowCount === 0) return { status: "error", error: "Tuntematon lennon tarkoitus" };
+    revalidateBilling();
+    return { status: "success", result: null };
+  });
 }

@@ -8,7 +8,7 @@ import StatCard from "@/components/admin/StatCard";
 import RecentUsersTable from "@/components/admin/RecentUsersTable";
 import QuickActionCard from "@/components/admin/QuickActionCard";
 import FlightLogTasks from "@/components/admin/FlightLogTasks";
-import { isFlightLogEnabled } from "@/utilities/features";
+import { isBillingEnabled, isFlightLogEnabled } from "@/utilities/features";
 
 export default async function AdminDashboard() {
   const session = await auth();
@@ -38,7 +38,7 @@ export default async function AdminDashboard() {
       </div>
 
       {/* What the flight log needs, while the feature is on */}
-      {isFlightLogEnabled() && <FlightLogTasks />}
+      {isFlightLogEnabled() && <FlightLogTasks billing={isBillingEnabled()} />}
 
       <section className="bg-white rounded-lg shadow p-6 text-gray-900">
         <h2 className="text-xl font-semibold mb-4">Käyttäjät ja varaukset</h2>

@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic"
 import Link from "next/link"
 import { notFound, redirect } from "next/navigation"
 import { auth } from "@/auth"
-import { isFlightLogEnabled } from "@/utilities/features"
+import { isBillingEnabled } from "@/utilities/features"
 import { hasPermission } from "@/utilities/roles"
 import { getMyInvoices } from "@/utilities/invoiceData"
 import { MAIL_PURPOSES } from "@/utilities/mailConfig"
@@ -20,7 +20,7 @@ export const metadata = {
 
 export default async function Page() {
   // Still being built: shown in dev, hidden in production
-  if (!isFlightLogEnabled()) {
+  if (!isBillingEnabled()) {
     notFound()
   }
   const session = await auth()

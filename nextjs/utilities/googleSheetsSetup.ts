@@ -12,7 +12,7 @@ export interface ServiceAccountKey {
 }
 
 const BAD_KEY =
-  "GOOGLE_SERVICE_ACCOUNT_KEY ei ole palvelutilin avain. Anna Google Cloudista ladattu JSON-avain sellaisenaan tai base64-muodossa.";
+  "GOOGLE_SERVICE_ACCOUNT_KEY ei ole palvelutilin avain. Liitä Google Cloudista ladattu JSON-avaintiedosto sellaisenaan GitHubin GOOGLE_SERVICE_ACCOUNT_JSON-salaisuuteen: julkaisu muuntaa sen itse (paikallisesti .env-tiedostoon kelpaa myös base64).";
 
 /**
  * GOOGLE_SERVICE_ACCOUNT_KEY holds the JSON key file as is, or base64 of it.

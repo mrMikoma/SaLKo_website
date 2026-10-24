@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { hasPermission } from "@/utilities/roles";
-import { isFlightLogEnabled } from "@/utilities/features";
+import { isBillingEnabled } from "@/utilities/features";
 import { getMailOverview, getOutbox, OutboxMessage } from "@/utilities/mailData";
 import { formatDateTime } from "@/utilities/flightFormat";
 import MailStatus from "@/components/mail/MailStatus";
@@ -26,11 +26,11 @@ const KIND: Record<string, string> = { test: "Testiviesti", invoice: "Lasku" };
 
 /** What the website has sent, or tried to send, newest first */
 export default async function OutboxPage() {
-  if (!isFlightLogEnabled()) {
+  if (!isBillingEnabled()) {
     notFound();
   }
   const session = await auth();
-  if (!session?.user?.roles || !hasPermission(session.user.roles, "MANAGE_BILLING")) {
+  if (!session?.user?.id || !hasPermission(session.user.roles, "MANAGE_BILLING")) {
     redirect("/");
   }
   const overview = getMailOverview();

@@ -141,7 +141,7 @@ On `/admin/lennot` (`MANAGE_FLIGHT_LOG`), the biller ticks the rows that match t
 
 ## Billing
 
-`/admin/laskutus` (`MANAGE_BILLING`: admins, and the treasurer role, "Laskuttaja") bills checked flights by period. A treasurer also checks flights, types in paper pages and matches names on `/admin/lennot`, and sees the statistics, but nothing else of the admin site; give the role on `/admin/users`, together with Käyttäjä. `utilities/billing.ts` holds the rules, as pure functions with unit tests; `utilities/billingData.ts` gathers the flights and settings for it.
+`/admin/laskutus` (`MANAGE_BILLING`: admins, and the treasurer role, "Laskuttaja") bills checked flights by period. Billing has a switch of its own, `FEATURE_BILLING` (`isBillingEnabled()`, which needs the flight log on as well): without it the billing and invoice pages, their actions and CSV files, and the members' bills don't exist, and the treasurer's admin site starts at `/admin/lennot`. A treasurer also checks flights, types in paper pages and matches names on `/admin/lennot`, and sees the statistics, but nothing else of the admin site; give the role on `/admin/users`, together with Käyttäjä. `utilities/billing.ts` holds the rules, as pure functions with unit tests; `utilities/billingData.ts` gathers the flights and settings for it.
 
 **Who pays** follows the purpose code (`flight_purposes.payer`, editable on the settings page):
 - HAR, MAT, TAR and LAS: the PIC.

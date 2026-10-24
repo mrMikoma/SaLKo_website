@@ -5,10 +5,10 @@ How everything waiting in `dev` reaches savonlinnanlentokerho.fi, in three stage
 | Stage | What goes live | Switch |
 |---|---|---|
 | **A. Release** | Next.js and Bun security updates, the booking permission fix and new calendar, admin user tools, bulletin drafts, server maintenance and SSH hardening, the SPF and DMARC records | merge `dev` → `main` (#47), migrate, deploy |
-| **B. Flight log** | the club's real sheet, members logging flights, the treasurer checking them | production variable `FEATURE_FLIGHT_LOG=true`, redeploy |
-| **C. Billing and email** | billing periods and invoices emailed to members | production variable `MAIL_MODE=send`, redeploy |
+| **B. Flight log** | the club's real sheet, members logging flights, the treasurer checking them, statistics | production variable `FEATURE_FLIGHT_LOG=true`, redeploy |
+| **C. Billing and email** | prices, billing periods, invoices on the site and by email | production variables `FEATURE_BILLING=true` and `MAIL_MODE=send`, redeploy |
 
-Stage A doesn't depend on B or C and carries security fixes, so it shouldn't wait for them. The flight log, billing, invoices and email stay hidden or off until their stage.
+Stage A doesn't depend on B or C and carries security fixes, so it shouldn't wait for them. The flight log, billing, invoices and email stay hidden or off until their stage. Billing has its own switch, `FEATURE_BILLING`, so stage B shows nothing of it: no billing pages, prices, periods or invoices, and no "Laskut" in the members' menu. Stage C waits until the treasurer has confirmed the prices and how billing should work.
 
 **Historiaa and Hallit wait for the club members' review.** They were written from the old website and club records, and they are shown on kehitys for members to read. In production they stay greyed out in the menu, with no page, until the review is done. Then:
 1. Fix what the members pointed out, through `dev` as usual.
@@ -144,13 +144,17 @@ Stage A doesn't depend on B or C and carries security fixes, so it shouldn't wai
   2. Run the site locally against the copy: `FLIGHT_LOG_SETUP.md`, "Local development against the dev sheet", with the copy's ID.
   3. Try a two-leg save; a save, cut the network (DevTools → Offline), then save again, which must not add the flights twice; an undo; a status change; and a remark starting with `=`, which must stay text.
   4. Delete the copy, put `nextjs/.env` back to the dev sheet, and empty the local database's copy of the flights (recreate the local database, or `DELETE FROM sheet_flights`).
-- [ ] **Secrets:** add `GOOGLE_SHEETS_ID` and `GOOGLE_SERVICE_ACCOUNT_JSON` (the key file as is) to the `production` environment's secrets.
-- [ ] **Treasurer:** give their account the Laskuttaja role on `/admin/users`, together with Käyttäjä.
+- [ ] **Secrets:** add `GOOGLE_SHEETS_ID` and `GOOGLE_SERVICE_ACCOUNT_JSON` (the key file as is) to the `production` **environment's** secrets, never as repository secrets, which every workflow could read.
+- [ ] **Sharing the real sheet:**
+  - share the spreadsheet file itself with the service account, not a folder or a shared drive;
+  - keep General access "Restricted": the website links rows to the sheet, and with "Anyone with the link" one link would show every member's flights;
+  - give the service account no roles in its Google Cloud project, and restrict who can create keys for it.
 
 ### Switch on
 
-1. Settings → Environments → `production` → Variables: `FEATURE_FLIGHT_LOG` = `true`.
+1. Settings → Environments → `production` → Variables: `FEATURE_FLIGHT_LOG` = `true`. Leave `FEATURE_BILLING` unset.
 2. Actions → **Deploy production from main branch** with the current version. No new build is needed. **Approve**.
+3. **Treasurer:** give their account the Laskuttaja role on `/admin/users`, together with Käyttäjä. The role can only be given once the flight log is on.
 
 ### Check
 
@@ -159,6 +163,7 @@ Stage A doesn't depend on B or C and carries security fixes, so it shouldn't wai
 - [ ] The Tarkistamatta list holds only flights not yet billed.
 - [ ] A member sees Lentopäiväkirja in the menu, logs a flight, and the flight appears in the sheet. If it was a test, undo it right away with "Kumoa viimeisin" on the confirmation: undo works only there, and only while it is the tab's last flight. Later the biller clears it in the sheet.
 - [ ] `/admin/tilastot` agrees with the sheet's Tilastot tab.
+- [ ] Access: a member gets the front page for `/admin/lennot`; the treasurer lands on `/admin/lennot` from the menu ("Lentojen tarkistus") and is refused `/admin/users`; `/admin/laskutus` and `/jasenalue/laskut` don't exist yet.
 
 To switch it off again, clear the variable and redeploy. The data stays.
 
@@ -173,7 +178,7 @@ To switch it off again, clear the variable and redeploy. The data stays.
   3. Once the record is live, press "Start authentication".
 - [ ] **Secrets:** add `MAIL_FROM`, `MAIL_REFRESH_TOKEN`, `MAIL_GMAIL_CLIENT_ID` and `MAIL_GMAIL_CLIENT_SECRET` to the `production` environment's secrets. Optionally add `MAIL_REDIRECT_TO`, for a dry run.
 - [ ] **Club details on invoices:** Yhteystiedot (`data/contacts.json`) has the right IBAN, BIC and business ID.
-- [ ] **On `/admin/laskutus/asetukset`:**
+- [ ] **On `/admin/laskutus/asetukset`,** right after switching on and before the first period (the page appears with `FEATURE_BILLING`):
   - the prices: OH-CON 3,10 / 5,00 €/min, with a 30 min minimum;
   - this season's equipment-fee payers;
   - the free hour;
@@ -187,7 +192,7 @@ To switch it off again, clear the variable and redeploy. The data stays.
 
 ### Switch on
 
-1. Set the variable `MAIL_MODE` to `send`, or to `redirect` for a dry run where all mail goes to `MAIL_REDIRECT_TO`.
+1. Set the variable `FEATURE_BILLING` to `true`, and `MAIL_MODE` to `send`, or to `redirect` for a dry run where all mail goes to `MAIL_REDIRECT_TO`. Billing can also go on first with `MAIL_MODE` unset: invoices are then issued for printing, and their mail is held.
 2. Redeploy with the current version. **Approve**.
 3. On `/admin/laskutus/viestit`, press "Lähetä testiviesti itselleni" and check the message:
    - it comes from "Savonlinnan Lentokerho, laskutus";
@@ -204,8 +209,10 @@ A dry run's invoices get real numbers but never reach members, so use `redirect`
 - [ ] Look through the drafts, add the missing postal addresses, then send them from `/admin/laskut`.
 - [ ] Tell members that bills now come by email from the club's mail account, and that replies go to the treasurer.
 
-To stop sending, clear `MAIL_MODE` and redeploy. Messages are then stored but not sent.
+To stop sending, clear `MAIL_MODE` and redeploy. Messages are then stored but not sent. Clearing `FEATURE_BILLING` hides billing again; nothing is deleted.
 
 ## Every later release
 
 The same as stage A, steps 1–4: merge `dev` → `main`, build, migrate if `postgres/migrations` has new files (dry run first), and deploy.
+
+When a release changes the Postgres service in `docker-compose.prod.yaml`, the deploy recreates the database container: the site is down for the half a minute Postgres takes to start, and the data stays. The release with the stage B review fixes does this once, as the database no longer gets the app's secrets in its environment.
