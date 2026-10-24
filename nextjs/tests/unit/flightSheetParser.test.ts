@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   columnLetter,
   findFlightIssues,
+  findUndatedRowIssues,
   nameKey,
   parseDuration,
   parseFlightSheet,
@@ -14,6 +15,9 @@ import {
 const SERIAL_2026_04_01 = 46113;
 const SERIAL_2026_03_29 = 46110; // EU summer time starts that night
 const time = (hours: number, minutes: number) => (hours * 60 + minutes) / 1440;
+// IDs are UUIDs; anything else is replaced by the sync
+const ID_A = "0000000a-0000-4000-8000-000000000000";
+const ID_B = "0000000b-0000-4000-8000-000000000000";
 
 const HEADERS = [
   "Päivämäärä",
@@ -78,7 +82,12 @@ describe("cell values", () => {
   test("serial dates and Finnish text dates", () => {
     expect(parseSheetDate(SERIAL_2026_04_01)).toBe("2026-04-01");
     expect(parseSheetDate("1.4.2026")).toBe("2026-04-01");
+    expect(parseSheetDate("2026-04-01")).toBe("2026-04-01");
     expect(parseSheetDate("")).toBeNull();
+    // Text Sheets didn't take as a date isn't one: no guessing
+    for (const text of ["14.6.25", "14.6.", "31.6.2026", "14/6/2026", "siirto", "2025"]) {
+      expect(parseSheetDate(text)).toBeNull();
+    }
   });
 
   test("times of day", () => {
@@ -86,6 +95,8 @@ describe("cell values", () => {
     expect(parseTimeOfDay(SERIAL_2026_04_01 + time(9, 5))).toBe(9 * 60 + 5);
     expect(parseTimeOfDay("14.05")).toBe(14 * 60 + 5);
     expect(parseTimeOfDay("25:00")).toBeNull();
+    // "14,05" typed into a Finnish sheet is the number 14.05, not 01:12
+    expect(parseTimeOfDay(14.05)).toBeNull();
   });
 
   test("durations are rounded to whole minutes", () => {
@@ -109,12 +120,12 @@ describe("cell values", () => {
 
 describe("parseFlightSheet", () => {
   test("reads a flight row in club time", () => {
-    const parsed = parseFlightSheet(sheet(flightRow({ 24: "abc", 26: "Tarkistettu" })));
+    const parsed = parseFlightSheet(sheet(flightRow({ 24: ID_A, 26: "Tarkistettu" })));
     expect(parsed.errors).toEqual([]);
     expect(parsed.flights).toHaveLength(1);
     const flight = parsed.flights[0];
     expect(flight).toMatchObject({
-      id: "abc",
+      id: ID_A,
       row: 3,
       flightDate: "2026-04-01",
       picName: "M. Meikäläinen",
@@ -194,7 +205,7 @@ describe("findFlightIssues", () => {
     );
 
   test("a clean flight has no issues", () => {
-    expect(issuesOf(flightRow({ 24: "a" }))).toEqual([]);
+    expect(issuesOf(flightRow({ 24: ID_A }))).toEqual([]);
   });
 
   test("unknown purpose and unknown pilots", () => {
@@ -212,28 +223,70 @@ describe("findFlightIssues", () => {
     expect(
       issuesOf(
         flightRow({ 1: "Uusi Lentäjä" }),
-        flightRow({ 1: "Uusi Lentäjä", 6: time(20, 0), 7: time(20, 30) })
+        flightRow({ 1: "Uusi Lentäjä", 6: time(20, 0), 7: time(20, 30), 8: time(0, 30) })
       )
     ).toEqual(["3:unknown_pilot"]);
   });
 
   test("duplicates, a copied ID and a meter going backwards", () => {
-    expect(issuesOf(flightRow({ 24: "a" }), flightRow({ 24: "b" }))).toEqual([
+    expect(issuesOf(flightRow({ 24: ID_A }), flightRow({ 24: ID_B }))).toEqual([
       "4:duplicate",
     ]);
     expect(
-      issuesOf(flightRow({ 24: "a" }), flightRow({ 24: "a", 6: time(20, 0), 7: time(20, 30) }))
+      issuesOf(flightRow({ 24: ID_A }), flightRow({ 24: ID_A, 6: time(20, 0), 7: time(20, 30), 8: time(0, 30) }))
     ).toEqual(["4:duplicate_id"]);
     expect(
       issuesOf(
         flightRow({ 15: 5910.3 }),
-        flightRow({ 15: 5909.8, 6: time(20, 0), 7: time(20, 30) })
+        flightRow({ 15: 5909.8, 6: time(20, 0), 7: time(20, 30), 8: time(0, 30) })
       )
     ).toEqual(["4:hour_meter"]);
   });
 
   test("an unknown billing status", () => {
     expect(issuesOf(flightRow({ 26: "Hyväksytty" }))).toEqual(["3:unknown_status"]);
+  });
+
+  test("cells that don't hold what their column should are read as empty and reported", () => {
+    const parsed = parseFlightSheet(
+      sheet(
+        flightRow({
+          24: "not-an-id",
+          // "1.5" in Öljy and a date in Henkilömäärä, as Sheets turns them
+          14: 46143,
+          3: 46024,
+          6: 14.05,
+        })
+      )
+    );
+    const flight = parsed.flights[0];
+    expect(flight).toMatchObject({ id: null, oilQuarts: null, personsOnBoard: null, takeoffAt: null });
+    const messages = findFlightIssues(parsed.flights, context)
+      .filter((issue) => issue.kind === "bad_value")
+      .map((issue) => issue.message);
+    expect(messages).toHaveLength(4);
+    expect(messages.join("\n")).toContain('Lentoonlähtöaika "14.05" ei kelpaa: kirjoita kellonaika muodossa 14:05');
+  });
+
+  test("dates in the future, before 2000, or a year before the row above", () => {
+    const issuesWithToday = (...rows: (string | number)[][]) =>
+      findFlightIssues(parseFlightSheet(sheet(...rows)).flights, { ...context, today: "2026-04-01" }).map(
+        (issue) => `${issue.row}:${issue.kind}`
+      );
+    expect(issuesWithToday(flightRow({ 0: SERIAL_2026_04_01 + 1 }))).toEqual(["3:odd_date"]);
+    expect(issuesWithToday(flightRow({ 0: 2025 }))).toEqual(["3:odd_date"]);
+    // 2015 typed for 2025 between two flights of this spring
+    expect(
+      issuesWithToday(
+        flightRow({ 6: time(9, 0), 7: time(9, 30), 8: time(0, 30) }),
+        flightRow({ 0: SERIAL_2026_04_01 - 3653 }),
+        flightRow({ 6: time(20, 0), 7: time(20, 30), 8: time(0, 30) })
+      )
+    ).toEqual(["4:odd_date"]);
+  });
+
+  test("an airborne time typed by hand that doesn't match the times", () => {
+    expect(issuesOf(flightRow({ 8: time(1, 0) }))).toEqual(["3:airborne_mismatch"]);
   });
 
   test("past midnight with the formula's negative time: type it in by hand", () => {
@@ -243,5 +296,50 @@ describe("findFlightIssues", () => {
     expect(message).toContain("0:40");
     // Typed in by hand, as the club does
     expect(issuesOf(flightRow({ 6: time(23, 40), 7: time(0, 20), 8: time(0, 40) }))).toEqual([]);
+  });
+});
+
+describe("rows that aren't read as flights", () => {
+  const formulaRow = (overrides: Record<number, string | number> = {}) => {
+    const row: (string | number)[] = ["", "", "", "", "", "", "", "", 0, 0, "", 0];
+    for (const [index, value] of Object.entries(overrides)) row[Number(index)] = value;
+    return row;
+  };
+
+  test("a typed row whose date can't be read is reported, with its ID", () => {
+    const parsed = parseFlightSheet(
+      sheet(flightRow(), formulaRow({ 0: "14.6.25", 1: "M.Meikäläinen", 24: ID_A }), formulaRow({ 1: "K.Keikäläinen" }))
+    );
+    expect(parsed.flights).toHaveLength(1);
+    expect(parsed.undatedRows).toEqual([
+      { row: 4, id: ID_A, date: "14.6.25", typed: true },
+      { row: 5, id: null, date: "", typed: true },
+    ]);
+    const messages = findUndatedRowIssues(parsed.undatedRows).map((issue) => issue.message);
+    expect(messages[0]).toContain('Päivämäärää "14.6.25" ei voi lukea');
+    expect(messages[0]).toContain("edellinen versio pidetään");
+    expect(messages[1]).toContain("ei päivämäärää");
+  });
+
+  test("Tila filled down past the last flight is one issue per run of rows", () => {
+    const parsed = parseFlightSheet(
+      sheet(
+        flightRow(),
+        formulaRow({ 26: "Laskutettu" }),
+        formulaRow({ 26: "Laskutettu" }),
+        formulaRow({ 26: "Laskutettu" }),
+        formulaRow(),
+        formulaRow({ 27: "Kevät 2026" })
+      )
+    );
+    const issues = findUndatedRowIssues(parsed.undatedRows);
+    expect(issues.map((issue) => `${issue.row}:${issue.kind}`)).toEqual(["4:stray_status", "8:stray_status"]);
+    expect(issues[0].message).toContain("Riveillä 4–6");
+    expect(issues[1].message).toContain("Rivillä 8");
+  });
+
+  test("formula rows and a lone page number are not reported", () => {
+    const parsed = parseFlightSheet(sheet(flightRow(), formulaRow(), formulaRow({ 17: 412 })));
+    expect(parsed.undatedRows).toEqual([]);
   });
 });

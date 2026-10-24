@@ -42,15 +42,22 @@ The first three are set on `/admin/lennot` (below) or in the sheet. A row with o
 `utilities/flightSync.ts` → `syncFlightSheets()`:
 1. Takes a Postgres advisory lock, so only one sync runs at a time.
 2. Reads every active tab in one request per tab (unformatted values, serial dates).
-3. Parses the rows with `parseFlightSheet()`. Rows without a date are formula-only and are skipped.
+3. Parses the rows with `parseFlightSheet()`. Rows without a readable date are not flights.
+   - A row that has something typed in it but no readable date ("14.6.25", "siirto", a cleared date) is reported. If it had an ID, its flight keeps the last synced copy instead of going missing.
+   - Rows that only have Tila, Lähde or Laskutusjakso, such as a Tila filled down past the last flight, are reported as one issue per run of rows.
+   - Dates are serial numbers, `1.4.2026` or `2026-04-01`; nothing else is guessed. A date in the future, before 2000, or more than a year before the row above is reported.
+   - A cell that doesn't hold what its column should is read as empty and reported: an ID that isn't a UUID, a time that is a decimal (`14,05` is the number 14.05 to a Finnish sheet, not 14:05), or a number out of range, like a date that Sheets made of `1.5` in Öljy. Before, one such cell made the database refuse the whole sync.
    - Times are Finnish wall-clock times. Durations are rounded to whole minutes; the sheet has float drift such as 12:32:59.
-   - A landing earlier than the takeoff is after midnight. The club's Ilmassa oloaika formula (H−G) is negative for those, so the parser takes the minutes from the times instead, and the sync reports the row: the biller types the time in by hand, as the club always has, so the sheet's running totals stay right.
-4. Writes a new UUID into the ID column of every row that has none, or that has an ID copied from another row. This is the only thing the sync writes to the sheet; the entry form below writes flights.
+   - A landing earlier than the takeoff is after midnight. The club's Ilmassa oloaika formula (H−G) is negative for those, so the parser takes the minutes from the times instead, and the sync reports the row: the biller types the time in by hand, as the club always has, so the sheet's running totals stay right. An Ilmassa oloaika typed by hand that doesn't match the times is reported too.
+4. Gives every flight row an ID (`assignIds`). This is the only thing the sync writes to the sheet; the entry form below writes flights.
+   - A row without one gets a new UUID, or its old ID back when it lost it (the ID column cleared, a row cut and pasted without it): a flight of that aircraft in the database with the same input whose ID is nowhere in the tab.
+   - When rows share an ID (a whole row copied), the one that matches the database by its input, or else by its row, keeps it, and the copies get new ones. Each copy is reported, since its Tila and Laskutusjakso came along.
+   - It refuses a tab where three or more rows carry another stored flight's input under their own ID. That is what sorting or moving the flight columns without ID…Laskutusjakso does, and syncing it would pair Tila and the history with the wrong flights. Restore the sheet's earlier version, then sync.
 5. In one transaction per tab:
    - upserts the rows into `sheet_flights` (unchanged rows aren't rewritten);
    - marks rows that disappeared with `missing_since`;
    - replaces that tab's `sheet_flight_issues`.
-6. Records the run in `sheet_sync_runs` (the last 200 are kept).
+6. Records the run in `sheet_sync_runs` (the last 200 are kept). A tab that fails doesn't stop the others; the run is an error naming the tab. A failure inside a tab's transaction is rolled back first, so its real cause is shown and the sync lock is always released.
 
 It runs in three ways:
 - when `/admin/lennot` or `/jasenalue/lentopaivakirja` opens and the copy is more than 10 minutes old (`ensureFreshSync`);

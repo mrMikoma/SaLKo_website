@@ -1,21 +1,27 @@
 import "server-only";
 
 import { createHash, randomUUID } from "crypto";
+import { DateTime } from "luxon";
+import type { PoolClient } from "pg";
 import connectionPool from "@/utilities/db";
-import { getFlightSheet, SheetCell } from "@/utilities/flightSheetSource";
+import { FlightSheet, getFlightSheet, SheetCell } from "@/utilities/flightSheetSource";
 import { configuredServiceAccount, describeSheetError } from "@/utilities/googleSheetsSetup";
 import {
+  FlightIssue,
   findFlightIssues,
+  findUndatedRowIssues,
   nameKey,
   parseFlightSheet,
   ParsedFlight,
+  ParsedSheet,
+  SHEET_ZONE,
 } from "@/utilities/flightSheetParser";
 import { inputHash } from "@/utilities/flightInputHash";
 
 /**
  * Copies the flight log sheet into sheet_flights. The sheet is the only place
  * flights are written: the sync only reads it, apart from giving rows without
- * an ID (or with an ID copied from another row) a new one.
+ * an ID (or with an ID copied from another row) one (assignIds).
  */
 
 // pg advisory lock: only one sync runs at a time, whoever starts it
@@ -127,6 +133,186 @@ const UPSERT_FLIGHTS = `
      OR sheet_flights.missing_since IS NOT NULL
   RETURNING id`;
 
+// A Google error carries the request, so only its message goes to the log
+const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error));
+
+interface SyncContext {
+  purposes: Map<string, { isTraining: boolean }>;
+  knownPilots: Set<string>;
+  tabIds: Map<string, number>;
+  today: string;
+}
+
+/**
+ * Gives every flight row an ID, writing the new ones into the sheet:
+ * - A row without one gets a new UUID, or its old ID back when its ID was
+ *   lost (the ID column cleared, a row cut and pasted without it): a flight
+ *   of this aircraft in the database with the same input whose ID is nowhere
+ *   in the tab.
+ * - Of rows sharing an ID (a whole row copied), the one that matches the
+ *   database keeps it and the copies get new ones, reported: their Tila and
+ *   Laskutusjakso came with the copy.
+ * Refuses a tab whose rows carry other flights' IDs, as after sorting the
+ * flight columns without the website's: syncing it would pair Tila and the
+ * history with the wrong flights.
+ */
+async function assignIds(
+  client: PoolClient,
+  registration: string,
+  parsed: ParsedSheet
+): Promise<{ newIds: SheetCell[]; issues: FlightIssue[] }> {
+  const stored = new Map<string, { input_hash: string | null; sheet_row: number }>(
+    (
+      await client.query("SELECT id, input_hash, sheet_row FROM sheet_flights WHERE registration = $1", [
+        registration,
+      ])
+    ).rows.map((row) => [row.id, row])
+  );
+  const storedByHash = new Map<string, string[]>();
+  for (const [id, { input_hash }] of stored) {
+    if (input_hash) storedByHash.set(input_hash, [...(storedByHash.get(input_hash) ?? []), id]);
+  }
+
+  const shuffled = parsed.flights.filter((flight) => {
+    const before = flight.id ? stored.get(flight.id) : undefined;
+    if (!before?.input_hash) return false;
+    const hash = inputHash(flight);
+    return hash !== before.input_hash && (storedByHash.get(hash) ?? []).some((id) => id !== flight.id);
+  });
+  if (shuffled.length >= 3) {
+    throw new Error(
+      `Taulukon ID-sarake ei enää vastaa lentoja (rivit ${shuffled
+        .slice(0, 5)
+        .map((f) => f.row)
+        .join(", ")}${shuffled.length > 5 ? " …" : ""}). Onko lentojen sarakkeita lajiteltu tai siirretty ilman sarakkeita ID–Laskutusjakso? Palauta taulukon edellinen versio (Tiedosto → Versiohistoria) ja synkronoi sitten.`
+    );
+  }
+
+  const rowsById = new Map<string, ParsedFlight[]>();
+  for (const flight of parsed.flights) {
+    if (flight.id) rowsById.set(flight.id, [...(rowsById.get(flight.id) ?? []), flight]);
+  }
+  const present = new Set([...rowsById.keys(), ...parsed.undatedRows.flatMap((row) => (row.id ? [row.id] : []))]);
+
+  const copiedFrom = new Map<ParsedFlight, number>();
+  for (const [id, rows] of rowsById) {
+    if (rows.length < 2) continue;
+    const before = stored.get(id);
+    const keeper =
+      rows.find((flight) => before && inputHash(flight) === before.input_hash) ??
+      rows.find((flight) => before && flight.row === before.sheet_row) ??
+      rows[0];
+    for (const copy of rows) {
+      if (copy === keeper) continue;
+      copy.id = null;
+      copiedFrom.set(copy, keeper.row);
+    }
+  }
+
+  const lostByHash = new Map<string, string[]>();
+  for (const [id, { input_hash }] of stored) {
+    if (input_hash && !present.has(id)) lostByHash.set(input_hash, [...(lostByHash.get(input_hash) ?? []), id]);
+  }
+
+  const newIds: SheetCell[] = [];
+  const issues: FlightIssue[] = [];
+  for (const flight of parsed.flights) {
+    if (flight.id) continue;
+    const copyOf = copiedFrom.get(flight);
+    flight.id = (copyOf === undefined ? lostByHash.get(inputHash(flight))?.shift() : undefined) ?? randomUUID();
+    newIds.push({ row: flight.row, column: parsed.columns.id!, value: flight.id });
+    if (copyOf !== undefined) {
+      issues.push({
+        row: flight.row,
+        flightId: flight.id,
+        kind: "copied_row",
+        message: `Rivillä oli sama ID kuin rivillä ${copyOf}, joten se sai uuden.${
+          flight.status || flight.billingPeriod
+            ? ` Tarkista sen Tila (${flight.status ?? "tyhjä"}) ja Laskutusjakso (${flight.billingPeriod ?? "tyhjä"}): ne kopioituivat rivin mukana.`
+            : ""
+        }`,
+      });
+    }
+  }
+  return { newIds, issues };
+}
+
+/** One aircraft's tab into sheet_flights, in a transaction of its own */
+async function syncTab(
+  client: PoolClient,
+  sheet: FlightSheet,
+  { registration, sheet_name, first_data_row }: { registration: string; sheet_name: string; first_data_row: number },
+  context: SyncContext
+) {
+  const parsed = parseFlightSheet(await sheet.readTab(sheet_name), first_data_row);
+  if (parsed.errors.length > 0) {
+    throw new Error(parsed.errors.join("; "));
+  }
+
+  const { newIds, issues: idIssues } = await assignIds(client, registration, parsed);
+  await sheet.writeCells(sheet_name, newIds);
+
+  const issues = [
+    ...findFlightIssues(parsed.flights, context),
+    ...findUndatedRowIssues(parsed.undatedRows),
+    ...idIssues,
+  ].sort((a, b) => a.row - b.row);
+  // A flight whose date can no longer be read keeps its last copy rather than
+  // going missing: billing would take a missing flight as removed
+  const seenIds = [
+    ...parsed.flights.map((flight) => flight.id!),
+    ...parsed.undatedRows.flatMap((row) => (row.id ? [row.id] : [])),
+  ];
+
+  await client.query("BEGIN");
+  try {
+    const upserted = await client.query(UPSERT_FLIGHTS, [
+      JSON.stringify(parsed.flights.map(toRecord)),
+      registration,
+    ]);
+    await client.query(
+      `UPDATE sheet_flights SET missing_since = NOW()
+       WHERE registration = $1 AND missing_since IS NULL AND NOT (id = ANY($2::uuid[]))`,
+      [registration, seenIds]
+    );
+    await client.query("DELETE FROM sheet_flight_issues WHERE registration = $1", [registration]);
+    await client.query(
+      `INSERT INTO sheet_flight_issues (registration, sheet_row, flight_id, kind, message)
+       SELECT $2, i.row, i.flight_id, i.kind, i.message
+       FROM jsonb_to_recordset($1::jsonb) AS i(row int, flight_id uuid, kind text, message text)`,
+      [
+        JSON.stringify(
+          issues.map((issue) => ({
+            row: issue.row,
+            flight_id: issue.flightId,
+            kind: issue.kind,
+            message: issue.message,
+          }))
+        ),
+        registration,
+      ]
+    );
+    if (context.tabIds.has(sheet_name)) {
+      await client.query("UPDATE aircraft_sheets SET sheet_gid = $2 WHERE registration = $1", [
+        registration,
+        context.tabIds.get(sheet_name),
+      ]);
+    }
+    await client.query("COMMIT");
+    return {
+      rowsRead: parsed.flights.length,
+      rowsChanged: upserted.rowCount ?? 0,
+      idsAssigned: newIds.length,
+      issues: issues.length,
+    };
+  } catch (error) {
+    // Before anything else on this connection, or the next query fails with
+    // "current transaction is aborted" and hides this error
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  }
+}
+
 export async function syncFlightSheets(
   triggeredBy: string,
   // Wait for a sync that is already running (someone pressed the button, or a
@@ -138,8 +324,11 @@ export async function syncFlightSheets(
   }
 
   const client = await connectionPool.connect();
+  // The sync lock is held by this connection's session. If it can't be
+  // released, the connection is closed instead of going back to the pool,
+  // where it would keep the lock and every later sync would be "busy".
+  let closeConnection = false;
   let runId: number | null = null;
-  let inTransaction = false;
   const summary = emptySummary("success");
 
   try {
@@ -175,93 +364,55 @@ export async function syncFlightSheets(
           "SELECT registration, sheet_name, first_data_row FROM aircraft_sheets WHERE active ORDER BY registration"
         )
       ).rows;
-      const purposes = new Map(
-        (await client.query("SELECT code, is_training FROM flight_purposes")).rows.map(
-          (row) => [row.code, { isTraining: row.is_training }]
-        )
-      );
-      const knownPilots = new Set(
-        (
-          await client.query(
-            "SELECT name_key FROM pilot_aliases WHERE user_id IS NOT NULL"
+      const context: SyncContext = {
+        purposes: new Map(
+          (await client.query("SELECT code, is_training FROM flight_purposes")).rows.map((row) => [
+            row.code,
+            { isTraining: row.is_training },
+          ])
+        ),
+        knownPilots: new Set(
+          (await client.query("SELECT name_key FROM pilot_aliases WHERE user_id IS NOT NULL")).rows.map(
+            (row) => row.name_key
           )
-        ).rows.map((row) => row.name_key)
-      );
-      const tabIds = await sheet.tabIds();
+        ),
+        tabIds: await sheet.tabIds(),
+        today: DateTime.now().setZone(SHEET_ZONE).toISODate()!,
+      };
 
-      for (const { registration, sheet_name, first_data_row } of aircraft) {
-        const parsed = parseFlightSheet(await sheet.readTab(sheet_name), first_data_row);
-        if (parsed.errors.length > 0) {
-          throw new Error(`${sheet_name}: ${parsed.errors.join("; ")}`);
+      // One tab's problem doesn't stop the others
+      const failures: string[] = [];
+      for (const tab of aircraft) {
+        try {
+          const result = await syncTab(client, sheet, tab, context);
+          summary.rowsRead += result.rowsRead;
+          summary.rowsChanged += result.rowsChanged;
+          summary.idsAssigned += result.idsAssigned;
+          summary.issues += result.issues;
+        } catch (error) {
+          console.error(`Flight log sync failed for ${tab.sheet_name}:`, errorText(error));
+          failures.push(`${tab.sheet_name}: ${describeSheetError(error, configuredServiceAccount())}`);
         }
-
-        // Rows without an ID, or with one copied from another row, get a new one
-        const seenIds = new Set<string>();
-        const newIds: SheetCell[] = [];
-        for (const flight of parsed.flights) {
-          if (!flight.id || seenIds.has(flight.id)) {
-            flight.id = randomUUID();
-            newIds.push({ row: flight.row, column: parsed.columns.id!, value: flight.id });
-          }
-          seenIds.add(flight.id);
-        }
-        await sheet.writeCells(sheet_name, newIds);
-
-        const issues = findFlightIssues(parsed.flights, { purposes, knownPilots });
-
-        await client.query("BEGIN");
-        inTransaction = true;
-
-        const upserted = await client.query(UPSERT_FLIGHTS, [
-          JSON.stringify(parsed.flights.map(toRecord)),
-          registration,
-        ]);
-        await client.query(
-          `UPDATE sheet_flights SET missing_since = NOW()
-           WHERE registration = $1 AND missing_since IS NULL AND NOT (id = ANY($2::uuid[]))`,
-          [registration, [...seenIds]]
-        );
-        await client.query("DELETE FROM sheet_flight_issues WHERE registration = $1", [
-          registration,
-        ]);
-        await client.query(
-          `INSERT INTO sheet_flight_issues (registration, sheet_row, flight_id, kind, message)
-           SELECT $2, i.row, i.flight_id, i.kind, i.message
-           FROM jsonb_to_recordset($1::jsonb) AS i(row int, flight_id uuid, kind text, message text)`,
-          [
-            JSON.stringify(
-              issues.map((issue) => ({
-                row: issue.row,
-                flight_id: issue.flightId,
-                kind: issue.kind,
-                message: issue.message,
-              }))
-            ),
-            registration,
-          ]
-        );
-        if (tabIds.has(sheet_name)) {
-          await client.query(
-            "UPDATE aircraft_sheets SET sheet_gid = $2 WHERE registration = $1",
-            [registration, tabIds.get(sheet_name)]
-          );
-        }
-
-        await client.query("COMMIT");
-        inTransaction = false;
-
-        summary.rowsRead += parsed.flights.length;
-        summary.rowsChanged += upserted.rowCount ?? 0;
-        summary.idsAssigned += newIds.length;
-        summary.issues += issues.length;
+      }
+      if (failures.length > 0) {
+        summary.status = "error";
+        summary.error = failures.join(" · ");
       }
 
       await client.query(
         `UPDATE sheet_sync_runs
-         SET status = 'success', finished_at = NOW(), rows_read = $2, rows_changed = $3,
-             ids_assigned = $4, issues = $5
+         SET status = $6, finished_at = NOW(), rows_read = $2, rows_changed = $3,
+             ids_assigned = $4, issues = $5, error = $7
          WHERE id = $1`,
-        [runId, summary.rowsRead, summary.rowsChanged, summary.idsAssigned, summary.issues]
+        [
+          runId,
+          summary.rowsRead,
+          summary.rowsChanged,
+          summary.idsAssigned,
+          summary.issues,
+          summary.status,
+          summary.error ?? null,
+        ]
       );
       await client.query(
         `DELETE FROM sheet_sync_runs
@@ -270,13 +421,13 @@ export async function syncFlightSheets(
       );
       return summary;
     } finally {
-      await client.query("SELECT pg_advisory_unlock($1)", [SYNC_LOCK_KEY]);
+      await client.query("SELECT pg_advisory_unlock($1)", [SYNC_LOCK_KEY]).catch((error) => {
+        console.error("Releasing the flight log sync lock failed:", errorText(error));
+        closeConnection = true;
+      });
     }
   } catch (error) {
-    if (inTransaction) {
-      await client.query("ROLLBACK").catch(() => undefined);
-    }
-    console.error("Flight log sync failed:", error);
+    console.error("Flight log sync failed:", errorText(error));
     const message = error
       ? describeSheetError(error, configuredServiceAccount())
       : "Lentopäiväkirjan synkronointi epäonnistui";
@@ -290,7 +441,7 @@ export async function syncFlightSheets(
     }
     return { ...summary, status: "error", error: message };
   } finally {
-    client.release();
+    client.release(closeConnection);
   }
 }
 
