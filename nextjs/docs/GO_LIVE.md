@@ -162,7 +162,12 @@ Stage A doesn't depend on B or C and carries security fixes, so it shouldn't wai
 - [ ] Pilot names: on `/admin/lennot` under "Lentäjien nimet", match each name with **Yhdistä** to a member, or to **Ei jäsen** for guest pilots and former members. The list is done when it is empty, and at least every name that pays must be decided before billing.
 - [ ] The Tarkistamatta list holds only flights not yet billed.
 - [ ] A member sees Lentopäiväkirja in the menu, logs a flight, and the flight appears in the sheet. If it was a test, undo it right away with "Kumoa viimeisin" on the confirmation: undo works only there, and only while it is the tab's last flight. Later the biller clears it in the sheet.
-- [ ] `/admin/tilastot` agrees with the sheet's Tilastot tab.
+- [ ] `/admin/tilastot` agrees with the sheet:
+  - set the Tilastot tab's B3 and B4 to 1.1. and 31.12. of the year you compare;
+  - compare the totals and the purposes with the Lentotoimintailmoitus tab, and the months with the pivot tab;
+  - compare per pilot by time only: the sheet counts landings per pilot, the site flights;
+  - compare Esittelylentopäivät with the club's intro-flight register.
+- [ ] **Earlier years:** paste the yearly hours from the Tilastot tab (A49:D74) into "Vuosittain" on `/admin/tilastot`. Leave out the "Yhteensä" column, and the years the flight log has (2023 on), which the site counts itself.
 - [ ] Access: a member gets the front page for `/admin/lennot`; the treasurer lands on `/admin/lennot` from the menu ("Lentojen tarkistus") and is refused `/admin/users`; `/admin/laskutus` and `/jasenalue/laskut` don't exist yet.
 
 To switch it off again, clear the variable and redeploy. The data stays.

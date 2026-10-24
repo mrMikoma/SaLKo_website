@@ -181,8 +181,8 @@ OH-CON starts at 3,10 / 5,00 €/min, as in `data/prices.json`. That file is the
 ## Statistics
 
 `/admin/tilastot` (`VIEW_STATISTICS`: admins and treasurers) shows a year of the flight log, for one aircraft or all, counting every row of the sheet whatever its Tila. The arithmetic is in `utilities/flightStats.ts` (pure, unit-tested) and the reads in `utilities/statsData.ts`.
-- **Totals** for the year with the change from the previous one, and **month by month** with the previous year beside it.
-- **Per pilot**, as PIC and as student or second pilot. Sheet names matched to a member count together under the member's name.
+- **Totals** for the year with the change from the previous one, and **month by month** with the previous year beside it. While the year is going, the change is against the previous year up to the same day, not the whole year.
+- **Per pilot**, as PIC and as student or second pilot. Sheet names matched to a member count together under the member's name; names marked as no member, and names not decided on, are shown as such.
 - **Per purpose code.**
 - **Lentotoimintailmoitus**, Traficom's annual report per aircraft, grouped as the club's sheet does it:
   - koululennot (KOU, KOUMAT, KOUHAR);
@@ -192,9 +192,9 @@ OH-CON starts at 3,10 / 5,00 €/min, as in `data/prices.json`. That file is the
   - unknown codes, listed separately;
   - the total.
 
-  Beside it, the year from the sheet's running totals, and where they stood at the year's end. When the two don't agree, it says so.
-- **Esittelylentopäivät:** the days in the year with ESI flights, against the limit of 6 in OPS M1-33, with flights, passengers and pilots per day.
-- **Vuosittain:** hours per aircraft per year. Years the flight log has are counted from its flights. Earlier ones are pasted in as a table (header row of registrations, then a year and hours per row, as in the sheet's yearly statistics), are kept in `aircraft_year_totals`, and can be removed one by one. The real numbers are not in the repository.
+  Above it, how many of the year's flights are still unchecked: they are counted, as in the sheet's own statistics. Below it, where the sheet's running totals stood at the year's end, and the rows of the year where a running total doesn't follow from the row above (a copied row, a midnight flight with the formula's negative time, "Virhe kirjassa"). The year's end is the year's last row less the flights of later dates above it, so a late entry, such as December's last page typed in after January's first flights, doesn't throw it off.
+- **Esittelylentopäivät:** the days in the year with ESI-coded flights, against the limit of 6 in OPS M1-33, with flights, passengers and pilots per day. They come from the purpose codes, so compare them with the club's own intro-flight register.
+- **Vuosittain:** hours per aircraft per year. Years the flight log has are counted from its flights; a total typed in for such a year is shown beside it ("käsin"), since one flight with a mistyped year would otherwise replace that year's hours. Earlier ones are pasted in as a table (header row of registrations, then a year and hours per row, as in the sheet's yearly statistics), are kept in `aircraft_year_totals`, and can be removed one by one. The real numbers are not in the repository.
 
 **Lataa Excel** downloads the same as a workbook, one tab per section, with times as durations (`utilities/statsWorkbook.ts`, written by `utilities/xlsx.ts`).
 

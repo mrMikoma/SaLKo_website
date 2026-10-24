@@ -92,8 +92,10 @@ export function statsWorkbook(stats: YearStats, yearTotals: YearTotal[]): Templa
         ]),
         ...(report.counters
           ? [
-              [text("Laskureista vuoden aikana"), text(""), duration(report.counters.minutes), text(report.counters.landings)],
               [text("Kokonaisaika vuoden lopussa"), text(""), duration(report.counters.airframeMinutes), text(report.counters.totalLandings)],
+              ...(report.counters.breaks.length > 0
+                ? [[text(`Laskurit eivät jatku riveillä ${report.counters.breaks.join(", ")}`)]]
+                : []),
             ]
           : []),
       ]),

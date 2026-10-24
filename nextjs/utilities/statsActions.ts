@@ -50,13 +50,25 @@ export async function saveYearTotals(text: string): Promise<ActionResult<{ saved
   return { status: "success", result: { saved: totals.length } };
 }
 
+const yearTotalKey = z.object({
+  registration: z.string().trim().min(1).max(20),
+  year: z.number().int().min(1950).max(2100),
+});
+
 export async function deleteYearTotal(registration: string, year: number): Promise<ActionResult> {
   const access = await requireStatsEditor();
   if ("error" in access) return { status: "error", error: access.error };
-  await pool.query("DELETE FROM aircraft_year_totals WHERE registration = $1 AND year = $2", [
-    registration,
-    year,
-  ]);
+  const parsed = yearTotalKey.safeParse({ registration, year });
+  if (!parsed.success) return { status: "error", error: "Vuotta ei löytynyt" };
+  try {
+    await pool.query("DELETE FROM aircraft_year_totals WHERE registration = $1 AND year = $2", [
+      parsed.data.registration,
+      parsed.data.year,
+    ]);
+  } catch (error) {
+    console.error("Error deleting a year total:", error instanceof Error ? error.message : error);
+    return { status: "error", error: "Poisto epäonnistui" };
+  }
   revalidatePath("/admin/tilastot");
   return { status: "success", result: null };
 }

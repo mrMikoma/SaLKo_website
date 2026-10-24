@@ -68,20 +68,33 @@ export const YearTotalsForm = () => {
 export const DeleteYearTotal = ({ registration, year }: { registration: string; year: number }) => {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
   return (
-    <button
-      type="button"
-      disabled={isPending}
-      onClick={() =>
-        startTransition(async () => {
-          await deleteYearTotal(registration, year);
-          router.refresh();
-        })
-      }
-      className="text-xs text-red-700 hover:underline disabled:opacity-50"
-      aria-label={`Poista ${registration} ${year}`}
-    >
-      poista
-    </button>
+    <>
+      <button
+        type="button"
+        disabled={isPending}
+        onClick={() =>
+          startTransition(async () => {
+            setError(null);
+            const result = await deleteYearTotal(registration, year).catch(() => ({
+              status: "error" as const,
+              error: "Poisto ei mennyt perille",
+            }));
+            if (result.status === "error") setError(result.error);
+            router.refresh();
+          })
+        }
+        className="text-xs text-red-700 hover:underline disabled:opacity-50"
+        aria-label={`Poista ${registration} ${year}`}
+      >
+        poista
+      </button>
+      {error && (
+        <span role="alert" className="block text-xs text-red-700">
+          {error}
+        </span>
+      )}
+    </>
   );
 };
