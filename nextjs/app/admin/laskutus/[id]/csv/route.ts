@@ -1,20 +1,15 @@
 import { auth } from "@/auth";
 import { hasPermission } from "@/utilities/roles";
-import { isFlightLogEnabled } from "@/utilities/features";
+import { isBillingEnabled } from "@/utilities/features";
 import { getPeriodView } from "@/utilities/billingData";
 import type { LineKind } from "@/utilities/billing";
+import { csvBody, csvMoney, CsvValue } from "@/utilities/csv";
 
 /**
- * A period as CSV for the accounting software: every line (default), or one
- * row per payer (?taso=maksajat). Finnish Excel style: semicolons, decimal
- * commas, UTF-8 with a BOM.
+ * A period as CSV for the accounting software (utilities/csv.ts): every line
+ * (default), or one row per payer (?taso=maksajat).
  */
 
-const cell = (value: string | number | null) => {
-  const text = value === null ? "" : String(value);
-  return /[;"\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-};
-const money = (cents: number) => (cents / 100).toFixed(2).replace(".", ",");
 const KIND: Record<LineKind, string> = {
   flight: "lento",
   minimum: "minimilaskutus",
@@ -24,11 +19,11 @@ const KIND: Record<LineKind, string> = {
 };
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (!isFlightLogEnabled()) {
+  if (!isBillingEnabled()) {
     return new Response("Not found", { status: 404 });
   }
   const session = await auth();
-  if (!session?.user?.roles || !hasPermission(session.user.roles, "MANAGE_BILLING")) {
+  if (!session?.user?.id || !hasPermission(session.user.roles, "MANAGE_BILLING")) {
     return new Response("Forbidden", { status: 403 });
   }
   const id = Number((await params).id);
@@ -39,7 +34,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
   const { period, bill, payers } = view;
   const byPayer = new URL(request.url).searchParams.get("taso") === "maksajat";
-  const rows: (string | number | null)[][] = byPayer
+  const rows: CsvValue[][] = byPayer
     ? [
         ["Jakso", "Maksaja", "Sähköposti", "Jäsen", "Lentoja", "Minuutit", "Laskuja", "Summa €", "Maksettu"],
         ...bill.payers.map((payer) => [
@@ -50,7 +45,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
           payer.flights,
           payer.minutes,
           payer.landings,
-          money(payer.totalCents),
+          csvMoney(payer.totalCents),
           payers[payer.key]?.paidAt?.slice(0, 10) ?? null,
         ]),
       ]
@@ -67,13 +62,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
             line.purposeCode,
             line.description,
             line.minutes,
-            line.centsPerMinute === null ? null : money(line.centsPerMinute),
-            money(line.amountCents),
+            line.centsPerMinute === null ? null : csvMoney(line.centsPerMinute),
+            csvMoney(line.amountCents),
           ])
         ),
       ];
 
-  const body = "﻿" + rows.map((row) => row.map(cell).join(";")).join("\r\n") + "\r\n";
+  const body = csvBody(rows);
   const file = `laskutus-${period.name}${byPayer ? "-maksajat" : ""}.csv`.replace(/[^\w.-]/g, "_");
   return new Response(body, {
     headers: {

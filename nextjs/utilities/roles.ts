@@ -59,8 +59,8 @@ export const PERMISSIONS = {
   // Sync the sheet and match pilot names to members
   MANAGE_FLIGHT_LOG: ["admin", "treasurer"] as Role[],
 
-  // Billing: members see what they were billed; admins run the periods,
-  // mark payments and set the prices
+  // Billing: members see what they were billed; admins and treasurers run
+  // the periods, mark payments and set the prices
   VIEW_OWN_BILLING: ["admin", "user"] as Role[],
   MANAGE_BILLING: ["admin", "treasurer"] as Role[],
 
@@ -174,10 +174,12 @@ export function validateRoles(roles: string[]): { roles: Role[] } | { error: str
 
 // The parts of the admin site that roles other than admin can open, by the
 // permission each needs. An admin opens all of /admin.
+// The first one a role has is where its admin site starts: for a treasurer
+// the flight log, which is on before billing is (utilities/features.ts).
 const ADMIN_SECTIONS: { path: string; permission: keyof typeof PERMISSIONS }[] = [
+  { path: "/admin/lennot", permission: "VIEW_ALL_FLIGHTS" },
   { path: "/admin/laskutus", permission: "MANAGE_BILLING" },
   { path: "/admin/laskut", permission: "MANAGE_BILLING" },
-  { path: "/admin/lennot", permission: "VIEW_ALL_FLIGHTS" },
   { path: "/admin/tilastot", permission: "VIEW_STATISTICS" },
 ];
 

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import pool from "@/utilities/db";
 import { auth } from "@/auth";
 import { hasPermission } from "@/utilities/roles";
-import { isFlightLogEnabled } from "@/utilities/features";
+import { isBillingEnabled } from "@/utilities/features";
 import { deliverEmails, DeliveryStatus, queueEmail } from "@/utilities/mail";
 import { MAIL_PURPOSES, mailMode, redirectAddress } from "@/utilities/mailConfig";
 
@@ -14,7 +14,7 @@ type ActionResult<T = null> =
 
 // Mail goes out from billing for now, so the treasurer looks after it
 async function requireMailAdmin() {
-  if (!isFlightLogEnabled()) {
+  if (!isBillingEnabled()) {
     return { error: "Laskutus ei ole vielä käytössä" };
   }
   const session = await auth();

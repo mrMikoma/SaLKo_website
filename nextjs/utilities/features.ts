@@ -17,6 +17,14 @@ export function isFlightLogEnabled(): boolean {
   return isEnabled(process.env.FEATURE_FLIGHT_LOG)
 }
 
+// Billing periods, invoices and the member's bills, built on the flight log.
+// Switched on in production in its own stage, after the treasurer has
+// confirmed prices and practices (docs/GO_LIVE.md, stage C). Until then the
+// treasurer can check flights but nothing is billed or numbered.
+export function isBillingEnabled(): boolean {
+  return isFlightLogEnabled() && isEnabled(process.env.FEATURE_BILLING)
+}
+
 // Development only: the button on /admin/lennot that fills an aircraft's tab
 // with made-up flights (utilities/sampleFlights.ts). Off in production.
 export function isSampleFlightsEnabled(): boolean {

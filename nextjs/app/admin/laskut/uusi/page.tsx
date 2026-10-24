@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { hasPermission } from "@/utilities/roles";
-import { isFlightLogEnabled } from "@/utilities/features";
+import { isBillingEnabled } from "@/utilities/features";
 import { getInvoiceRecipients } from "@/utilities/invoiceData";
 import { invoicePresets } from "@/utilities/invoices";
 import NewInvoiceForm from "@/components/invoices/NewInvoiceForm";
@@ -14,11 +14,11 @@ export const metadata = {
 };
 
 export default async function NewInvoicePage() {
-  if (!isFlightLogEnabled()) {
+  if (!isBillingEnabled()) {
     notFound();
   }
   const session = await auth();
-  if (!session?.user?.roles || !hasPermission(session.user.roles, "MANAGE_BILLING")) {
+  if (!session?.user?.id || !hasPermission(session.user.roles, "MANAGE_BILLING")) {
     redirect("/");
   }
   const recipients = await getInvoiceRecipients();

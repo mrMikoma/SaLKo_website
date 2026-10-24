@@ -28,8 +28,9 @@ describe("the treasurer role", () => {
     expect(canOpenAdminPath(["user"], "/admin/laskutus")).toBe(false);
   });
 
-  test("starts the admin site at billing", () => {
-    expect(adminHome(treasurer)).toBe("/admin/laskutus");
+  // The flight log is on before billing is (FEATURE_BILLING)
+  test("starts the admin site at the flight log", () => {
+    expect(adminHome(treasurer)).toBe("/admin/lennot");
     expect(adminHome(["admin"])).toBe("/admin");
     expect(adminHome(["user"])).toBeNull();
   });

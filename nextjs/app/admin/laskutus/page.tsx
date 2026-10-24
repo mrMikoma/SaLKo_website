@@ -5,7 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { DateTime } from "luxon";
 import { auth } from "@/auth";
 import { hasPermission } from "@/utilities/roles";
-import { isFlightLogEnabled } from "@/utilities/features";
+import { isBillingEnabled } from "@/utilities/features";
 import { ensureFreshSync } from "@/utilities/flightSync";
 import { SHEET_ZONE } from "@/utilities/flightSheetParser";
 import { getBillingOverview, PeriodSummary } from "@/utilities/billingData";
@@ -32,11 +32,11 @@ function nextPeriod(periods: PeriodSummary[]) {
 
 export default async function BillingPage() {
   // Still being built: shown in dev, hidden in production
-  if (!isFlightLogEnabled()) {
+  if (!isBillingEnabled()) {
     notFound();
   }
   const session = await auth();
-  if (!session?.user?.roles || !hasPermission(session.user.roles, "MANAGE_BILLING")) {
+  if (!session?.user?.id || !hasPermission(session.user.roles, "MANAGE_BILLING")) {
     redirect("/");
   }
 

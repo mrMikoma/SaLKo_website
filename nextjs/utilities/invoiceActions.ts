@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import pool from "@/utilities/db";
 import { auth } from "@/auth";
 import { hasPermission } from "@/utilities/roles";
-import { isFlightLogEnabled } from "@/utilities/features";
+import { isBillingEnabled } from "@/utilities/features";
 import { syncFlightSheets } from "@/utilities/flightSync";
 import { SHEET_ZONE } from "@/utilities/flightSheetParser";
 import { formatFullDate } from "@/utilities/flightFormat";
@@ -34,7 +34,7 @@ type ActionResult<T = null> =
 type Db = { query: NonNullable<typeof pool>["query"] };
 
 async function requireBillingAdmin() {
-  if (!isFlightLogEnabled()) {
+  if (!isBillingEnabled()) {
     return { error: "Laskutus ei ole vielä käytössä" };
   }
   const session = await auth();

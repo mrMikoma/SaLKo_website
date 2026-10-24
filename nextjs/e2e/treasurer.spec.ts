@@ -30,9 +30,10 @@ test("opens the flight log and billing settings", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1, name: "Laskutuksen asetukset" })).toBeVisible();
 });
 
+// The flight log first: it is on before billing is (FEATURE_BILLING)
 for (const path of ["/admin", "/admin/users", "/admin/bulletins"]) {
-  test(`${path} sends them to billing`, async ({ page }) => {
+  test(`${path} sends them to the flight log`, async ({ page }) => {
     await page.goto(path);
-    await expect(page).toHaveURL("/admin/laskutus");
+    await expect(page).toHaveURL("/admin/lennot");
   });
 }

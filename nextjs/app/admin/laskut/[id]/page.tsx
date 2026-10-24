@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { hasPermission } from "@/utilities/roles";
-import { isFlightLogEnabled } from "@/utilities/features";
+import { isBillingEnabled } from "@/utilities/features";
 import { getInvoice, getInvoiceSettings, InvoiceDelivery } from "@/utilities/invoiceData";
 import { invoicePresets } from "@/utilities/invoices";
 import { MAIL_PURPOSES, mailMode } from "@/utilities/mailConfig";
@@ -36,11 +36,11 @@ interface PageProps {
 }
 
 export default async function InvoicePage({ params }: PageProps) {
-  if (!isFlightLogEnabled()) {
+  if (!isBillingEnabled()) {
     notFound();
   }
   const session = await auth();
-  if (!session?.user?.roles || !hasPermission(session.user.roles, "MANAGE_BILLING")) {
+  if (!session?.user?.id || !hasPermission(session.user.roles, "MANAGE_BILLING")) {
     redirect("/");
   }
   const id = Number((await params).id);

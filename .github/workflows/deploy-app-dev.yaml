@@ -211,6 +211,7 @@ jobs:
             echo "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" >> .env.dev
             # Unfinished features, on in dev only (nextjs/utilities/features.ts)
             echo "FEATURE_FLIGHT_LOG=true" >> .env.dev
+            echo "FEATURE_BILLING=true" >> .env.dev
             # Historiaa and Hallit: shown on kehitys for the club members' review
             echo "FEATURE_PAGES_IN_REVIEW=true" >> .env.dev
             # The "Esimerkkilennot" button on /admin/lennot (made-up flights into the sheet)
