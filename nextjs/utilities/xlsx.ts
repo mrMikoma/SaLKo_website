@@ -9,8 +9,19 @@ import { letter } from "@/utilities/flightSheetTemplate";
  * open the result; formulas are calculated when the file is opened.
  */
 
+// XML 1.0 can't hold control characters (other than tab and line breaks),
+// the noncharacters U+FFFE and U+FFFF or lone surrogates. One in a pilot's
+// name would make the sheet's XML invalid and the rows after it vanish.
+const NOT_XML =
+  /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g;
+
 const escape = (text: string) =>
-  text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  text
+    .replace(NOT_XML, "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 
 // cellXfs in styles.xml, by position
 const STYLE_INDEX: Record<CellStyle, number> = {

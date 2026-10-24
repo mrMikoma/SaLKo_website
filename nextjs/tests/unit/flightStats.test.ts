@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { inflateRawSync } from "zlib";
 import {
   aircraftReport,
   byMonth,
@@ -92,8 +93,43 @@ describe("Traficom's annual report", () => {
     expect(row("Muu yksityislentotoiminta yhteensä").minutes).toBe(20);
     expect(row("Muut koodit").minutes).toBe(10);
     expect(row("Yhteensä")).toEqual({ flights: 5, minutes: 155, landings: 10 });
-    // The running totals agree with the sum
-    expect(report.counters).toMatchObject({ minutes: 155, landings: 10 });
+    // The running totals run on from row to row
+    expect(report.counters).toEqual({
+      airframeMinutes: flights[4].airframeMinutes!,
+      totalLandings: flights[4].totalLandings!,
+      breaks: [],
+    });
+  });
+
+  test("a late entry: December's last page typed in after January's flights", () => {
+    const december = [
+      flight({ flightDate: "2025-12-10", airborneMinutes: 60 }),
+      flight({ flightDate: "2025-12-20", airborneMinutes: 30 }),
+    ];
+    const january = [flight({ flightDate: "2026-01-05", airborneMinutes: 45 })];
+    const late = flight({ flightDate: "2025-12-28", airborneMinutes: 15 });
+    // The late row's running total includes January's 45 minutes above it
+    const report = aircraftReport("OH-CON", [...december, late], { minutes: 45, landings: 1 });
+    expect(report.counters).toEqual({
+      airframeMinutes: late.airframeMinutes! - 45,
+      totalLandings: late.totalLandings! - 1,
+      breaks: [],
+    });
+    // = the total after December's flights, all 105 minutes of them
+    expect(report.counters!.airframeMinutes).toBe(december[0].airframeMinutes! - 60 + 105);
+    // The next year's last row already holds every flight above it
+    expect(aircraftReport("OH-CON", january).counters!.airframeMinutes).toBe(january[0].airframeMinutes!);
+  });
+
+  test("rows whose running total doesn't follow from the row above", () => {
+    const first = flight();
+    // A copied row: its total is the one above's
+    const copied = flight({ airframeMinutes: first.airframeMinutes });
+    const next = flight();
+    // A minute of float drift is fine
+    const drift = flight({ airframeMinutes: next.airframeMinutes! + 40 + 1 });
+    const report = aircraftReport("OH-CON", [first, copied, next, drift]);
+    expect(report.counters!.breaks).toEqual([copied.sheetRow, next.sheetRow]);
   });
 
   test("no counters when the sheet lacks the running totals", () => {
@@ -145,9 +181,29 @@ describe("years before the flight log", () => {
         { registration: "OH-CON", year: 2002, minutes: 6120, landings: null, flights: null, source: "entered" },
       ]
     );
+    // What was typed in for 2024 is kept alongside, so a mistyped year shows
+    expect(merged[0].entered).toBe(1);
     expect(merged.map((t) => [t.year, t.source])).toEqual([
       [2024, "flights"],
       [2002, "entered"],
+    ]);
+  });
+});
+
+describe("pilots", () => {
+  test("a member, a name marked as no member, and a name not decided on", () => {
+    const pilots = byPilot(
+      [flight({ picName: "M.Meikäläinen" }), flight({ picName: "V.Vieras" }), flight({ picName: "U.Uusi" })],
+      new Map<string, string | null>([
+        ["mmeikäläinen", "user-1"],
+        ["vvieras", null],
+      ]),
+      new Map([["user-1", "Matti Meikäläinen"]])
+    );
+    expect(pilots.map((p) => [p.name, p.status])).toEqual([
+      ["Matti Meikäläinen", "member"],
+      ["V.Vieras", "non-member"],
+      ["U.Uusi", "unmatched"],
     ]);
   });
 });
@@ -165,6 +221,8 @@ describe("the Excel export", () => {
         registration: "OH-CON",
         totals: totals(flights),
         previousTotals: totals([]),
+        previousUntil: null,
+        unchecked: 0,
         months: byMonth(flights),
         previousMonths: byMonth([]),
         purposes: byPurpose(flights).map((p) => ({ ...p, name: "Esittelylento" })),
@@ -182,5 +240,41 @@ describe("the Excel export", () => {
     // 9.5.2025 as a spreadsheet date
     expect(sheets[5].rows[2][0]).toEqual({ value: 45786, style: "date" });
     expect(writeXlsx(sheets).subarray(0, 2).toString()).toBe("PK");
+  });
+
+  test("control characters in a name don't break the file", async () => {
+    const { statsWorkbook } = await import("@/utilities/statsWorkbook");
+    const { writeXlsx } = await import("@/utilities/xlsx");
+    const flights = [flight({ picName: "M.Meikä\u000Bläinen\u0001", flightDate: "2025-05-09" })];
+    const file = writeXlsx(
+      statsWorkbook(
+        {
+          year: 2025, years: [2025], aircraft: ["OH-CON"], registration: "OH-CON",
+          totals: totals(flights), previousTotals: totals([]), previousUntil: null, unchecked: 0,
+          months: byMonth(flights), previousMonths: byMonth([]), purposes: [],
+          pilots: byPilot(flights, new Map(), new Map()),
+          reports: [aircraftReport("OH-CON", flights)], introDays: [],
+        },
+        []
+      )
+    );
+    // Every part of the zip, inflated: no character XML 1.0 can't hold
+    const parts: string[] = [];
+    for (let at = 0; file.readUInt32LE(at) === 0x04034b50; ) {
+      const method = file.readUInt16LE(at + 8);
+      const size = file.readUInt32LE(at + 18);
+      const nameLength = file.readUInt16LE(at + 26);
+      const extraLength = file.readUInt16LE(at + 28);
+      const start = at + 30 + nameLength + extraLength;
+      const data = file.subarray(start, start + size);
+      parts.push((method === 8 ? inflateRawSync(data) : data).toString("utf8"));
+      at = start + size;
+    }
+    expect(parts.length).toBeGreaterThan(5);
+    const pilotsSheet = parts.find((part) => part.includes("Meikä"))!;
+    expect(pilotsSheet).toContain("M.Meikäläinen");
+    for (const part of parts) {
+      expect(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/.test(part)).toBe(false);
+    }
   });
 });

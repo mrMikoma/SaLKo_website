@@ -26,10 +26,14 @@ const td = "px-2 sm:px-3 py-2 tabular-nums";
 const monthName = (month: number) =>
   DateTime.fromObject({ year: 2000, month }).setLocale("fi").toFormat("LLLL");
 
-const change = (now: number, before: number) => {
+// Against the year before: up to the same day while the year is going
+const change = (now: number, before: number, until: string | null) => {
   if (before === 0) return null;
   const percent = Math.round(((now - before) / before) * 100);
-  return `${percent > 0 ? "+" : ""}${percent} % edellisestä vuodesta`;
+  const sign = percent > 0 ? "+" : "";
+  if (!until) return `${sign}${percent} % edellisestä vuodesta`;
+  const [month, day] = until.split("-").map(Number);
+  return `${sign}${percent} % viime vuoden 1.1.–${day}.${month}. verrattuna`;
 };
 
 const Figure = ({ label, value, before }: { label: string; value: string; before: string | null }) => (
@@ -53,7 +57,7 @@ export default async function StatisticsPage({ searchParams }: PageProps) {
     notFound();
   }
   const session = await auth();
-  if (!session?.user?.roles || !hasPermission(session.user.roles, "VIEW_STATISTICS")) {
+  if (!session?.user?.id || !hasPermission(session.user.roles, "VIEW_STATISTICS")) {
     redirect("/");
   }
 
@@ -95,17 +99,17 @@ export default async function StatisticsPage({ searchParams }: PageProps) {
         <Figure
           label={`Lentoja ${year}`}
           value={String(stats.totals.flights)}
-          before={change(stats.totals.flights, stats.previousTotals.flights)}
+          before={change(stats.totals.flights, stats.previousTotals.flights, stats.previousUntil)}
         />
         <Figure
           label="Lentoaika"
           value={`${formatMinutes(stats.totals.minutes)} h`}
-          before={change(stats.totals.minutes, stats.previousTotals.minutes)}
+          before={change(stats.totals.minutes, stats.previousTotals.minutes, stats.previousUntil)}
         />
         <Figure
           label="Laskuja"
           value={String(stats.totals.landings)}
-          before={change(stats.totals.landings, stats.previousTotals.landings)}
+          before={change(stats.totals.landings, stats.previousTotals.landings, stats.previousUntil)}
         />
       </div>
 
@@ -170,7 +174,8 @@ export default async function StatisticsPage({ searchParams }: PageProps) {
                     <tr key={pilot.key}>
                       <td className="px-3 py-2">
                         {pilot.name}
-                        {!pilot.member && <span className="text-xs text-gray-500"> · ei yhdistetty</span>}
+                        {pilot.status === "unmatched" && <span className="text-xs text-gray-500"> · ei yhdistetty</span>}
+                        {pilot.status === "non-member" && <span className="text-xs text-gray-500"> · ei jäsen</span>}
                       </td>
                       <td className={`${td} text-right`}>
                         {pilot.asPic.flights > 0 ? `${formatMinutes(pilot.asPic.minutes)} (${pilot.asPic.flights})` : "–"}
@@ -221,6 +226,16 @@ export default async function StatisticsPage({ searchParams }: PageProps) {
           Traficomille koneittain seuraavan vuoden tammikuun loppuun mennessä. Ryhmittely kuten
           kerhon taulukossa.
         </p>
+        {stats.unchecked > 0 && (
+          <p className="mt-3 rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-900">
+            Vuoden lennoista {stats.unchecked} on vielä tarkistamatta paperista. Ne ovat luvuissa
+            mukana, kuten taulukon omissa tilastoissa: tarkista ne ennen ilmoitusta{" "}
+            <a href="/admin/lennot?nakyma=tarkistamatta" className="underline">
+              Tarkistamatta-listalla
+            </a>
+            .
+          </p>
+        )}
         {stats.reports.length === 0 && <p className="mt-3 text-gray-600">Ei lentoja.</p>}
         {stats.reports.map((report) => {
           const sum = report.rows.at(-1)!.totals;
@@ -258,13 +273,15 @@ export default async function StatisticsPage({ searchParams }: PageProps) {
               </table>
               {report.counters && (
                 <p className="text-sm mt-2">
-                  Taulukon laskureista: {formatMinutes(report.counters.minutes)} h ja{" "}
-                  {report.counters.landings} laskua vuoden aikana; vuoden lopussa kokonaisaika{" "}
+                  Taulukon laskureista: vuoden lopussa kokonaisaika{" "}
                   {formatMinutes(report.counters.airframeMinutes)} h ja {report.counters.totalLandings} laskua.
-                  {(report.counters.minutes !== sum.minutes || report.counters.landings !== sum.landings) && (
+                  {report.counters.breaks.length > 0 && (
                     <span className="text-orange-800">
                       {" "}
-                      Laskurit eroavat lentojen summasta: tarkista kopioidut rivit ja &quot;Virhe kirjassa&quot;.
+                      Laskurit eivät jatku edelliseltä riviltä riveillä{" "}
+                      {report.counters.breaks.slice(0, 10).join(", ")}
+                      {report.counters.breaks.length > 10 ? " …" : ""}: tarkista kopioidut rivit, yli
+                      puolenyön lennot ja &quot;Virhe kirjassa&quot;.
                     </span>
                   )}
                 </p>
@@ -280,6 +297,7 @@ export default async function StatisticsPage({ searchParams }: PageProps) {
         </h2>
         <p className={`text-sm mt-1 ${daysUsed > INTRO_FLIGHT_DAYS_PER_YEAR ? "text-red-700" : "text-gray-600"}`}>
           OPS M1-33: esittelylentoja enintään {INTRO_FLIGHT_DAYS_PER_YEAR} päivänä kalenterivuodessa.
+          Päivät, joilla taulukossa on ESI-koodattu lento: vertaa kerhon esittelylentorekisteriin.
           {daysUsed < INTRO_FLIGHT_DAYS_PER_YEAR
             ? ` Jäljellä ${INTRO_FLIGHT_DAYS_PER_YEAR - daysUsed}.`
             : daysUsed === INTRO_FLIGHT_DAYS_PER_YEAR
@@ -332,6 +350,14 @@ export default async function StatisticsPage({ searchParams }: PageProps) {
                       return (
                         <td key={reg} className={`${td} text-right whitespace-nowrap`}>
                           {total ? formatMinutes(total.minutes) : ""}
+                          {total?.entered !== undefined && total.entered !== total.minutes && (
+                            <span
+                              className="block text-xs text-orange-800"
+                              title="Vuodelle on kirjattu tunnit käsin, mutta lentopäiväkirjassa on myös tämän vuoden lentoja: tarkista niiden päivämäärät"
+                            >
+                              käsin {formatMinutes(total.entered)}
+                            </span>
+                          )}
                           {total?.source === "entered" && canEdit && (
                             <>
                               {" "}

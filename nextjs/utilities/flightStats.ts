@@ -60,6 +60,8 @@ export interface PilotStats {
   key: string;
   name: string;
   member: boolean;
+  // Matched to a member, marked as no member, or not decided on yet
+  status: "member" | "non-member" | "unmatched";
   asPic: Totals;
   // As the student or second pilot
   asSecond: Totals;
@@ -83,6 +85,7 @@ export function byPilot(
         key,
         name: (userId && userNames.get(userId)) || sheetName,
         member: userId !== null,
+        status: userId !== null ? "member" : aliases.has(nameKey(sheetName)) ? "non-member" : "unmatched",
         asPic: empty(),
         asSecond: empty(),
       });
@@ -122,13 +125,24 @@ export interface ReportRow {
 export interface AircraftReport {
   registration: string;
   rows: ReportRow[];
-  // From the sheet's running totals: what the airframe flew in the year, and
-  // where the totals stood at its end. null when the sheet lacks them.
-  counters: { minutes: number; landings: number; airframeMinutes: number; totalLandings: number } | null;
+  // From the sheet's running totals: where they stood at the year's end, and
+  // the rows of the year where they don't follow from the row above (a
+  // copied row, a time fixed without the totals). null when the sheet lacks
+  // them.
+  counters: { airframeMinutes: number; totalLandings: number; breaks: number[] } | null;
 }
 
-/** The report for one aircraft's flights in one year */
-export function aircraftReport(registration: string, flights: StatsFlight[]): AircraftReport {
+/**
+ * The report for one aircraft's flights in one year. `laterAbove` is what the
+ * flights dated after the year add up to among the rows above the year's last
+ * row: a late entry, such as December's last page typed in after January's
+ * first flights, puts those into the running totals of the year's last row.
+ */
+export function aircraftReport(
+  registration: string,
+  flights: StatsFlight[],
+  laterAbove: { minutes: number; landings: number } = { minutes: 0, landings: 0 }
+): AircraftReport {
   const own = flights.filter((f) => f.registration === registration).sort((a, b) => a.sheetRow - b.sheetRow);
   const rows: ReportRow[] = [];
   const known = new Set(REPORT_GROUPS.flatMap((g) => g.codes));
@@ -159,18 +173,27 @@ export function aircraftReport(registration: string, flights: StatsFlight[]): Ai
   }
   rows.push({ kind: "total", label: "Yhteensä", totals: totals(own) });
 
-  const first = own[0];
   const last = own.at(-1);
+  // Each row's total is the row above's plus its own flight; durations are
+  // rounded one by one, so a minute either way is drift
+  const breaks = own.flatMap((flight, i) => {
+    const above = own[i - 1];
+    if (!above || above.sheetRow !== flight.sheetRow - 1) return [];
+    const minutes = [above.airframeMinutes, flight.airborneMinutes, flight.airframeMinutes];
+    const landings = [above.totalLandings, flight.landings, flight.totalLandings];
+    const brokenMinutes =
+      minutes.every((v) => v !== null) &&
+      Math.abs(above.airframeMinutes! + flight.airborneMinutes! - flight.airframeMinutes!) > 1;
+    const brokenLandings =
+      landings.every((v) => v !== null) && above.totalLandings! + flight.landings! !== flight.totalLandings!;
+    return brokenMinutes || brokenLandings ? [flight.sheetRow] : [];
+  });
   const counters =
-    first && last &&
-    [first.airframeMinutes, first.airborneMinutes, last.airframeMinutes, first.totalLandings, first.landings, last.totalLandings].every(
-      (value) => value !== null
-    )
+    last && last.airframeMinutes !== null && last.totalLandings !== null
       ? {
-          minutes: last.airframeMinutes! - (first.airframeMinutes! - first.airborneMinutes!),
-          landings: last.totalLandings! - (first.totalLandings! - first.landings!),
-          airframeMinutes: last.airframeMinutes!,
-          totalLandings: last.totalLandings!,
+          airframeMinutes: last.airframeMinutes - laterAbove.minutes,
+          totalLandings: last.totalLandings - laterAbove.landings,
+          breaks,
         }
       : null;
   return { registration, rows, counters };
@@ -218,13 +241,20 @@ export interface YearTotal {
   landings: number | null;
   flights: number | null;
   source: "flights" | "entered";
+  // A total typed in for a year the flight log has flights in too, shown
+  // beside the log's: one flight with a mistyped year would otherwise
+  // replace the year's real hours without a word
+  entered?: number;
 }
 
 /** The flight log's years win over entered totals for the same year */
 export function mergeYearTotals(fromFlights: YearTotal[], entered: YearTotal[]): YearTotal[] {
   const key = (t: YearTotal) => `${t.registration}:${t.year}`;
   const merged = new Map(entered.map((t) => [key(t), t]));
-  for (const total of fromFlights) merged.set(key(total), total);
+  for (const total of fromFlights) {
+    const typed = merged.get(key(total));
+    merged.set(key(total), typed ? { ...total, entered: typed.minutes } : total);
+  }
   return [...merged.values()].sort((a, b) => b.year - a.year || a.registration.localeCompare(b.registration));
 }
 
