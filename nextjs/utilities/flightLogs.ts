@@ -15,7 +15,13 @@ import {
   SHEET_ZONE,
   SheetFlightInput,
 } from "@/utilities/flightSheetParser";
-import { normalizeClock, sheetNameFor } from "@/utilities/flightFormInput";
+import {
+  legTimeError,
+  normalizeClock,
+  overlappingLegs,
+  sheetNameFor,
+} from "@/utilities/flightFormInput";
+import { RateLimiter, waitText } from "@/utilities/rateLimit";
 import {
   appendFlightsToSheet,
   clearWebFlight,
@@ -41,6 +47,23 @@ type ActionResult<T = null> =
   | { status: "error"; error: string };
 
 const FLIGHT_LOG_DISABLED = "Lentopäiväkirja ei ole vielä käytössä";
+
+// A Google error carries the request, with members' names and remarks in its
+// body, so only its message goes to the log
+const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error));
+
+// Each save or undo makes several Sheets requests and a sync, all as the one
+// service account: one member can't use up its quota for everyone
+const flightWrites = new RateLimiter("flight-log-writes", 20, 10 * 60_000, 10 * 60_000);
+
+function tooManyWrites(userId: string): string | null {
+  const wait = flightWrites.blockedFor(userId);
+  if (wait > 0) {
+    return `Liian monta tallennusta peräkkäin. Yritä uudelleen ${waitText(wait)} kuluttua.`;
+  }
+  flightWrites.hit(userId);
+  return null;
+}
 
 async function requireFlightLogAdmin() {
   if (!isFlightLogEnabled()) {
@@ -121,7 +144,7 @@ export async function addSampleFlights(registration: string): Promise<ActionResu
     revalidatePath("/admin/lennot");
     return { status: "success", result: { added: inputs.length } };
   } catch (error) {
-    console.error("Error adding sample flights:", error);
+    console.error("Error adding sample flights:", errorText(error));
     return {
       status: "error",
       error:
@@ -209,6 +232,8 @@ const optionalNumber = (max: number, message: string) =>
   z.number().min(0, message).max(max, message).nullable();
 
 const legSchema = z.object({
+  // Made by the form, so saving the same legs again finds them in the sheet
+  id: z.uuid("Lomake on vanhentunut. Lataa sivu uudelleen."),
   departure: airfieldField,
   arrival: airfieldField,
   takeoff: clockField,
@@ -285,25 +310,72 @@ export async function logFlights(
   }
   const { registration, flightDate, role, otherPilot, legs } = parsed.data;
 
-  const today = DateTime.now().setZone(SHEET_ZONE).toISODate()!;
-  if (flightDate > today) {
+  const now = DateTime.now().setZone(SHEET_ZONE);
+  const day = DateTime.fromISO(flightDate, { zone: SHEET_ZONE });
+  if (!day.isValid) {
+    return { status: "error", error: "Valitse päivä" };
+  }
+  if (day > now.endOf("day")) {
     return { status: "error", error: "Päivä ei voi olla tulevaisuudessa" };
+  }
+  if (day < now.minus({ years: 1 }).startOf("day")) {
+    return {
+      status: "error",
+      error: "Yli vuoden vanhaa lentoa ei kirjata täällä. Kerro siitä laskuttajalle.",
+    };
   }
   if (role === "student" && !otherPilot) {
     return { status: "error", error: "Kirjoita päällikön (opettajan) nimi" };
+  }
+  const legName = (i: number) => (legs.length > 1 ? `Lento ${i + 1}: ` : "");
+  for (const [i, leg] of legs.entries()) {
+    const problem = legTimeError(leg.takeoff, leg.landing);
+    if (problem) {
+      return { status: "error", error: `${legName(i)}${problem}` };
+    }
+    // A landing before the takeoff is on the next day
+    const landingDay = leg.landing < leg.takeoff ? day.plus({ days: 1 }) : day;
+    const [hour, minute] = leg.landing.split(":").map(Number);
+    if (landingDay.set({ hour, minute }) > now.plus({ minutes: 5 })) {
+      return { status: "error", error: `${legName(i)}Laskuaika on tulevaisuudessa` };
+    }
+  }
+  const overlap = overlappingLegs(legs.map((leg) => ({ takeoff: leg.takeoff!, landing: leg.landing! })));
+  if (overlap) {
+    return {
+      status: "error",
+      error: `Lennot ${overlap[0] + 1} ja ${overlap[1] + 1} ovat ajallisesti päällekkäin`,
+    };
+  }
+  const ids = legs.map((leg) => leg.id);
+  if (new Set(ids).size !== ids.length) {
+    return { status: "error", error: "Lomake on vanhentunut. Lataa sivu uudelleen." };
+  }
+  const limited = tooManyWrites(session.user.id);
+  if (limited) {
+    return { status: "error", error: limited };
   }
 
   let inputs: SheetFlightInput[] = [];
   let sheetName: string | null = null;
   try {
     const purposes = await pool.query(
-      "SELECT code FROM flight_purposes WHERE active AND code = ANY($1)",
-      [legs.map((leg) => leg.purposeCode)]
+      "SELECT code, is_training FROM flight_purposes WHERE active"
     );
-    const known = new Set(purposes.rows.map((row) => row.code));
-    const unknown = legs.find((leg) => !known.has(leg.purposeCode));
+    const training = new Map(purposes.rows.map((row) => [row.code, row.is_training as boolean]));
+    const unknown = legs.find((leg) => !training.has(leg.purposeCode));
     if (unknown) {
       return { status: "error", error: `Tuntematon lennon tarkoitus ${unknown.purposeCode}` };
+    }
+    // As a student the member pays for the flight only when it is a training
+    // flight; with another purpose the PIC (the instructor) would be billed
+    const notTraining = legs.findIndex((leg) => !training.get(leg.purposeCode));
+    if (role === "student" && notTraining !== -1) {
+      const codes = [...training].filter(([, isTraining]) => isTraining).map(([code]) => code);
+      return {
+        status: "error",
+        error: `${legName(notTraining)}Oppilaana lennetyn lennon tarkoitus on koululento (${codes.join(", ")})`,
+      };
     }
 
     sheetName = await memberSheetName(
@@ -318,8 +390,26 @@ export async function logFlights(
       };
     }
 
+    // Saved already: the answer to an earlier try was lost on the way
+    const saved = await pool.query(
+      "SELECT user_id, undone_at FROM flight_log_web_entries WHERE id = ANY($1::uuid[])",
+      [ids]
+    );
+    if (saved.rows.some((row) => row.user_id !== session.user.id || row.undone_at)) {
+      return { status: "error", error: "Lomake on vanhentunut. Lataa sivu uudelleen." };
+    }
+    if (saved.rows.length === ids.length) {
+      return { status: "success", result: { ids, sheetName } };
+    }
+    if (saved.rows.length > 0) {
+      return {
+        status: "error",
+        error: "Osa lennoista on jo tallennettu. Tarkista Omat lennot ennen kuin tallennat uudelleen.",
+      };
+    }
+
     inputs = legs.map((leg) => ({
-      id: randomUUID(),
+      id: leg.id,
       flightDate,
       picName: role === "pic" ? sheetName : otherPilot!,
       secondName: role === "pic" ? otherPilot : sheetName,
@@ -337,19 +427,31 @@ export async function logFlights(
     }));
 
     await appendFlightsToSheet(registration, inputs);
-    await pool.query(
-      `INSERT INTO flight_log_web_entries (id, user_id, registration)
-       SELECT unnest($1::uuid[]), $2, $3`,
-      [inputs.map((i) => i.id), session.user.id, registration]
-    );
   } catch (error) {
-    console.error("Error logging flights:", error);
+    console.error("Error logging flights:", errorText(error));
     return {
       status: "error",
       error:
         error instanceof FlightSheetWriteError
           ? error.message
           : "Lentojen tallennus epäonnistui. Lentopäiväkirjan taulukkoon ei saatu yhteyttä.",
+    };
+  }
+
+  // The flights are in the sheet now. Saving again finds them there by their
+  // IDs and only finishes this step.
+  try {
+    await pool.query(
+      `INSERT INTO flight_log_web_entries (id, user_id, registration)
+       SELECT unnest($1::uuid[]), $2, $3
+       ON CONFLICT (id) DO NOTHING`,
+      [ids, session.user.id, registration]
+    );
+  } catch (error) {
+    console.error("Error recording logged flights:", errorText(error));
+    return {
+      status: "error",
+      error: "Lento tallentui taulukkoon, mutta tallennus jäi kesken. Tallenna uudelleen, niin se viimeistellään.",
     };
   }
 
@@ -374,6 +476,10 @@ export async function undoFlight(id: string): Promise<ActionResult> {
   if (!z.uuid().safeParse(id).success) {
     return { status: "error", error: "Lentoa ei löytynyt" };
   }
+  const limited = tooManyWrites(session.user.id);
+  if (limited) {
+    return { status: "error", error: limited };
+  }
 
   const entry = await pool.query(
     `SELECT registration FROM flight_log_web_entries
@@ -388,7 +494,7 @@ export async function undoFlight(id: string): Promise<ActionResult> {
     await clearWebFlight(entry.rows[0].registration, id);
     await pool.query("UPDATE flight_log_web_entries SET undone_at = NOW() WHERE id = $1", [id]);
   } catch (error) {
-    console.error("Error undoing flight:", error);
+    console.error("Error undoing flight:", errorText(error));
     return {
       status: "error",
       error:
@@ -449,7 +555,7 @@ export async function setFlightStatus(
       );
     }
   } catch (caught) {
-    console.error("Error setting flight status:", caught);
+    console.error("Error setting flight status:", errorText(caught));
     error =
       caught instanceof FlightSheetWriteError
         ? caught.message
@@ -561,7 +667,7 @@ export async function previewPaperPage(
       },
     };
   } catch (error) {
-    console.error("Error previewing paper page:", error);
+    console.error("Error previewing paper page:", errorText(error));
     return { status: "error", error: "Sivun tarkistus epäonnistui" };
   }
 }
@@ -679,7 +785,7 @@ export async function savePaperPage(
       ]
     );
   } catch (caught) {
-    console.error("Error saving paper page:", caught);
+    console.error("Error saving paper page:", errorText(caught));
     error =
       caught instanceof FlightSheetWriteError
         ? caught.message

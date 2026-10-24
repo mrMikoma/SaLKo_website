@@ -3,11 +3,12 @@ import { SHEET_ZONE } from "@/utilities/flightSheetParser";
 
 /** Display helpers for flight log pages; times in Finnish time */
 
-/** 75 → "1:15" */
-export const formatMinutes = (minutes: number | null): string =>
-  minutes === null
-    ? "–"
-    : `${Math.floor(minutes / 60)}:${String(Math.abs(minutes % 60)).padStart(2, "0")}`;
+/** 75 → "1:15", -20 → "-0:20" */
+export const formatMinutes = (minutes: number | null): string => {
+  if (minutes === null) return "–";
+  const whole = Math.abs(minutes);
+  return `${minutes < 0 ? "-" : ""}${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}`;
+};
 
 /** "2026-03-14" → "la 14.3." */
 export const formatFlightDate = (date: string): string =>

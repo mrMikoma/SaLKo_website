@@ -1,4 +1,5 @@
 import { Pool } from "pg";
+import { DateTime } from "luxon";
 import { test, expect as baseExpect } from "./fixtures";
 import { accounts, isLocalDatabase } from "./accounts";
 
@@ -21,6 +22,11 @@ test.skip(!isLocalDatabase(), "writes pilot_aliases: local database only");
 test.skip(!accounts.admin, "no admin account");
 test.use({ storageState: accounts.admin?.storageState });
 test.describe.configure({ mode: "serial" });
+
+// A recent day: the form takes flights from the last year only
+const day = DateTime.now().setZone("Europe/Helsinki").minus({ days: 20 });
+const flightDate = day.toISODate()!;
+const monthHeading = new RegExp(day.setLocale("fi").toFormat("LLLL yyyy"), "i");
 
 async function query(sql: string, params: unknown[] = []) {
   const pool = new Pool({
@@ -63,7 +69,7 @@ test("won't take a name that is already in the log", async ({ page }) => {
      VALUES ('eadmin', 'E.admin', NULL), ('e2eadmin', 'E2E admin', NULL)`
   );
   await page.goto("/jasenalue/lentopaivakirja/uusi");
-  await page.getByLabel("Lentopäivä").fill("2025-06-14");
+  await page.getByLabel("Lentopäivä").fill(flightDate);
   await page.getByLabel("Lentoonlähtö", { exact: true }).fill("10.00");
   await page.getByLabel("Lasku", { exact: true }).fill("10.30");
   await page.getByRole("button", { name: "Tallenna lento" }).click();
@@ -81,7 +87,7 @@ test("logs a day's flights and undoes them", async ({ page, context }) => {
   await expect(page.getByRole("heading", { level: 1, name: "Kirjaa lento" })).toBeVisible();
 
   await page.getByRole("button", { name: "OH-TST" }).click();
-  await page.getByLabel("Lentopäivä").fill("2025-06-14");
+  await page.getByLabel("Lentopäivä").fill(flightDate);
 
   const first = page.getByRole("group", { name: "Lento", exact: true });
   await first.getByLabel("Minne").fill("EFJO");
@@ -112,8 +118,8 @@ test("logs a day's flights and undoes them", async ({ page, context }) => {
   // Synced right away: the flights are in the pilot's own list
   const ownFlights = await context.newPage();
   await ownFlights.goto("/jasenalue/lentopaivakirja");
-  const june = ownFlights.getByRole("heading", { name: /kesäkuu 2025/i });
-  await expect(june).toContainText("2 lentoa · 1:20");
+  const month = ownFlights.getByRole("heading", { name: monthHeading });
+  await expect(month).toContainText("2 lentoa · 1:20");
   await ownFlights.close();
   // The fuel went into the sheet as the number 1.5, not as text or a date
   const fuel = await query(
@@ -132,5 +138,64 @@ test("logs a day's flights and undoes them", async ({ page, context }) => {
   await expect(page.getByRole("button", { name: "Tallenna lento" })).toBeVisible();
 
   await page.goto("/jasenalue/lentopaivakirja");
-  await expect(page.getByRole("heading", { name: /kesäkuu 2025/i })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: monthHeading })).toHaveCount(0);
+});
+
+test("refuses a landing typed before the takeoff", async ({ page }) => {
+  await page.goto("/jasenalue/lentopaivakirja/uusi");
+  await page.getByRole("button", { name: "OH-TST" }).click();
+  await page.getByLabel("Lentopäivä").fill(flightDate);
+  await page.getByLabel("Lentoonlähtö", { exact: true }).fill("14.30");
+  await page.getByLabel("Lasku", { exact: true }).fill("14.10");
+  // Shown while typing, and refused on save
+  await expect(page.getByText("Laskuaika on ennen lentoonlähtöaikaa")).toBeVisible();
+  await page.getByRole("button", { name: "Tallenna lento" }).click();
+  // (Next's route announcer is an alert too)
+  const alert = page.getByRole("alert").filter({ hasText: /\S/ });
+  await expect(alert).toHaveText("Laskuaika on ennen lentoonlähtöaikaa");
+
+  // Past midnight is fine when the flight stays short
+  await page.getByLabel("Lentoonlähtö", { exact: true }).fill("23.40");
+  await page.getByLabel("Lasku", { exact: true }).fill("00.20");
+  await expect(page.getByText("Ilmassa 0:40 · yli puolenyön")).toBeVisible();
+});
+
+test("saving again after a lost connection doesn't add the flight twice", async ({ page, browserErrors }) => {
+  await page.goto("/jasenalue/lentopaivakirja/uusi");
+  await page.getByRole("button", { name: "OH-TST" }).click();
+  await page.getByLabel("Lentopäivä").fill(flightDate);
+  await page.getByLabel("Lentoonlähtö", { exact: true }).fill("15.00");
+  await page.getByLabel("Lasku", { exact: true }).fill("15.30");
+
+  // The save reaches the server and the sheet, but the answer never comes back
+  await page.route(
+    "**/jasenalue/lentopaivakirja/uusi",
+    async (route) => {
+      if (route.request().method() !== "POST") return route.fallback();
+      await route.fetch();
+      await route.abort("connectionreset");
+    },
+    { times: 1 }
+  );
+  await page.getByRole("button", { name: "Tallenna lento" }).click();
+  await expect(page.getByRole("alert").filter({ hasText: /\S/ })).toContainText("Tallennus ei mennyt perille");
+  // What was typed is still there
+  await expect(page.getByLabel("Lentoonlähtö", { exact: true })).toHaveValue("15.00");
+
+  await page.getByRole("button", { name: "Tallenna lento" }).click();
+  await expect(page.getByRole("status").getByText("Tallennettu lentopäiväkirjaan")).toBeVisible();
+  const rows = await query(
+    `SELECT f.id FROM sheet_flights f
+     JOIN flight_log_web_entries w ON w.id = f.id
+     WHERE w.user_id = (SELECT id FROM users WHERE email = $1) AND f.missing_since IS NULL`,
+    [accounts.admin!.email]
+  );
+  expect(rows).toHaveLength(1);
+
+  // Undo, so the test aircraft's tab is empty again
+  await page.getByRole("button", { name: "Kumoa viimeisin" }).click();
+  await expect(page.getByRole("button", { name: "Tallenna lento" })).toBeVisible();
+  // The browser logs the cut connection
+  const expected = (error: string) => /ERR_CONNECTION_RESET|Failed to fetch|Failed to load resource/.test(error);
+  browserErrors.splice(0, browserErrors.length, ...browserErrors.filter((error) => !expected(error)));
 });

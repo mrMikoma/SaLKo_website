@@ -131,7 +131,12 @@ Stage A doesn't depend on B or C and carries security fixes, so it shouldn't wai
   - share the sheet with the service account as an editor;
   - check that File → Settings says Finland and Helsinki.
 - [ ] **Hand-billed flights:** fill Tila as **Laskutettu**, or Maksettu, for every flight already billed the old way. Otherwise they show as unchecked and later as unbilled.
-- [ ] **Try a copy first:** on a copy of the sheet, try one save, one undo and one status change (`FLIGHT_LOG.md`, "Before switching it on").
+  - Fill only rows that have a date. Then check that Tila and Laskutusjakso are empty on every row below the last flight: a flight typed into such a row would take that Tila, never show as unchecked and never be billed.
+- [ ] **Try a copy first,** on your own machine, so the real flights never reach kehitys:
+  1. File → Make a copy of the real spreadsheet, and share the copy with the dev service account.
+  2. Run the site locally against the copy: `FLIGHT_LOG_SETUP.md`, "Local development against the dev sheet", with the copy's ID.
+  3. Try a two-leg save; a save, cut the network (DevTools → Offline), then save again, which must not add the flights twice; an undo; a status change; and a remark starting with `=`, which must stay text.
+  4. Delete the copy, put `nextjs/.env` back to the dev sheet, and empty the local database's copy of the flights (recreate the local database, or `DELETE FROM sheet_flights`).
 - [ ] **Secrets:** add `GOOGLE_SHEETS_ID` and `GOOGLE_SERVICE_ACCOUNT_JSON` (the key file as is) to the `production` environment's secrets.
 - [ ] **Treasurer:** give their account the Laskuttaja role on `/admin/users`, together with Käyttäjä.
 
@@ -145,7 +150,7 @@ Stage A doesn't depend on B or C and carries security fixes, so it shouldn't wai
 - [ ] On `/admin/lennot`, the sync succeeds, and the flight count and this year's hours match the sheet.
 - [ ] Pilot names are matched to members ("Yhdistä nimet").
 - [ ] The Tarkistamatta list holds only flights not yet billed.
-- [ ] A member sees Lentopäiväkirja in the menu, logs a flight, and the flight appears in the sheet. Undo it if it was a test.
+- [ ] A member sees Lentopäiväkirja in the menu, logs a flight, and the flight appears in the sheet. If it was a test, undo it right away with "Kumoa viimeisin" on the confirmation: undo works only there, and only while it is the tab's last flight. Later the biller clears it in the sheet.
 - [ ] `/admin/tilastot` agrees with the sheet's Tilastot tab.
 
 To switch it off again, clear the variable and redeploy. The data stays.

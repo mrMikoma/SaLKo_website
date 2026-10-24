@@ -1,6 +1,6 @@
 import { DateTime } from "luxon";
 import { nameKey, SHEET_ZONE } from "@/utilities/flightSheetParser";
-import { minutesBetween, normalizeClock } from "@/utilities/flightFormInput";
+import { legTimeError, minutesBetween, normalizeClock } from "@/utilities/flightFormInput";
 
 /**
  * Typing a page of the paper journey log into the sheet (/admin/lennot/tuonti):
@@ -108,7 +108,8 @@ export function readPaperGrid(grid: PaperCells[], today: string): ReadRow[] {
     if (!picName) errors.push("Päällikkö puuttuu");
     const takeoff = normalizeClock(cells.takeoff);
     const landing = normalizeClock(cells.landing);
-    if (!takeoff || !landing) errors.push("Anna lähtö- ja laskuaika, esim. 14.05");
+    const timeProblem = legTimeError(cells.takeoff, cells.landing);
+    if (timeProblem) errors.push(timeProblem);
     const departure = cells.departure.trim().toUpperCase();
     const arrival = cells.arrival.trim().toUpperCase();
     if (![departure, arrival].every((field) => /^[A-ZÅÄÖ0-9]{2,8}$/.test(field))) {

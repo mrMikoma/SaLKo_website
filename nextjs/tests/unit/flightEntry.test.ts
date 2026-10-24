@@ -6,7 +6,15 @@ import {
   parseFlightSheet,
   SheetValues,
 } from "@/utilities/flightSheetParser";
-import { minutesBetween, normalizeClock, sheetNameFor } from "@/utilities/flightFormInput";
+import {
+  crossesMidnight,
+  legTimeError,
+  minutesBetween,
+  newFlightId,
+  normalizeClock,
+  overlappingLegs,
+  sheetNameFor,
+} from "@/utilities/flightFormInput";
 
 const HEADERS = [
   "Päivämäärä", "Päällikkö", "Oppilas / SIC", "Henkilömäärä", "Lentoonlähtöpaikka",
@@ -22,8 +30,10 @@ describe("form input", () => {
     expect(normalizeClock("1405")).toBe("14:05");
     expect(normalizeClock("14.05")).toBe("14:05");
     expect(normalizeClock("14,05")).toBe("14:05");
-    expect(normalizeClock("9:5")).toBe("09:05");
+    expect(normalizeClock("9:05")).toBe("09:05");
     expect(normalizeClock("905")).toBe("09:05");
+    // One-digit minutes are ambiguous: 10.3 may mean 10:30
+    expect(normalizeClock("10.3")).toBeNull();
     expect(normalizeClock("24:00")).toBeNull();
     expect(normalizeClock("klo 9")).toBeNull();
   });
@@ -32,6 +42,43 @@ describe("form input", () => {
     expect(minutesBetween("14.05", "15:29")).toBe(84);
     expect(minutesBetween("23:30", "0020")).toBe(50);
     expect(minutesBetween("14:05", "")).toBeNull();
+  });
+
+  test("a landing before the takeoff is past midnight only when the flight stays short", () => {
+    expect(legTimeError("14.05", "15.29")).toBeNull();
+    expect(legTimeError("23:30", "00:20")).toBeNull();
+    expect(crossesMidnight("23:30", "00:20")).toBe(true);
+    expect(crossesMidnight("14:05", "15:29")).toBe(false);
+    // A typo: 14:30 → 14:10 would be a 23 h 40 min flight
+    expect(legTimeError("14:30", "14:10")).toBe("Laskuaika on ennen lentoonlähtöaikaa");
+    expect(legTimeError("14:30", "14:30")).toBe("Lentoonlähtö- ja laskuaika ovat samat");
+    expect(legTimeError("06:00", "15:00")).toBe("Lento olisi yli 8 tuntia: tarkista ajat");
+    expect(legTimeError("14:30", "")).toBe("Anna lentoonlähtö- ja laskuaika, esim. 14.05");
+  });
+
+  test("legs of the same day that overlap", () => {
+    const leg = (takeoff: string, landing: string) => ({ takeoff, landing });
+    expect(overlappingLegs([leg("08:00", "08:40"), leg("09:00", "09:30")])).toBeNull();
+    // Back to back is fine
+    expect(overlappingLegs([leg("08:00", "08:40"), leg("08:40", "09:30")])).toBeNull();
+    expect(overlappingLegs([leg("08:00", "08:40"), leg("09:00", "09:30"), leg("08:20", "09:00")])).toEqual([0, 2]);
+    // Past midnight the landing is on the next day
+    expect(overlappingLegs([leg("23:30", "00:20"), leg("23:50", "23:55")])).toEqual([0, 1]);
+  });
+
+  test("flight IDs are UUIDs, also without crypto.randomUUID", () => {
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+    expect(newFlightId()).toMatch(uuid);
+    const original = crypto.randomUUID;
+    try {
+      // As on a page served over plain http
+      (crypto as { randomUUID?: unknown }).randomUUID = undefined;
+      const id = newFlightId();
+      expect(id).toMatch(uuid);
+      expect(newFlightId()).not.toBe(id);
+    } finally {
+      crypto.randomUUID = original;
+    }
   });
 
   test("sheet names in the M.Meikäläinen style", () => {
@@ -94,10 +141,12 @@ describe("writing to the sheet", () => {
       ID: "'new",
       "Lähde": "'web",
     });
-    // Formulas and the billing status are left alone
+    // Formulas are left alone
     expect(byHeader).not.toHaveProperty("Ilmassa oloaika");
     expect(byHeader).not.toHaveProperty("Kokonais ilmassaoloaika");
-    expect(byHeader).not.toHaveProperty("Tila");
+    // Tila starts empty (Kirjattu), also when it was filled down into the
+    // formula rows below the last flight
+    expect(byHeader["Tila"]).toBe("");
     expect(cells.every((c) => c.row === 7)).toBe(true);
   });
 

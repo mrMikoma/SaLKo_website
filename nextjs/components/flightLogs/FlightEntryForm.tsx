@@ -4,7 +4,14 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { DateTime } from "luxon";
 import { logFlights, undoFlight } from "@/utilities/flightLogs";
-import { minutesBetween, normalizeClock } from "@/utilities/flightFormInput";
+import {
+  crossesMidnight,
+  legTimeError,
+  minutesBetween,
+  newFlightId,
+  normalizeClock,
+  overlappingLegs,
+} from "@/utilities/flightFormInput";
 import { formatMinutes } from "@/utilities/flightFormat";
 import type { FlightFormOptions } from "@/utilities/flightLogData";
 
@@ -17,6 +24,9 @@ interface FlightEntryFormProps {
 
 interface Leg {
   key: number;
+  // The flight's ID in the sheet, kept until it is saved: saving again after
+  // a lost connection then doesn't add it twice
+  id: string;
   departure: string;
   arrival: string;
   takeoff: string;
@@ -45,6 +55,9 @@ const chipClassName = (selected: boolean) =>
       : "bg-white border-gray-300 text-gray-800 hover:border-sblue"
   }`;
 
+const CONNECTION_LOST =
+  "Tallennus ei mennyt perille: yhteys katkesi tai sivu on vanhentunut. Tallenna uudelleen, sama lento ei tallennu kahdesti. Jos virhe toistuu, tarkista Omat lennot ja lataa sivu uudelleen.";
+
 const nowInFinland = () => DateTime.now().setZone("Europe/Helsinki").toFormat("HH:mm");
 
 /** A decimal typed with a comma or a dot; null when empty, NaN when not a number */
@@ -57,6 +70,7 @@ const FlightEntryForm = ({ options, today, yesterday }: FlightEntryFormProps) =>
   // each new one is one more than the largest in the list
   const newLeg = (previous: Leg | undefined, key: number): Leg => ({
     key,
+    id: newFlightId(),
     departure: previous?.arrival ?? HOME,
     arrival: HOME,
     takeoff: "",
@@ -97,7 +111,14 @@ const FlightEntryForm = ({ options, today, yesterday }: FlightEntryFormProps) =>
 
   const rate = options.aircraft.find((a) => a.registration === registration)?.minuteRate ?? null;
   const billedCodes = new Set(options.purposes.filter((p) => p.billed).map((p) => p.code));
-  const legMinutes = legs.map((leg) => minutesBetween(leg.takeoff, leg.landing));
+  const timeProblems = legs.map((leg) =>
+    normalizeClock(leg.takeoff) && normalizeClock(leg.landing) ? legTimeError(leg.takeoff, leg.landing) : null
+  );
+  const legMinutes = legs.map((leg, i) =>
+    timeProblems[i] ? null : minutesBetween(leg.takeoff, leg.landing)
+  );
+  const isTraining = (code: string) => options.purposes.find((p) => p.code === code)?.isTraining ?? false;
+  const firstTraining = options.purposes.find((p) => p.isTraining)?.code;
   const totalMinutes = legMinutes.reduce<number>((sum, m) => sum + (m ?? 0), 0);
   const billedMinutes = legs.reduce(
     (sum, leg, i) => sum + (billedCodes.has(leg.purposeCode) ? legMinutes[i] ?? 0 : 0),
@@ -106,24 +127,35 @@ const FlightEntryForm = ({ options, today, yesterday }: FlightEntryFormProps) =>
 
   const submit = () => {
     setError(null);
-    for (const leg of legs) {
-      if (!normalizeClock(leg.takeoff) || !normalizeClock(leg.landing)) {
-        setError("Anna jokaisen lennon lentoonlähtö- ja laskuaika, esim. 14.05");
+    for (const [i, leg] of legs.entries()) {
+      const legName = legs.length > 1 ? `Lento ${i + 1}: ` : "";
+      const problem = legTimeError(leg.takeoff, leg.landing);
+      if (problem) {
+        setError(`${legName}${problem}`);
         return;
       }
       if ([leg.fuel, leg.oil, leg.meter].some((v) => Number.isNaN(decimal(v)))) {
-        setError("Tarkista tankkaus-, öljy- ja tuntimittarikentät: vain numeroita");
+        setError(`${legName}Tarkista tankkaus-, öljy- ja tuntimittarikentät: vain numeroita`);
         return;
       }
     }
+    const overlap = overlappingLegs(legs);
+    if (overlap) {
+      setError(`Lennot ${overlap[0] + 1} ja ${overlap[1] + 1} ovat ajallisesti päällekkäin`);
+      return;
+    }
 
     startTransition(async () => {
+      // A dropped connection, or a form opened before the site was updated,
+      // throws here. What was typed stays, with the same IDs, so saving again
+      // is safe: flights that reached the sheet aren't added twice.
       const result = await logFlights({
         registration,
         flightDate,
         role,
         otherPilot: otherPilot.trim() || null,
         legs: legs.map((leg) => ({
+          id: leg.id,
           departure: leg.departure,
           arrival: leg.arrival,
           takeoff: leg.takeoff,
@@ -136,7 +168,7 @@ const FlightEntryForm = ({ options, today, yesterday }: FlightEntryFormProps) =>
           hourMeter: decimal(leg.meter),
           remarks: leg.remarks.trim() || null,
         })),
-      });
+      }).catch(() => ({ status: "error" as const, error: CONNECTION_LOST }));
       if (result.status === "error") {
         setError(result.error);
         return;
@@ -156,7 +188,10 @@ const FlightEntryForm = ({ options, today, yesterday }: FlightEntryFormProps) =>
     const last = saved.legs[saved.legs.length - 1];
     setError(null);
     startTransition(async () => {
-      const result = await undoFlight(last.id);
+      const result = await undoFlight(last.id).catch(() => ({
+        status: "error" as const,
+        error: "Kumoaminen ei mennyt perille. Tarkista yhteys ja yritä uudelleen.",
+      }));
       if (result.status === "error") {
         setError(result.error);
         return;
@@ -312,7 +347,17 @@ const FlightEntryForm = ({ options, today, yesterday }: FlightEntryFormProps) =>
             <button
               type="button"
               aria-pressed={role === "student"}
-              onClick={() => setRole("student")}
+              onClick={() => {
+                setRole("student");
+                // A student's flight is a training flight: the student pays for it
+                if (firstTraining) {
+                  setLegs((current) =>
+                    current.map((leg) =>
+                      isTraining(leg.purposeCode) ? leg : { ...leg, purposeCode: firstTraining }
+                    )
+                  );
+                }
+              }}
               className={chipClassName(role === "student")}
             >
               Oppilaana
@@ -428,8 +473,15 @@ const FlightEntryForm = ({ options, today, yesterday }: FlightEntryFormProps) =>
                   </div>
                 ))}
               </div>
-              <p className="text-sm text-gray-600 tabular-nums" aria-live="polite">
-                {minutes !== null ? `Ilmassa ${formatMinutes(minutes)}` : "Ilmassa –"}
+              <p
+                className={`text-sm tabular-nums ${timeProblems[index] ? "text-red-700" : "text-gray-600"}`}
+                aria-live="polite"
+              >
+                {timeProblems[index]
+                  ? timeProblems[index]
+                  : minutes !== null
+                    ? `Ilmassa ${formatMinutes(minutes)}${crossesMidnight(leg.takeoff, leg.landing) ? " · yli puolenyön" : ""}`
+                    : "Ilmassa –"}
               </p>
 
               <div className="flex flex-wrap gap-6">

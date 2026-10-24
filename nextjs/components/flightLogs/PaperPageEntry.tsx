@@ -159,7 +159,10 @@ const PaperPageEntry = ({
         registration,
         logPage: logPage || null,
         grid,
-      });
+      }).catch(() => ({
+        status: "error" as const,
+        error: "Tarkistus ei mennyt perille: yhteys katkesi tai sivu on vanhentunut. Yritä uudelleen.",
+      }));
       if (result.status === "error") {
         setError(result.error);
         return;
@@ -191,9 +194,19 @@ const PaperPageEntry = ({
             inputHash: match?.inputHash ?? null,
           };
         }),
-      });
+      }).catch(() => ({
+        status: "error" as const,
+        error: "Tallennus ei mennyt perille: yhteys katkesi tai sivu on vanhentunut.",
+      }));
       if (result.status === "error") {
-        setError(result.error);
+        // Part of the page may have reached the sheet. Checking the page again
+        // shows those lines as already there, so saving can't add them twice.
+        setError(
+          result.error.includes("Tarkista sivu uudelleen")
+            ? result.error
+            : `${result.error} Tarkista sivu uudelleen ennen kuin tallennat.`,
+        );
+        setPreview(null);
         return;
       }
       const { added, confirmed, corrected } = result.result;

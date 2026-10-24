@@ -239,7 +239,8 @@ export default async function FlightsAdminPage({ searchParams }: PageProps) {
           <p className="mx-6 mt-4 rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-900">
             Näytetään {UNCHECKED_LIMIT} vanhinta {uncheckedCount} lennosta. Jos tässä
             näkyy vanhoja, jo laskutettuja lentoja, merkitse niiden Tila taulukossa
-            Laskutetuksi (täyttö alaspäin), niin lista lyhenee.
+            Laskutetuksi (täyttö alaspäin vain riveille, joilla on päivämäärä), niin
+            lista lyhenee.
           </p>
         )}
         <FlightTable
