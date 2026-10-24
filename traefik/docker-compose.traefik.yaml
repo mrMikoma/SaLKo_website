@@ -1,6 +1,6 @@
 services:
   traefik:
-    image: traefik:v3.7.14
+    image: traefik:v3.7.15
     # Specifies the image to use for Traefik, pinned to an exact patch release.
     # v3.6.1 or newer is required for the Docker API 1.44 compatibility fix.
 
