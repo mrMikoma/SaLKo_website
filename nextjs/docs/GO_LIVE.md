@@ -26,6 +26,7 @@ Stage A doesn't depend on B or C and carries security fixes, so it shouldn't wai
   - the Historiaa and Hallit pages;
   - the stage B review fixes (#94–#98) are in too, behind their switches: on kehitys, log a flight, check one, and look at `/admin/tilastot`.
 - [ ] CI is green on #47.
+- [ ] **The flight log, billing and email stay off:** Settings → Environments → `production` → Variables has no `FEATURE_FLIGHT_LOG`, `FEATURE_BILLING` or `MAIL_MODE`, and there is no repository variable of those names either. Their code ships in this release, switched off; its tables are created empty by the migrations.
 - [ ] **SSH:** the release turns off password logins to the server (`PasswordAuthentication no`) and TCP and agent forwarding (`infra/ansible/roles/ssh_hardening`).
   - **Only these keys work afterwards.** Ansible rewrites `salko`'s `authorized_keys` on every run, from the `VPS_PUBLIC_KEY` secret and the keys on GitHub account mrMikoma (https://github.com/mrMikoma.keys). A key added to the server by hand disappears in the same run that turns off passwords.
   - So add your key to that GitHub account, or to `infra/ansible/roles/base` through a PR, first.
@@ -90,6 +91,7 @@ Stage A doesn't depend on B or C and carries security fixes, so it shouldn't wai
 ### Check
 
 - [ ] Historiaa and Hallit are greyed out in the Kerho menu, and `/kerho/historiaa` gives the "page doesn't exist yet" page, until the members' review.
+- [ ] The flight log and billing are hidden: logged in as an admin, the Jäsenalue menu has no Lentopäiväkirja or Laskut, the admin nav has no Lennot, Laskutus, Laskut or Tilastot, and `/jasenalue/lentopaivakirja`, `/admin/lennot`, `/admin/tilastot`, `/admin/laskutus` and `/jasenalue/laskut` give the "page doesn't exist" page.
 - [ ] savonlinnanlentokerho.fi opens, and the front page shows the latest bulletins. Existing bulletins are published with their original dates.
 - [ ] Logging in works with Google and with a password. Admins reach `/admin`, and roles are as before.
 - [ ] Booking calendar:
