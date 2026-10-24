@@ -4,7 +4,7 @@ How everything waiting in `dev` reaches savonlinnanlentokerho.fi, in three stage
 
 | Stage | What goes live | Switch |
 |---|---|---|
-| **A. Release** | Next.js and Bun security updates, the booking permission fix and new calendar, admin user tools, bulletin drafts, server maintenance and SSH hardening, the SPF and DMARC records | merge `dev` → `main` (#47), migrate, deploy |
+| **A. Release** | Next.js and Bun security updates, the booking permission fix and new calendar, admin user tools, bulletin drafts, server maintenance and SSH hardening, the SPF and DMARC records; the code of B and C too, switched off | merge `dev` → `main` (#47), migrate, deploy |
 | **B. Flight log** | the club's real sheet, members logging flights, the treasurer checking them, statistics | production variable `FEATURE_FLIGHT_LOG=true`, redeploy |
 | **C. Billing and email** | prices, billing periods, invoices on the site and by email | production variables `FEATURE_BILLING=true` and `MAIL_MODE=send`, redeploy |
 
@@ -23,7 +23,8 @@ Stage A doesn't depend on B or C and carries security fixes, so it shouldn't wai
   - bookings as a guest and as a member, including a recurring one;
   - a bulletin from draft to published;
   - deactivating a user and changing roles;
-  - the Historiaa and Hallit pages.
+  - the Historiaa and Hallit pages;
+  - the stage B review fixes (#94–#98) are in too, behind their switches: on kehitys, log a flight, check one, and look at `/admin/tilastot`.
 - [ ] CI is green on #47.
 - [ ] **SSH:** the release turns off password logins to the server (`PasswordAuthentication no`) and TCP and agent forwarding (`infra/ansible/roles/ssh_hardening`).
   - **Only these keys work afterwards.** Ansible rewrites `salko`'s `authorized_keys` on every run, from the `VPS_PUBLIC_KEY` secret and the keys on GitHub account mrMikoma (https://github.com/mrMikoma.keys). A key added to the server by hand disappears in the same run that turns off passwords.
@@ -68,7 +69,7 @@ Stage A doesn't depend on B or C and carries security fixes, so it shouldn't wai
    The website's code doesn't change yet, but the Docker restart briefly takes it down with everything else.
 2. **Build the prod image:** Actions → **Build and Publish Production** → branch `main`. Note the version it prints (`v0.0.N`).
 3. **Migrate the database**, right before the deploy:
-   1. Actions → **Database Migrations** → branch `main`, environment `prod`, *Only list pending migrations* ticked. **Approve**: the dry run needs approval too. It should list 001–015.
+   1. Actions → **Database Migrations** → branch `main`, environment `prod`, *Only list pending migrations* ticked. **Approve**: the dry run needs approval too. It should list 001–016.
    2. Run it again without the tick. **Approve**.
 
    It first saves a dump to `/home/salko/backups/migrations/salko-postgres-prod-<time>.dump`.
@@ -80,6 +81,7 @@ Stage A doesn't depend on B or C and carries security fixes, so it shouldn't wai
 
    Members' sessions come back after the deploy. Run step 4 right after this.
 4. **Deploy:** Actions → **Deploy production from main branch** (`deploy-app-prod`) → branch `main`, the version from step 2. **Approve**.
+   - This deploy also recreates the Postgres container, because it no longer gets the app's secrets in its environment. The site is down for the half a minute Postgres takes to start; the data stays.
 5. **Cronjobs:** Actions → **Deploy Background Cronjobs** → branch `main`. This applies the METAR job fix (the dev and prod schedulers no longer run each other's jobs). **Approve**.
 6. **Traefik:** Actions → **Deploy Traefik** from `main`. This moves it from 3.6.1 to 3.7.14.
    - It pulls the new image first, then restarts. Every site is down for the restart, about half a minute.
@@ -220,4 +222,4 @@ To stop sending, clear `MAIL_MODE` and redeploy. Messages are then stored but no
 
 The same as stage A, steps 1–4: merge `dev` → `main`, build, migrate if `postgres/migrations` has new files (dry run first), and deploy.
 
-When a release changes the Postgres service in `docker-compose.prod.yaml`, the deploy recreates the database container: the site is down for the half a minute Postgres takes to start, and the data stays. The release with the stage B review fixes does this once, as the database no longer gets the app's secrets in its environment.
+When a release changes the Postgres service in `docker-compose.prod.yaml`, the deploy recreates the database container: the site is down for the half a minute Postgres takes to start, and the data stays. Stage A does this once (step 4).
