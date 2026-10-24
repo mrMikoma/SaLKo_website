@@ -129,7 +129,13 @@ Stage A doesn't depend on B or C and carries security fixes, so it shouldn't wai
 - [ ] **The real sheet:**
   - add the website's four columns (ID, Lähde, Tila, Laskutusjakso) at the right edge of the `OH-CON Matkapäiväkirja` tab, whose name must stay exactly that;
   - share the sheet with the service account as an editor;
-  - check that File → Settings says Finland and Helsinki.
+  - check that File → Settings says Finland and Helsinki;
+  - before the first sync, name a version (File → Version history → Name current version): the first sync writes an ID into every flight row, about 500 of them.
+- [ ] **Tell everyone who edits the sheet:**
+  - type the date first; a row without a readable date isn't read as a flight;
+  - never sort or move the flight columns without ID, Lähde, Tila and Laskutusjakso. The sync then refuses the tab until the version from before is restored;
+  - when copying a whole row, clear its ID, Lähde, Tila and Laskutusjakso, or check the "kopio" issue the sync then shows;
+  - correct flights in place rather than inserting or deleting rows in the middle: a row inserted just as a member saves stops that save with an error naming the row.
 - [ ] **Hand-billed flights:** fill Tila as **Laskutettu**, or Maksettu, for every flight already billed the old way. Otherwise they show as unchecked and later as unbilled.
   - Fill only rows that have a date. Then check that Tila and Laskutusjakso are empty on every row below the last flight: a flight typed into such a row would take that Tila, never show as unchecked and never be billed.
 - [ ] **Try a copy first,** on your own machine, so the real flights never reach kehitys:
@@ -147,7 +153,7 @@ Stage A doesn't depend on B or C and carries security fixes, so it shouldn't wai
 
 ### Check
 
-- [ ] On `/admin/lennot`, the sync succeeds, and the flight count and this year's hours match the sheet.
+- [ ] On `/admin/lennot`, the sync succeeds, and its "N lentoa" matches `=COUNT(A3:A)` in the sheet, the number of rows with a date. This year's hours are on `/admin/tilastot`: compare them with the Tilastot tab's row for this year. Go through the issues the sync lists, especially rows whose date can't be read.
 - [ ] Pilot names are matched to members ("Yhdistä nimet").
 - [ ] The Tarkistamatta list holds only flights not yet billed.
 - [ ] A member sees Lentopäiväkirja in the menu, logs a flight, and the flight appears in the sheet. If it was a test, undo it right away with "Kumoa viimeisin" on the confirmation: undo works only there, and only while it is the tab's last flight. Later the biller clears it in the sheet.

@@ -1,4 +1,5 @@
 import { DateTime } from "luxon";
+import { MAX_LEG_MINUTES } from "@/utilities/flightFormInput";
 
 /**
  * Parses an aircraft's flight log tab as the Google Sheets API returns it
@@ -110,7 +111,21 @@ export interface ParsedFlight {
   source: string | null;
   status: string | null;
   billingPeriod: string | null;
+  // Cells that don't hold what their column should, such as an ID that isn't
+  // a UUID or a time typed as "14,05": read as empty, and reported
+  badCells: { column: SheetColumn; value: SheetValue }[];
   raw: SheetValue[];
+}
+
+// A row after the first data row that has something in it but no readable
+// date, so it isn't read as a flight
+export interface UndatedRow {
+  row: number;
+  id: string | null;
+  date: SheetValue; // what the date cell holds, if anything
+  // Typed into like a flight (pilot, times, ...); otherwise only the
+  // website's columns are filled, e.g. Tila filled down past the last flight
+  typed: boolean;
 }
 
 export interface ParsedSheet {
@@ -120,6 +135,7 @@ export interface ParsedSheet {
   // First row at or after firstDataRow whose date cell is empty: where the
   // next flight is written (the formula columns are filled further down)
   firstEmptyRow: number;
+  undatedRows: UndatedRow[];
   errors: string[];
 }
 
@@ -149,7 +165,10 @@ const numberOrNull = (value: SheetValue | undefined): number | null => {
 // Spreadsheet serial dates count days from 30.12.1899
 const SERIAL_EPOCH = DateTime.fromISO("1899-12-30", { zone: "UTC" });
 
-/** A date cell: a serial number, or text like 1.4.2026 or 2026-04-01 */
+/**
+ * A date cell: a serial number, or text like 1.4.2026 or 2026-04-01. Other
+ * text ("14.6.25", "2025", "siirto") is not a date.
+ */
 export function parseSheetDate(value: SheetValue | undefined): string | null {
   if (isBlank(value)) return null;
   if (typeof value === "number") {
@@ -158,7 +177,7 @@ export function parseSheetDate(value: SheetValue | undefined): string | null {
   const raw = String(value).trim();
   const finnish = DateTime.fromFormat(raw, "d.M.yyyy");
   if (finnish.isValid) return finnish.toISODate();
-  const iso = DateTime.fromISO(raw);
+  const iso = DateTime.fromFormat(raw, "yyyy-MM-dd");
   return iso.isValid ? iso.toISODate() : null;
 }
 
@@ -166,7 +185,10 @@ export function parseSheetDate(value: SheetValue | undefined): string | null {
 export function parseTimeOfDay(value: SheetValue | undefined): number | null {
   if (isBlank(value)) return null;
   if (typeof value === "number") {
-    // The fraction of the day; a date part, if any, is ignored
+    // "14,05" typed into a Finnish sheet becomes the number 14.05, which is
+    // no time of day. A date and time (a serial number in the tens of
+    // thousands) is fine: its date part is ignored.
+    if (value < 0 || (value >= 1 && value < 10_000)) return null;
     const fraction = value - Math.floor(value);
     return Math.round(fraction * 1440) % 1440;
   }
@@ -212,6 +234,18 @@ export function flightTimes(
   };
 }
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// What a number column can sensibly hold; anything else, such as a date that
+// Sheets made of "1.5", is read as empty and reported
+const NUMBER_RANGES: Partial<Record<SheetColumn, [number, number]>> = {
+  personsOnBoard: [1, 20],
+  landings: [0, 999],
+  fuel: [0, 2000],
+  oil: [0, 100],
+  hourMeter: [0, 99_999.9],
+};
+
 /** "M. Meikäläinen", "m.meikäläinen" and "M.Meikäläinen" are the same pilot */
 export const nameKey = (name: string): string =>
   name.toLowerCase().replace(/[\s.]+/g, "");
@@ -252,6 +286,7 @@ export function parseFlightSheet(
       columns,
       flights: [],
       firstEmptyRow: firstDataRow,
+      undatedRows: [],
       errors: [
         `Taulukosta puuttuu sarakkeita: ${missing
           .map((key) => SHEET_COLUMNS[key])
@@ -264,6 +299,7 @@ export function parseFlightSheet(
     columns[key] === undefined ? undefined : row[columns[key]!];
 
   const flights: ParsedFlight[] = [];
+  const undatedRows: UndatedRow[] = [];
   let firstEmptyRow: number | null = null;
 
   for (let index = firstDataRow - 1; index < values.length; index++) {
@@ -271,17 +307,45 @@ export function parseFlightSheet(
     const rowNumber = index + 1;
     const flightDate = parseSheetDate(cell(row, "date"));
 
-    // Rows without a date only hold the pre-filled formulas
+    // Rows without a date only hold the pre-filled formulas, unless someone
+    // has typed into them
     if (!flightDate) {
       if (firstEmptyRow === null) firstEmptyRow = rowNumber;
+      const filled = (keys: SheetColumn[]) => keys.some((key) => !isBlank(cell(row, key)));
+      const typed = filled(INPUT_COLUMNS);
+      if (typed || filled(WEBSITE_COLUMNS)) {
+        const id = text(cell(row, "id"));
+        undatedRows.push({
+          row: rowNumber,
+          id: id && UUID.test(id) ? id : null,
+          date: cell(row, "date") ?? null,
+          typed,
+        });
+      }
       continue;
     }
 
-    const { takeoffAt, landingAt } = flightTimes(
-      flightDate,
-      parseTimeOfDay(cell(row, "takeoff")),
-      parseTimeOfDay(cell(row, "landing"))
-    );
+    const badCells: ParsedFlight["badCells"] = [];
+    const timeCell = (key: SheetColumn) => {
+      const value = cell(row, key);
+      const minutes = parseTimeOfDay(value);
+      if (minutes === null && !isBlank(value)) badCells.push({ column: key, value: value! });
+      return minutes;
+    };
+    const numberCell = (key: SheetColumn) => {
+      const value = cell(row, key);
+      const number = numberOrNull(value);
+      const [min, max] = NUMBER_RANGES[key] ?? [-Infinity, Infinity];
+      if (number === null || number < min || number > max) {
+        if (!isBlank(value)) badCells.push({ column: key, value: value! });
+        return null;
+      }
+      return number;
+    };
+    const idText = text(cell(row, "id"));
+    if (idText && !UUID.test(idText)) badCells.push({ column: "id", value: idText });
+
+    const { takeoffAt, landingAt } = flightTimes(flightDate, timeCell("takeoff"), timeCell("landing"));
 
     // The sheet's own value unless it is empty, 0 (the formula's result for
     // equal times) or negative (past midnight): then the times give it
@@ -296,12 +360,13 @@ export function parseFlightSheet(
     );
 
     flights.push({
-      id: text(cell(row, "id")),
+      // Anything but a UUID is replaced by the sync, like a missing ID
+      id: idText && UUID.test(idText) ? idText : null,
       row: rowNumber,
       flightDate,
       picName: text(cell(row, "pic")) ?? "",
       secondName: text(cell(row, "second")),
-      personsOnBoard: numberOrNull(cell(row, "personsOnBoard")),
+      personsOnBoard: numberCell("personsOnBoard"),
       departure: text(cell(row, "departure"))?.toUpperCase() ?? null,
       arrival: text(cell(row, "arrival"))?.toUpperCase() ?? null,
       takeoffAt,
@@ -309,12 +374,12 @@ export function parseFlightSheet(
       airborneMinutes,
       sheetAirborneMinutes,
       airframeMinutes: parseDuration(cell(row, "airframeTotal")),
-      landings: numberOrNull(cell(row, "landings")),
+      landings: numberCell("landings"),
       totalLandings: numberOrNull(cell(row, "landingsTotal")),
       purposeCode: text(cell(row, "purpose"))?.toUpperCase() ?? null,
-      fuelLitres: numberOrNull(cell(row, "fuel")),
-      oilQuarts: numberOrNull(cell(row, "oil")),
-      hourMeter: numberOrNull(cell(row, "hourMeter")),
+      fuelLitres: numberCell("fuel"),
+      oilQuarts: numberCell("oil"),
+      hourMeter: numberCell("hourMeter"),
       remarks: text(cell(row, "remarks")),
       logPage: text(cell(row, "logPage")),
       bookTotal: text(cell(row, "bookTotal")),
@@ -323,6 +388,7 @@ export function parseFlightSheet(
       source: text(cell(row, "source")),
       status: text(cell(row, "status")),
       billingPeriod: text(cell(row, "billingPeriod")),
+      badCells,
       raw,
     });
   }
@@ -331,6 +397,7 @@ export function parseFlightSheet(
     columns,
     flights,
     firstEmptyRow: firstEmptyRow ?? Math.max(values.length + 1, firstDataRow),
+    undatedRows,
     errors: [],
   };
 }
@@ -348,7 +415,13 @@ export type FlightIssueKind =
   | "duplicate_id"
   | "hour_meter"
   | "unknown_status"
-  | "midnight";
+  | "midnight"
+  | "bad_value"
+  | "airborne_mismatch"
+  | "odd_date"
+  | "undated_row"
+  | "stray_status"
+  | "copied_row";
 
 export interface FlightIssue {
   row: number;
@@ -363,7 +436,19 @@ export interface FlightCheckContext {
   purposes: Map<string, { isTraining: boolean }>;
   // nameKey() of every pilot name that is matched to a member
   knownPilots: Set<string>;
+  // Today in Finnish time (YYYY-MM-DD), for dates in the future
+  today?: string;
 }
+
+/** 75 → "1:15" */
+const clockText = (minutes: number) =>
+  `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, "0")}`;
+
+const BAD_CELL_HINTS: Partial<Record<SheetColumn, string>> = {
+  id: "synkronointi antaa rivillä uuden ID:n",
+  takeoff: "kirjoita kellonaika muodossa 14:05 (14,05 on taulukolle desimaaliluku)",
+  landing: "kirjoita kellonaika muodossa 14:05 (14,05 on taulukolle desimaaliluku)",
+};
 
 /**
  * Things the biller should look at: missing or unknown values, names that
@@ -382,8 +467,35 @@ export function findFlightIssues(
   const seenSlots = new Map<string, number>();
   const unknownPilotsReported = new Set<string>();
   let lastMeter: { value: number; row: number } | null = null;
+  let previous: ParsedFlight | null = null;
 
   for (const flight of flights) {
+    for (const { column, value } of flight.badCells) {
+      add(
+        flight,
+        "bad_value",
+        `${SHEET_COLUMNS[column]} "${value}" ei kelpaa: ${BAD_CELL_HINTS[column] ?? "tarkista arvo"}`
+      );
+    }
+
+    // A year typed wrong hides the flight from its year, and in the stats
+    // it replaces that year's typed-in totals
+    if (context.today && flight.flightDate > context.today) {
+      add(flight, "odd_date", `Päivämäärä ${flight.flightDate} on tulevaisuudessa`);
+    } else if (flight.flightDate < "2000-01-01") {
+      add(flight, "odd_date", `Tarkista päivämäärä ${flight.flightDate}`);
+    } else if (
+      previous &&
+      DateTime.fromISO(flight.flightDate) < DateTime.fromISO(previous.flightDate).minus({ days: 365 })
+    ) {
+      add(
+        flight,
+        "odd_date",
+        `Päivämäärä ${flight.flightDate} on yli vuoden aiempi kuin rivillä ${previous.row}: tarkista vuosi`
+      );
+    }
+    previous = flight;
+
     const missing = [
       !flight.picName && "päällikkö",
       !flight.takeoffAt && "lentoonlähtöaika",
@@ -414,9 +526,26 @@ export function findFlightIssues(
       flight.takeoffAt &&
       flight.landingAt &&
       flight.airborneMinutes !== null &&
-      (flight.airborneMinutes <= 0 || flight.airborneMinutes > 12 * 60)
+      (flight.airborneMinutes <= 0 || flight.airborneMinutes > MAX_LEG_MINUTES)
     ) {
       add(flight, "time_order", "Tarkista lentoonlähtö- ja laskuaika");
+    }
+
+    // Typed in by hand (past midnight, say) and then a time changed
+    if (
+      flight.takeoffAt &&
+      flight.landingAt &&
+      flight.sheetAirborneMinutes !== null &&
+      flight.sheetAirborneMinutes > 0
+    ) {
+      const fromTimes = Math.round((Date.parse(flight.landingAt) - Date.parse(flight.takeoffAt)) / 60_000);
+      if (Math.abs(fromTimes - flight.sheetAirborneMinutes) > 2) {
+        add(
+          flight,
+          "airborne_mismatch",
+          `Ilmassa oloaika ${clockText(flight.sheetAirborneMinutes)} ei vastaa lentoonlähtö- ja laskuaikaa (${clockText(fromTimes)})`
+        );
+      }
     }
 
     // The formula's negative time throws off the sheet's running totals,
@@ -430,9 +559,7 @@ export function findFlightIssues(
       add(
         flight,
         "midnight",
-        `Lento yli puolenyön: kirjoita Ilmassa oloajaksi ${Math.floor(flight.airborneMinutes / 60)}:${String(
-          flight.airborneMinutes % 60
-        ).padStart(2, "0")} käsin, niin taulukon kokonaisajat pysyvät oikein`
+        `Lento yli puolenyön: kirjoita Ilmassa oloajaksi ${clockText(flight.airborneMinutes)} käsin, niin taulukon kokonaisajat pysyvät oikein`
       );
     }
 
@@ -477,6 +604,54 @@ export function findFlightIssues(
   return issues;
 }
 
+/**
+ * Rows that aren't read as flights although something is in them. A typed
+ * row without a readable date is one issue each. Rows that only have the
+ * website's columns, like a Tila filled down past the last flight, are
+ * grouped: a flight typed into one of them later would take that Tila.
+ */
+export function findUndatedRowIssues(rows: UndatedRow[]): FlightIssue[] {
+  const issues: FlightIssue[] = [];
+  let stray: { first: number; last: number } | null = null;
+  const flushStray = () => {
+    if (!stray) return;
+    issues.push({
+      row: stray.first,
+      flightId: null,
+      kind: "stray_status",
+      message: `${
+        stray.first === stray.last ? `Rivillä ${stray.first}` : `Riveillä ${stray.first}–${stray.last}`
+      } on Tila, Lähde tai Laskutusjakso ilman lentoa. Tyhjennä ne, ettei niihin kirjoitettava lento saa niitä.`,
+    });
+    stray = null;
+  };
+
+  for (const row of rows) {
+    if (!row.typed) {
+      if (stray && row.row === stray.last + 1) stray.last = row.row;
+      else {
+        flushStray();
+        stray = { first: row.row, last: row.row };
+      }
+      continue;
+    }
+    flushStray();
+    const what = isBlank(row.date)
+      ? "Rivillä on lennon tietoja mutta ei päivämäärää"
+      : `Päivämäärää "${row.date}" ei voi lukea (esim. 14.6.2026)`;
+    issues.push({
+      row: row.row,
+      flightId: row.id,
+      kind: "undated_row",
+      message: `${what}, joten riviä ei lueta lennoksi.${
+        row.id ? " Lennon edellinen versio pidetään, kunnes päivämäärä on korjattu." : ""
+      }`,
+    });
+  }
+  flushStray();
+  return issues;
+}
+
 /*
  * Writing
  */
@@ -499,6 +674,9 @@ const INPUT_COLUMNS: SheetColumn[] = [
   "remarks",
   "id",
 ];
+
+// The website's own columns, apart from ID
+const WEBSITE_COLUMNS: SheetColumn[] = ["source", "status", "billingPeriod"];
 
 /**
  * Rows a new flight can go into: the rows after the last flight that are
