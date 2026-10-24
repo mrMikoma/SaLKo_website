@@ -98,11 +98,13 @@ const FLIGHT_JOINS = `
   LEFT JOIN flight_purposes p ON p.code = f.purpose_code
   LEFT JOIN aircraft_sheets a ON a.registration = f.registration`;
 
-// For the admin pages: who last changed Tila on the website, and when
+// Who last changed Tila on the website, when, why (the note), and to what:
+// shown only while the sheet still has that Tila (toFlight), not after a
+// hand edit or billing changed it
 const STATUS_CHANGE = `
   LEFT JOIN LATERAL (
     SELECT u.full_name AS status_changed_by, c.changed_at AS status_changed_at,
-           c.note AS status_note
+           c.note AS status_note, c.new_status AS status_changed_to
     FROM flight_status_changes c
     LEFT JOIN users u ON u.id = c.changed_by
     WHERE c.flight_id = f.id
@@ -111,10 +113,16 @@ const STATUS_CHANGE = `
   ) sc ON TRUE`;
 
 // Not yet compared with the paper book: Kirjattu, Korjattava or a Tila the
-// sync doesn't know
+// sync doesn't know. A flight in a closed period counts as billed whatever
+// its Tila says: someone may have edited it in the sheet since (the sync
+// reports that).
 const UNCHECKED = `
-  (f.status IS NULL
-   OR lower(trim(f.status)) NOT IN ('tarkistettu', 'laskutettu', 'ei laskuteta', 'maksettu'))`;
+  ((f.status IS NULL
+    OR lower(trim(f.status)) NOT IN ('tarkistettu', 'laskutettu', 'ei laskuteta', 'maksettu'))
+   AND NOT EXISTS (SELECT 1 FROM billing_lines b WHERE b.flight_id = f.id))`;
+
+const sameStatus = (a: unknown, b: unknown) =>
+  String(a ?? "").trim().toLowerCase() === String(b ?? "").trim().toLowerCase();
 
 function toFlight(
   row: Record<string, unknown>,
@@ -141,9 +149,13 @@ function toFlight(
     status: (row.status as string) ?? null,
     sheetUrl: rowUrl(row.sheet_gid as string | null, row.sheet_row as number),
     inputHash: (row.input_hash as string) ?? null,
-    statusChangedBy: (row.status_changed_by as string) ?? null,
-    statusChangedAt: toIso((row.status_changed_at as Date) ?? null),
-    statusNote: (row.status_note as string) ?? null,
+    ...(row.status_changed_at && sameStatus(row.status_changed_to, row.status)
+      ? {
+          statusChangedBy: (row.status_changed_by as string) ?? null,
+          statusChangedAt: toIso(row.status_changed_at as Date),
+          statusNote: (row.status_note as string) ?? null,
+        }
+      : { statusChangedBy: null, statusChangedAt: null, statusNote: null }),
   };
 }
 
@@ -237,13 +249,23 @@ export async function getUncheckedCount(registration: string): Promise<number> {
   return response.rows[0].count;
 }
 
+// Enough to work through; the rest show up as those are fixed
+export const ISSUE_LIMIT = 300;
+
+/**
+ * The sync's issues for an aircraft, newest rows first. Issues on flights
+ * that are billed already are left out: years of hand-billed history would
+ * otherwise bury the ones that still matter.
+ */
 export async function getFlightIssues(registration: string): Promise<FlightIssueRow[]> {
   const response = await connectionPool.query(
     `SELECT i.registration, i.sheet_row, i.flight_id, i.kind, i.message, f.flight_date
      FROM sheet_flight_issues i
      LEFT JOIN sheet_flights f ON f.id = i.flight_id
      WHERE i.registration = $1
-     ORDER BY i.sheet_row DESC`,
+       AND (f.status IS NULL OR lower(trim(f.status)) NOT IN ('laskutettu', 'ei laskuteta', 'maksettu'))
+     ORDER BY i.sheet_row DESC
+     LIMIT ${ISSUE_LIMIT}`,
     [registration]
   );
   return response.rows.map((row) => ({
@@ -264,8 +286,9 @@ export interface UnmatchedPilot {
 }
 
 /**
- * Names in the sheet that aren't matched to a member yet: every PIC, and the
- * second pilot of a training flight (the student pays for those)
+ * Names in the sheet that the biller hasn't decided on yet: every PIC, and
+ * the second pilot of a training flight (the student pays for those). A name
+ * matched to a member, or marked as no member, is decided.
  */
 export async function getUnmatchedPilots(): Promise<UnmatchedPilot[]> {
   const response = await connectionPool.query(
@@ -281,7 +304,7 @@ export async function getUnmatchedPilots(): Promise<UnmatchedPilot[]> {
      SELECT min(n.name) AS name, n.name_key, count(*)::int AS flights,
             max(n.flight_date) AS last_flight
      FROM names n
-     LEFT JOIN pilot_aliases a ON a.name_key = n.name_key AND a.user_id IS NOT NULL
+     LEFT JOIN pilot_aliases a ON a.name_key = n.name_key
      WHERE a.name_key IS NULL AND n.name_key <> ''
      GROUP BY n.name_key
      ORDER BY max(n.flight_date) DESC`
@@ -297,15 +320,16 @@ export async function getUnmatchedPilots(): Promise<UnmatchedPilot[]> {
 export interface MatchedPilot {
   name: string;
   nameKey: string;
-  userId: string;
-  userName: string;
+  // null: marked as no member, billed under the name at the non-member price
+  userId: string | null;
+  userName: string | null;
 }
 
 export async function getMatchedPilots(): Promise<MatchedPilot[]> {
   const response = await connectionPool.query(
     `SELECT a.name, a.name_key, a.user_id, u.full_name
-     FROM pilot_aliases a JOIN users u ON u.id = a.user_id
-     ORDER BY u.full_name, a.name`
+     FROM pilot_aliases a LEFT JOIN users u ON u.id = a.user_id
+     ORDER BY u.full_name NULLS LAST, a.name`
   );
   return response.rows.map((row) => ({
     name: row.name,
@@ -318,16 +342,21 @@ export async function getMatchedPilots(): Promise<MatchedPilot[]> {
 export interface MemberOption {
   id: string;
   name: string;
+  email: string;
 }
 
-// Accounts a pilot name can be matched to (not the system guest account)
+// Accounts a pilot name can be matched to: not the system guest account, a
+// deactivated or an anonymised one. With the email, as two accounts can
+// share a name.
 export async function getMemberOptions(): Promise<MemberOption[]> {
   const response = await connectionPool.query(
-    `SELECT id, full_name FROM users
+    `SELECT id, full_name, email FROM users
      WHERE NOT (roles = ARRAY['guest']::text[])
-     ORDER BY full_name`
+       AND deactivated_at IS NULL
+       AND email NOT LIKE 'poistettu-%@salko.invalid'
+     ORDER BY full_name, email`
   );
-  return response.rows.map((row) => ({ id: row.id, name: row.full_name }));
+  return response.rows.map((row) => ({ id: row.id, name: row.full_name, email: row.email }));
 }
 
 export interface MyFlight extends SheetFlight {
@@ -339,9 +368,9 @@ export interface MyFlight extends SheetFlight {
 export async function getMyFlights(userId: string): Promise<MyFlight[]> {
   const rowUrl = () => null;
   const response = await connectionPool.query(
-    `SELECT ${FLIGHT_COLUMNS},
+    `SELECT ${FLIGHT_COLUMNS}, sc.*,
             CASE WHEN f.pic_key = ANY(k.keys) THEN 'pic' ELSE 'second' END AS role
-     ${FLIGHT_JOINS}
+     ${FLIGHT_JOINS} ${STATUS_CHANGE}
      CROSS JOIN (
        SELECT array_agg(name_key) AS keys FROM pilot_aliases WHERE user_id = $1
      ) k

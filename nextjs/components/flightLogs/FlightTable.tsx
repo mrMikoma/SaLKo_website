@@ -24,16 +24,17 @@ interface FlightTableProps {
   fullDates?: boolean;
 }
 
+// Typed by hand, Tila may be in any case: "tarkistettu" is Tarkistettu
 const statusClass = (status: string | null) => {
-  switch (status) {
-    case "Korjattava":
+  switch (status?.trim().toLowerCase()) {
+    case "korjattava":
       return "bg-orange-100 text-orange-900";
-    case "Tarkistettu":
+    case "tarkistettu":
       return "bg-blue-100 text-blue-900";
-    case "Laskutettu":
-    case "Ei laskuteta":
+    case "laskutettu":
+    case "ei laskuteta":
       return "bg-purple-100 text-purple-900";
-    case "Maksettu":
+    case "maksettu":
       return "bg-green-100 text-green-900";
     default:
       return "bg-gray-100 text-gray-800";
@@ -58,6 +59,9 @@ const ACTIONS: { status: ReviewStatus; label: string; className: string }[] = [
   },
 ];
 
+// Asking first before this many rows go back to Kirjattu at once
+const CONFIRM_RESET_ROWS = 10;
+
 /**
  * An aircraft's flights as the sheet has them, with the issues the sync found
  * on each row. With `review`, the biller ticks the rows that match the paper
@@ -76,6 +80,8 @@ const FlightTable = ({
     null
   );
   const [isPending, startTransition] = useTransition();
+  // Korjattava asks why first; the pilot sees the reason with the flight
+  const [reason, setReason] = useState<string | null>(null);
 
   const issuesByRow = new Map<number, string[]>();
   for (const issue of issues) {
@@ -99,17 +105,37 @@ const FlightTable = ({
       return next;
     });
 
-  const apply = (status: ReviewStatus, label: string) => {
+  const apply = (status: ReviewStatus, label: string, note: string | null = null) => {
     if (!review || chosen.length === 0) return;
+    if (
+      status === "" &&
+      chosen.length > CONFIRM_RESET_ROWS &&
+      !window.confirm(`Palautetaanko ${chosen.length} lentoa kirjatuiksi?`)
+    ) {
+      return;
+    }
     setMessage(null);
     startTransition(async () => {
       const result = await setFlightStatus({
         registration: review.registration,
         status,
-        flights: chosen.map((flight) => ({ id: flight.id, inputHash: flight.inputHash })),
-      });
+        flights: chosen.map((flight) => ({
+          id: flight.id,
+          inputHash: flight.inputHash,
+          status: flight.status,
+        })),
+        note,
+      }).catch(() => ({
+        status: "error" as const,
+        error: "Tallennus ei mennyt perille: yhteys katkesi tai sivu on vanhentunut. Päivitä sivu.",
+      }));
+      setReason(null);
       if (result.status === "error") {
         setMessage({ kind: "error", text: result.error });
+        // The page now shows the rows as the sheet has them. Starting the
+        // selection over means the changed rows are looked at again rather
+        // than confirmed with the next click.
+        setSelected(new Set());
         return;
       }
       setSelected(new Set());
@@ -236,11 +262,9 @@ const FlightTable = ({
                       {statusLabel(flight.status)}
                     </span>
                     {flight.statusChangedAt && (
-                      <span
-                        className="block text-xs text-gray-600 mt-0.5"
-                        title={flight.statusNote ?? undefined}
-                      >
+                      <span className="block text-xs text-gray-600 mt-0.5">
                         {flight.statusChangedBy ?? "–"}, {formatDateTime(flight.statusChangedAt)}
+                        {flight.statusNote && <span className="block italic">{flight.statusNote}</span>}
                       </span>
                     )}
                     {rowIssues.length > 0 && (
@@ -268,7 +292,45 @@ const FlightTable = ({
         </table>
       </div>
 
-      {review && chosen.length > 0 && (
+      {review && chosen.length > 0 && reason !== null && (
+        <form
+          className="sticky bottom-0 flex flex-wrap items-end gap-3 border-t border-gray-200 bg-white/95 px-6 py-3 backdrop-blur"
+          onSubmit={(e) => {
+            e.preventDefault();
+            apply("Korjattava", "Korjattava", reason.trim() || null);
+          }}
+        >
+          <label className="flex-1 min-w-64 text-sm text-gray-700">
+            Mikä on korjattava ({chosen.length} {chosen.length === 1 ? "lento" : "lentoa"})? Lentäjä näkee
+            syyn lennon kohdalla.
+            <input
+              autoFocus
+              value={reason}
+              maxLength={300}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="esim. laskuaika eroaa paperista"
+              className="mt-1 block w-full min-h-11 rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-900"
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={isPending}
+            className="min-h-11 px-4 rounded-lg text-sm font-medium border border-orange-400 text-orange-900 bg-white hover:bg-orange-50 disabled:opacity-60"
+          >
+            Merkitse korjattavaksi
+          </button>
+          <button
+            type="button"
+            onClick={() => setReason(null)}
+            className="min-h-11 px-3 text-sm text-gray-700 hover:underline"
+          >
+            Peru
+          </button>
+          {isPending && <span className="text-sm text-gray-600">Tallennetaan taulukkoon…</span>}
+        </form>
+      )}
+
+      {review && chosen.length > 0 && reason === null && (
         <div className="sticky bottom-0 flex flex-wrap items-center gap-3 border-t border-gray-200 bg-white/95 px-6 py-3 backdrop-blur">
           <span className="text-sm font-medium text-gray-900 tabular-nums">
             {chosen.length} valittu
@@ -278,7 +340,11 @@ const FlightTable = ({
               key={action.status || "kirjattu"}
               type="button"
               disabled={isPending}
-              onClick={() => apply(action.status, action.status || "Kirjattu")}
+              onClick={() =>
+                action.status === "Korjattava"
+                  ? setReason("")
+                  : apply(action.status, action.status || "Kirjattu")
+              }
               className={`min-h-11 px-4 rounded-lg text-sm font-medium disabled:opacity-60 ${action.className}`}
             >
               {action.label}

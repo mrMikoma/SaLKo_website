@@ -78,8 +78,11 @@ test("marks flights checked, and refuses rows that changed meanwhile", async ({ 
   const refusal = page.getByRole("alert").filter({ hasText: "Rivejä on muutettu taulukossa" });
   await expect(refusal).toContainText("27, 28");
   await page.unrouteAll();
+  // The selection starts over, so changed rows get a second look
+  await expect(page.getByText("2 valittu")).toHaveCount(0);
 
   // With what the sheet really has, the change goes through
+  for (const row of rows) await page.getByLabel(row, { exact: true }).check();
   await page.getByRole("button", { name: "Merkitse tarkistetuksi" }).click();
   await expect(page.getByRole("status").filter({ hasText: "2 lentoa: tarkistettu." })).toBeVisible();
   for (const row of rows) await expect(page.getByLabel(row, { exact: true })).toHaveCount(0);
@@ -95,6 +98,19 @@ test("marks flights checked, and refuses rows that changed meanwhile", async ({ 
   await page.getByRole("button", { name: "Palauta kirjatuksi" }).click();
   await expect(page.getByRole("status").filter({ hasText: "2 lentoa: kirjattu." })).toBeVisible();
   await expect(checked).toContainText("Kirjattu");
+
+  // Korjattava asks what to fix; the reason shows with the flight
+  await page.getByLabel(rows[0], { exact: true }).check();
+  await page.getByRole("button", { name: "Korjattava", exact: true }).click();
+  await page.getByLabel(/Mikä on korjattava/).fill("laskuaika eroaa paperista");
+  await page.getByRole("button", { name: "Merkitse korjattavaksi" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "1 lento: korjattava." })).toBeVisible();
+  await expect(checked).toContainText("laskuaika eroaa paperista");
+  await page.getByLabel(rows[0], { exact: true }).check();
+  await page.getByRole("button", { name: "Palauta kirjatuksi" }).click();
+  await expect(checked).toContainText("Kirjattu");
+  // Once Tila changes again, the old reason no longer shows
+  await expect(checked).not.toContainText("laskuaika eroaa paperista");
 
   await page.goto("/admin/lennot?kuukausi=2026-01");
   await expect(page.getByLabel("Valitse rivi 3", { exact: true })).toBeDisabled();

@@ -131,6 +131,7 @@ Stage A doesn't depend on B or C and carries security fixes, so it shouldn't wai
   - share the sheet with the service account as an editor;
   - check that File → Settings says Finland and Helsinki;
   - before the first sync, name a version (File → Version history → Name current version): the first sync writes an ID into every flight row, about 500 of them.
+- [ ] **Protect the website's columns:** add a dropdown (Data → Data validation) to Tila with Korjattava, Tarkistettu, Laskutettu, Ei laskuteta and Maksettu, as the template has, and protect the columns ID, Lähde, Tila and Laskutusjakso (Data → Protect sheets and ranges) so only the treasurer, the admins and the service account can edit them. Otherwise anyone who can edit the sheet can type Laskutettu and keep a flight out of billing.
 - [ ] **Tell everyone who edits the sheet:**
   - type the date first; a row without a readable date isn't read as a flight;
   - never sort or move the flight columns without ID, Lähde, Tila and Laskutusjakso. The sync then refuses the tab until the version from before is restored;
@@ -154,7 +155,7 @@ Stage A doesn't depend on B or C and carries security fixes, so it shouldn't wai
 ### Check
 
 - [ ] On `/admin/lennot`, the sync succeeds, and its "N lentoa" matches `=COUNT(A3:A)` in the sheet, the number of rows with a date. This year's hours are on `/admin/tilastot`: compare them with the Tilastot tab's row for this year. Go through the issues the sync lists, especially rows whose date can't be read.
-- [ ] Pilot names are matched to members ("Yhdistä nimet").
+- [ ] Pilot names: on `/admin/lennot` under "Lentäjien nimet", match each name with **Yhdistä** to a member, or to **Ei jäsen** for guest pilots and former members. The list is done when it is empty, and at least every name that pays must be decided before billing.
 - [ ] The Tarkistamatta list holds only flights not yet billed.
 - [ ] A member sees Lentopäiväkirja in the menu, logs a flight, and the flight appears in the sheet. If it was a test, undo it right away with "Kumoa viimeisin" on the confirmation: undo works only there, and only while it is the tab's last flight. Later the biller clears it in the sheet.
 - [ ] `/admin/tilastot` agrees with the sheet's Tilastot tab.

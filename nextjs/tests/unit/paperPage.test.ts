@@ -99,4 +99,28 @@ describe("matching the page with the sheet", () => {
     );
     expect(matches.map((m) => m.kind)).toEqual(["same", "new", "new", "new"]);
   });
+
+  test("on a busy day each line takes its own pilot's flight, not just the nearest takeoff", () => {
+    // Intro flights 10 minutes apart; each pilot typed theirs a little off
+    const [first, second] = matchPaperRows(
+      [
+        paper({ picName: "M.Meikäläinen", takeoff: "10:00", landing: "10:20" }),
+        paper({ picName: "K.Keikäläinen", takeoff: "10:10", landing: "10:30" }),
+      ],
+      [
+        inSheet("keikalainen", { picName: "K.Keikäläinen", takeoff: "10:02", landing: "10:30" }),
+        inSheet("meikalainen", { picName: "M.Meikäläinen", takeoff: "10:12", landing: "10:20" }),
+      ]
+    );
+    expect(first).toMatchObject({ flight: { id: "meikalainen" } });
+    expect(second).toMatchObject({ flight: { id: "keikalainen" } });
+  });
+
+  test("another pilot's flight at that time is flagged, so it isn't corrected by default", () => {
+    const [match] = matchPaperRows(
+      [paper({ picName: "K.Keikäläinen" })],
+      [inSheet("a", { picName: "M.Meikäläinen" })]
+    );
+    expect(match).toMatchObject({ kind: "differs", picDiffers: true });
+  });
 });

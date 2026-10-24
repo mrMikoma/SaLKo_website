@@ -10,6 +10,7 @@ import {
   FlightIssue,
   findFlightIssues,
   findUndatedRowIssues,
+  isBilledStatus,
   nameKey,
   parseFlightSheet,
   ParsedFlight,
@@ -252,10 +253,40 @@ async function syncTab(
   const { newIds, issues: idIssues } = await assignIds(client, registration, parsed);
   await sheet.writeCells(sheet_name, newIds);
 
+  // A flight a closed period billed must still say so in the sheet. If Tila
+  // was edited by hand, the site still counts it as billed, but marking the
+  // payer paid would be refused until the sheet is fixed.
+  const billed = new Map(
+    (
+      await client.query(
+        `SELECT b.flight_id, bool_and(b.kind = 'unbilled') AS unbilled, min(p.name) AS period
+         FROM billing_lines b JOIN billing_periods p ON p.id = b.period_id
+         WHERE b.registration = $1 AND b.flight_id IS NOT NULL
+         GROUP BY b.flight_id`,
+        [registration]
+      )
+    ).rows.map((row) => [row.flight_id as string, row])
+  );
+  const billedIssues: FlightIssue[] = parsed.flights.flatMap((flight) => {
+    const line = billed.get(flight.id!);
+    if (!line || isBilledStatus(flight.status)) return [];
+    return [
+      {
+        row: flight.row,
+        flightId: flight.id,
+        kind: "billed_status" as const,
+        message: `Lento on laskutettu jaksossa ${line.period}, mutta sen Tila on ${
+          flight.status ?? "tyhjä"
+        }. Kirjoita Tilaksi takaisin ${line.unbilled ? "Ei laskuteta" : "Laskutettu (tai Maksettu, jos maksettu)"}.`,
+      },
+    ];
+  });
+
   const issues = [
     ...findFlightIssues(parsed.flights, context),
     ...findUndatedRowIssues(parsed.undatedRows),
     ...idIssues,
+    ...billedIssues,
   ].sort((a, b) => a.row - b.row);
   // A flight whose date can no longer be read keeps its last copy rather than
   // going missing: billing would take a missing flight as removed
@@ -371,10 +402,9 @@ export async function syncFlightSheets(
             { isTraining: row.is_training },
           ])
         ),
+        // Matched to a member, or marked as no member: either way decided
         knownPilots: new Set(
-          (await client.query("SELECT name_key FROM pilot_aliases WHERE user_id IS NOT NULL")).rows.map(
-            (row) => row.name_key
-          )
+          (await client.query("SELECT name_key FROM pilot_aliases")).rows.map((row) => row.name_key)
         ),
         tabIds: await sheet.tabIds(),
         today: DateTime.now().setZone(SHEET_ZONE).toISODate()!,

@@ -161,8 +161,9 @@ const pilotAliasSchema = z.object({
 });
 
 /**
- * Admin: match a pilot name as written in the sheet to a member account, or
- * clear the match with userId null
+ * Admin: match a pilot name as written in the sheet to a member account, or,
+ * with userId null, mark it as no member: their flights are then billed under
+ * the name at the non-member price. removePilotAlias undoes either.
  */
 export async function setPilotAlias(
   name: string,
@@ -199,6 +200,35 @@ export async function setPilotAlias(
   }
 
   // Refresh the "not matched" issues
+  await syncFlightSheets(access.user.fullName || access.user.email || "ylläpitäjä", {
+    wait: true,
+  });
+  revalidatePath("/admin/lennot");
+  revalidatePath("/jasenalue/lentopaivakirja");
+  return { status: "success", result: null };
+}
+
+/**
+ * Admin: forget what a pilot name was matched to, member or no member. The
+ * name is then undecided again, and billing waits until it is matched.
+ */
+export async function removePilotAlias(name: string): Promise<ActionResult> {
+  const access = await requireFlightLogAdmin();
+  if ("error" in access) {
+    return { status: "error", error: access.error };
+  }
+  const parsed = pilotAliasSchema.shape.name.safeParse(name);
+  if (!parsed.success) {
+    return { status: "error", error: parsed.error.issues[0].message };
+  }
+
+  try {
+    await pool.query("DELETE FROM pilot_aliases WHERE name_key = $1", [nameKey(parsed.data)]);
+  } catch (error) {
+    console.error("Error removing pilot alias:", errorText(error));
+    return { status: "error", error: "Poisto epäonnistui" };
+  }
+
   await syncFlightSheets(access.user.fullName || access.user.email || "ylläpitäjä", {
     wait: true,
   });
@@ -514,9 +544,19 @@ const setFlightStatusSchema = z.object({
   registration: z.string().min(1),
   status: z.enum(REVIEW_STATUSES),
   flights: z
-    .array(z.object({ id: z.uuid(), inputHash: z.string().max(64).nullable() }))
+    .array(
+      z.object({
+        id: z.uuid(),
+        inputHash: z.string().max(64).nullable(),
+        // The Tila the page showed, so a change someone else made meanwhile
+        // isn't overwritten
+        status: z.string().max(40).nullable().optional(),
+      })
+    )
     .min(1, "Valitse ensin lennot")
     .max(500, "Enintään 500 lentoa kerralla"),
+  // Why a flight is Korjattava; the pilot sees it with the flight
+  note: z.string().trim().max(300, "Syy voi olla enintään 300 merkkiä").nullable().optional(),
 });
 
 /**
@@ -536,23 +576,23 @@ export async function setFlightStatus(
     return { status: "error", error: parsed.error.issues[0].message };
   }
   const { registration, status, flights } = parsed.data;
+  const note = status === "Korjattava" ? parsed.data.note || null : null;
 
   let changes: StatusChange[] = [];
   let error: string | null = null;
   try {
-    changes = await setFlightStatuses(registration, flights, status);
-    if (changes.length > 0) {
-      await pool.query(
-        `INSERT INTO flight_status_changes (flight_id, registration, old_status, new_status, changed_by)
-         SELECT c.id, $2, NULLIF(c.old_status, ''), NULLIF($3, ''), $4
-         FROM jsonb_to_recordset($1::jsonb) AS c(id uuid, old_status text)`,
-        [
-          JSON.stringify(changes.map((c) => ({ id: c.id, old_status: c.oldStatus }))),
-          registration,
-          status,
-          access.user.id,
-        ]
-      );
+    // A flight in a closed period is billed whatever its Tila says now
+    const billed = await pool.query(
+      `SELECT DISTINCT f.sheet_row FROM billing_lines b
+       JOIN sheet_flights f ON f.id = b.flight_id
+       WHERE b.flight_id = ANY($1::uuid[])
+       ORDER BY f.sheet_row`,
+      [flights.map((flight) => flight.id)]
+    );
+    if (billed.rows.length > 0) {
+      error = `Rivit ${billed.rows.map((row) => row.sheet_row).join(", ")} kuuluvat jo suljettuun laskutusjaksoon, eikä niiden tilaa muuteta täällä.`;
+    } else {
+      changes = await setFlightStatuses(registration, flights, status);
     }
   } catch (caught) {
     console.error("Error setting flight status:", errorText(caught));
@@ -560,6 +600,26 @@ export async function setFlightStatus(
       caught instanceof FlightSheetWriteError
         ? caught.message
         : "Tilan tallennus epäonnistui. Lentopäiväkirjan taulukkoon ei saatu yhteyttä.";
+  }
+  if (changes.length > 0) {
+    try {
+      await pool.query(
+        `INSERT INTO flight_status_changes (flight_id, registration, old_status, new_status, changed_by, note)
+         SELECT c.id, $2, NULLIF(c.old_status, ''), NULLIF($3, ''), $4, $5
+         FROM jsonb_to_recordset($1::jsonb) AS c(id uuid, old_status text)`,
+        [
+          JSON.stringify(changes.map((c) => ({ id: c.id, old_status: c.oldStatus }))),
+          registration,
+          status,
+          access.user.id,
+          note,
+        ]
+      );
+    } catch (caught) {
+      // The sheet has the new Tila; only the record of who set it is missing
+      console.error("Error recording flight status changes:", errorText(caught));
+      error = "Tila tallentui taulukkoon, mutta muutoshistoriaan sitä ei saatu kirjattua.";
+    }
   }
 
   // Sync either way: after a refusal the page then shows what changed
