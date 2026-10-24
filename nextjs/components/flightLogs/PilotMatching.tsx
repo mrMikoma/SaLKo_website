@@ -2,17 +2,24 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { setPilotAlias } from "@/utilities/flightLogs";
+import { removePilotAlias, setPilotAlias } from "@/utilities/flightLogs";
 
 interface PilotMatchingProps {
   unmatched: { name: string; nameKey: string; flights: number; lastFlightLabel: string }[];
-  matched: { name: string; nameKey: string; userName: string }[];
-  members: { id: string; name: string }[];
+  // userName null: marked as no member
+  matched: { name: string; nameKey: string; userName: string | null }[];
+  members: { id: string; name: string; email: string }[];
 }
+
+// The select's value for "no member"
+const NON_MEMBER = "ei-jasen";
 
 /**
  * Matches the pilot names written in the sheet ("M.Meikäläinen") to member
- * accounts, so members see their flights and get their bills
+ * accounts, so members see their flights and get their bills. A name that
+ * belongs to no member (a guest pilot, a former member) is marked as such:
+ * their flights are billed under the name at the non-member price, and the
+ * name leaves this list.
  */
 const PilotMatching = ({ unmatched, matched, members }: PilotMatchingProps) => {
   const router = useRouter();
@@ -20,16 +27,29 @@ const PilotMatching = ({ unmatched, matched, members }: PilotMatchingProps) => {
   const [selected, setSelected] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
 
-  const save = (name: string, userId: string | null) => {
+  const run = (action: () => Promise<{ status: string; error?: string }>) => {
     setError(null);
     startTransition(async () => {
-      const result = await setPilotAlias(name, userId);
+      const result = await action().catch(() => ({
+        status: "error",
+        error: "Tallennus ei mennyt perille. Päivitä sivu ja yritä uudelleen.",
+      }));
       if (result.status === "error") {
-        setError(result.error);
+        setError(result.error ?? "Tallennus epäonnistui");
       }
       router.refresh();
     });
   };
+  const save = (name: string, choice: string) =>
+    run(() => setPilotAlias(name, choice === NON_MEMBER ? null : choice));
+  const remove = (name: string, what: string) => {
+    if (!window.confirm(`Poistetaanko ${what}? Nimen lentoja ei laskuteta ennen kuin se yhdistetään uudelleen.`)) {
+      return;
+    }
+    run(() => removePilotAlias(name));
+  };
+  const matchedMembers = matched.filter((pilot) => pilot.userName !== null);
+  const nonMembers = matched.filter((pilot) => pilot.userName === null);
 
   return (
     <div className="bg-white rounded-lg shadow p-6 space-y-6">
@@ -38,6 +58,9 @@ const PilotMatching = ({ unmatched, matched, members }: PilotMatchingProps) => {
         <p className="text-sm text-gray-600 mt-1">
           Yhdistä taulukon nimi jäseneen, niin jäsen näkee lentonsa ja laskunsa.
           Kirjoitusasu ei haittaa: &quot;M. Meikäläinen&quot; ja &quot;M.Meikäläinen&quot; ovat sama nimi.
+          Jos nimi ei ole kenenkään jäsenen, valitse &quot;Ei jäsen&quot;: lennot laskutetaan
+          nimellä ei-jäsenen hinnalla. Jos kaksi jäsentä kirjoittaa nimensä samoin, pyydä
+          heitä kirjoittamaan taulukkoon eri nimet ja yhdistä kumpikin.
         </p>
       </div>
 
@@ -48,7 +71,7 @@ const PilotMatching = ({ unmatched, matched, members }: PilotMatchingProps) => {
       )}
 
       {unmatched.length === 0 ? (
-        <p className="text-sm text-gray-600">Kaikki nimet on yhdistetty jäseniin.</p>
+        <p className="text-sm text-gray-600">Kaikki nimet on käsitelty.</p>
       ) : (
         <ul className="divide-y divide-gray-200">
           {unmatched.map((pilot) => {
@@ -77,9 +100,10 @@ const PilotMatching = ({ unmatched, matched, members }: PilotMatchingProps) => {
                   <option value="">Valitse jäsen…</option>
                   {members.map((member) => (
                     <option key={member.id} value={member.id}>
-                      {member.name}
+                      {member.name} ({member.email})
                     </option>
                   ))}
+                  <option value={NON_MEMBER}>Ei jäsen (ulkopuolinen lentäjä)</option>
                 </select>
                 <button
                   type="button"
@@ -95,13 +119,13 @@ const PilotMatching = ({ unmatched, matched, members }: PilotMatchingProps) => {
         </ul>
       )}
 
-      {matched.length > 0 && (
+      {matchedMembers.length > 0 && (
         <details className="text-sm">
           <summary className="cursor-pointer font-medium text-gray-700">
-            Yhdistetyt nimet ({matched.length})
+            Yhdistetyt nimet ({matchedMembers.length})
           </summary>
           <ul className="mt-3 divide-y divide-gray-200">
-            {matched.map((pilot) => (
+            {matchedMembers.map((pilot) => (
               <li key={pilot.nameKey} className="py-2 flex items-center justify-between gap-3">
                 <span className="text-gray-900">
                   {pilot.name} → {pilot.userName}
@@ -109,10 +133,33 @@ const PilotMatching = ({ unmatched, matched, members }: PilotMatchingProps) => {
                 <button
                   type="button"
                   disabled={isPending}
-                  onClick={() => save(pilot.name, null)}
+                  onClick={() => remove(pilot.name, `nimen ${pilot.name} yhdistys jäseneen ${pilot.userName}`)}
                   className="text-red-700 hover:underline disabled:opacity-50"
                 >
                   Poista yhdistys
+                </button>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+
+      {nonMembers.length > 0 && (
+        <details className="text-sm">
+          <summary className="cursor-pointer font-medium text-gray-700">
+            Ei jäseniä ({nonMembers.length})
+          </summary>
+          <ul className="mt-3 divide-y divide-gray-200">
+            {nonMembers.map((pilot) => (
+              <li key={pilot.nameKey} className="py-2 flex items-center justify-between gap-3">
+                <span className="text-gray-900">{pilot.name}</span>
+                <button
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => remove(pilot.name, `nimen ${pilot.name} merkintä ei-jäseneksi`)}
+                  className="text-red-700 hover:underline disabled:opacity-50"
+                >
+                  Poista merkintä
                 </button>
               </li>
             ))}

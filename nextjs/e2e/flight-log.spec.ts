@@ -24,7 +24,8 @@ async function query(sql: string, params: unknown[] = []) {
   }
 }
 
-const removeMatch = () => query("DELETE FROM pilot_aliases WHERE name_key = 'e2euser'");
+const removeMatch = () =>
+  query("DELETE FROM pilot_aliases WHERE name_key IN ('e2euser', 'uusilentäjä')");
 test.beforeAll(removeMatch);
 test.afterAll(removeMatch);
 
@@ -54,9 +55,10 @@ test.describe("admin", () => {
 
   test("matches a pilot name to a member", async ({ page }) => {
     await page.goto("/admin/lennot");
-    // Each sheet name labels its own member select (whose options are members)
+    // Each sheet name labels its own member select (whose options are
+    // members, with their email: two accounts can share a name)
     const select = page.getByLabel("E2E user", { exact: true });
-    await select.selectOption({ label: "E2E user" });
+    await select.selectOption({ label: `E2E user (${accounts.user!.email})` });
     await page
       .getByRole("listitem")
       .filter({ has: select })
@@ -65,6 +67,25 @@ test.describe("admin", () => {
 
     await expect(page.getByText(/Yhdistetyt nimet \(\d+\)/)).toBeVisible();
     await expect(page.getByLabel("E2E user", { exact: true })).toHaveCount(0);
+  });
+
+  test("marks a name as no member, and takes that back", async ({ page }) => {
+    await page.goto("/admin/lennot");
+    const select = page.getByLabel("Uusi Lentäjä", { exact: true });
+    await select.selectOption({ label: "Ei jäsen (ulkopuolinen lentäjä)" });
+    await page.getByRole("listitem").filter({ has: select }).getByRole("button", { name: "Yhdistä" }).click();
+    // Decided: out of the list, and no longer an issue
+    await expect(page.getByLabel("Uusi Lentäjä", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("Uusi Lentäjä ei ole yhdistetty jäseneen")).toHaveCount(0);
+
+    await page.getByText(/^Ei jäseniä \(\d+\)$/).click();
+    page.once("dialog", (dialog) => dialog.accept());
+    await page
+      .getByRole("listitem")
+      .filter({ hasText: "Uusi Lentäjä" })
+      .getByRole("button", { name: "Poista merkintä" })
+      .click();
+    await expect(page.getByLabel("Uusi Lentäjä", { exact: true })).toBeVisible();
   });
 });
 

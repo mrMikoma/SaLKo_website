@@ -163,7 +163,7 @@ export default async function FlightsAdminPage({ searchParams }: PageProps) {
         matched={matched.map((pilot) => ({
           name: pilot.name,
           nameKey: pilot.nameKey,
-          userName: pilot.userName,
+          userName: pilot.userId ? pilot.userName : null,
         }))}
         members={members}
       />

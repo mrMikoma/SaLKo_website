@@ -257,13 +257,14 @@ export interface StatusChange {
 
 /**
  * Sets Tila on flights the biller has compared with the paper book. Each
- * flight comes with the input hash the biller saw: if the row has changed in
- * the sheet since then, nothing is written and the changed rows are named.
- * Flights in a closed billing period are not touched.
+ * flight comes with the input hash and the Tila the biller saw: if the row
+ * or its Tila has changed in the sheet since then (another biller, or a hand
+ * edit), nothing is written and the changed rows are named. Flights in a
+ * closed billing period are not touched.
  */
 export async function setFlightStatuses(
   registration: string,
-  flights: { id: string; inputHash?: string | null }[],
+  flights: { id: string; inputHash?: string | null; status?: string | null }[],
   status: ReviewStatus
 ): Promise<StatusChange[]> {
   return withAircraftLock(registration, async ({ sheetName, firstDataRow }) => {
@@ -280,11 +281,14 @@ export async function setFlightStatuses(
     const byId = new Map(parsed.flights.map((flight) => [flight.id, flight]));
     const missing: string[] = [];
     const changedRows: number[] = [];
+    const restatedRows: number[] = [];
     const billedRows: number[] = [];
-    for (const { id, inputHash: seen } of flights) {
+    const tila = (value: string | null | undefined) => (value ?? "").trim().toLowerCase();
+    for (const { id, inputHash: seen, status: seenStatus } of flights) {
       const flight = byId.get(id);
       if (!flight) missing.push(id);
       else if (seen && inputHash(flight) !== seen) changedRows.push(flight.row);
+      else if (seenStatus !== undefined && tila(flight.status) !== tila(seenStatus)) restatedRows.push(flight.row);
       else if (isBilledStatus(flight.status)) billedRows.push(flight.row);
     }
     if (missing.length > 0) {
@@ -295,6 +299,11 @@ export async function setFlightStatuses(
     if (changedRows.length > 0) {
       throw new FlightSheetWriteError(
         `Rivejä on muutettu taulukossa sen jälkeen, kun sivu avattiin: ${changedRows.join(", ")}. Päivitä sivu ja tarkista ne uudelleen.`
+      );
+    }
+    if (restatedRows.length > 0) {
+      throw new FlightSheetWriteError(
+        `Rivien ${restatedRows.join(", ")} Tila on muuttunut sen jälkeen, kun sivu avattiin. Päivitä sivu ja tarkista ne uudelleen.`
       );
     }
     if (billedRows.length > 0) {

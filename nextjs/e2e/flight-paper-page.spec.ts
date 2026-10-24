@@ -108,7 +108,7 @@ test("types a paper page, matching what pilots already entered", async ({ page }
   const row13 = page.getByRole("row").filter({ has: page.getByLabel("Valitse rivi 13", { exact: true }) });
   await expect(row13).toContainText("10.30–11.05");
   await expect(row13).toContainText("Tarkistettu");
-  await expect(row13.getByTitle("Paperisivu 9001, korjattu: lasku 11:03 → 11:05")).toBeVisible();
+  await expect(row13.getByText("Paperisivu 9001, korjattu: lasku 11:03 → 11:05")).toBeVisible();
 
   // Put row 13 back; row 12, on the same day, is not on that page
   await page.goto("/admin/lennot/tuonti");

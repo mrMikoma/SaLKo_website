@@ -155,7 +155,9 @@ export function readPaperGrid(grid: PaperCells[], today: string): ReadRow[] {
 export type RowMatch =
   | { kind: "new" }
   | { kind: "same"; flight: ExistingFlight }
-  | { kind: "differs"; flight: ExistingFlight; differences: string[] };
+  // picDiffers: another pilot's flight at that time, more likely a different
+  // flight than one to correct
+  | { kind: "differs"; flight: ExistingFlight; differences: string[]; picDiffers: boolean };
 
 const clockMinutes = (clock: string) => {
   const [h, m] = clock.split(":").map(Number);
@@ -190,32 +192,50 @@ export function describeDifferences(paper: PaperRow, sheet: PaperRow): string[] 
 
 /**
  * Pairs each line of the paper page with a flight already in the sheet, if
- * there is one: the closest takeoff on the same day. Each sheet flight is
- * used once. Remarks don't count as a difference: the sheet's are kept.
+ * there is one: on the same day, a takeoff within MATCH_WINDOW minutes, or
+ * the same PIC with overlapping times. The pairs are chosen over the whole
+ * page, the same PIC first and then the closest takeoff, so a line doesn't
+ * take another pilot's flight that was a closer fit for the next line. Each
+ * sheet flight is used once. Remarks don't count as a difference: the
+ * sheet's are kept.
  */
 export function matchPaperRows(rows: PaperRow[], existing: ExistingFlight[]): RowMatch[] {
-  const used = new Set<string>();
-  return rows.map((paper) => {
-    const candidates = existing
-      .filter((flight) => flight.flightDate === paper.flightDate && !used.has(flight.id))
+  const pairs = rows.flatMap((paper, index) =>
+    existing
+      .filter((flight) => flight.flightDate === paper.flightDate)
       .map((flight) => {
         const gap = Math.abs(clockMinutes(flight.takeoff) - clockMinutes(paper.takeoff));
+        const samePic = nameKey(flight.picName) === nameKey(paper.picName);
         const overlaps =
-          nameKey(flight.picName) === nameKey(paper.picName) &&
+          samePic &&
           clockMinutes(flight.takeoff) < clockMinutes(paper.landing) &&
           clockMinutes(paper.takeoff) < clockMinutes(flight.landing);
-        return { flight, gap, overlaps };
+        return { index, flight, gap, samePic, overlaps };
       })
-      .filter((c) => c.gap <= MATCH_WINDOW || c.overlaps)
-      .sort((a, b) => a.gap - b.gap);
+      .filter((pair) => pair.gap <= MATCH_WINDOW || pair.overlaps)
+  );
+  pairs.sort((a, b) => Number(b.samePic) - Number(a.samePic) || a.gap - b.gap || a.index - b.index);
 
-    const best = candidates[0]?.flight;
+  const matched = new Map<number, ExistingFlight>();
+  const used = new Set<string>();
+  for (const pair of pairs) {
+    if (matched.has(pair.index) || used.has(pair.flight.id)) continue;
+    matched.set(pair.index, pair.flight);
+    used.add(pair.flight.id);
+  }
+
+  return rows.map((paper, index) => {
+    const best = matched.get(index);
     if (!best) return { kind: "new" };
-    used.add(best.id);
     const found = describeDifferences(paper, best);
     return found.length === 0
       ? { kind: "same", flight: best }
-      : { kind: "differs", flight: best, differences: found };
+      : {
+          kind: "differs",
+          flight: best,
+          differences: found,
+          picDiffers: nameKey(paper.picName) !== nameKey(best.picName),
+        };
   });
 }
 

@@ -148,7 +148,10 @@ const PaperPageEntry = ({
     const match = row.match;
     if (!match || match.kind === "new") return "new";
     if (isBilledStatus(match.flight.status)) return "skip";
-    return match.kind === "same" ? "confirm" : "correct";
+    if (match.kind === "same") return "confirm";
+    // Another pilot's flight at that time: correcting it would rewrite that
+    // flight, so the biller decides
+    return match.picDiffers ? "skip" : "correct";
   };
 
   const check = () => {

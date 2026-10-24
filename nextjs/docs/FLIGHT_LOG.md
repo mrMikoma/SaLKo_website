@@ -72,7 +72,8 @@ A failing sheet doesn't break the pages: they show the last copy and the error.
 **Issues** (`findFlightIssues`) are shown on `/admin/lennot`; they don't stop the sync:
 - missing fields;
 - an unknown purpose code;
-- a pilot name not matched to a member: every PIC, and the student of a dual training flight;
+- a pilot name the biller hasn't decided on: every PIC, and the student of a dual training flight;
+- a flight a closed billing period billed whose Tila was later edited away from Laskutettu, Ei laskuteta or Maksettu. The site still counts it as billed (it never shows under Tarkistamatta again), but marking the payer paid is refused until the Tila is written back;
 - times that don't make sense;
 - two rows with the same takeoff;
 - an hour meter that goes backwards;
@@ -116,9 +117,14 @@ On `/admin/lennot` (`MANAGE_FLIGHT_LOG`), the biller ticks the rows that match t
 1. Takes the aircraft's lock and reads the tab.
 2. Finds each flight by its ID, so a row that moved still gets the right status.
 3. Refuses the whole change when a flight changed in the sheet after the page was opened. The page sends each row's `input_hash`, a hash of the typed-in fields only (`utilities/flightInputHash.ts`), so a fix in a row above, which moves the running totals, doesn't count. A Tarkistettu mark therefore always means "matches what I saw".
-4. Refuses rows that are Laskutettu, Ei laskuteta or Maksettu.
-5. Writes only the Tila cells, as plain text, and records each change in `flight_status_changes` with the admin and the time. The table shows the latest one under the status.
-6. Syncs, also after a refusal, so the reloaded page shows what changed.
+4. Refuses it too when a row's Tila changed since: the page sends the Tila it showed, so one biller's "Valitse kaikki → Merkitse tarkistetuksi" can't turn another's Korjattava into Tarkistettu. After a refusal the selection starts over, so the changed rows are looked at again.
+5. Refuses rows that are Laskutettu, Ei laskuteta or Maksettu, and flights in a closed billing period whatever their Tila says.
+6. Writes only the Tila cells, as plain text, and records each change in `flight_status_changes` with the admin and the time. The table shows the latest one under the status while the sheet still has that Tila.
+7. Syncs, also after a refusal, so the reloaded page shows what changed.
+
+**Korjattava** asks what is wrong. The reason goes into `flight_status_changes.note`, shows under the status, and the pilot sees it with the flight on `/jasenalue/lentopaivakirja`, with a request to tell the biller the correction. Putting more than 10 flights back to Kirjattu at once asks first.
+
+**Pilot names** ("Lentäjien nimet" on `/admin/lennot`) lists every name the biller hasn't decided on. **Yhdistä** with a member (shown with their email, as two accounts can share a name; deactivated and anonymised accounts aren't offered) or with **Ei jäsen**, for a guest pilot or a former member: their flights are billed under the name at the non-member price, and the name leaves the list. **Poista yhdistys** and **Poista merkintä** make the name undecided again, so billing waits for it; before, removing a match silently made the name a non-member. Deleting a member removes their matches the same way (`016_pilot_alias_member_delete.sql`). When two members write their names the same way, have them use distinct names in the sheet and match each.
 
 ## Typing in a page of the paper book
 
@@ -142,7 +148,7 @@ On `/admin/lennot` (`MANAGE_FLIGHT_LOG`), the biller ticks the rows that match t
 - KOU, KOUMAT and KOUHAR: the student, meaning the second pilot, or the PIC on a solo flight.
 - The rest: nobody. They are listed apart as "Ei laskuteta".
 
-A payer is a member through `pilot_aliases`. Several sheet names of one member make one bill. A name matched as a non-member is billed under that name. A name not matched at all stops the period from closing.
+A payer is a member through `pilot_aliases`. Several sheet names of one member make one bill. A name marked **Ei jäsen** is billed under that name. A name not decided on stops the period from closing.
 
 **Price** is the airborne minutes × the aircraft's per-minute price on the flight's date (`aircraft_rates`):
 - the lower price applies to members who paid that calendar year's equipment fee (`equipment_fee_seasons`), and to training flights, since students are exempt from the fee until their check flight;

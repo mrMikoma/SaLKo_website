@@ -87,7 +87,7 @@ test("bills a period: minimum, unbilled flights, closing and payment", async ({ 
   // The name is the e2e member, who paid the 2024 equipment fee
   await page.goto("/admin/lennot");
   const select = page.getByLabel(pilot, { exact: true });
-  await select.selectOption({ label: "E2E user" });
+  await select.selectOption({ label: `E2E user (${accounts.user!.email})` });
   await page.getByRole("listitem").filter({ has: select }).getByRole("button", { name: "Yhdistä" }).click();
   await expect(page.getByLabel(pilot, { exact: true })).toHaveCount(0);
   await page.goto("/admin/laskutus/asetukset?kausi=2024");

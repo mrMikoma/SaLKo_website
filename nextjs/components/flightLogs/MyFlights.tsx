@@ -84,6 +84,11 @@ const MyFlights = ({ flights }: MyFlightsProps) => {
                   <span className="text-right text-xs text-gray-600">
                     {statusLabel(flight.status)}
                   </span>
+                  {flight.status?.trim().toLowerCase() === "korjattava" && (
+                    <p className="col-span-3 text-sm text-orange-900">
+                      Laskuttaja: {flight.statusNote ?? "tarkista lento"}. Kerro korjaus laskuttajalle.
+                    </p>
+                  )}
                 </li>
               ))}
             </ul>

@@ -421,7 +421,8 @@ export type FlightIssueKind =
   | "odd_date"
   | "undated_row"
   | "stray_status"
-  | "copied_row";
+  | "copied_row"
+  | "billed_status";
 
 export interface FlightIssue {
   row: number;
@@ -518,7 +519,7 @@ export function findFlightIssues(
       const key = nameKey(name);
       if (!context.knownPilots.has(key) && !unknownPilotsReported.has(key)) {
         unknownPilotsReported.add(key);
-        add(flight, "unknown_pilot", `${name} ei ole yhdistetty jäseneen`);
+        add(flight, "unknown_pilot", `${name} ei ole yhdistetty jäseneen (Lentäjien nimet)`);
       }
     }
 

@@ -235,7 +235,8 @@ ON CONFLICT (registration) DO NOTHING;
 CREATE TABLE IF NOT EXISTS pilot_aliases (
   name_key TEXT PRIMARY KEY,
   name TEXT NOT NULL,
-  user_id TEXT REFERENCES users (id) ON DELETE SET NULL,
+  -- NULL: the biller marked the name as no member (billed under the name)
+  user_id TEXT REFERENCES users (id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
