@@ -3,9 +3,13 @@
 import { useEffect, useState, memo, useMemo } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { DateTime } from "luxon";
+import { DateTime } from "@/utilities/clubTime";
 import { Modal, Button } from "antd";
-import { BookingType } from "@/utilities/bookings";
+import { BookingType, BookingConflict } from "@/utilities/bookings";
+import type {
+  SaveBookingRequest,
+  SaveBookingOutcome,
+} from "@/hooks/useBookings";
 import { FLIGHT_TYPE_CONFIGS } from "@/types/bookings";
 import {
   bookingSchema,
@@ -13,19 +17,18 @@ import {
   guestBookingSchema,
   GuestBookingFormValues,
 } from "@/schemas/bookingSchema";
-import { downloadICalEvent } from "@/utilities/calendarExport";
 import { isFullDayBooking } from "@/utilities/bookingHelpers";
+import BookingCalendarLinks from "@/components/bookings/BookingCalendarLinks";
 
 interface BookingModalProps {
   mode: "create" | "update" | "view";
   booking: BookingType;
-  onSave: (booking: BookingType, repeatEndDate?: string) => void;
-  onUpdate: (booking: BookingType) => void;
-  onDelete: (deleteFollowing?: boolean) => void | Promise<void>;
+  onSave: (request: SaveBookingRequest) => Promise<SaveBookingOutcome>;
+  onDelete: (deleteFollowing?: boolean) => Promise<void>;
   onCancel: () => void;
   onChange: (updatedBooking: BookingType) => void;
   isLoggedIn?: boolean;
-  userRole?: string;
+  userRole?: string | string[];
 }
 
 const BookingModal = memo(
@@ -33,18 +36,26 @@ const BookingModal = memo(
     mode,
     booking,
     onSave,
-    onUpdate,
     onDelete,
     onCancel,
     onChange,
     isLoggedIn = false,
-    userRole = "guest",
+    userRole = ["guest"],
   }: BookingModalProps) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [deleteFollowing, setDeleteFollowing] = useState(false);
     const [isRepeating, setIsRepeating] = useState(false);
     const [repeatEndDate, setRepeatEndDate] = useState("");
+    // Server answers to the last save: an error, or bookings that overlap
+    const [submitError, setSubmitError] = useState<string | null>(null);
+    const [conflicts, setConflicts] = useState<BookingConflict[] | null>(null);
+    const [deleteError, setDeleteError] = useState<string | null>(null);
+    // A new booking that was saved: the modal then offers the calendar links
+    const [saved, setSaved] = useState<{
+      booking: BookingType;
+      count?: number;
+    } | null>(null);
     // Full-day booking state: when true, show date-only pickers and store midnight times
     const [isFullDay, setIsFullDay] = useState(() => isFullDayBooking(booking));
     const [fullDayStart, setFullDayStart] = useState(() =>
@@ -63,6 +74,11 @@ const BookingModal = memo(
     const isReadOnly = mode === "view";
     const isGuestMode = !isLoggedIn && mode === "create";
     const hasRepeatGroup = !!booking.repeat_group_id;
+
+    // Helper to check if user has admin role
+    const isAdmin = Array.isArray(userRole)
+      ? userRole.includes("admin")
+      : userRole === "admin";
 
     // OPTIMIZATION: Memoize the schema selector to avoid recreating on every render
     const schema = useMemo(
@@ -129,6 +145,7 @@ const BookingModal = memo(
 
     // Handler to update end_time when start_time changes
     const handleStartTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      setConflicts(null);
       const newStartTime = e.target.value;
       if (newStartTime) {
         const startDateTime = DateTime.fromISO(newStartTime);
@@ -147,23 +164,14 @@ const BookingModal = memo(
       }
     };
 
-    // Handler to auto-populate repeat_end_date when end_time is on a different day
-    const handleEndTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const newEndTime = e.target.value;
-      if (newEndTime && isRepeating) {
-        const endDate = DateTime.fromISO(newEndTime);
-        const startTime = getValues("start_time");
-        const startDate = startTime ? DateTime.fromISO(startTime) : null;
-        if (startDate && endDate.toISODate() !== startDate.toISODate()) {
-          const endDateStr = endDate.toFormat("yyyy-MM-dd");
-          if (endDateStr) setRepeatEndDate(endDateStr);
-        }
-      }
+    const handleEndTimeChange = () => {
+      setConflicts(null);
     };
 
-    // When "Toistuva varaus" is enabled, auto-populate repeat_end_date from
-    // end_time's date if end_time is on a different day than start_time.
-    // This handles the case where the user sets the dates before enabling repeat.
+    // When "Toistuva varaus" is enabled after picking an end on a later day,
+    // take that day as the repeat end date and make the booking itself a
+    // same-day slot. The repeat end date is never written into end_time, so
+    // turning repeat off again leaves a normal one-day booking.
     useEffect(() => {
       if (isRepeating && !repeatEndDate) {
         const endTime = getValues("end_time");
@@ -174,6 +182,11 @@ const BookingModal = memo(
           if (endDate.toISODate() !== startDate.toISODate()) {
             const endDateStr = endDate.toFormat("yyyy-MM-dd");
             if (endDateStr) setRepeatEndDate(endDateStr);
+            setValue(
+              "end_time",
+              `${startDate.toFormat("yyyy-MM-dd")}T${endDate.toFormat("HH:mm")}`,
+              { shouldDirty: true }
+            );
           }
         }
       }
@@ -182,6 +195,8 @@ const BookingModal = memo(
 
     // Full-day booking handlers
     const handleFullDayToggle = () => {
+      // The overlap warning was for the earlier dates
+      setConflicts(null);
       const newIsFullDay = !isFullDay;
       setIsFullDay(newIsFullDay);
 
@@ -208,6 +223,8 @@ const BookingModal = memo(
     };
 
     const handleFullDayStartChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      // The overlap warning was for the earlier dates
+      setConflicts(null);
       const newStart = e.target.value;
       setFullDayStart(newStart);
       if (newStart) {
@@ -222,6 +239,8 @@ const BookingModal = memo(
     };
 
     const handleFullDayEndChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      // The overlap warning was for the earlier dates
+      setConflicts(null);
       const newEnd = e.target.value; // "last day" the plane is booked
       setFullDayEnd(newEnd);
       if (newEnd) {
@@ -278,32 +297,29 @@ const BookingModal = memo(
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [booking.id, reset, isGuestMode]);
 
-    const onSubmitHandler = () => {
+    const onSubmitHandler = async (allowOverlap = false) => {
+      setSubmitError(null);
+      setConflicts(null);
+
+      if (isRepeating && !repeatEndDate) {
+        setSubmitError("Valitse toiston lopetuspäivä");
+        return;
+      }
+
       setIsSubmitting(true);
       try {
-        // Get current form values
         const formValues = getValues();
 
-        // Convert datetime-local strings to UTC ISO format
-        // The datetime-local input gives us a string like "2024-01-15T14:00" (local time)
-        // Backend expects UTC, so we interpret the input as local time and convert to UTC
+        // datetime-local gives club time without an offset ("2024-01-15T14:00");
+        // the server stores UTC
         const startTimeISO = formValues.start_time
-          ? DateTime.fromISO(formValues.start_time, { zone: "local" })
-              .toUTC()
-              .toISO()
+          ? DateTime.fromISO(formValues.start_time).toUTC().toISO()
           : booking.start_time;
         const endTimeISO = formValues.end_time
-          ? DateTime.fromISO(formValues.end_time, { zone: "local" })
-              .toUTC()
-              .toISO()
+          ? DateTime.fromISO(formValues.end_time).toUTC().toISO()
           : booking.end_time;
 
-        // Build updated booking object with form values
-        const updatedBooking: BookingType & {
-          contactName?: string;
-          contactEmail?: string;
-          contactPhone?: string;
-        } = {
+        const updatedBooking: BookingType = {
           ...booking,
           plane: formValues.plane,
           type: formValues.type,
@@ -311,24 +327,44 @@ const BookingModal = memo(
           description: formValues.description || "",
           start_time: startTimeISO || "",
           end_time: endTimeISO || "",
-          // For guest bookings, add contact info (without guest_ prefix for mutation)
-          ...(isGuestMode && {
-            contactName: (formValues as any).contactName,
-            contactEmail: (formValues as any).contactEmail,
-            contactPhone: (formValues as any).contactPhone,
-          }),
         };
 
         // Sync the updated values to parent (for display purposes)
         onChange(updatedBooking);
 
-        if (mode === "create") {
-          // Pass the booking data and repeat end date if repeating is enabled
-          onSave(updatedBooking, isRepeating ? repeatEndDate : undefined);
-        } else if (mode === "update") {
-          // Pass the updated booking data directly
-          onUpdate(updatedBooking);
+        const outcome = await onSave({
+          booking: updatedBooking,
+          repeatEndDate:
+            mode === "create" && isRepeating ? repeatEndDate : undefined,
+          guestContact: isGuestMode
+            ? {
+                contactName: (formValues as GuestBookingFormValues).contactName,
+                contactEmail: (formValues as GuestBookingFormValues).contactEmail,
+                contactPhone: (formValues as GuestBookingFormValues).contactPhone,
+              }
+            : undefined,
+          allowOverlap,
+        });
+
+        if (outcome.status === "success") {
+          if (mode === "create") {
+            setSaved({
+              booking: { ...updatedBooking, id: outcome.result.id },
+              count: outcome.result.count,
+            });
+          } else {
+            onCancel();
+          }
+        } else if (outcome.status === "conflict") {
+          setConflicts(outcome.conflicts);
+        } else {
+          setSubmitError(outcome.error);
         }
+      } catch (error) {
+        console.error("Error saving booking:", error);
+        setSubmitError(
+          "Tallennus epäonnistui. Tarkista verkkoyhteys ja yritä uudelleen."
+        );
       } finally {
         setIsSubmitting(false);
       }
@@ -340,26 +376,77 @@ const BookingModal = memo(
 
     const confirmDelete = async () => {
       setIsSubmitting(true);
+      setDeleteError(null);
       try {
         await onDelete(deleteFollowing);
         setShowDeleteConfirm(false);
       } catch (error) {
         console.error("Error deleting booking:", error);
+        setDeleteError(
+          error instanceof Error && error.message
+            ? error.message
+            : "Varauksen poisto epäonnistui"
+        );
       } finally {
         setIsSubmitting(false);
       }
     };
 
-    const handleExportToCalendar = () => {
-      try {
-        if (booking.id >= 0 && booking.start_time && booking.end_time) {
-          downloadICalEvent(booking);
-        }
-      } catch (error) {
-        console.error("Error exporting to calendar:", error);
-        // You could show a toast/notification here if needed
-      }
-    };
+    if (saved) {
+      const start = DateTime.fromISO(saved.booking.start_time);
+      const end = DateTime.fromISO(saved.booking.end_time);
+      return (
+        <Modal
+          title={
+            <div className="text-xl font-semibold text-gray-900">
+              Varaus tallennettu
+            </div>
+          }
+          open={true}
+          onCancel={onCancel}
+          centered
+          width={640}
+          className="booking-modal"
+          footer={
+            <div className="flex justify-end w-full pt-4 border-t border-gray-200">
+              <Button
+                type="primary"
+                size="large"
+                onClick={onCancel}
+                className="w-full sm:w-auto rounded-lg font-medium"
+              >
+                Valmis
+              </Button>
+            </div>
+          }
+        >
+          <div className="space-y-5">
+            <div className="rounded-xl p-4 border border-green-200 bg-green-50">
+              <p className="text-lg font-semibold text-gray-900">
+                {saved.booking.plane}: {saved.booking.title}
+              </p>
+              <p className="text-gray-700 mt-1">
+                {start.setLocale("fi").toFormat("ccc d.M.yyyy HH:mm")}
+                {" – "}
+                {end.hasSame(start, "day")
+                  ? end.toFormat("HH:mm")
+                  : end.setLocale("fi").toFormat("ccc d.M.yyyy HH:mm")}
+              </p>
+              {saved.count && saved.count > 1 && (
+                <p className="text-sm text-gray-600 mt-1">
+                  Toistuu {saved.count} päivänä
+                </p>
+              )}
+            </div>
+            <BookingCalendarLinks
+              booking={saved.booking}
+              isLoggedIn={isLoggedIn}
+              seriesCount={saved.count}
+            />
+          </div>
+        </Modal>
+      );
+    }
 
     return (
       <>
@@ -390,17 +477,6 @@ const BookingModal = memo(
                   >
                     Sulje
                   </Button>
-                  <Button
-                    key="calendar"
-                    onClick={handleExportToCalendar}
-                    disabled={
-                      booking.id < 0 || !booking.start_time || !booking.end_time
-                    }
-                    size="large"
-                    className="w-full sm:w-auto rounded-lg font-medium bg-gradient-to-r from-sblue to-sblued text-white hover:opacity-90 transition-opacity disabled:opacity-50"
-                  >
-                    Lisää kalenteriin
-                  </Button>
                 </>
               ) : (
                 <>
@@ -425,34 +501,30 @@ const BookingModal = memo(
                       Poista
                     </Button>
                   )}
-                  {mode === "update" && booking.id >= 0 && (
-                    <Button
-                      key="calendar"
-                      onClick={handleExportToCalendar}
-                      disabled={!booking.start_time || !booking.end_time}
-                      size="large"
-                      className="w-full sm:w-auto rounded-lg font-medium border-sblue text-sblue hover:bg-sbluel/10 transition-colors"
-                    >
-                      Lisää kalenteriin
-                    </Button>
-                  )}
                   <Button
                     key="submit"
                     type="primary"
                     size="large"
                     className="bg-gradient-to-r from-sblue to-sblued hover:opacity-90 transition-opacity w-full sm:w-auto rounded-lg font-medium shadow-md disabled:opacity-50"
-                    onClick={handleSubmit(onSubmitHandler)}
+                    onClick={handleSubmit(() => onSubmitHandler(conflicts !== null))}
                     loading={isSubmitting}
                     disabled={isSubmitting || (mode === "update" && !isDirty)}
                   >
-                    {mode === "create" ? "Tallenna" : "Päivitä"}
+                    {conflicts
+                      ? "Varaa silti"
+                      : mode === "create"
+                      ? "Tallenna"
+                      : "Päivitä"}
                   </Button>
                 </>
               )}
             </div>
           }
         >
-          <form onSubmit={handleSubmit(onSubmitHandler)} className="space-y-5">
+          <form
+            onSubmit={handleSubmit(() => onSubmitHandler(conflicts !== null))}
+            className="space-y-5"
+          >
             {/* Plane Display/Info */}
             <div className="bg-gradient-to-r from-sbluel/10 to-sblued/10 rounded-xl p-4 border border-sbluel/30">
               <label className="block text-sm font-medium text-gray-600 mb-1">
@@ -558,7 +630,7 @@ const BookingModal = memo(
                         value={field.value ?? ""}
                         onChange={(e) => {
                           field.onChange(e.target.value);
-                          handleEndTimeChange(e);
+                          handleEndTimeChange();
                         }}
                         disabled={isReadOnly}
                         className={`w-full border rounded-lg px-4 py-3 text-base transition-all ${
@@ -846,8 +918,8 @@ const BookingModal = memo(
               </div>
             )}
 
-            {/* Repeating Bookings (only in create mode, hidden when full-day is active) */}
-            {mode === "create" && !isFullDay && (
+            {/* Repeating Bookings (members creating a booking, not full-day) */}
+            {mode === "create" && !isFullDay && !isGuestMode && (
               <div className="space-y-4 pt-5 mt-5 border-t-2 border-gray-200">
                 <div
                   className="flex items-start gap-3 p-4 bg-purple-50 rounded-lg border border-purple-200 hover:bg-purple-100 transition-colors cursor-pointer"
@@ -886,21 +958,8 @@ const BookingModal = memo(
                       type="date"
                       value={repeatEndDate}
                       onChange={(e) => {
-                        const newRepeatEndDate = e.target.value;
-                        setRepeatEndDate(newRepeatEndDate);
-                        // Sync the date portion of end_time to match the repeat end date,
-                        // keeping the same time-of-day
-                        if (newRepeatEndDate) {
-                          const currentEndTime = getValues("end_time");
-                          const endTimeOfDay = currentEndTime
-                            ? DateTime.fromISO(currentEndTime).toFormat("HH:mm")
-                            : "10:00";
-                          setValue(
-                            "end_time",
-                            `${newRepeatEndDate}T${endTimeOfDay}`,
-                            { shouldDirty: true }
-                          );
-                        }
+                        setRepeatEndDate(e.target.value);
+                        setConflicts(null);
                       }}
                       min={
                         booking.start_time
@@ -942,7 +1001,7 @@ const BookingModal = memo(
                 </div>
 
                 {/* Show guest contact info if this is a guest booking and user is admin */}
-                {booking.is_guest && userRole === "admin" && (
+                {booking.is_guest && isAdmin && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {booking.guest_contact_email && (
                       <div>
@@ -1007,6 +1066,48 @@ const BookingModal = memo(
                 )}
               </div>
             )}
+
+            {mode !== "create" && isLoggedIn && booking.id >= 0 && (
+              <div className="pt-5 mt-5 border-t-2 border-gray-200">
+                <BookingCalendarLinks booking={booking} isLoggedIn={isLoggedIn} />
+              </div>
+            )}
+
+            {conflicts && conflicts.length > 0 && (
+              <div
+                className="rounded-lg border border-orange-300 bg-orange-50 p-4 space-y-2"
+                role="alert"
+              >
+                <p className="font-semibold text-orange-900">
+                  {booking.plane} on jo varattu tähän aikaan
+                </p>
+                <ul className="text-sm text-orange-900 space-y-1">
+                  {conflicts.map((conflict) => (
+                    <li key={conflict.id}>
+                      {DateTime.fromISO(conflict.start_time).toFormat("d.M. HH:mm")}
+                      {" – "}
+                      {DateTime.fromISO(conflict.end_time).toFormat("d.M. HH:mm")}
+                      {": "}
+                      {conflict.title}
+                      {conflict.booker && ` (${conflict.booker})`}
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-sm text-orange-800">
+                  Voit tallentaa päällekkäisen varauksen, jos olet sopinut
+                  asiasta varaajan kanssa.
+                </p>
+              </div>
+            )}
+
+            {submitError && (
+              <div
+                className="rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-800"
+                role="alert"
+              >
+                {submitError}
+              </div>
+            )}
           </form>
         </Modal>
 
@@ -1060,7 +1161,7 @@ const BookingModal = memo(
                 <p className="text-gray-900 font-medium">
                   Haluatko varmasti poistaa varauksen{" "}
                   <span className="font-bold text-red-700">
-                    "{booking.title}"
+                    &quot;{booking.title}&quot;
                   </span>
                   ?
                 </p>
@@ -1104,6 +1205,15 @@ const BookingModal = memo(
                   </span>
                 </p>
               </div>
+
+              {deleteError && (
+                <div
+                  className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800"
+                  role="alert"
+                >
+                  {deleteError}
+                </div>
+              )}
             </div>
           </Modal>
         )}

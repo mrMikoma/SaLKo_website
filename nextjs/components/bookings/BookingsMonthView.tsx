@@ -1,43 +1,29 @@
 "use client";
 
-import { DateTime } from "luxon";
 import { LeftOutlined, RightOutlined } from "@ant-design/icons";
+import { DateTime } from "@/utilities/clubTime";
 import { BookingType } from "@/utilities/bookings";
 import { FlightTypeConfig } from "@/types/bookings";
 import { useMemo, memo } from "react";
+import { getBookingDays } from "@/utilities/bookingHelpers";
 
 interface BookingsMonthViewProps {
   bookings: BookingType[];
   selectedDate: DateTime;
   onDayClick: (date: string) => void;
-  onPrevMonth?: () => void;
+  // Given on phones: the month and its arrows head the calendar
+  onPreviousMonth?: () => void;
   onNextMonth?: () => void;
   flightTypes: FlightTypeConfig[];
   getFlightTypeColor: (type: string) => string;
 }
-
-// Helper function to get all dates a booking spans (moved outside component for reusability)
-const getBookingDates = (booking: BookingType): string[] => {
-  const start = DateTime.fromISO(booking.start_time).startOf("day");
-  const end = DateTime.fromISO(booking.end_time).startOf("day");
-  const dates: string[] = [];
-
-  let current = start;
-  while (current <= end) {
-    const dateStr = current.toISODate();
-    if (dateStr) dates.push(dateStr);
-    current = current.plus({ days: 1 });
-  }
-
-  return dates;
-};
 
 export const BookingsMonthView = memo(
   ({
     bookings,
     selectedDate,
     onDayClick,
-    onPrevMonth,
+    onPreviousMonth,
     onNextMonth,
     getFlightTypeColor,
   }: BookingsMonthViewProps) => {
@@ -62,8 +48,7 @@ export const BookingsMonthView = memo(
       const result: Record<string, BookingType[]> = {};
 
       bookings.forEach((booking) => {
-        const dates = getBookingDates(booking);
-        dates.forEach((date) => {
+        getBookingDays(booking).forEach((date) => {
           if (!result[date]) {
             result[date] = [];
           }
@@ -79,34 +64,27 @@ export const BookingsMonthView = memo(
 
     return (
       <div className="bg-swhite rounded-lg shadow overflow-hidden">
-        {/* Month header */}
-        <div className="bg-gradient-to-r from-sblue to-sblued p-4 flex items-center justify-between">
-          {onPrevMonth ? (
+        {onPreviousMonth && onNextMonth && (
+          <div className="flex items-center justify-between gap-2 bg-sblue px-1 py-1 text-swhite">
             <button
-              onClick={onPrevMonth}
-              className="flex items-center justify-center w-9 h-9 rounded-xl bg-swhite/15 hover:bg-swhite/25 active:bg-swhite/35 text-swhite transition-all focus:outline-none focus:ring-2 focus:ring-swhite/60"
+              type="button"
+              onClick={onPreviousMonth}
+              className="flex items-center justify-center w-11 h-11 rounded-lg hover:bg-swhite/15 active:bg-swhite/25 focus:outline-none focus:ring-2 focus:ring-swhite/60"
               aria-label="Edellinen kuukausi"
             >
-              <LeftOutlined />
+              <LeftOutlined className="text-lg" />
             </button>
-          ) : (
-            <div className="w-9" />
-          )}
-          <h2 className="text-xl sm:text-2xl font-bold text-swhite capitalize">
-            {selectedDate.setLocale("fi").toFormat("LLLL yyyy")}
-          </h2>
-          {onNextMonth ? (
+            <span className="font-bold capitalize">{selectedDate.setLocale("fi").toFormat("LLLL yyyy")}</span>
             <button
+              type="button"
               onClick={onNextMonth}
-              className="flex items-center justify-center w-9 h-9 rounded-xl bg-swhite/15 hover:bg-swhite/25 active:bg-swhite/35 text-swhite transition-all focus:outline-none focus:ring-2 focus:ring-swhite/60"
+              className="flex items-center justify-center w-11 h-11 rounded-lg hover:bg-swhite/15 active:bg-swhite/25 focus:outline-none focus:ring-2 focus:ring-swhite/60"
               aria-label="Seuraava kuukausi"
             >
-              <RightOutlined />
+              <RightOutlined className="text-lg" />
             </button>
-          ) : (
-            <div className="w-9" />
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Calendar grid */}
         <div className="grid grid-cols-7 gap-0">
@@ -136,9 +114,14 @@ export const BookingsMonthView = memo(
                 className={`
                 border border-gray-200 min-h-[52px] sm:min-h-[100px] p-1 sm:p-2 cursor-pointer
                 transition-colors hover:bg-sbluel/10
-                ${!isCurrentMonth ? "bg-sgrey opacity-50" : "bg-swhite"}
-                ${isToday ? "ring-2 ring-sblue" : ""}
-                ${isSelected ? "bg-sbluel/20" : ""}
+                ${
+                  !isCurrentMonth
+                    ? "bg-sgrey opacity-50"
+                    : isSelected
+                    ? "bg-sbluel/20"
+                    : "bg-swhite"
+                }
+                ${isToday ? "ring-2 ring-sblue ring-inset" : ""}
               `}
                 onClick={() => onDayClick(dateString)}
               >
@@ -167,22 +150,16 @@ export const BookingsMonthView = memo(
                 {/* Booking indicators — hidden on mobile, day number + count is enough */}
                 <div className="hidden sm:block space-y-1">
                   {dayBookings.slice(0, 3).map((booking, idx) => {
-                    const isMultiday =
-                      DateTime.fromISO(booking.start_time).toISODate() !==
-                      DateTime.fromISO(booking.end_time).toISODate();
-                    const bookingStartDate = DateTime.fromISO(
-                      booking.start_time
-                    ).toISODate();
-                    const bookingEndDate = DateTime.fromISO(
-                      booking.end_time
-                    ).toISODate();
-                    const isStartDay = bookingStartDate === dateString;
-                    const isEndDay = bookingEndDate === dateString;
+                    const bookingDays = getBookingDays(booking);
+                    const isMultiday = bookingDays.length > 1;
+                    const isStartDay = bookingDays[0] === dateString;
+                    const isEndDay =
+                      bookingDays[bookingDays.length - 1] === dateString;
 
                     return (
                       <div
                         key={booking.id || idx}
-                        className="text-xs p-1 rounded truncate text-white flex items-center gap-1"
+                        className="text-xs p-1 rounded truncate text-sblack flex items-center gap-1"
                         style={{
                           backgroundColor: getFlightTypeColor(booking.type),
                         }}

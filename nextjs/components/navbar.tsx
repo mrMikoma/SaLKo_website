@@ -16,31 +16,37 @@ import {
 } from "@headlessui/react";
 import XCrossIcon from "./icons/xCross";
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useNavbar } from "@/providers/NavbarContextProvider";
+import { hasPermission } from "@/utilities/roles";
 
-const Navbar = () => {
-  const { data: session, status } = useSession();
-  const [authenticated, setAuthenticated] = useState(false);
-  const [userName, setUserName] = useState("");
-  const [isAdmin, setIsAdmin] = useState(false);
+// flightLog and billing: whether those features are on; pagesInReview: whether
+// Hallit and Historiaa are shown before the club's review (utilities/features.ts)
+const Navbar = ({
+  flightLog,
+  billing,
+  pagesInReview,
+}: {
+  flightLog: boolean;
+  billing: boolean;
+  pagesInReview: boolean;
+}) => {
+  const { data: session } = useSession();
+  // Hide the user as soon as they click logout; signOut() then reloads the page
+  const [loggedOutSession, setLoggedOutSession] = useState<typeof session>(null);
+  const user = session !== loggedOutSession ? session?.user : undefined;
+  const authenticated = Boolean(user);
+  const userName = user?.name || "";
+  const isAdmin = user?.roles?.includes("admin") || false;
+  // A treasurer's way into the admin site: billing, or the flight log
+  // before billing is on
+  const isTreasurer = !isAdmin && flightLog && hasPermission(user?.roles ?? [], "MANAGE_FLIGHT_LOG");
+  const treasurerLink = billing
+    ? { href: "/admin/laskutus", label: "Laskutus" }
+    : { href: "/admin/lennot", label: "Lentojen tarkistus" };
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
   const { isFullscreenMode } = useNavbar();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (session?.user) {
-      setAuthenticated(true);
-      setUserName(session.user.name || "");
-      setIsAdmin(session.user.role === "admin");
-    } else {
-      setAuthenticated(false);
-      setUserName("");
-      setIsAdmin(false);
-    }
-  }, [session, status]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -63,15 +69,13 @@ const Navbar = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [lastScrollY]);
 
-  const handleLogout = async () => {
-    router.refresh();
-    setAuthenticated(false);
-    setUserName("");
+  const handleLogout = () => {
+    setLoggedOutSession(session);
   };
 
   return (
     <div
-      className={`w-full fixed top-0 z-50 bg-sblued/80  border-b border-sred/30 transition-all duration-300 ${
+      className={`w-full fixed top-0 z-50 bg-sblued/80  border-b border-sred/30 transition-all duration-300 print:hidden ${
         isVisible && !isFullscreenMode ? "translate-y-0" : "-translate-y-full"
       }`}
     >
@@ -84,13 +88,19 @@ const Navbar = () => {
                 src="/images/SaLKon Logo_vaakunaversio.png"
                 alt="SaLKo"
                 width={120}
-                height={40}
+                height={124}
+                loading="eager"
                 className="w-20 h-auto md:w-26"
               />
             </span>
           </Link>{" "}
           {/* Mobile menu toggle button */}
-          <NavbarMobile handleLogout={handleLogout} />
+          <NavbarMobile
+            handleLogout={handleLogout}
+            flightLog={flightLog}
+            billing={billing}
+            pagesInReview={pagesInReview}
+          />
         </div>
 
         {/* Desktop Navigation Menu */}
@@ -157,15 +167,31 @@ const Navbar = () => {
                           Kotikenttä
                         </Link>
                       </MenuItem>
+                      {/* Waiting for the club's review: greyed out until then */}
+                      {[
+                        { href: "/kerho/hallit", label: "Hallit" },
+                        { href: "/kerho/historiaa", label: "Historiaa" },
+                      ].map((page) => (
+                        <MenuItem key={page.href}>
+                          {pagesInReview ? (
+                            <Link
+                              href={page.href}
+                              className="block py-3 px-4 text-swhite hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
+                            >
+                              {page.label}
+                            </Link>
+                          ) : (
+                            <span className="block py-3 px-4 text-swhite/40 cursor-not-allowed">{page.label}</span>
+                          )}
+                        </MenuItem>
+                      ))}
                       <MenuItem>
-                        <span className="block py-3 px-4 text-swhite/40 cursor-not-allowed">
-                          Hallit
-                        </span>
-                      </MenuItem>
-                      <MenuItem>
-                        <span className="block py-3 px-4 text-swhite/40 cursor-not-allowed">
-                          Historiaa
-                        </span>
+                        <Link
+                          href="/tiedotteet"
+                          className="block py-3 px-4 text-swhite hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
+                        >
+                          Tiedotteet
+                        </Link>
                       </MenuItem>
                     </MenuItems>
                   </div>
@@ -281,6 +307,26 @@ const Navbar = () => {
                       Omat tiedot
                     </Link>
                   </MenuItem>
+                  {flightLog && (
+                    <MenuItem>
+                      <Link
+                        href="/jasenalue/lentopaivakirja"
+                        className="block px-4 py-3 text-swhite font-semibold hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
+                      >
+                        Lentopäiväkirja
+                      </Link>
+                    </MenuItem>
+                  )}
+                  {billing && (
+                    <MenuItem>
+                      <Link
+                        href="/jasenalue/laskut"
+                        className="block px-4 py-3 text-swhite font-semibold hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
+                      >
+                        Laskut
+                      </Link>
+                    </MenuItem>
+                  )}
                   {isAdmin && (
                     <MenuItem>
                       <Link
@@ -288,6 +334,16 @@ const Navbar = () => {
                         className="block px-4 py-3 text-swhite font-semibold hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
                       >
                         Admin sivut
+                      </Link>
+                    </MenuItem>
+                  )}
+                  {isTreasurer && (
+                    <MenuItem>
+                      <Link
+                        href={treasurerLink.href}
+                        className="block px-4 py-3 text-swhite font-semibold hover:bg-sblue/50 hover:text-sbluel transition-all duration-200"
+                      >
+                        {treasurerLink.label}
                       </Link>
                     </MenuItem>
                   )}

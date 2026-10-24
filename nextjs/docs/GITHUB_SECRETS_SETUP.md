@@ -43,6 +43,17 @@ All secrets should be added to your GitHub repository at:
 | `GOOGLE_CLIENT_ID_PROD` | Google OAuth Client ID for prod | From Google Cloud Console | ✅ Yes |
 | `GOOGLE_CLIENT_SECRET_PROD` | Google OAuth Client Secret for prod | From Google Cloud Console | ✅ Yes |
 
+### Flight Log Sheet (Development)
+
+The dev environment's own flight log spreadsheet. Steps: `FLIGHT_LOG_SETUP.md`. Without these, the flight log pages on dev say the sheet isn't set up; nothing else breaks.
+
+| Secret Name | Description | How to Generate | Required |
+|------------|-------------|-----------------|----------|
+| `GOOGLE_SHEETS_ID` | ID of the dev spreadsheet | From its address: `/d/<ID>/edit` | Optional |
+| `GOOGLE_SERVICE_ACCOUNT_JSON` | The dev service account's JSON key file, as downloaded | Google Cloud Console | Optional |
+
+These two are secrets of the `development` environment, which the deploy job runs in. The spreadsheet ID is a secret too: the Actions logs are public, and only secrets are masked. The production environment gets its own when the flight log goes live there.
+
 ---
 
 ## Required Variables
@@ -103,6 +114,10 @@ APP_DB_PASSWORD: ${{ secrets.APP_DB_PASSWORD }}
 NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
 GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
 GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+
+# Flight log sheet (optional, FLIGHT_LOG_SETUP.md)
+FLIGHT_LOG_SPREADSHEET_ID: ${{ secrets.GOOGLE_SHEETS_ID }}
+GOOGLE_SERVICE_ACCOUNT_KEY: base64 of ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
 ```
 
 **Deployment URL:** `https://kehitys.savonlinnanlentokerho.fi`

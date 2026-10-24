@@ -1,4 +1,5 @@
 import Bulletings from "@/components/bulletings/bulletings";
+import { fetchPublishedBulletins } from "@/utilities/bulletings";
 import FeatureCard from "@/components/featureCard";
 import PlaneIcon from "@/components/icons/plane";
 import GraduationIcon from "@/components/icons/graduation";
@@ -30,7 +31,10 @@ export const metadata = {
   alternates: { canonical: "/" },
 };
 
-export default function Page() {
+export default async function Page() {
+  // One query for both places the bulletins show (desktop sidebar, mobile section)
+  const { result: bulletins } = await fetchPublishedBulletins(5);
+
   return (
     <div className="min-h-screen flex flex-col w-full">
       {/* Hero Section */}
@@ -105,9 +109,9 @@ export default function Page() {
           </div>
 
           {/* Bulletin Sidebar - Right Side (Desktop) */}
-          <div className="hidden lg:block w-full lg:w-[40%] lg:max-w-[500px] flex-shrink-0 lg:mt-20">
-            <div className="glass rounded-2xl p-6 shadow-2xl border border-sred/20 max-h-[65vh] overflow-y-auto">
-              <Bulletings />
+          <div className="hidden lg:flex lg:w-[40%] lg:max-w-[500px] flex-shrink-0 lg:mt-20 max-h-[65vh] self-start">
+            <div className="glass rounded-2xl p-6 shadow-2xl border border-sred/20 w-full max-h-full flex flex-col overflow-hidden">
+              <Bulletings bulletins={bulletins} />
             </div>
           </div>
         </div>
@@ -131,7 +135,7 @@ export default function Page() {
       {/* Mobile Bulletin Section */}
       <section className="block lg:hidden w-full bg-sblued py-8">
         <div className="container mx-auto px-6">
-          <Bulletings />
+          <Bulletings bulletins={bulletins} />
         </div>
       </section>
 

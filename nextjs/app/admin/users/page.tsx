@@ -3,7 +3,8 @@ import { getAllUsers } from "@/utilities/adminUserActions";
 import UserTable from "@/components/admin/userTable";
 import UserSearch from "@/components/admin/userSearch";
 import { auth } from "@/auth";
-import { hasPermission } from "@/utilities/roles";
+import { ASSIGNABLE_ROLES, hasPermission, ROLES } from "@/utilities/roles";
+import { isFlightLogEnabled } from "@/utilities/features";
 import { redirect } from "next/navigation";
 
 interface PageProps {
@@ -13,7 +14,7 @@ interface PageProps {
 export default async function UsersPage({ searchParams }: PageProps) {
   const session = await auth();
 
-  if (!session?.user?.role || !hasPermission(session.user.role, "ACCESS_ADMIN_SITE")) {
+  if (!session?.user?.roles || !hasPermission(session.user.roles, "ACCESS_ADMIN_SITE")) {
     redirect("/");
   }
 
@@ -40,7 +41,14 @@ export default async function UsersPage({ searchParams }: PageProps) {
         <div className="p-6 border-b border-gray-200">
           <UserSearch initialSearch={searchQuery} />
         </div>
-        <UserTable users={users} />
+        <UserTable
+          users={users}
+          currentUserId={session.user.id}
+          // Laskuttaja works only with the flight log
+          assignableRoles={
+            isFlightLogEnabled() ? ASSIGNABLE_ROLES : ASSIGNABLE_ROLES.filter((role) => role !== ROLES.TREASURER)
+          }
+        />
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { DateTime } from "luxon";
+import { DateTime } from "@/utilities/clubTime";
 import { BookingType } from "@/utilities/bookings";
 import { FlightTypeConfig } from "@/types/bookings";
 import { useMemo, memo } from "react";
@@ -9,7 +9,7 @@ import {
   generateHourLabels,
   isFullDayBooking,
 } from "@/utilities/bookingHelpers";
-import { getPlaneDisplayName } from "@/utilities/planeHelpers";
+import { getPlaneDisplayName, BOOKABLE_PLANES } from "@/utilities/planeHelpers";
 
 interface BookingsDesktopViewProps {
   bookings: BookingType[];
@@ -20,7 +20,6 @@ interface BookingsDesktopViewProps {
   getFlightTypeColor: (type: string) => string;
 }
 
-const PLANES = ["OH-CON", "OH-386", "OH-816", "OH-829", "OH-475"];
 const START_HOUR = 6;
 const END_HOUR = 23;
 
@@ -105,7 +104,7 @@ const BookingCell = memo(
             <button
               key={`${plane}-${hour}-${booking.id}`}
               onClick={() => onBookingClick(booking)}
-              className="absolute cursor-pointer text-white px-1 overflow-hidden flex flex-col justify-center hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-blue-500 focus:z-10"
+              className="absolute cursor-pointer text-sblack px-1 overflow-hidden flex flex-col justify-center hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-blue-500 focus:z-10"
               style={{
                 left: `${index * bookingWidth}%`,
                 width: `${bookingWidth}%`,
@@ -114,7 +113,7 @@ const BookingCell = memo(
                 backgroundColor: getFlightTypeColor(booking.type),
                 borderRight:
                   index < maxBookings - 1
-                    ? "1px solid rgba(255,255,255,0.5)"
+                    ? "1px solid rgba(12,24,33,0.25)"
                     : "none",
                 fontSize: maxBookings > 2 ? "10px" : "12px",
                 opacity: fullDay ? 0.9 : 1,
@@ -192,7 +191,7 @@ export const BookingsDesktopView = memo(
               >
                 ALKAVA TUNTI
               </th>
-              {PLANES.map((plane) => (
+              {BOOKABLE_PLANES.map((plane) => (
                 <th
                   key={plane}
                   className="border border-gray-300 p-2 bg-gray-100"
@@ -213,7 +212,7 @@ export const BookingsDesktopView = memo(
                 >
                   {hour}
                 </th>
-                {PLANES.map((plane) => {
+                {BOOKABLE_PLANES.map((plane) => {
                   const hourValue = parseInt(hour.split(":")[0]);
                   const visibleBookings = getVisibleBookingsForHour(
                     plane,

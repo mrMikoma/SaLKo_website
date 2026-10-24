@@ -7,7 +7,8 @@ import { FcGoogle } from "react-icons/fc";
 // References:
 // - https://nextjs.org/docs/app/building-your-application/authentication
 
-const Login = () => {
+// redirectTo: the page to return to after logging in; the front page by default
+const Login = ({ redirectTo }: { redirectTo?: string }) => {
   const [state, action, pending] = useActionState(
     loginWithCredentials,
     undefined
@@ -28,6 +29,7 @@ const Login = () => {
 
       <div className="mt-8 sm:mx-auto w-full max-w-md">
         <form action={action} className="space-y-5">
+          {redirectTo && <input type="hidden" name="redirectTo" value={redirectTo} />}
           <div>
             <label
               htmlFor="email"
@@ -41,6 +43,8 @@ const Login = () => {
               type="email"
               required
               autoComplete="email"
+              // Kept after a failed attempt; React empties the form otherwise
+              defaultValue={state?.email}
               placeholder="Sähköposti"
               className="block w-full rounded-lg bg-white/95 px-4 py-2.5 text-base text-sblued border-2 border-sblue/30 placeholder:text-gray-400 focus:border-sred focus:ring-2 focus:ring-sred/20 focus:outline-none transition-all duration-200 shadow-md"
             />
@@ -124,6 +128,7 @@ const Login = () => {
 
           <div className="mt-6">
             <form action={loginWithGoogle}>
+              {redirectTo && <input type="hidden" name="redirectTo" value={redirectTo} />}
               <button
                 type="submit"
                 className="flex w-full items-center justify-center gap-3 rounded-lg bg-white px-4 py-3 text-sm font-bold text-sblued shadow-xl hover:shadow-2xl hover:-translate-y-0.5 border-2 border-sblue/30 hover:border-sbluel transition-all duration-300"

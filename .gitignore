@@ -1,6 +1,14 @@
 .env
 .env.*
+# Claude Code: share settings, hooks, skills and agents; keep worktrees and
+# personal overrides local
+.claude/*
+!.claude/settings.json
+!.claude/hooks/
+!.claude/skills/
+!.claude/agents/
 !.env.template
+!.env.example
 !.env.monitoring.template
 lentokerho.sql
 SaLKo nettisivut sisältö 12-2024.pdf

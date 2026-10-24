@@ -1,10 +1,23 @@
 services:
   postgres:
-    image: postgres:17.5
+    image: postgres:17.11
     container_name: ${NAME_PREFIX}-postgres-${BRANCH_SUFFIX}
     networks:
       - internal
-    env_file: .env.dev
+    # Only what Postgres and its init scripts read. The app's secrets (the
+    # NextAuth secret, the flight log's service-account key, the mail token)
+    # stay out of the database container, where a superuser could read its
+    # environment.
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - PGPORT=${PGPORT}
+      - PGTZ=${PGTZ}
+      - APP_DB_USER=${APP_DB_USER}
+      - APP_DB_PASSWORD=${APP_DB_PASSWORD}
+      - UMAMI_DB_USER=${UMAMI_DB_USER}
+      - UMAMI_DB_PASSWORD=${UMAMI_DB_PASSWORD}
     volumes:
       - /home/salko/postgres-dev/init:/docker-entrypoint-initdb.d:ro
       # - /home/salko/postgres-dev/postgres-data:/var/lib/postgresql/data data persistence disabled for dev
@@ -30,9 +43,6 @@ services:
       - PORT=${CONTAINER_PORT}
       - HOSTNAME=${HOSTNAME}
       - DATABASE_CONNECTION_STRING=postgresql://${APP_DB_USER}:${APP_DB_PASSWORD}@${NAME_PREFIX}-postgres-${BRANCH_SUFFIX}:${PGPORT}/${POSTGRES_DB}
-    depends_on:
-      postgres:
-        condition: service_healthy
     restart: unless-stopped
     # healthcheck:
     #   test: curl --fail http://localhost:3001/ || exit 1

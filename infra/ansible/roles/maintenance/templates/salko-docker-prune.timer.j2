@@ -1,0 +1,11 @@
+# Managed by Ansible (infra/ansible/roles/maintenance). Local changes are overwritten.
+[Unit]
+Description=SaLKo weekly Docker cleanup
+
+[Timer]
+OnCalendar={{ maintenance_docker_prune_on_calendar }} {{ maintenance_timezone }}
+RandomizedDelaySec={{ maintenance_docker_prune_randomized_delay }}
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { signOut } from "next-auth/react";
 import {
   changePassword,
   ChangePasswordState,
@@ -43,6 +44,14 @@ const ChangePasswordForm = ({ onCancel }: ChangePasswordFormProps) => {
               <p className="text-sm text-success-green font-bold">
                 {state.message}
               </p>
+              {/* The change ended every session of the account, this one too */}
+              <button
+                type="button"
+                onClick={() => signOut({ redirectTo: "/" })}
+                className="mt-3 min-h-11 px-4 rounded-lg bg-sblue text-swhite font-semibold hover:bg-sblue/90"
+              >
+                Kirjaudu uudelleen
+              </button>
             </div>
           </div>
         </div>

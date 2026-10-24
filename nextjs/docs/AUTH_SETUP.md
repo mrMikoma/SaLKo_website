@@ -195,7 +195,7 @@ New columns in `users`:
 Three users are created on initialization:
 
 1. **System Admin** (always created)
-   - `admin@savonlinnanlentokerho.fi`
+   - `admin@savonlinnanlentokerho.fi`, roles `admin` and `treasurer` (laskuttaja)
 
 2. **Test User** (development only)
    - `kayttaja@savonlinnanlentokerho.fi`

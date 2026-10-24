@@ -15,25 +15,30 @@ import ArrowDownIcon from "@/components/icons/arrowDown";
 import XCrossIcon from "@/components/icons/xCross";
 import MenuIcon from "@/components/icons/menu";
 import { useNavbar } from "@/providers/NavbarContextProvider";
+import { hasPermission } from "@/utilities/roles";
 import Login from "@/components/auth/login";
 import Logout from "@/components/auth/logout";
 
-const NavbarMobile = (handleLogoutProp: { handleLogout: () => void }) => {
-  const { data: session, status } = useSession();
+const NavbarMobile = (handleLogoutProp: {
+  handleLogout: () => void;
+  flightLog: boolean;
+  billing: boolean;
+  pagesInReview: boolean;
+}) => {
+  const { data: session } = useSession();
   const { isMobileMenuOpen, setIsMobileMenuOpen } = useNavbar();
   const pathName = usePathname();
-  const [authenticated, setAuthenticated] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  useEffect(() => {
-    if (session?.user) {
-      setAuthenticated(true);
-      setIsAdmin(session.user.role === "admin");
-    } else {
-      setAuthenticated(false);
-      setIsAdmin(false);
-    }
-  }, [session, status]);
+  const authenticated = Boolean(session?.user);
+  const isAdmin = session?.user?.roles?.includes("admin") || false;
+  // A treasurer's way into the admin site: billing, or the flight log
+  // before billing is on
+  const isTreasurer =
+    !isAdmin &&
+    handleLogoutProp.flightLog &&
+    hasPermission(session?.user?.roles ?? [], "MANAGE_FLIGHT_LOG");
+  const treasurerLink = handleLogoutProp.billing
+    ? { href: "/admin/laskutus", label: "Laskutus" }
+    : { href: "/admin/lennot", label: "Lentojen tarkistus" };
 
   // Toggle menu visibility
   const handleToggle = () => {
@@ -141,12 +146,36 @@ const NavbarMobile = (handleLogoutProp: { handleLogout: () => void }) => {
                       {" "}
                       Kotikenttä
                     </Link>
-                    <span className="block w-full py-2.5 px-8 text-base text-swhite/40 cursor-not-allowed border-l-2 border-transparent backdrop-blur-sm">
-                      Hallit
-                    </span>
-                    <span className="block w-full py-2.5 px-8 text-base text-swhite/40 cursor-not-allowed border-l-2 border-transparent backdrop-blur-sm">
-                      Historiaa
-                    </span>
+                    {/* Waiting for the club's review: greyed out until then */}
+                    {[
+                      { href: "/kerho/hallit", label: "Hallit" },
+                      { href: "/kerho/historiaa", label: "Historiaa" },
+                    ].map((page) =>
+                      handleLogoutProp.pagesInReview ? (
+                        <Link
+                          key={page.href}
+                          href={page.href}
+                          className="block w-full py-2.5 px-8 text-base text-swhite/95 hover:bg-sblue/40 hover:text-swhite hover:pl-10 transition-all duration-200 border-l-2 border-transparent hover:border-sred backdrop-blur-sm"
+                          onClick={handleClose}
+                        >
+                          {page.label}
+                        </Link>
+                      ) : (
+                        <span
+                          key={page.href}
+                          className="block w-full py-2.5 px-8 text-base text-swhite/40 cursor-not-allowed border-l-2 border-transparent backdrop-blur-sm"
+                        >
+                          {page.label}
+                        </span>
+                      )
+                    )}
+                    <Link
+                      href="/tiedotteet"
+                      className="block w-full py-2.5 px-8 text-base text-swhite/95 hover:bg-sblue/40 hover:text-swhite hover:pl-10 transition-all duration-200 border-l-2 border-transparent hover:border-sred backdrop-blur-sm"
+                      onClick={handleClose}
+                    >
+                      Tiedotteet
+                    </Link>
                   </DisclosurePanel>
                 </div>
               )}
@@ -240,6 +269,24 @@ const NavbarMobile = (handleLogoutProp: { handleLogout: () => void }) => {
                       >
                         Omat tiedot
                       </Link>
+                      {handleLogoutProp.flightLog && (
+                        <Link
+                          href="/jasenalue/lentopaivakirja"
+                          className="block w-full py-2.5 px-8 text-base text-swhite/95 hover:bg-sblue/40 hover:text-swhite hover:pl-10 transition-all duration-200 border-l-2 border-transparent hover:border-sred backdrop-blur-sm"
+                          onClick={handleClose}
+                        >
+                          Lentopäiväkirja
+                        </Link>
+                      )}
+                      {handleLogoutProp.billing && (
+                        <Link
+                          href="/jasenalue/laskut"
+                          className="block w-full py-2.5 px-8 text-base text-swhite/95 hover:bg-sblue/40 hover:text-swhite hover:pl-10 transition-all duration-200 border-l-2 border-transparent hover:border-sred backdrop-blur-sm"
+                          onClick={handleClose}
+                        >
+                          Laskut
+                        </Link>
+                      )}
                       {isAdmin && (
                         <Link
                           href="/admin"
@@ -247,6 +294,15 @@ const NavbarMobile = (handleLogoutProp: { handleLogout: () => void }) => {
                           onClick={handleClose}
                         >
                           Admin sivut
+                        </Link>
+                      )}
+                      {isTreasurer && (
+                        <Link
+                          href={treasurerLink.href}
+                          className="block w-full py-2.5 px-8 text-base text-swhite/95 hover:bg-sblue/40 hover:text-swhite hover:pl-10 transition-all duration-200 border-l-2 border-transparent hover:border-sred backdrop-blur-sm"
+                          onClick={handleClose}
+                        >
+                          {treasurerLink.label}
                         </Link>
                       )}
                       <div className="block w-full py-2.5 px-8 text-base text-sred/95 hover:bg-sblue/40 hover:text-sred hover:pl-10 transition-all duration-200 border-l-2 border-transparent hover:border-sred backdrop-blur-sm">

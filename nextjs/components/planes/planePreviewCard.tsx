@@ -30,6 +30,7 @@ const PlanePreviewCard = ({ plane, type }: PlanePreviewCardProps) => {
               src={plane.images[0].src}
               alt={plane.images[0].alt}
               fill
+              sizes="(min-width: 768px) 50vw, 100vw"
               className="object-cover group-hover:scale-105 transition-all duration-500"
             />
             <div className="absolute inset-0 bg-sblack/20"></div>

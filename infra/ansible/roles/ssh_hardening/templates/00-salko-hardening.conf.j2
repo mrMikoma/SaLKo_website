@@ -1,0 +1,13 @@
+# Managed by Ansible (infra/ansible/roles/ssh_hardening). Local changes are overwritten.
+# sshd_config starts with "Include /etc/ssh/sshd_config.d/*.conf" and sshd keeps
+# the first value it reads for each keyword, so this file wins over sshd_config
+# and over later drop-ins such as 50-cloud-init.conf.
+PermitRootLogin prohibit-password
+PubkeyAuthentication yes
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+AuthorizedKeysFile .ssh/authorized_keys
+MaxAuthTries 6
+X11Forwarding no
+AllowTcpForwarding no
+AllowAgentForwarding no

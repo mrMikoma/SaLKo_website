@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
-import { DateTime } from "luxon";
+import { DateTime } from "@/utilities/clubTime";
 
 /**
  * Custom hook for managing date parameter in URL

@@ -2,6 +2,11 @@ name: Ansible Provision
 
 on:
   workflow_dispatch:
+    inputs:
+      check_mode:
+        description: "Dry run: run ansible-playbook with --check --diff (no changes are applied to the server)"
+        type: boolean
+        default: false
   push:
     branches:
       - main
@@ -19,7 +24,7 @@ jobs:
     steps:
       - name: Create runner
         id: create-hcloud-runner
-        uses: Cyclenerd/hcloud-github-runner@v1.3.0
+        uses: Cyclenerd/hcloud-github-runner@v1.4.1
         with:
           mode: create
           github_token: ${{ secrets.HETZNER_GHA_RUNNER_PAT }}
@@ -72,22 +77,22 @@ jobs:
     runs-on: ${{ needs.create-runner.outputs.label }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v7.0.1
 
       - name: Setup Python
-        uses: actions/setup-python@v5.6.0
+        uses: actions/setup-python@v7.0.0
         with:
           python-version: "3.13"
 
       - name: Install Ansible and dependencies
         run: |
           python3 -m pip install --upgrade pip
-          pip3 install ansible ansible-lint
+          pip3 install ansible==14.5.0 ansible-lint==26.9.0
 
       - name: Lint Ansible Playbook
         run: |
           ansible-lint infra/ansible/playbook.yml || exit_code=$?
-          if [ "$exit_code" -ne 0 ]; then
+          if [ "${exit_code:-0}" -ne 0 ]; then
             echo "❌ Linting failed with exit code $exit_code"
             exit $exit_code
           else
@@ -115,7 +120,7 @@ jobs:
             --private-key ~/.ssh/id_ed25519 \
             --extra-vars "ansible_ssh_common_args='-o ControlMaster=auto -o ControlPersist=60s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'" || exit_code=$?
 
-          if [ "$exit_code" -ne 0 ]; then
+          if [ "${exit_code:-0}" -ne 0 ]; then
             echo "❌ Ping failed with exit code $exit_code"
             exit $exit_code
           else
@@ -149,16 +154,28 @@ jobs:
           SALKO_USER_PW_512: ${{ secrets.SALKO_USER_PW_512 }}
           ANSIBLE_HOST_KEY_CHECKING: False
           ANSIBLE_FORCE_COLOR: True
+          CHECK_MODE: ${{ inputs.check_mode }}
         run: |
+          # Only main changes the server; another branch may only dry-run
+          if [ "$CHECK_MODE" != "true" ] && [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "❌ Real runs only from main (this run is on $GITHUB_REF). Tick \"Dry run\" to check another branch."
+            exit 1
+          fi
           chmod +x infra/ansible/inventory.py 
+          check_args=()
+          if [ "$CHECK_MODE" = "true" ]; then
+            echo "Dry run: --check --diff, no changes are applied to the server"
+            check_args=(--check --diff)
+          fi
           ansible-playbook infra/ansible/playbook.yml \
             --verbose \
             --user root \
             --private-key ~/.ssh/id_ed25519 \
             --inventory infra/ansible/inventory.py \
+            "${check_args[@]}" \
             --extra-vars "ansible_ssh_common_args='-o ControlMaster=auto -o ControlPersist=60s -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'" || exit_code=$?
           
-          if [ "$exit_code" -ne 0 ]; then
+          if [ "${exit_code:-0}" -ne 0 ]; then
             echo "❌ Ansible playbook execution failed with exit code $exit_code"
             exit $exit_code
           else
@@ -174,7 +191,7 @@ jobs:
     if: ${{ always() }}
     steps:
       - name: Delete runner
-        uses: Cyclenerd/hcloud-github-runner@v1.3.0
+        uses: Cyclenerd/hcloud-github-runner@v1.4.1
         with:
           mode: delete
           github_token: ${{ secrets.HETZNER_GHA_RUNNER_PAT }}

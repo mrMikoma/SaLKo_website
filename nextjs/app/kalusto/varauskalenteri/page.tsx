@@ -24,7 +24,7 @@ export default async function Page() {
     isLoggedIn: !!session,
     userId: session?.user?.id || null,
     userName: session?.user?.name || null,
-    userRole: session?.user?.role || "guest", // Default to guest for unauthenticated users
+    userRole: session?.user?.roles || ["guest"], // Default to guest for unauthenticated users
     userEmail: session?.user?.email || null,
   };
 
@@ -36,8 +36,9 @@ export default async function Page() {
         compact={true}
         backgroundImage="bg-mopu-one"
         showScrollIndicator={false}
-        children={<BookingSection userContext={userContext} />}
-      />
+      >
+        <BookingSection userContext={userContext} />
+      </PageHero>
     </div>
   );
 }

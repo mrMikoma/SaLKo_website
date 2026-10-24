@@ -2,11 +2,12 @@
   "general": {
     "name": "Savonlinnan Lentokerho r.y.",
     "email": "info@savonlinnanlentokerho.fi",
+    "billingEmail": "laskutus@savonlinnanlentokerho.fi",
     "address": "Lentoasemantie 50",
     "city": "Savonlinna",
     "postalCode": "57310",
     "country": "Suomi - Finland",
-    "buseinessId": "Y-0481856-3",
+    "businessId": "0481856-3",
     "IBAN": "FI51 4108 0011 8965 14",
     "BIC": "ITELFIHH",
     "bank": "Oma Säästöpankki Oyj"

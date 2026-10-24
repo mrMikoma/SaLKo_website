@@ -2,7 +2,7 @@
 CREATE TABLE
   users (
     id TEXT PRIMARY KEY DEFAULT gen_random_uuid (),
-    role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'user', 'guest')), -- 'admin', 'user', or 'guest'
+    roles TEXT[] NOT NULL DEFAULT ARRAY['user']::TEXT[], -- Array of roles: 'admin', 'user', 'guest', etc.
     name TEXT NOT NULL,
     full_name TEXT NOT NULL,
     phone TEXT, -- Optional for OAuth users
@@ -16,7 +16,11 @@ CREATE TABLE
     avatar_url TEXT,
     email_verified BOOLEAN DEFAULT FALSE,
     last_login TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT NOW ()
+    created_at TIMESTAMPTZ DEFAULT NOW (),
+    -- Set when an admin removes the user: no login, history (bookings) is kept
+    deactivated_at TIMESTAMPTZ,
+    -- Sessions that logged in before this end (nextjs/auth.ts)
+    sessions_revoked_at TIMESTAMPTZ
   );
 
 -- Create bullets table
@@ -28,6 +32,10 @@ CREATE TABLE
     title TEXT NOT NULL,
     content TEXT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW (),
+    -- Drafts are only visible in the admin; published_at is the date the
+    -- public sees, set the first time the bulletin is published
+    status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published')),
+    published_at TIMESTAMPTZ,
     FOREIGN KEY (user_id) REFERENCES users (id)
   );
 
@@ -168,3 +176,364 @@ COMMENT ON COLUMN metar_data.raw_metar IS 'Raw METAR string from Aviation Weathe
 COMMENT ON COLUMN metar_data.observation_time IS 'Time of actual weather observation';
 
 COMMENT ON COLUMN metar_data.fetched_at IS 'Time when data was fetched from API';
+
+-- =============================================
+-- Flight log (synced from the club's Google Sheet)
+-- =============================================
+-- The aircraft's paper journey log is the master record and the Google Sheet
+-- is its digital copy, one tab per aircraft. The website writes flights into
+-- the sheet and keeps sheet_flights in sync with it; flights are never edited
+-- here directly. See nextjs/docs/FLIGHT_LOG.md.
+
+-- Purpose codes of the sheet's "Lennon tarkoitus" column
+CREATE TABLE IF NOT EXISTS flight_purposes (
+  code TEXT PRIMARY KEY,
+  name_fi TEXT NOT NULL,
+  -- Who pays for the flight: the PIC, the student (Oppilas / SIC) or nobody
+  payer TEXT NOT NULL CHECK (payer IN ('pic', 'student', 'none')),
+  is_training BOOLEAN NOT NULL DEFAULT FALSE,
+  sort_order SMALLINT NOT NULL DEFAULT 0,
+  active BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+INSERT INTO flight_purposes (code, name_fi, payer, is_training, sort_order) VALUES
+  ('HAR', 'Harrastuslento', 'pic', FALSE, 10),
+  ('MAT', 'Matkalento', 'pic', FALSE, 20),
+  ('KOU', 'Koululento', 'student', TRUE, 30),
+  ('KOUMAT', 'Koulumatkalento', 'student', TRUE, 31),
+  ('KOUHAR', 'Kouluharrastuslento', 'student', TRUE, 32),
+  ('TAR', 'Tarkastuslento', 'pic', FALSE, 40),
+  ('ESI', 'Esittelylento', 'none', FALSE, 50),
+  ('SII', 'Siirtolento', 'none', FALSE, 60),
+  ('KOE', 'Koelento', 'none', FALSE, 70),
+  ('PALO', 'Palolento', 'none', FALSE, 80),
+  ('PALOHAR', 'Palolentoharjoitus', 'none', FALSE, 81),
+  ('SAR', 'Etsintälento', 'none', FALSE, 90),
+  ('SARHAR', 'Etsintälentoharjoitus', 'none', FALSE, 91),
+  ('HIN', 'Hinauslento', 'none', FALSE, 100),
+  ('LAS', 'Laskuvarjolento', 'pic', FALSE, 110)
+ON CONFLICT (code) DO NOTHING;
+
+-- Which tab of the flight log spreadsheet belongs to which aircraft
+CREATE TABLE IF NOT EXISTS aircraft_sheets (
+  registration TEXT PRIMARY KEY,
+  sheet_name TEXT NOT NULL UNIQUE,
+  -- Google's numeric tab id, for links into the sheet; the sync fills it in
+  sheet_gid BIGINT,
+  -- First flight row: row 1 has the headers and row 2 the opening totals
+  first_data_row INT NOT NULL DEFAULT 3,
+  active BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+INSERT INTO aircraft_sheets (registration, sheet_name)
+VALUES ('OH-CON', 'OH-CON Matkapäiväkirja')
+ON CONFLICT (registration) DO NOTHING;
+
+-- Pilot names as written in the sheet ("M.Meikäläinen") matched to member accounts.
+-- name_key is the name in lower case without spaces and dots, so "M. Meikäläinen"
+-- and "m.meikäläinen" are the same pilot (nameKey() in utilities/flightSheetParser.ts).
+CREATE TABLE IF NOT EXISTS pilot_aliases (
+  name_key TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  -- NULL: the biller marked the name as no member (billed under the name)
+  user_id TEXT REFERENCES users (id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_pilot_aliases_user ON pilot_aliases (user_id);
+
+-- The synced copy, one row per flight row of the sheet
+CREATE TABLE IF NOT EXISTS sheet_flights (
+  id UUID PRIMARY KEY, -- the sheet's ID column
+  registration TEXT NOT NULL,
+  sheet_row INT NOT NULL,
+  flight_date DATE NOT NULL,
+  pic_name TEXT NOT NULL,
+  pic_key TEXT NOT NULL,
+  second_name TEXT,
+  second_key TEXT,
+  persons_on_board SMALLINT,
+  departure TEXT,
+  arrival TEXT,
+  takeoff_at TIMESTAMPTZ,
+  landing_at TIMESTAMPTZ,
+  airborne_minutes INT,
+  airframe_minutes INT,
+  landings INT,
+  total_landings INT,
+  purpose_code TEXT,
+  fuel_litres NUMERIC(8, 2),
+  oil_quarts NUMERIC(6, 2), -- quarts (1/4 US gallon), as oil is added
+  hour_meter NUMERIC(9, 1),
+  remarks TEXT,
+  log_page TEXT,
+  book_total TEXT,
+  book_error TEXT,
+  maintenance TEXT,
+  source TEXT,
+  status TEXT,
+  billing_period TEXT,
+  raw JSONB NOT NULL,
+  content_hash TEXT NOT NULL,
+  synced_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  -- Set when the row is no longer in the sheet
+  missing_since TIMESTAMPTZ,
+  -- Hash of the typed-in fields only (not the running totals), so a status
+  -- change can tell whether the flight changed after the biller saw it
+  input_hash TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_sheet_flights_aircraft_date
+  ON sheet_flights (registration, flight_date) WHERE missing_since IS NULL;
+CREATE INDEX IF NOT EXISTS idx_sheet_flights_pic_key ON sheet_flights (pic_key);
+CREATE INDEX IF NOT EXISTS idx_sheet_flights_second_key ON sheet_flights (second_key);
+
+-- Flights members entered on the website: who wrote which sheet row, so they
+-- can undo their own latest entry
+CREATE TABLE IF NOT EXISTS flight_log_web_entries (
+  id UUID PRIMARY KEY, -- the row's ID in the sheet
+  user_id TEXT NOT NULL REFERENCES users (id),
+  registration TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  undone_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_flight_log_web_entries_user
+  ON flight_log_web_entries (user_id, created_at DESC);
+
+-- Problems the sync found in the sheet, recomputed on every sync
+CREATE TABLE IF NOT EXISTS sheet_flight_issues (
+  id SERIAL PRIMARY KEY,
+  registration TEXT NOT NULL,
+  sheet_row INT NOT NULL,
+  flight_id UUID,
+  kind TEXT NOT NULL,
+  message TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_sheet_flight_issues_aircraft
+  ON sheet_flight_issues (registration, sheet_row);
+
+CREATE TABLE IF NOT EXISTS sheet_sync_runs (
+  id SERIAL PRIMARY KEY,
+  started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  finished_at TIMESTAMPTZ,
+  status TEXT NOT NULL CHECK (status IN ('running', 'success', 'error')),
+  triggered_by TEXT NOT NULL,
+  rows_read INT,
+  rows_changed INT,
+  ids_assigned INT,
+  issues INT,
+  error TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_sheet_sync_runs_started ON sheet_sync_runs (started_at DESC);
+
+-- Who changed a flight's Tila on the website, and when. The sheet keeps only
+-- the current status.
+CREATE TABLE IF NOT EXISTS flight_status_changes (
+  id SERIAL PRIMARY KEY,
+  flight_id UUID NOT NULL, -- sheet_flights.id; no foreign key, the row can leave the sheet
+  registration TEXT NOT NULL,
+  old_status TEXT, -- NULL = Kirjattu
+  new_status TEXT,
+  changed_by TEXT REFERENCES users (id) ON DELETE SET NULL,
+  changed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  -- What else happened, e.g. "Paperisivu 47, korjattu: lasku 11:03 → 11:05"
+  note TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_flight_status_changes_flight
+  ON flight_status_changes (flight_id, changed_at DESC);
+
+-- Billing (nextjs/docs/FLIGHT_LOG.md, "Billing")
+
+-- Per-minute prices per aircraft, from a date on. A local flight shorter than
+-- minimum_local_minutes is billed that long (0 = no minimum).
+CREATE TABLE IF NOT EXISTS aircraft_rates (
+  registration TEXT NOT NULL,
+  valid_from DATE NOT NULL,
+  cents_with_fee INT NOT NULL CHECK (cents_with_fee >= 0),
+  cents_without_fee INT NOT NULL CHECK (cents_without_fee >= 0),
+  minimum_local_minutes INT NOT NULL DEFAULT 0 CHECK (minimum_local_minutes >= 0),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (registration, valid_from)
+);
+
+INSERT INTO aircraft_rates (registration, valid_from, cents_with_fee, cents_without_fee, minimum_local_minutes)
+VALUES ('OH-CON', '2000-01-01', 310, 500, 30)
+ON CONFLICT DO NOTHING;
+
+-- Members who paid a season's equipment fee (kalustomaksu): they fly at the
+-- lower price and earn the free hour
+CREATE TABLE IF NOT EXISTS equipment_fee_seasons (
+  user_id TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  season INT NOT NULL CHECK (season BETWEEN 2000 AND 2100),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_by TEXT REFERENCES users (id) ON DELETE SET NULL,
+  PRIMARY KEY (user_id, season)
+);
+
+-- Flight log settings the biller changes on the site
+CREATE TABLE IF NOT EXISTS flight_log_settings (
+  key TEXT PRIMARY KEY,
+  value JSONB NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_by TEXT REFERENCES users (id) ON DELETE SET NULL
+);
+
+INSERT INTO flight_log_settings (key, value)
+VALUES ('free_hour', '{"enabled": true, "aircraft": ["OH-CON"], "paidMinutes": 600, "freeMinutes": 60}')
+ON CONFLICT (key) DO NOTHING;
+
+-- Billing periods; the name is also written into the sheet's Laskutusjakso
+CREATE TABLE IF NOT EXISTS billing_periods (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  starts_on DATE NOT NULL,
+  ends_on DATE NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_by TEXT REFERENCES users (id) ON DELETE SET NULL,
+  closed_at TIMESTAMPTZ,
+  closed_by TEXT REFERENCES users (id) ON DELETE SET NULL,
+  CHECK (ends_on >= starts_on),
+  CONSTRAINT billing_periods_no_overlap EXCLUDE USING gist (daterange(starts_on, ends_on, '[]') WITH &&)
+);
+
+-- What a closed period billed, per payer
+CREATE TABLE IF NOT EXISTS billing_payers (
+  period_id INT NOT NULL REFERENCES billing_periods (id) ON DELETE CASCADE,
+  payer_key TEXT NOT NULL, -- "user:<id>", or "name:<name key>" for a non-member
+  payer_name TEXT NOT NULL,
+  user_id TEXT REFERENCES users (id) ON DELETE SET NULL,
+  total_cents INT NOT NULL,
+  paid_at TIMESTAMPTZ,
+  paid_by TEXT REFERENCES users (id) ON DELETE SET NULL,
+  PRIMARY KEY (period_id, payer_key)
+);
+
+-- The lines of a closed period as billed. "unbilled" records a flight nobody
+-- pays for, so the period still accounts for it.
+CREATE TABLE IF NOT EXISTS billing_lines (
+  id SERIAL PRIMARY KEY,
+  period_id INT NOT NULL REFERENCES billing_periods (id) ON DELETE CASCADE,
+  payer_key TEXT, -- NULL on unbilled lines
+  kind TEXT NOT NULL CHECK (kind IN ('flight', 'minimum', 'credit', 'adjustment', 'unbilled')),
+  flight_id UUID, -- sheet_flights.id; no foreign key, the row can leave the sheet
+  registration TEXT,
+  flight_date DATE,
+  purpose_code TEXT,
+  minutes INT NOT NULL DEFAULT 0,
+  landings INT NOT NULL DEFAULT 0,
+  cents_per_minute INT,
+  amount_cents INT NOT NULL DEFAULT 0,
+  description TEXT NOT NULL DEFAULT '',
+  -- The flight as billed (sheet_flights.input_hash), to spot later changes
+  input_hash TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_billing_lines_period ON billing_lines (period_id, payer_key);
+CREATE INDEX IF NOT EXISTS idx_billing_lines_flight ON billing_lines (flight_id);
+
+-- Hours per aircraft per year from before the flight log sheet, typed in on
+-- /admin/tilastot. Years the sheet has are counted from its flights instead.
+CREATE TABLE IF NOT EXISTS aircraft_year_totals (
+  registration TEXT NOT NULL,
+  year INT NOT NULL CHECK (year BETWEEN 1950 AND 2100),
+  minutes INT NOT NULL CHECK (minutes >= 0),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_by TEXT REFERENCES users (id) ON DELETE SET NULL,
+  PRIMARY KEY (registration, year)
+);
+
+-- Invoices (laskut) the website sends: a closed billing period's flights for
+-- one payer, or other charges such as membership, equipment and hangar fees.
+-- A sent invoice doesn't change; it is paid or cancelled. Kept for the
+-- bookkeeping (six years), also after the member leaves.
+CREATE TABLE IF NOT EXISTS invoices (
+  id SERIAL PRIMARY KEY,
+  -- Given when the invoice is sent: the year and a running number, 20260001
+  number INT UNIQUE,
+  reference TEXT UNIQUE, -- viitenumero: the number and its check digit
+  status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'open', 'paid', 'cancelled')),
+  user_id TEXT REFERENCES users (id) ON DELETE SET NULL,
+  -- The recipient as on the invoice
+  recipient_name TEXT NOT NULL,
+  recipient_email TEXT,
+  recipient_address TEXT NOT NULL DEFAULT '', -- street, postcode and city, one per line
+  title TEXT NOT NULL,
+  message TEXT NOT NULL DEFAULT '',
+  -- A closed billing period's bill to one payer (billing_payers)
+  period_id INT REFERENCES billing_periods (id) ON DELETE RESTRICT,
+  payer_key TEXT,
+  issue_date DATE,
+  due_date DATE,
+  total_cents INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_by TEXT REFERENCES users (id) ON DELETE SET NULL,
+  sent_at TIMESTAMPTZ,
+  sent_by TEXT REFERENCES users (id) ON DELETE SET NULL,
+  paid_at TIMESTAMPTZ,
+  paid_by TEXT REFERENCES users (id) ON DELETE SET NULL,
+  cancelled_at TIMESTAMPTZ,
+  cancelled_by TEXT REFERENCES users (id) ON DELETE SET NULL,
+  cancel_reason TEXT,
+  CHECK ((period_id IS NULL) = (payer_key IS NULL)),
+  CHECK (status = 'draft' OR (number IS NOT NULL AND reference IS NOT NULL AND issue_date IS NOT NULL AND due_date IS NOT NULL))
+);
+
+-- One invoice per payer of a period; a cancelled one can be replaced
+CREATE UNIQUE INDEX IF NOT EXISTS idx_invoices_period_payer ON invoices (period_id, payer_key)
+  WHERE status <> 'cancelled';
+CREATE INDEX IF NOT EXISTS idx_invoices_user ON invoices (user_id);
+
+CREATE TABLE IF NOT EXISTS invoice_lines (
+  id SERIAL PRIMARY KEY,
+  invoice_id INT NOT NULL REFERENCES invoices (id) ON DELETE CASCADE,
+  position INT NOT NULL,
+  -- flight: from the billing period, as billed; other: typed in
+  source TEXT NOT NULL DEFAULT 'other' CHECK (source IN ('flight', 'other')),
+  line_date DATE,
+  description TEXT NOT NULL,
+  quantity NUMERIC(10, 2) NOT NULL DEFAULT 1,
+  unit TEXT NOT NULL DEFAULT 'kpl',
+  unit_cents INT, -- NULL when the amount isn't quantity × price (corrections)
+  amount_cents INT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_invoice_lines_invoice ON invoice_lines (invoice_id, position);
+
+-- Email the website sends (nextjs/utilities/mail.ts). Each message is stored
+-- before it goes out, so a failure shows and can be retried, and a message is
+-- never sent twice.
+CREATE TABLE IF NOT EXISTS email_outbox (
+  id SERIAL PRIMARY KEY,
+  -- It comes from the club's mail account (MAIL_FROM); what it is about sets
+  -- the sender's name and where replies go (MAIL_PURPOSES in utilities/mailConfig.ts)
+  from_name TEXT NOT NULL,
+  reply_to TEXT,
+  kind TEXT NOT NULL, -- what it is: 'test', 'invoice', ...
+  to_address TEXT NOT NULL,
+  to_name TEXT,
+  subject TEXT NOT NULL,
+  body_text TEXT NOT NULL,
+  body_html TEXT,
+  -- held: MAIL_MODE was off, so the message was only stored here
+  status TEXT NOT NULL DEFAULT 'queued' CHECK (status IN ('queued', 'sending', 'sent', 'failed', 'held')),
+  attempts INT NOT NULL DEFAULT 0,
+  attempted_at TIMESTAMPTZ,
+  last_error TEXT,
+  -- The address it went to: the recipient's, or in the dev environment the
+  -- address all mail is redirected to
+  delivered_to TEXT,
+  provider_id TEXT, -- Gmail's message id
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_by TEXT REFERENCES users (id) ON DELETE SET NULL,
+  sent_at TIMESTAMPTZ,
+  invoice_id INT REFERENCES invoices (id) ON DELETE SET NULL -- the invoice it sends
+);
+
+CREATE INDEX IF NOT EXISTS idx_email_outbox_created ON email_outbox (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_email_outbox_invoice ON email_outbox (invoice_id);

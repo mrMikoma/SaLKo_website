@@ -9,7 +9,8 @@ import { ChangePasswordSchema } from "./definitions";
 
 // Validation schema for profile updates
 const UpdateProfileSchema = z.object({
-  full_name: z.string().min(1, "Koko nimi vaaditaan"),
+  // The name also goes into the flight log sheet, bills and CSV files
+  full_name: z.string().trim().min(1, "Koko nimi vaaditaan").max(100, "Nimi on liian pitkä"),
   phone: z.string().optional(),
   address: z.string().optional(),
   city: z.string().optional(),
@@ -225,14 +226,15 @@ export async function changePassword(
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
     // Update password in database
-    await pool.query("UPDATE users SET password = $1 WHERE id = $2", [
+    // Ends every session of the account, this one too: the member logs in again
+    await pool.query("UPDATE users SET password = $1, sessions_revoked_at = NOW() WHERE id = $2", [
       hashedPassword,
       session.user.id,
     ]);
 
     return {
       status: "success",
-      message: "Salasana vaihdettu onnistuneesti",
+      message: "Salasana vaihdettu. Kirjaudu sisään uudella salasanalla.",
     };
   } catch (error) {
     console.error("Error changing password:", error);

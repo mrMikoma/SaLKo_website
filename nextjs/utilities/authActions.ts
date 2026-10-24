@@ -1,8 +1,12 @@
 "use server";
 
-import { signIn, signOut } from "@/auth";
+import { signIn } from "@/auth";
 import { AuthError } from "next-auth";
 import { LoginFormSchema } from "@/utilities/definitions";
+import { safeRedirect } from "@/utilities/safeRedirect";
+import { clientIp, waitText } from "@/utilities/rateLimit";
+import { loginBlockedFor, TOO_MANY_ATTEMPTS } from "@/utilities/loginLimits";
+import { headers } from "next/headers";
 
 export interface LoginState {
   errors?: {
@@ -11,6 +15,8 @@ export interface LoginState {
     general?: string[];
   };
   status?: "success" | "error";
+  // What was typed, so the form keeps it after a failed attempt
+  email?: string;
 }
 
 /**
@@ -33,6 +39,7 @@ export async function loginWithCredentials(
         password?: string[];
       },
       status: "error",
+      email: String(formData.get("email") ?? ""),
     };
   }
 
@@ -44,7 +51,8 @@ export async function loginWithCredentials(
     await signIn("credentials", {
       email,
       password,
-      redirectTo: "/",
+      // Back to the page the login was opened from, e.g. the booking calendar
+      redirectTo: safeRedirect(formData.get("redirectTo")),
     });
 
     // This line should not be reached if login is successful
@@ -61,6 +69,19 @@ export async function loginWithCredentials(
     }
 
     if (error instanceof AuthError) {
+      // Too many failed logins (auth.ts): say how long to wait
+      if ((error as AuthError & { code?: string }).code === TOO_MANY_ATTEMPTS) {
+        const wait = loginBlockedFor(email, clientIp(await headers()));
+        return {
+          errors: {
+            general: [
+              `Liian monta epäonnistunutta kirjautumista. Yritä uudelleen ${waitText(wait)} kuluttua.`,
+            ],
+          },
+          status: "error",
+          email,
+        };
+      }
       switch (error.type) {
         case "CredentialsSignin":
           return {
@@ -68,6 +89,7 @@ export async function loginWithCredentials(
               general: ["Virheellinen sähköpostiosoite tai salasana."],
             },
             status: "error",
+            email,
           };
         default:
           return {
@@ -75,6 +97,7 @@ export async function loginWithCredentials(
               general: ["Kirjautuminen epäonnistui. Yritä uudelleen."],
             },
             status: "error",
+            email,
           };
       }
     }
@@ -86,10 +109,10 @@ export async function loginWithCredentials(
 /**
  * Server action for Google OAuth login
  */
-export async function loginWithGoogle() {
+export async function loginWithGoogle(formData?: FormData) {
   try {
     await signIn("google", {
-      redirectTo: "/",
+      redirectTo: safeRedirect(formData?.get("redirectTo")),
     });
   } catch (error) {
     if (error instanceof AuthError) {
@@ -100,13 +123,3 @@ export async function loginWithGoogle() {
   }
 }
 
-/**
- * Server action for logout
- */
-export async function logout() {
-  // Note: signOut() throws NEXT_REDIRECT which is Next.js's way of handling redirects
-  // We should not catch this as an error - just let it propagate
-  await signOut({
-    redirectTo: "/",
-  });
-}

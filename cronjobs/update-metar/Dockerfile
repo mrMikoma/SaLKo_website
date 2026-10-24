@@ -1,14 +1,17 @@
 # Cronjob Dockerfile for METAR updates
-FROM node:lts-alpine
+FROM node:24.22.1-alpine
 
 # Set working directory
 WORKDIR /app
 
-# Copy cronjob files
-COPY cronjobs/update-metar/ ./
+# Copy package manifests
+COPY cronjobs/update-metar/package.json cronjobs/update-metar/package-lock.json ./
 
 # Install dependencies
-RUN npm install --production
+RUN npm ci --omit=dev
+
+# Copy cronjob files
+COPY cronjobs/update-metar/ ./
 
 # Run the cronjob
 CMD ["npm", "start"]

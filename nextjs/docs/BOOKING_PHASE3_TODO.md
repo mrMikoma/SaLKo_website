@@ -1,5 +1,7 @@
 # Varauskalenterin Modernisointi - Vaihe 3 Kehityskohteet
 
+> **Historical (2025).** This describes the 2025 calendar redesign; parts of it no longer match the code. See [BOOKINGS.md](BOOKINGS.md) for how the calendar works now.
+
 **Päivämäärä:** 2025-10-29
 **Status:** 📋 Suunnitelma
 

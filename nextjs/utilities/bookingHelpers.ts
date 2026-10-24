@@ -3,7 +3,7 @@
  * Utility functions for booking data manipulation and formatting
  */
 
-import { DateTime } from "luxon";
+import { DateTime } from "@/utilities/clubTime";
 import { BookingType } from "@/utilities/bookings";
 import { FlightTypeConfig } from "@/types/bookings";
 
@@ -78,18 +78,42 @@ export const isValidTimeRange = (
 };
 
 /**
+ * The last club-time day a booking covers. The end is exclusive, so a booking
+ * that ends at midnight (full-day bookings end at the next day's 00:00) does
+ * not reach into the following day.
+ */
+const getLastBookingDay = (booking: BookingType): DateTime =>
+  DateTime.fromISO(booking.end_time).minus({ milliseconds: 1 }).startOf("day");
+
+/**
+ * Club-time days (YYYY-MM-DD) a booking covers, first to last
+ */
+export const getBookingDays = (booking: BookingType): string[] => {
+  const lastDay = getLastBookingDay(booking);
+  const days: string[] = [];
+  for (
+    let day = DateTime.fromISO(booking.start_time).startOf("day");
+    day <= lastDay;
+    day = day.plus({ days: 1 })
+  ) {
+    const isoDate = day.toISODate();
+    if (isoDate) days.push(isoDate);
+  }
+  return days;
+};
+
+/**
  * Checks if a booking is on a specific date (including multiday bookings)
  */
 export const isBookingOnDate = (
   booking: BookingType,
   date: DateTime
 ): boolean => {
-  const startTime = DateTime.fromISO(booking.start_time).toLocal().startOf("day");
-  const endTime = DateTime.fromISO(booking.end_time).toLocal().startOf("day");
+  const startDay = DateTime.fromISO(booking.start_time).startOf("day");
   const checkDate = date.startOf("day");
 
   // Check if the date falls within the booking's date range
-  return checkDate >= startTime && checkDate <= endTime;
+  return checkDate >= startDay && checkDate <= getLastBookingDay(booking);
 };
 
 /**

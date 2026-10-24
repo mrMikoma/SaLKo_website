@@ -10,6 +10,9 @@ const shouldCreatePool =
 const connectionPool = shouldCreatePool
   ? new Pool({
       connectionString: process.env.DATABASE_CONNECTION_STRING,
+      // When every connection is busy, fail the request after a while
+      // instead of leaving it waiting with no end
+      connectionTimeoutMillis: 15_000,
     })
   : null;
 

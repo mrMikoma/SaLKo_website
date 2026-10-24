@@ -2,17 +2,19 @@ import "../styles/tailwind.css";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
-import { Finlandica } from "next/font/google";
+import { Finlandica_Headline } from "next/font/google";
 import { auth } from "@/auth";
 import { QueryProvider } from "@/providers/QueryProvider";
 import { NavbarProvider } from "@/providers/NavbarContextProvider";
 import { SessionProvider } from "@/providers/SessionProvider";
 import { UmamiProvider } from "@/providers/UmamiProvider";
+import { isBillingEnabled, isFlightLogEnabled, isPagesInReviewEnabled } from "@/utilities/features";
 
-const finlandica = Finlandica({
+const finlandica = Finlandica_Headline({
   subsets: ["latin"],
   variable: "--font-finlandica",
   display: "swap",
+  fallback: ["Arial", "sans-serif"],
 });
 
 export const metadata = {
@@ -87,7 +89,11 @@ const RootLayout = async ({ children }: React.PropsWithChildren) => {
             <NavbarProvider>
               <main className="max-w-screen min-h-screen flex flex-col overflow-x-hidden relative bg-background bg-sblued text-white font-finlandica">
                 <AntdRegistry>
-                  <Navbar />
+                  <Navbar
+                    flightLog={isFlightLogEnabled()}
+                    billing={isBillingEnabled()}
+                    pagesInReview={isPagesInReviewEnabled()}
+                  />
                   {children}
                   <Footer />
                 </AntdRegistry>

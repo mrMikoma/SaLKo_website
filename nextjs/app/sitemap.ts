@@ -66,6 +66,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "yearly",
       priority: 0.7,
     },
+    {
+      url: `${baseUrl}/tiedotteet`,
+      lastModified: new Date("2026-10-21"),
+      changeFrequency: "weekly",
+      priority: 0.6,
+    },
     //...planePaths,
   ];
 }
