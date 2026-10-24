@@ -44,7 +44,7 @@ The first three are set on `/admin/lennot` (below) or in the sheet. A row with o
 2. Reads every active tab in one request per tab (unformatted values, serial dates).
 3. Parses the rows with `parseFlightSheet()`. Rows without a date are formula-only and are skipped.
    - Times are Finnish wall-clock times. Durations are rounded to whole minutes; the sheet has float drift such as 12:32:59.
-   - A landing earlier than the takeoff is after midnight.
+   - A landing earlier than the takeoff is after midnight. The club's Ilmassa oloaika formula (H−G) is negative for those, so the parser takes the minutes from the times instead, and the sync reports the row: the biller types the time in by hand, as the club always has, so the sheet's running totals stay right.
 4. Writes a new UUID into the ID column of every row that has none, or that has an ID copied from another row. This is the only thing the sync writes to the sheet; the entry form below writes flights.
 5. In one transaction per tab:
    - upserts the rows into `sheet_flights` (unchanged rows aren't rewritten);
@@ -78,20 +78,24 @@ A training flight without a student is not an issue: on a solo flight the studen
 `/jasenalue/lentopaivakirja/uusi` (`LOG_OWN_FLIGHT`) is one screen for a day's flights on one aircraft. The paper book stays the master: the form is for pilots who want their flights in the sheet before the biller copies the book.
 
 - **Who:** the member is the PIC, or the student with the instructor as the other pilot. The other pilot is typed as written in the sheet, with the names already in it as suggestions.
-- **Date:** Tänään and Eilen chips or any earlier date, never one in the future (Finnish time).
-- **Legs:** "+ Seuraava lento samana päivänä" adds a leg that starts where the last one landed, with the same purpose. Times take `1405`, `14.05`, `14,05` or `14:05`, and "Nyt" fills in the current Finnish time. A landing earlier than the takeoff is after midnight. Hour meter, fuel, oil and remarks are optional.
+- **Date:** Tänään and Eilen chips or any date within the last year, never one in the future (Finnish time). Older flights go to the biller.
+- **Legs:** "+ Seuraava lento samana päivänä" adds a leg that starts where the last one landed, with the same purpose. Times take `1405`, `14.05`, `14,05` or `14:05` (minutes always with two digits), and "Nyt" fills in the current Finnish time. Hour meter, fuel, oil and remarks are optional.
+- **Times are checked** in the form and again on the server (`legTimeError` in `utilities/flightFormInput.ts`): equal times, a landing in the future, legs of the day that overlap, and a leg over 8 hours are refused. A landing earlier than the takeoff is after midnight when the leg stays under 8 hours (23:30 → 00:20); otherwise it is a typo (14:30 → 14:10), which the sheet's formula would turn into negative time and billing into a credit.
+- **As a student** the purpose must be a training one, since the student pays for those; choosing "Oppilaana" switches the legs to the first one.
 - **Footer:** total time, and an estimate for billed purposes from the per-minute price in `data/prices.json`. Billing itself comes later.
 
 **Sheet name.** The form writes the member's `pilot_aliases` name. A member without one gets the club's usual form, `M.Meikäläinen` from "Matti Meikäläinen" (`sheetNameFor`), or else the full name, saved as their alias so the flights match at once. Only a name that isn't in the sheet or in `pilot_aliases` yet is taken this way: an existing "M.Meikäläinen" may be another pilot, and taking it would give the member that pilot's flights and bills. When both names are in use, the form asks the member to have the biller match their name on `/admin/lennot`.
 
 **Writing** (`utilities/flightSheetWriter.ts`):
-1. A Postgres advisory lock per aircraft, so two members never get the same rows.
-2. Reads the tab, and the airborne-time column as formulas. The flights go into the formula rows after the last flight (`findWritableRows`): rows where the formula is there and every typed-in column is empty. It stops at the first row someone has typed into, so it never writes past a half-filled row.
-3. Writes only the typed-in columns, plus `ID` and `Lähde` = `web`, with `USER_ENTERED`: ISO dates and `HH:MM` times, which Sheets reads as a date and a time. Names, remarks and other text get a leading apostrophe, so Sheets keeps them as typed and a remark can never become a formula. The formulas stay.
-4. Reads the rows back and checks the IDs, then records the rows in `flight_log_web_entries` and syncs.
-5. When the formula rows run out, it refuses and asks the member to tell the biller, who drags the formulas further down.
+1. A Postgres advisory lock per aircraft, so two members never get the same rows. A writer waits for it at most 15 seconds, and each Sheets request times out after 20, so a hung request can't queue everyone.
+2. Reads the tab, and the airborne-time column as formulas. The flights go into the formula rows after the last flight (`findWritableRows`): rows where the formula is there and every typed-in column is empty. It stops at the first row someone has typed into, so it never writes past a half-filled row, and names that row when it is in the way.
+3. Refuses a flight that overlaps one already in the tab for that aircraft, such as the instructor's entry of the same lesson.
+4. Writes only the typed-in columns, plus `ID`, `Lähde` = `web`, an empty Tila and an empty Laskutusjakso, with `USER_ENTERED`: ISO dates and `HH:MM` times, which Sheets reads as a date and a time. Tila and Laskutusjakso are emptied because someone may have filled them down past the last flight. Names, remarks and other text get a leading apostrophe, so Sheets keeps them as typed and a remark can never become a formula. The formulas stay.
+5. Reads the tab back: each flight must be in its row with its ID, and every flight that was there before must still be there, unchanged. Sheets can't write "only if nothing changed", so a row inserted by hand at that very moment could shift the last flight into the row being written; this catches it and names the row.
+6. Records the rows in `flight_log_web_entries` and syncs.
+7. When the formula rows run out, it refuses and asks the member to tell the biller, who drags the formulas further down.
 
-If the save fails, the form keeps what was typed so it can be sent again.
+**Saving twice is safe.** The form makes each leg's ID when the leg is added and sends it with every try. If the answer is lost (a dropped connection at the airfield, or a form left open while the site was updated), the form keeps what was typed and says the save didn't come through. Saving again finds the IDs: already recorded, it just confirms; in the sheet but not recorded, it finishes the record; in the sheet with other times, it refuses. A member can save or undo 20 times in 10 minutes, since each one makes several Sheets requests as the one service account.
 
 **Undo.** "Kumoa viimeisin" on the confirmation clears a flight the member entered, while it is still the last flight in the tab, came from the website and has no Tila. Clearing empties the typed-in cells and keeps the formulas. Anything older is fixed by the biller in the sheet, so the running totals never get a gap.
 
@@ -218,7 +222,7 @@ The entry spec logs its flights on OH-TST, a test aircraft with a tab of its own
 ## Before switching it on for the real sheet
 
 1. Add the ID, Lähde, Tila and Laskutusjakso headers at the right edge of each aircraft's tab, and give the service account editor access.
-2. Fill Tila down as **Laskutettu** for every flight that has already been billed the old way. Otherwise they all show up under Tarkistamatta, and later as unbilled.
+2. Fill Tila down as **Laskutettu** for every flight that has already been billed the old way, **only on rows that have a date**. Otherwise they all show up under Tarkistamatta, and later as unbilled. Then check that Tila and Laskutusjakso are empty on every row below the last flight: a flight typed into such a row by hand would take that Tila and never be billed. The website empties both when it writes a row.
 3. On a copy of the spreadsheet, try one save, one undo and one status change: `USER_ENTERED` follows the spreadsheet's locale.
 4. On `/admin/laskutus/asetukset`, check the prices and the minimum, tick the members who paid this season's equipment fee, and check the free hour.
 5. Start the first billing period after the last flight billed by hand. Flights before it, and those with Tila Laskutettu, are not billed again.

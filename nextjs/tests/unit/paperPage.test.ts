@@ -58,7 +58,7 @@ describe("reading a paper page", () => {
     expect(read.row).toBeNull();
     expect(read.errors).toContain("Päivä on tulevaisuudessa");
     expect(read.errors).toContain("Päällikkö puuttuu");
-    expect(read.errors).toContain("Anna lähtö- ja laskuaika, esim. 14.05");
+    expect(read.errors).toContain("Anna lentoonlähtö- ja laskuaika, esim. 14.05");
   });
 
   test("page totals", () => {

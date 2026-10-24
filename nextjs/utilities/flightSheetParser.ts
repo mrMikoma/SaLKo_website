@@ -92,6 +92,9 @@ export interface ParsedFlight {
   takeoffAt: string | null; // ISO, UTC
   landingAt: string | null;
   airborneMinutes: number | null;
+  // What the Ilmassa oloaika cell holds. The club's formula, landing minus
+  // takeoff, goes negative past midnight; airborneMinutes is right either way.
+  sheetAirborneMinutes: number | null;
   airframeMinutes: number | null;
   landings: number | null;
   totalLandings: number | null;
@@ -189,6 +192,26 @@ export function parseDuration(value: SheetValue | undefined): number | null {
   return match[1] ? -minutes : minutes;
 }
 
+/**
+ * A flight's takeoff and landing from its date and the wall-clock minutes,
+ * as UTC ISO times. A landing earlier than the takeoff is after midnight.
+ */
+export function flightTimes(
+  flightDate: string,
+  takeoff: number | null,
+  landing: number | null
+): { takeoffAt: string | null; landingAt: string | null } {
+  const day = DateTime.fromISO(flightDate, { zone: SHEET_ZONE });
+  // Set the hour, don't add minutes, so a DST change on the day doesn't shift them
+  const atTime = (date: DateTime, minutes: number) =>
+    date.set({ hour: Math.floor(minutes / 60), minute: minutes % 60 });
+  const nextDay = takeoff !== null && landing !== null && landing < takeoff;
+  return {
+    takeoffAt: takeoff === null ? null : atTime(day, takeoff).toUTC().toISO(),
+    landingAt: landing === null ? null : atTime(nextDay ? day.plus({ days: 1 }) : day, landing).toUTC().toISO(),
+  };
+}
+
 /** "M. Meikäläinen", "m.meikäläinen" and "M.Meikäläinen" are the same pilot */
 export const nameKey = (name: string): string =>
   name.toLowerCase().replace(/[\s.]+/g, "");
@@ -254,26 +277,18 @@ export function parseFlightSheet(
       continue;
     }
 
-    const takeoff = parseTimeOfDay(cell(row, "takeoff"));
-    const landing = parseTimeOfDay(cell(row, "landing"));
-    const day = DateTime.fromISO(flightDate, { zone: SHEET_ZONE });
-    // Wall-clock times: set the hour, don't add minutes, so a DST change on
-    // the day doesn't shift them
-    const atTime = (date: DateTime, minutes: number) =>
-      date.set({ hour: Math.floor(minutes / 60), minute: minutes % 60 });
-    const takeoffAt = takeoff === null ? null : atTime(day, takeoff);
-    // A landing earlier than the takeoff is after midnight
-    const landingAt =
-      landing === null
-        ? null
-        : atTime(
-            takeoff !== null && landing < takeoff ? day.plus({ days: 1 }) : day,
-            landing
-          );
+    const { takeoffAt, landingAt } = flightTimes(
+      flightDate,
+      parseTimeOfDay(cell(row, "takeoff")),
+      parseTimeOfDay(cell(row, "landing"))
+    );
 
-    let airborneMinutes = parseDuration(cell(row, "airborne"));
-    if ((airborneMinutes === null || airborneMinutes === 0) && takeoffAt && landingAt) {
-      airborneMinutes = Math.round(landingAt.diff(takeoffAt, "minutes").minutes);
+    // The sheet's own value unless it is empty, 0 (the formula's result for
+    // equal times) or negative (past midnight): then the times give it
+    const sheetAirborneMinutes = parseDuration(cell(row, "airborne"));
+    let airborneMinutes = sheetAirborneMinutes;
+    if ((airborneMinutes === null || airborneMinutes <= 0) && takeoffAt && landingAt) {
+      airborneMinutes = Math.round((Date.parse(landingAt) - Date.parse(takeoffAt)) / 60_000);
     }
 
     const raw = Array.from({ length: Math.max(row.length, headers.length) }, (_, i) =>
@@ -289,9 +304,10 @@ export function parseFlightSheet(
       personsOnBoard: numberOrNull(cell(row, "personsOnBoard")),
       departure: text(cell(row, "departure"))?.toUpperCase() ?? null,
       arrival: text(cell(row, "arrival"))?.toUpperCase() ?? null,
-      takeoffAt: takeoffAt ? takeoffAt.toUTC().toISO() : null,
-      landingAt: landingAt ? landingAt.toUTC().toISO() : null,
+      takeoffAt,
+      landingAt,
       airborneMinutes,
+      sheetAirborneMinutes,
       airframeMinutes: parseDuration(cell(row, "airframeTotal")),
       landings: numberOrNull(cell(row, "landings")),
       totalLandings: numberOrNull(cell(row, "landingsTotal")),
@@ -331,7 +347,8 @@ export type FlightIssueKind =
   | "duplicate"
   | "duplicate_id"
   | "hour_meter"
-  | "unknown_status";
+  | "unknown_status"
+  | "midnight";
 
 export interface FlightIssue {
   row: number;
@@ -400,6 +417,23 @@ export function findFlightIssues(
       (flight.airborneMinutes <= 0 || flight.airborneMinutes > 12 * 60)
     ) {
       add(flight, "time_order", "Tarkista lentoonlähtö- ja laskuaika");
+    }
+
+    // The formula's negative time throws off the sheet's running totals,
+    // so the club types these by hand
+    if (
+      flight.sheetAirborneMinutes !== null &&
+      flight.sheetAirborneMinutes < 0 &&
+      flight.airborneMinutes !== null &&
+      flight.airborneMinutes > 0
+    ) {
+      add(
+        flight,
+        "midnight",
+        `Lento yli puolenyön: kirjoita Ilmassa oloajaksi ${Math.floor(flight.airborneMinutes / 60)}:${String(
+          flight.airborneMinutes % 60
+        ).padStart(2, "0")} käsin, niin taulukon kokonaisajat pysyvät oikein`
+      );
     }
 
     if (flight.id) {
@@ -566,7 +600,11 @@ export function flightCells(
     id: asText(input.id),
     source: asText(input.source ?? "web"),
     ...(input.logPage !== undefined && { logPage: logPageValue(input.logPage) }),
-    ...(input.status !== undefined && { status: asText(input.status) }),
+    // A new flight starts with its own Tila (empty is Kirjattu) and in no
+    // billing period, also when someone filled those columns down into the
+    // formula rows below the last flight
+    status: asText(input.status ?? ""),
+    billingPeriod: "",
   };
   return Object.entries(values)
     .filter(([key]) => columns[key as SheetColumn] !== undefined)

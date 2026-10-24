@@ -54,6 +54,9 @@ export interface FlightSheet {
 
 const quoteTab = (tab: string) => `'${tab.replace(/'/g, "''")}'`;
 
+// Each Sheets request: a read of a whole tab takes about a second
+const SHEETS_TIMEOUT_MS = 20_000;
+
 class GoogleFlightSheet implements FlightSheet {
   readonly kind = "google";
   readonly spreadsheetUrl: string;
@@ -239,7 +242,9 @@ export function getFlightSheet(): FlightSheet {
   });
   return new GoogleFlightSheet(
     spreadsheetId!.trim(),
-    google.sheets({ version: "v4", auth }),
+    // Without a timeout a hung request would hold the aircraft's write lock,
+    // and the page waiting for it, for as long as the connection stays open
+    google.sheets({ version: "v4", auth, timeout: SHEETS_TIMEOUT_MS }),
     key.client_email
   );
 }

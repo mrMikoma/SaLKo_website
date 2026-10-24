@@ -1,5 +1,6 @@
 import "server-only";
 
+import { DateTime } from "luxon";
 import connectionPool from "@/utilities/db";
 import { getFlightSheet } from "@/utilities/flightSheetSource";
 import {
@@ -7,10 +8,16 @@ import {
   clearedFlightCells,
   findWritableRows,
   flightCells,
+  flightTimes,
   isBilledStatus,
+  nameKey,
   PAPER_COLUMNS,
+  ParsedFlight,
+  ParsedSheet,
   parseFlightSheet,
+  parseTimeOfDay,
   ReviewStatus,
+  SHEET_ZONE,
   SheetFlightInput,
 } from "@/utilities/flightSheetParser";
 import { inputHash } from "@/utilities/flightInputHash";
@@ -24,6 +31,11 @@ import { inputHash } from "@/utilities/flightInputHash";
 
 export class FlightSheetWriteError extends Error {}
 
+// How long a writer waits for another one on the same aircraft. Each holds
+// the lock for a few Sheets requests, which time out after 20 s
+// (flightSheetSource.ts), so a hung request doesn't queue everyone for long.
+const LOCK_TIMEOUT = "15s";
+
 async function withAircraftLock<T>(
   registration: string,
   work: (tab: { sheetName: string; firstDataRow: number }) => Promise<T>
@@ -31,9 +43,19 @@ async function withAircraftLock<T>(
   const client = await connectionPool.connect();
   try {
     await client.query("BEGIN");
-    await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [
-      `flight-sheet:${registration}`,
-    ]);
+    await client.query(`SET LOCAL lock_timeout = '${LOCK_TIMEOUT}'`);
+    try {
+      await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [
+        `flight-sheet:${registration}`,
+      ]);
+    } catch (error) {
+      if ((error as { code?: string }).code === "55P03") {
+        throw new FlightSheetWriteError(
+          "Lentopäiväkirjaan tallennetaan juuri toista lentoa. Yritä hetken päästä uudelleen."
+        );
+      }
+      throw error;
+    }
     const tab = await client.query(
       "SELECT sheet_name, first_data_row FROM aircraft_sheets WHERE registration = $1 AND active",
       [registration]
@@ -55,7 +77,70 @@ async function withAircraftLock<T>(
   }
 }
 
-/** Appends flights after the last flight row; returns the rows they went to */
+const inputTimes = (input: SheetFlightInput) =>
+  flightTimes(input.flightDate, parseTimeOfDay(input.takeoff), parseTimeOfDay(input.landing));
+
+/** Whether a row in the sheet is this input as it was written */
+const isWrittenAs = (flight: ParsedFlight, input: SheetFlightInput) => {
+  const { takeoffAt, landingAt } = inputTimes(input);
+  return (
+    flight.flightDate === input.flightDate &&
+    nameKey(flight.picName) === nameKey(input.picName) &&
+    flight.takeoffAt === takeoffAt &&
+    flight.landingAt === landingAt
+  );
+};
+
+const clock = (iso: string) => DateTime.fromISO(iso).setZone(SHEET_ZONE).toFormat("HH.mm");
+
+/** A flight already in the tab that overlaps an input in time, if any */
+function overlapping(parsed: ParsedSheet, inputs: SheetFlightInput[]) {
+  for (const input of inputs) {
+    const { takeoffAt, landingAt } = inputTimes(input);
+    if (!takeoffAt || !landingAt) continue;
+    const flight = parsed.flights.find(
+      (f) =>
+        f.takeoffAt &&
+        f.landingAt &&
+        Date.parse(f.takeoffAt) < Date.parse(landingAt) &&
+        Date.parse(takeoffAt) < Date.parse(f.landingAt)
+    );
+    if (flight) return flight;
+  }
+  return null;
+}
+
+/**
+ * Refuses a write that went over another flight. Sheets has no way to write
+ * only if nothing changed, so a row inserted above the formula rows between
+ * the read and the write would shift the last flight into the row being
+ * written. Every flight that was in the tab before must still be there after,
+ * unchanged (its input hash), apart from the rows the write itself changes.
+ */
+function checkNothingLost(before: ParsedSheet, after: ParsedSheet, changedIds: Set<string> = new Set()) {
+  const left = new Map<string, number>();
+  for (const flight of after.flights) {
+    const hash = inputHash(flight);
+    left.set(hash, (left.get(hash) ?? 0) + 1);
+  }
+  for (const flight of before.flights) {
+    if (flight.id && changedIds.has(flight.id)) continue;
+    const hash = inputHash(flight);
+    const count = left.get(hash) ?? 0;
+    if (count === 0) {
+      throw new FlightSheetWriteError(
+        `Taulukkoa muokattiin samaan aikaan, ja rivin ${flight.row} lento on voinut korvautua. Pyydä laskuttajaa tarkistamaan rivi ennen kuin tallennat uudelleen.`
+      );
+    }
+    left.set(hash, count - 1);
+  }
+}
+
+/**
+ * Appends flights after the last flight row; returns the rows they went to.
+ * Flights whose IDs are already in the tab, as written, aren't written again:
+ * that is the same save sent twice, after a lost connection.
+ */
 export async function appendFlightsToSheet(
   registration: string,
   inputs: SheetFlightInput[]
@@ -71,12 +156,29 @@ export async function appendFlightsToSheet(
       throw new FlightSheetWriteError("Taulukosta puuttuu Ilmassa oloaika -sarake");
     }
 
+    const already = inputs.map((input) => parsed.flights.find((flight) => flight.id === input.id));
+    if (already.some(Boolean)) {
+      const differs = already.findIndex((flight, i) => !flight || !isWrittenAs(flight, inputs[i]));
+      if (differs === -1) return already.map((flight) => flight!.row);
+      const row = already.find(Boolean)!.row;
+      throw new FlightSheetWriteError(
+        `Lento on jo taulukossa rivillä ${row}, mutta eri tiedoin. Tarkista Omat lennot ennen kuin tallennat uudelleen.`
+      );
+    }
+
+    const overlap = overlapping(parsed, inputs);
+    if (overlap) {
+      throw new FlightSheetWriteError(
+        `Koneella ${registration} on jo lento ${DateTime.fromISO(overlap.flightDate).toFormat("d.M.yyyy")} klo ${clock(
+          overlap.takeoffAt!
+        )}–${clock(overlap.landingAt!)} (${overlap.picName}, taulukon rivi ${overlap.row}), päällekkäin tämän kanssa. Jos se on sama lento, sitä ei tarvitse kirjata uudelleen.`
+      );
+    }
+
     const formulas = await sheet.readFormulas(sheetName, parsed.columns.airborne);
     const rows = findWritableRows(values, parsed, formulas, firstDataRow);
     if (rows.length < inputs.length) {
-      throw new FlightSheetWriteError(
-        "Lentopäiväkirjan valmiit kaavarivit ovat lopussa. Pyydä laskuttajaa jatkamaan kaavoja taulukossa."
-      );
+      throw new FlightSheetWriteError(noRowsLeft(values, parsed, formulas, rows, firstDataRow));
     }
 
     await sheet.writeCells(
@@ -85,7 +187,8 @@ export async function appendFlightsToSheet(
       { parse: true }
     );
 
-    // Read back: each flight is where it was written, with its ID
+    // Read back: each flight is where it was written, with its ID, and
+    // nothing else was written over
     const after = parseFlightSheet(await sheet.readTab(sheetName), firstDataRow);
     inputs.forEach((input, i) => {
       const written = after.flights.find((flight) => flight.row === rows[i]);
@@ -93,8 +196,27 @@ export async function appendFlightsToSheet(
         throw new FlightSheetWriteError("Lennon tallennus taulukkoon epäonnistui");
       }
     });
+    checkNothingLost(parsed, after);
     return rows.slice(0, inputs.length);
   });
+}
+
+/**
+ * Why there aren't enough rows to write into: the formulas run out, or a row
+ * after the last flight has something typed in it but no readable date
+ */
+function noRowsLeft(
+  values: Parameters<typeof findWritableRows>[0],
+  parsed: ParsedSheet,
+  formulas: string[],
+  rows: number[],
+  firstDataRow: number
+): string {
+  const next = (rows.at(-1) ?? parsed.flights.reduce((last, f) => Math.max(last, f.row), firstDataRow - 1)) + 1;
+  if (formulas[next - 1]?.startsWith("=") && (values[next - 1] ?? []).some((cell) => String(cell ?? "").trim())) {
+    return `Taulukon rivillä ${next} on tietoja mutta ei luettavaa päivämäärää, joten uutta lentoa ei kirjoiteta sen päälle. Pyydä laskuttajaa täydentämään tai tyhjentämään rivi.`;
+  }
+  return "Lentopäiväkirjan valmiit kaavarivit ovat lopussa. Pyydä laskuttajaa jatkamaan kaavoja taulukossa.";
 }
 
 /**
@@ -119,6 +241,12 @@ export async function clearWebFlight(registration: string, id: string): Promise<
       throw new FlightSheetWriteError("Lento on jo käsitelty, eikä sitä voi enää kumota");
     }
     await sheet.writeCells(sheetName, clearedFlightCells(flight.row, parsed.columns));
+
+    const after = parseFlightSheet(await sheet.readTab(sheetName), firstDataRow);
+    if (after.flights.some((f) => f.id === id)) {
+      throw new FlightSheetWriteError("Kumoaminen taulukossa epäonnistui");
+    }
+    checkNothingLost(parsed, after, new Set([id]));
   });
 }
 
@@ -248,9 +376,7 @@ export async function writePaperPage(
     const formulas = await sheet.readFormulas(sheetName, columns.airborne);
     const rows = findWritableRows(values, parsed, formulas, firstDataRow);
     if (rows.length < page.append.length) {
-      throw new FlightSheetWriteError(
-        "Lentopäiväkirjan valmiit kaavarivit ovat lopussa. Jatka kaavoja taulukossa ja yritä uudelleen."
-      );
+      throw new FlightSheetWriteError(noRowsLeft(values, parsed, formulas, rows, firstDataRow));
     }
 
     const checked = { status: "Tarkistettu" as const, logPage: page.logPage };
@@ -282,6 +408,7 @@ export async function writePaperPage(
         throw new FlightSheetWriteError("Sivun tallennus taulukkoon epäonnistui");
       }
     });
+    checkNothingLost(parsed, after, new Set(page.corrections.map(({ id }) => id)));
 
     return {
       appendedRows: rows.slice(0, page.append.length),

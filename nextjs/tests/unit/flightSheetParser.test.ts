@@ -147,6 +147,15 @@ describe("parseFlightSheet", () => {
     expect(parsed.flights[0].airborneMinutes).toBe(50);
   });
 
+  test("past midnight the club's formula goes negative; the times give the minutes", () => {
+    // =IF(H-G=0;;H-G) for 23:40 → 00:20 is -23:20
+    const parsed = parseFlightSheet(
+      sheet(flightRow({ 6: time(23, 40), 7: time(0, 20), 8: time(0, 20) - time(23, 40) }))
+    );
+    expect(parsed.flights[0].sheetAirborneMinutes).toBe(-1400);
+    expect(parsed.flights[0].airborneMinutes).toBe(40);
+  });
+
   test("skips formula-only rows and finds the first empty row", () => {
     const formulaRow = [null, null, null, null, null, null, null, null, 0, 0, null, 0, null];
     const parsed = parseFlightSheet(
@@ -225,5 +234,14 @@ describe("findFlightIssues", () => {
 
   test("an unknown billing status", () => {
     expect(issuesOf(flightRow({ 26: "Hyväksytty" }))).toEqual(["3:unknown_status"]);
+  });
+
+  test("past midnight with the formula's negative time: type it in by hand", () => {
+    const negative = flightRow({ 6: time(23, 40), 7: time(0, 20), 8: time(0, 20) - time(23, 40) });
+    expect(issuesOf(negative)).toEqual(["3:midnight"]);
+    const message = findFlightIssues(parseFlightSheet(sheet(negative)).flights, context)[0].message;
+    expect(message).toContain("0:40");
+    // Typed in by hand, as the club does
+    expect(issuesOf(flightRow({ 6: time(23, 40), 7: time(0, 20), 8: time(0, 40) }))).toEqual([]);
   });
 });
