@@ -27,7 +27,7 @@ services:
       - traefik.http.services.prometheus.loadbalancer.server.port=9090
 
   grafana:
-    image: grafana/grafana:12.4.12-ubuntu
+    image: grafana/grafana:13.2.4-ubuntu
     container_name: ${NAME_PREFIX}-grafana
     volumes:
       - /home/salko/monitoring/grafana-data:/var/lib/grafana
