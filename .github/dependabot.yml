@@ -28,6 +28,10 @@ updates:
       # The types follow the Node major the app and CI run on (24)
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
+      # Next.js and typescript-eslint need the TypeScript JS API, which 7.x
+      # (the native port) does not provide yet; CI fails on 7.0
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
     groups:
       minor-and-patch:
         patterns:
