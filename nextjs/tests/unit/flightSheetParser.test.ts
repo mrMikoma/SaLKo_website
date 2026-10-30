@@ -119,6 +119,12 @@ describe("cell values", () => {
 });
 
 describe("parseFlightSheet", () => {
+  // Postgres compares UUIDs without case, so the sync must too
+  test("reads flight IDs in lower case", () => {
+    const parsed = parseFlightSheet(sheet(flightRow({ 24: ID_A.toUpperCase() })));
+    expect(parsed.flights[0].id).toBe(ID_A);
+  });
+
   test("reads a flight row in club time", () => {
     const parsed = parseFlightSheet(sheet(flightRow({ 24: ID_A, 26: "Tarkistettu" })));
     expect(parsed.errors).toEqual([]);

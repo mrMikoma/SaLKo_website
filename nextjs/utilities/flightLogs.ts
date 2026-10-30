@@ -262,8 +262,9 @@ const optionalNumber = (max: number, message: string) =>
   z.number().min(0, message).max(max, message).nullable();
 
 const legSchema = z.object({
-  // Made by the form, so saving the same legs again finds them in the sheet
-  id: z.uuid("Lomake on vanhentunut. Lataa sivu uudelleen."),
+  // Made by the form, so saving the same legs again finds them in the sheet.
+  // Lower case, as the sheet parser and Postgres compare them
+  id: z.uuid("Lomake on vanhentunut. Lataa sivu uudelleen.").transform((id) => id.toLowerCase()),
   departure: airfieldField,
   arrival: airfieldField,
   takeoff: clockField,
@@ -291,32 +292,41 @@ export type LogFlightsInput = z.input<typeof logFlightsSchema>;
 /**
  * How the member is written in the flight log. Their matched sheet name if
  * they have one; otherwise "M.Meikäläinen" from their full name, or the full name,
- * whichever nobody uses yet, matched to them now. A name already in the sheet
- * or in pilot_aliases is never claimed here: it may be another pilot's, and
- * matching it would hand them that pilot's flights and bills. The admin
- * matches those on /admin/lennot.
+ * whichever nobody uses yet. A name already in the sheet or in pilot_aliases is
+ * never taken here: it may be another pilot's, and matching it would hand them
+ * that pilot's flights and bills. The admin matches those on /admin/lennot.
+ * A new name is matched to the member (claimSheetName) only once their flights
+ * are in the sheet, so a save that fails doesn't reserve a name.
  */
-async function memberSheetName(userId: string, fullName: string): Promise<string | null> {
+async function memberSheetName(
+  userId: string,
+  fullName: string
+): Promise<{ name: string; isNew: boolean } | null> {
   const existing = await pool.query(
     "SELECT name FROM pilot_aliases WHERE user_id = $1 ORDER BY updated_at DESC LIMIT 1",
     [userId]
   );
-  if (existing.rows.length > 0) return existing.rows[0].name;
+  if (existing.rows.length > 0) return { name: existing.rows[0].name, isNew: false };
 
   for (const candidate of [sheetNameFor(fullName), fullName.trim()]) {
     if (!candidate) continue;
-    const claimed = await pool.query(
-      `INSERT INTO pilot_aliases (name_key, name, user_id)
-       SELECT $1::text, $2::text, $3::text
-       WHERE NOT EXISTS (SELECT 1 FROM sheet_flights WHERE pic_key = $1)
-         AND NOT EXISTS (SELECT 1 FROM sheet_flights WHERE second_key = $1)
-       ON CONFLICT (name_key) DO NOTHING
-       RETURNING name`,
-      [nameKey(candidate), candidate, userId]
+    const taken = await pool.query(
+      `SELECT 1 FROM pilot_aliases WHERE name_key = $1
+       UNION ALL SELECT 1 FROM sheet_flights WHERE pic_key = $1 OR second_key = $1
+       LIMIT 1`,
+      [nameKey(candidate)]
     );
-    if (claimed.rows.length > 0) return claimed.rows[0].name;
+    if (taken.rows.length === 0) return { name: candidate, isNew: true };
   }
   return null;
+}
+
+async function claimSheetName(userId: string, name: string): Promise<void> {
+  await pool.query(
+    `INSERT INTO pilot_aliases (name_key, name, user_id) VALUES ($1, $2, $3)
+     ON CONFLICT (name_key) DO NOTHING`,
+    [nameKey(name), name, userId]
+  );
 }
 
 /**
@@ -388,6 +398,7 @@ export async function logFlights(
 
   let inputs: SheetFlightInput[] = [];
   let sheetName: string | null = null;
+  let newSheetName = false;
   try {
     const purposes = await pool.query(
       "SELECT code, is_training FROM flight_purposes WHERE active"
@@ -408,17 +419,19 @@ export async function logFlights(
       };
     }
 
-    sheetName = await memberSheetName(
+    const member = await memberSheetName(
       session.user.id,
       session.user.fullName || session.user.name || ""
     );
-    if (!sheetName) {
+    if (!member) {
       return {
         status: "error",
         error:
           "Nimesi on jo lentopäiväkirjassa, mutta sitä ei ole yhdistetty sinuun. Pyydä laskuttajaa yhdistämään nimesi, niin voit kirjata lentoja.",
       };
     }
+    sheetName = member.name;
+    newSheetName = member.isNew;
 
     // Saved already: the answer to an earlier try was lost on the way
     const saved = await pool.query(
@@ -471,6 +484,7 @@ export async function logFlights(
   // The flights are in the sheet now. Saving again finds them there by their
   // IDs and only finishes this step.
   try {
+    if (newSheetName) await claimSheetName(session.user.id, sheetName);
     await pool.query(
       `INSERT INTO flight_log_web_entries (id, user_id, registration)
        SELECT unnest($1::uuid[]), $2, $3
