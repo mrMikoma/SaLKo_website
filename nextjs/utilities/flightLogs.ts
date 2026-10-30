@@ -570,8 +570,9 @@ const setFlightStatusSchema = z.object({
         id: z.uuid(),
         inputHash: z.string().max(64).nullable(),
         // The Tila the page showed, so a change someone else made meanwhile
-        // isn't overwritten
-        status: z.string().max(40).nullable().optional(),
+        // isn't overwritten. Required: without it the sheet writer would skip
+        // that check
+        status: z.string().max(40).nullable(),
       })
     )
     .min(1, "Valitse ensin lennot")
@@ -831,6 +832,12 @@ export async function savePaperPage(
         if (!decision.id) {
           return { status: "error", error: `Rivi ${line.index + 1}: taulukon riviä ei ole valittu` };
         }
+        // Only a flight of this aircraft on the page's dates, as the preview
+        // showed it: the input hash makes the writer refuse a row that has
+        // changed since
+        if (!inSheet.has(decision.id) || !decision.inputHash) {
+          return { status: "error", error: "Sivu on muuttunut. Tarkista se uudelleen ennen tallennusta." };
+        }
         const matched = { id: decision.id, inputHash: decision.inputHash };
         if (decision.action === "confirm") {
           page.confirms.push(matched);
@@ -848,6 +855,24 @@ export async function savePaperPage(
     }
     if (page.append.length + page.confirms.length + page.corrections.length === 0) {
       return { status: "error", error: "Sivulla ei ole tallennettavaa" };
+    }
+    // A flight in a closed period is billed whatever the sheet says now, as in
+    // setFlightStatus
+    const matchedIds = [...page.confirms, ...page.corrections].map((flight) => flight.id);
+    if (matchedIds.length > 0) {
+      const billed = await pool.query(
+        `SELECT DISTINCT f.sheet_row FROM billing_lines b
+         JOIN sheet_flights f ON f.id = b.flight_id
+         WHERE b.flight_id = ANY($1::uuid[])
+         ORDER BY f.sheet_row`,
+        [matchedIds]
+      );
+      if (billed.rows.length > 0) {
+        return {
+          status: "error",
+          error: `Rivit ${billed.rows.map((row) => row.sheet_row).join(", ")} kuuluvat jo suljettuun laskutusjaksoon, eikä niitä muuteta täällä.`,
+        };
+      }
     }
 
     const { matched } = await writePaperPage(registration, page);
