@@ -116,18 +116,18 @@ Rules for migration files:
 ### Authentication (NextAuth v5)
 
 Configured in `auth.ts`. Two providers:
-1. **Google OAuth** — restricted to `@savonlinnanlentokerho.fi` domain via `hd` parameter. First login auto-creates a `user`-role record.
+1. **Google OAuth** — restricted to the club's Workspace: `signIn` requires the ID token's `hd` claim to be `savonlinnanlentokerho.fi` and `email_verified` to be true (`utilities/googleWorkspace.ts`). The `hd` request parameter is only a hint for the account chooser. First login auto-creates a `user`-role record.
 2. **Credentials** — email + bcrypt password, validated by `LoginFormSchema` (Zod).
 
 The JWT callback fetches `id`, `roles`, and `full_name` from the DB for both providers, and stamps the login time (`authAt`). The session callback re-fetches the same fields on every request to keep role data fresh. It returns `null` (invalidating the session) when:
 - the user is deleted or deactivated;
-- the session logged in before `users.sessions_revoked_at`, which a password change or reset and a deactivation set;
+- the session logged in before `users.sessions_revoked_at`, which a password change or reset and a deactivation set (a password change and a deactivation also delete the account's open reset links);
 - the account is guest-only;
 - the database fails.
 
 next-auth then still hands out a bare session without `id`, so checks look at `session.user.id`, as `proxy.ts` does.
 
-Failed password logins are rate-limited in `authorize()` (`utilities/loginLimits.ts`, `utilities/rateLimit.ts`): 10 per email address in 15 minutes, and 20 per IP address in a minute. Unknown addresses are compared against a dummy hash, so timing doesn't reveal accounts. Accounts whose emails differ only in case are tried exact spelling first. Anonymous guest bookings are limited to 10 an hour per IP, and to at most 14 days starting from today.
+Failed password logins are rate-limited in `authorize()` (`utilities/loginLimits.ts`, `utilities/rateLimit.ts`): 10 per email address in 15 minutes, and 20 per IP address in a minute. Wrong current passwords in `changePassword` have the same per-account budget. Unknown addresses are compared against a dummy hash, so timing doesn't reveal accounts. Accounts whose emails differ only in case are tried exact spelling first. Anonymous guest bookings are limited to 10 an hour per IP, and to at most 14 days starting from today.
 
 Session strategy is JWT with 30-day expiry. `trustHost: true` is required because the app runs behind Traefik.
 

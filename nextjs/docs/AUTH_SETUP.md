@@ -260,7 +260,7 @@ Three users are created on initialization:
 
 **Error: "Non-workspace email rejected"**
 - The code restricts to workspace domain
-- Check `hd` parameter in `auth.ts`
+- Check that the account belongs to the club's Workspace: `signIn` refuses tokens without `hd = savonlinnanlentokerho.fi` and `email_verified` (`utilities/googleWorkspace.ts`)
 
 ### Credentials Login Not Working
 
@@ -351,7 +351,7 @@ NextAuth provides these routes automatically:
 
 ### OAuth Security
 
-- Google Workspace domain restriction (`hd` parameter)
+- Google Workspace domain restriction (the ID token's `hd` and `email_verified` claims)
 - Only `@savonlinnanlentokerho.fi` emails allowed
 - OAuth tokens stored securely in database
 - Automatic session refresh
