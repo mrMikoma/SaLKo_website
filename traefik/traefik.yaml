@@ -22,6 +22,15 @@ entryPoints:
   websecure:
     address: ":443"
 
+  # Prometheus scrapes Traefik here (monitoring/prometheus/prometheus.yml);
+  # not published on the host
+  metrics:
+    address: ":8080"
+
+metrics:
+  prometheus:
+    entryPoint: metrics
+
 serversTransport:
   insecureSkipVerify: true
 
@@ -56,4 +65,5 @@ http:
           - "10.10.0.0/24" # Home site network
           - "10.20.0.0/24" # Vanttula site network
           - "127.0.0.1/32" # Localhost
-          - "172.16.0.0/12" # Docker internal networks
+          # No Docker networks: every container on the host, the public apps
+          # included, would count as internal

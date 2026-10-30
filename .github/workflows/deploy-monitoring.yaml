@@ -127,15 +127,28 @@ jobs:
         run: |
           echo "Deploying monitoring stack..."
           ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} << 'EOF'
+            # The exporter logs in as the database's superuser (POSTGRES_USER,
+            # salko_admin), with the password URL-encoded for the DSN
+            prod_password='${{ env.POSTGRES_PASSWORD }}'
+            prod_password_url=$(python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$prod_password")
+            # Umami's own database password, once the prod deploy has set it on
+            # the role (deploy-app-prod.yaml); until then the old one
+            umami_password='${{ env.POSTGRES_PASSWORD }}'
+            if [ -f .umami-db-password-set ]; then umami_password=$(cat .umami-db-password); fi
+            # The dev exporter's DSN comes from the dev deploy: keep it
+            dev_dsn=$(grep '^DEV_POSTGRES_EXPORTER_DSN=' .env.monitoring 2>/dev/null || true)
+
             # Create or update the .env.monitoring file
             cat > .env.monitoring << ENVEOF
           NAME_PREFIX=${{ env.NAME_PREFIX }}
           ENVIRONMENT=${{ env.ENVIRONMENT }}
           GRAFANA_ADMIN_PASSWORD=${{ env.GRAFANA_ADMIN_PASSWORD }}
-          PROD_POSTGRES_EXPORTER_DSN=postgresql://postgres:${{ env.POSTGRES_PASSWORD }}@salko-postgres-prod:5432/salko?sslmode=disable
-          DATABASE_URL=postgresql://umami_app:${{ env.POSTGRES_PASSWORD }}@salko-postgres-prod:5432/umami
+          PROD_POSTGRES_EXPORTER_DSN=postgresql://salko_admin:${prod_password_url}@salko-postgres-prod:5432/salko?sslmode=disable
+          DATABASE_URL=postgresql://umami_app:${umami_password}@salko-postgres-prod:5432/umami
           APP_SECRET=${{ env.UMAMI_APP_SECRET }}
           ENVEOF
+            if [ -n "$dev_dsn" ]; then echo "$dev_dsn" >> .env.monitoring; fi
+            chmod 600 .env.monitoring
 
             echo ".env.monitoring file created."
 
@@ -148,10 +161,11 @@ jobs:
             rm -rf /home/salko/monitoring/pgadmin-data/servers.json
             echo '{"Servers":{"1":{"Name":"SaLKo Dev","Group":"Servers","Host":"salko-postgres-dev","Port":5432,"MaintenanceDB":"salko","Username":"salko_admin","SSLMode":"disable","Comment":"Development database"}}}' > /home/salko/monitoring/pgadmin-data/servers.json
 
-            # Create pgpass file for automatic password authentication
-            echo "salko-postgres-dev:5432:salko:salko_admin:${{ env.POSTGRES_PASSWORD }}" > /home/salko/monitoring/pgadmin-data/.pgpass
-            chmod 600 /home/salko/monitoring/pgadmin-data/.pgpass
-            echo "✅ pgAdmin4 servers.json and .pgpass created"
+            # No .pgpass: it held the production superuser's password under the
+            # dev server's entry, and servers.json never pointed at it.
+            # pgAdmin asks for the password when connecting.
+            rm -f /home/salko/monitoring/pgadmin-data/.pgpass
+            echo "✅ pgAdmin4 servers.json created"
 
             # Start the monitoring stack
             echo "Starting monitoring stack..."
