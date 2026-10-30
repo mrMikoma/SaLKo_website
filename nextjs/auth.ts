@@ -117,6 +117,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             roles: user.roles,
             fullName: user.full_name,
             image: user.avatar_url,
+            // Read with the password it was checked against: a revocation
+            // after this point ends the session
+            sessionVersion: user.session_version,
           };
         } catch (error) {
           console.error("Authentication error:", error);
@@ -198,13 +201,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         );
         try {
           const result = await pool.query(
-            `SELECT id, roles, full_name FROM users WHERE lower(email) = lower($1) ${SAME_EMAIL_ORDER}`,
+            `SELECT id, roles, full_name, session_version FROM users WHERE lower(email) = lower($1) ${SAME_EMAIL_ORDER}`,
             [user.email]
           );
           if (result.rows.length > 0) {
             token.id = result.rows[0].id;
             token.roles = result.rows[0].roles;
             token.fullName = result.rows[0].full_name;
+            token.sessionVersion = result.rows[0].session_version;
             console.log("[JWT] Google OAuth - User found, ID:", token.id);
           } else {
             console.error(
@@ -224,6 +228,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.id = user.id;
         token.roles = (user as any).roles;
         token.fullName = (user as any).fullName;
+        token.sessionVersion = user.sessionVersion;
       }
 
       // When this session logged in: sessions_revoked_at after it ends the session
@@ -243,7 +248,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           // Fetch fresh user data from database to ensure we have latest roles/info.
           // A deactivated user's session ends on the next request.
           const result = await pool.query(
-            `SELECT id, email, name, full_name, roles, avatar_url, sessions_revoked_at FROM users
+            `SELECT id, email, name, full_name, roles, avatar_url, sessions_revoked_at, session_version FROM users
              WHERE id = $1 AND deactivated_at IS NULL`,
             [token.id]
           );
@@ -255,7 +260,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             ? Math.floor(new Date(row.sessions_revoked_at).getTime() / 1000)
             : 0;
           const authAt = typeof token.authAt === "number" ? token.authAt : 0;
-          if (row && (revokedAt > authAt || isGuestOnly(row.roles))) {
+          // The number the session logged in with must still be the
+          // account's: unlike the whole-second time above, it leaves no gap.
+          // Tokens from before session_version count as 0.
+          const revoked = revokedAt > authAt || (token.sessionVersion ?? 0) !== row?.session_version;
+          if (row && (revoked || isGuestOnly(row.roles))) {
             console.log("[SESSION] Session ended: revoked or guest-only, user", row.id);
             return null as any;
           }

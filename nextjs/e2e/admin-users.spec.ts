@@ -150,6 +150,17 @@ test("a deactivated user can't log in until reactivated", async ({ page, browser
   await before.context.close();
 });
 
+// Every revocation raises users.session_version; this changes only that, as
+// the revocation time is compared in whole seconds and a login in the same
+// second would pass it
+test("a session ends when the account's session number changes", async ({ browser }) => {
+  const member = await loggedInContext(browser, EMAIL, PASSWORD);
+  expect(await sessionWorks(member.page)).toBe(true);
+  await query("UPDATE users SET session_version = session_version + 1 WHERE id = $1", [userId]);
+  expect(await sessionWorks(member.page)).toBe(false);
+  await member.context.close();
+});
+
 test("a reset link sets a new password once, and ends the old sessions", async ({ page, browser }) => {
   const before = await loggedInContext(browser, EMAIL, PASSWORD);
   expect(await sessionWorks(before.page)).toBe(true);

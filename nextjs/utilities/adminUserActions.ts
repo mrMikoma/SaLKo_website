@@ -192,7 +192,7 @@ export async function setUserActive(
       // Deactivating also ends the sessions for good: restoring the account
       // later doesn't bring them back (auth.ts)
       `UPDATE users SET deactivated_at = ${active ? "NULL" : "COALESCE(deactivated_at, NOW())"}
-         ${active ? "" : ", sessions_revoked_at = NOW()"}
+         ${active ? "" : ", sessions_revoked_at = NOW(), session_version = session_version + 1"}
        WHERE id = $1`,
       [userId]
     );
@@ -237,7 +237,8 @@ export async function anonymizeUser(userId: string): Promise<ActionResult> {
          email = 'poistettu-' || id || '@salko.invalid',
          phone = '', address = '', city = '', postal_code = '',
          password = NULL, google_id = NULL, avatar_url = NULL,
-         deactivated_at = COALESCE(deactivated_at, NOW()), sessions_revoked_at = NOW()
+         deactivated_at = COALESCE(deactivated_at, NOW()), sessions_revoked_at = NOW(),
+         session_version = session_version + 1
        WHERE id = $1`,
       [userId]
     );
