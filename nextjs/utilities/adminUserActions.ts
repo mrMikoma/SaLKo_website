@@ -282,6 +282,10 @@ export async function deleteUser(userId: string): Promise<ActionResult> {
     }
 
     await pool.query("DELETE FROM users WHERE id = $1", [userId]);
+    // verification_tokens has no foreign key to users
+    await pool.query("DELETE FROM verification_tokens WHERE identifier = $1", [
+      `password-reset:${userId}`,
+    ]);
 
     revalidatePath("/admin/users");
     revalidatePath("/admin");

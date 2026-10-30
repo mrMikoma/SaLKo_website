@@ -9,8 +9,9 @@ module.exports = {
   // No "X-Powered-By: Next.js"
   poweredByHeader: false,
   // Basic protection on every page: no framing by other sites (clickjacking),
-  // no content-type guessing, and no full URLs sent to other sites (a
-  // password reset link carries its token in the URL)
+  // no content-type guessing, no full URLs sent to other sites (a password
+  // reset link carries its token in the URL), and HTTPS only for a year once a
+  // browser has seen the site (browsers ignore it over plain HTTP, as in dev)
   async headers() {
     return [
       {
@@ -20,6 +21,7 @@ module.exports = {
           { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Strict-Transport-Security", value: "max-age=31536000" },
         ],
       },
     ];

@@ -87,7 +87,6 @@ jobs:
           DATABASE_CONNECTION_STRING=postgresql://salko_app:ci-app@localhost:5432/salko
           NEXTAUTH_SECRET=$(openssl rand -base64 32)
           NEXTAUTH_URL=http://localhost:3000
-          SESSION_SECRET=$(openssl rand -base64 32)
           GOOGLE_CLIENT_ID=ci-placeholder
           GOOGLE_CLIENT_SECRET=ci-placeholder
           EOF

@@ -13,10 +13,11 @@ import { waitText } from "./rateLimit";
 const UpdateProfileSchema = z.object({
   // The name also goes into the flight log sheet, bills and CSV files
   full_name: z.string().trim().min(1, "Koko nimi vaaditaan").max(100, "Nimi on liian pitkä"),
-  phone: z.string().optional(),
-  address: z.string().optional(),
-  city: z.string().optional(),
-  postal_code: z.string().optional(),
+  // The same limits as the admin's form; an empty field arrives as null
+  phone: z.string().trim().max(30, "Puhelinnumero on liian pitkä").nullish(),
+  address: z.string().trim().max(200, "Osoite on liian pitkä").nullish(),
+  city: z.string().trim().max(100, "Kaupunki on liian pitkä").nullish(),
+  postal_code: z.string().trim().max(10, "Postinumero on liian pitkä").nullish(),
 });
 
 export interface UpdateProfileState {
