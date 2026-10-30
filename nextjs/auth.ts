@@ -147,7 +147,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           );
 
           if (result.rows.length > 0 && result.rows[0].deactivated_at) {
-            console.log("Login blocked for deactivated user:", email);
+            console.log("Google login blocked for a deactivated user");
             return false;
           }
           // As with passwords: guest-only entries are data, not accounts
@@ -191,14 +191,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async jwt({ token, user, account }) {
       // For Google OAuth, always fetch user data from database
       // The user object from Google doesn't contain our database ID
+      // Google's own tokens aren't kept: the site never calls Google for the
+      // user, and the session cookie lasts 30 days
       if (account?.provider === "google" && user?.email) {
-        token.accessToken = account.access_token;
-        token.idToken = account.id_token;
-
-        console.log(
-          "[JWT] Google OAuth - Fetching user data for email:",
-          user.email
-        );
         try {
           const result = await pool.query(
             `SELECT id, roles, full_name, session_version FROM users WHERE lower(email) = lower($1) ${SAME_EMAIL_ORDER}`,
@@ -209,12 +204,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             token.roles = result.rows[0].roles;
             token.fullName = result.rows[0].full_name;
             token.sessionVersion = result.rows[0].session_version;
-            console.log("[JWT] Google OAuth - User found, ID:", token.id);
           } else {
-            console.error(
-              "[JWT] Google OAuth - No user found in database for email:",
-              user.email
-            );
+            console.error("[JWT] Google OAuth - no user found in the database for the login");
           }
         } catch (error) {
           console.error(
@@ -236,12 +227,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.authAt = Math.floor(Date.now() / 1000);
       }
 
-      console.log("[JWT] Final token - ID:", token.id, "Email:", token.email);
       return token;
     },
 
+    // No logging on every request: these lines ended up in Loki with each
+    // member's email and ID
     async session({ session, token }) {
-      console.log("[SESSION] Token ID:", token.id, "Token email:", token.email);
 
       try {
         if (token.id) {
@@ -277,7 +268,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             session.user.fullName = user.full_name;
             session.user.email = user.email;
             session.user.image = user.avatar_url;
-            console.log("[SESSION] User found by ID:", user.id);
           } else {
             // User not found or deactivated - this can happen during logout or if user was deleted
             // Return null to invalidate the session
@@ -301,7 +291,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         return null as any;
       }
 
-      console.log("[SESSION] Final session.user.id:", session.user?.id);
       return session;
     },
   },

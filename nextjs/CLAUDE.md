@@ -46,7 +46,6 @@ proxy.ts      # route protection (Next 16's replacement for middleware.ts)
 
 - `tsconfig.json` has `strict: false`, so the compiler won't catch missing null checks. `@typescript-eslint/no-explicit-any` is only a warning; use real types in new code.
 - `pool` from `utilities/db.ts` is `null` when `DATABASE_CONNECTION_STRING` is unset or `CI` is set.
-- `auth.ts` logs `[JWT]` and `[SESSION]` lines on every request; in dev they also appear in the browser console.
 - `next-env.d.ts` and the managed block in `AGENTS.md` are written by `next dev`. `next-env.d.ts` is gitignored; `AGENTS.md` is committed as generated.
 - After you edit a file, the hooks report ESLint errors in it, and at the end of the turn they report TypeScript errors (see "Claude Code Setup" in the root `CLAUDE.md`).
 

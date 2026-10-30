@@ -158,7 +158,6 @@ Copy `nextjs/.env.example` to `nextjs/.env` (Claude's hooks block editing `.env`
 | `NEXTAUTH_SECRET` | NextAuth JWT secret |
 | `NEXTAUTH_URL` | App public URL |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth |
-| `SESSION_SECRET` | Legacy jose JWT secret (used by `utilities/sessions.ts`) |
 | `NEXT_PUBLIC_UMAMI_WEBSITE_ID` | Umami site ID (optional) |
 | `UMAMI_INTERNAL_URL` | Internal Umami URL (default: `http://salko-umami:3000`) |
 | `ALLOW_INDEXING` | `true` only in production; otherwise `robots.ts` disallows crawling |

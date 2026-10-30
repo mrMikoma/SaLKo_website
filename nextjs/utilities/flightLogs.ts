@@ -181,7 +181,14 @@ export async function setPilotAlias(
 
   try {
     if (parsed.data.userId) {
-      const user = await pool.query("SELECT 1 FROM users WHERE id = $1", [parsed.data.userId]);
+      // Only an account the member list offers (getMemberOptions): not the
+      // system guest, a deactivated or an anonymised one
+      const user = await pool.query(
+        `SELECT 1 FROM users
+         WHERE id = $1 AND NOT (roles = ARRAY['guest']::text[])
+           AND deactivated_at IS NULL AND email NOT LIKE 'poistettu-%@salko.invalid'`,
+        [parsed.data.userId]
+      );
       if (user.rowCount === 0) {
         return { status: "error", error: "Jäsentä ei löytynyt" };
       }
