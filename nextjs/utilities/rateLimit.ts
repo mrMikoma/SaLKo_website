@@ -73,8 +73,10 @@ export class RateLimiter {
 
 /**
  * The visitor's address: Cloudflare's header first, as the site is behind
- * Cloudflare, then the proxies' X-Forwarded-For. A request that skips
- * Cloudflare can fake these, so per-IP limits only add to per-account ones.
+ * Cloudflare, then the proxies' X-Forwarded-For. The server's firewall lets
+ * only Cloudflare reach the web ports (infra/terraform/modules/hetzner), so a
+ * visitor can't set the header by skipping Cloudflare. Requests over the
+ * private network can, so per-IP limits still only add to per-account ones.
  */
 export function clientIp(headers: Headers): string {
   return (
