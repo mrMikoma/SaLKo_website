@@ -164,7 +164,7 @@ jobs:
           fi
 
           echo "Adjusting permissions on transferred files..."
-          if ! ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} "chmod -R 777 /home/salko/postgres-dev/init/*.sql"; then
+          if ! ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} "chmod 644 /home/salko/postgres-dev/init/*"; then
             echo "Failed to adjust file permissions"
             exit 1
           fi
@@ -290,13 +290,19 @@ jobs:
         run: |
           echo "Updating monitoring secrets..."
           ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} << 'EOF'
-            # Update .env.monitoring with dev secrets
-            sed -i "s|^DEV_POSTGRES_EXPORTER_DSN=.*|DEV_POSTGRES_EXPORTER_DSN=postgresql://postgres:${{ env.POSTGRES_PASSWORD }}@salko-postgres-dev:5432/salko?sslmode=disable|" .env.monitoring || true
+            # Update .env.monitoring with dev secrets, adding the line when the
+            # monitoring deploy left it out. The exporter logs in as the
+            # superuser (POSTGRES_USER), with the password URL-encoded
+            password_url=$(python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' '${{ env.POSTGRES_PASSWORD }}')
+            sed -i '/^DEV_POSTGRES_EXPORTER_DSN=/d' .env.monitoring
+            echo "DEV_POSTGRES_EXPORTER_DSN=postgresql://salko_admin:${password_url}@salko-postgres-dev:5432/salko?sslmode=disable" >> .env.monitoring
+            chmod 600 .env.monitoring
             echo "✅ Monitoring secrets updated"
 
-            # Restart monitoring stack to apply new secrets
-            echo "Restarting monitoring stack..."
-            docker compose --env-file .env.monitoring -f docker-compose.monitoring.yaml restart || true
+            # Recreate the services whose settings changed: a restart would
+            # keep their old environment
+            echo "Applying to the monitoring stack..."
+            docker compose --env-file .env.monitoring -f docker-compose.monitoring.yaml up -d || true
           EOF
 
       - name: Notify success

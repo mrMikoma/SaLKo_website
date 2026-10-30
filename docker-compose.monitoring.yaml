@@ -13,13 +13,13 @@ services:
       - /home/salko/monitoring/prometheus-data:/prometheus
     networks:
       - monitoring
-      - global_outgoing
     restart: unless-stopped
     environment:
       - ENVIRONMENT=${ENVIRONMENT}
     labels:
       - logging=promtail
       - traefik.enable=true
+      - traefik.docker.network=salko_monitoring
       - traefik.http.routers.prometheus.rule=Host(`prometheus.savonlinnanlentokerho.fi`)
       - traefik.http.routers.prometheus.entrypoints=websecure
       - traefik.http.routers.prometheus.tls.certresolver=cloudflare
@@ -34,7 +34,6 @@ services:
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
     networks:
       - monitoring
-      - global_outgoing
     restart: unless-stopped
     environment:
       - GF_SECURITY_ADMIN_USER=admin@savonlinnanlentokerho.fi
@@ -47,6 +46,7 @@ services:
     labels:
       - logging=promtail
       - traefik.enable=true
+      - traefik.docker.network=salko_monitoring
       - traefik.http.routers.grafana.rule=Host(`grafana.savonlinnanlentokerho.fi`)
       - traefik.http.routers.grafana.entrypoints=websecure
       - traefik.http.routers.grafana.tls.certresolver=cloudflare
@@ -65,11 +65,11 @@ services:
       - /home/salko/monitoring/loki-data:/loki
     networks:
       - monitoring
-      - global_outgoing
     restart: unless-stopped
     labels:
       - logging=promtail
       - traefik.enable=true
+      - traefik.docker.network=salko_monitoring
       - traefik.http.routers.loki.rule=Host(`loki.savonlinnanlentokerho.fi`)
       - traefik.http.routers.loki.entrypoints=websecure
       - traefik.http.routers.loki.tls.certresolver=cloudflare
@@ -86,7 +86,6 @@ services:
       - /var/log:/var/log:ro
     networks:
       - monitoring
-      - global_outgoing
     restart: unless-stopped
     depends_on:
       - loki
@@ -105,11 +104,11 @@ services:
       - /:/host:ro,rslave
     networks:
       - monitoring
-      - global_outgoing
     restart: unless-stopped
     labels:
       - logging=promtail
       - traefik.enable=true
+      - traefik.docker.network=salko_monitoring
       - traefik.http.routers.nodeexporter.rule=Host(`nodeexporter.savonlinnanlentokerho.fi`)
       - traefik.http.routers.nodeexporter.entrypoints=websecure
       - traefik.http.routers.nodeexporter.tls.certresolver=cloudflare
@@ -130,11 +129,11 @@ services:
       - /dev/disk:/dev/disk:ro
     networks:
       - monitoring
-      - global_outgoing
     restart: unless-stopped
     labels:
       - logging=promtail
       - traefik.enable=true
+      - traefik.docker.network=salko_monitoring
       - traefik.http.routers.cadvisor.rule=Host(`cadvisor.savonlinnanlentokerho.fi`)
       - traefik.http.routers.cadvisor.entrypoints=websecure
       - traefik.http.routers.cadvisor.tls.certresolver=cloudflare
@@ -181,13 +180,13 @@ services:
       - monitoring
       - dev_internal
       - prod_internal
-      - global_outgoing
     volumes:
       - /home/salko/monitoring/pgadmin-data:/var/lib/pgadmin
     restart: unless-stopped
     labels:
       - logging=promtail
       - traefik.enable=true
+      - traefik.docker.network=salko_monitoring
       - traefik.http.routers.pgadmin.rule=Host(`pgadmin.savonlinnanlentokerho.fi`)
       - traefik.http.routers.pgadmin.entrypoints=websecure
       - traefik.http.routers.pgadmin.tls.certresolver=cloudflare
@@ -203,12 +202,12 @@ services:
       - DISABLE_TELEMETRY=1
     networks:
       - monitoring
-      - global_outgoing
       - prod_internal
     restart: unless-stopped
     labels:
       - logging=promtail
       - traefik.enable=true
+      - traefik.docker.network=salko_monitoring
       - traefik.http.routers.umami.rule=Host(`umami.savonlinnanlentokerho.fi`)
       - traefik.http.routers.umami.entrypoints=websecure
       - traefik.http.routers.umami.tls.certresolver=cloudflare
@@ -216,10 +215,12 @@ services:
       - traefik.http.services.umami.loadbalancer.server.port=3000
 
 networks:
+  # The admin tools are on this network only, with Traefik, and not on
+  # global_outgoing with the public apps: Loki, Prometheus and the exporters
+  # have no login of their own
   monitoring:
+    name: salko_monitoring
     driver: bridge
-  global_outgoing:
-    external: true
   dev_internal:
     external: true
     name: salko_dev_internal

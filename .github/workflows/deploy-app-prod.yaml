@@ -159,7 +159,7 @@ jobs:
           fi
 
           echo "Adjusting permissions on transferred files..."
-          if ! ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} "chmod -R 777 /home/salko/postgres-prod/init/*.sql"; then
+          if ! ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} "chmod 644 /home/salko/postgres-prod/init/*"; then
             echo "Failed to adjust file permissions"
             exit 1
           fi
@@ -280,15 +280,20 @@ jobs:
         run: |
           echo "Updating monitoring secrets..."
           ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} << 'EOF'
-            # Update .env.monitoring with prod secrets
-            sed -i "s|^PROD_POSTGRES_EXPORTER_DSN=.*|PROD_POSTGRES_EXPORTER_DSN=postgresql://postgres:${{ env.POSTGRES_PASSWORD }}@salko-postgres-prod:5432/salko?sslmode=disable|" .env.monitoring || true
+            # Update .env.monitoring with prod secrets. The exporter logs in as
+            # the superuser (POSTGRES_USER), with the password URL-encoded
+            password_url=$(python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' '${{ env.POSTGRES_PASSWORD }}')
+            sed -i '/^PROD_POSTGRES_EXPORTER_DSN=/d' .env.monitoring
+            echo "PROD_POSTGRES_EXPORTER_DSN=postgresql://salko_admin:${password_url}@salko-postgres-prod:5432/salko?sslmode=disable" >> .env.monitoring
+            chmod 600 .env.monitoring
             sed -i "s|^DATABASE_URL=.*|DATABASE_URL=postgresql://umami_app:${{ env.POSTGRES_PASSWORD }}@salko-postgres-prod:5432/umami|" .env.monitoring || true
             sed -i "s|^APP_SECRET=.*|APP_SECRET=${{ env.UMAMI_APP_SECRET }}|" .env.monitoring || true
             echo "✅ Monitoring secrets updated"
 
-            # Restart monitoring stack to apply new secrets
-            echo "Restarting monitoring stack..."
-            docker compose --env-file .env.monitoring -f docker-compose.monitoring.yaml restart || true
+            # Recreate the services whose settings changed: a restart would
+            # keep their old environment
+            echo "Applying to the monitoring stack..."
+            docker compose --env-file .env.monitoring -f docker-compose.monitoring.yaml up -d || true
           EOF
 
       - name: Notify success
