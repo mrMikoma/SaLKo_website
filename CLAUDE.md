@@ -121,7 +121,7 @@ Configured in `auth.ts`. Two providers:
 
 The JWT callback fetches `id`, `roles`, and `full_name` from the DB for both providers, and stamps the login time (`authAt`). The session callback re-fetches the same fields on every request to keep role data fresh. It returns `null` (invalidating the session) when:
 - the user is deleted or deactivated;
-- the session logged in before `users.sessions_revoked_at`, which a password change or reset and a deactivation set (a password change and a deactivation also delete the account's open reset links);
+- the session logged in before `users.sessions_revoked_at`, or `users.session_version` has changed since it logged in. A password change or reset, a deactivation and an anonymisation set the first and raise the second; the number leaves no gap where the whole-second time could (a password change and a deactivation also delete the account's open reset links);
 - the account is guest-only;
 - the database fails.
 

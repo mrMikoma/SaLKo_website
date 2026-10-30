@@ -20,7 +20,9 @@ CREATE TABLE
     -- Set when an admin removes the user: no login, history (bookings) is kept
     deactivated_at TIMESTAMPTZ,
     -- Sessions that logged in before this end (nextjs/auth.ts)
-    sessions_revoked_at TIMESTAMPTZ
+    sessions_revoked_at TIMESTAMPTZ,
+    -- Goes up when the sessions are revoked; a session with another number ends
+    session_version INTEGER NOT NULL DEFAULT 0
   );
 
 -- Create bullets table

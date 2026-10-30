@@ -13,6 +13,8 @@ declare module "next-auth" {
   interface User extends DefaultUser {
     roles: string[];
     fullName: string;
+    // users.session_version at login (auth.ts)
+    sessionVersion?: number;
   }
 }
 
@@ -23,5 +25,6 @@ declare module "next-auth/jwt" {
     fullName: string;
     accessToken?: string;
     idToken?: string;
+    sessionVersion?: number;
   }
 }
