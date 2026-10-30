@@ -17,6 +17,14 @@ jobs:
       new_version: ${{ steps.image-version.outputs.new_version }}
 
     steps:
+      # The production image, and its latest tag, come from main only
+      - name: Check the branch
+        run: |
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Build the production image from the main branch only (this run is on $GITHUB_REF)"
+            exit 1
+          fi
+
       - name: Checkout repository
         uses: actions/checkout@v7.0.1
         with:

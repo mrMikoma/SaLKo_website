@@ -15,8 +15,25 @@ on:
       - ".github/workflows/ansible-provision.yaml"
 
 jobs:
+  # Real runs only from main, dry runs from main or dev. Checked before a runner
+  # is created, because the later steps run the branch's own files with the
+  # server's root key.
+  check-branch:
+    name: Check the branch
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check the branch
+        env:
+          CHECK_MODE: ${{ inputs.check_mode }}
+        run: |
+          if [ "$GITHUB_REF" = "refs/heads/main" ]; then exit 0; fi
+          if [ "$GITHUB_REF" = "refs/heads/dev" ] && [ "$CHECK_MODE" = "true" ]; then exit 0; fi
+          echo "::error::Real runs only from main, dry runs from main or dev (this run is on $GITHUB_REF)"
+          exit 1
+
   create-runner:
     name: Create Hetzner Cloud runner
+    needs: check-branch
     runs-on: ubuntu-24.04
     outputs:
       label: ${{ steps.create-hcloud-runner.outputs.label }}
@@ -188,7 +205,7 @@ jobs:
       - create-runner
       - ansible-provision
     runs-on: ubuntu-24.04
-    if: ${{ always() }}
+    if: ${{ always() && needs.create-runner.outputs.server_id != '' }}
     steps:
       - name: Delete runner
         uses: Cyclenerd/hcloud-github-runner@v1.4.1
