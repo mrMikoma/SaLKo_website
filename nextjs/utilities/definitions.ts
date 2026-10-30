@@ -16,7 +16,12 @@ export const PasswordSchema = z
   .trim();
 
 export const LoginFormSchema = z.object({
-  email: z.string().email({ message: "Syötä oikea sähköpostiosoite." }),
+  // 254 is the longest address mail allows; the failed-login counts keep the
+  // address, so an unbounded one would let anyone fill the server's memory
+  email: z
+    .string()
+    .max(254, { message: "Syötä oikea sähköpostiosoite." })
+    .email({ message: "Syötä oikea sähköpostiosoite." }),
   password: PasswordSchema,
 });
 

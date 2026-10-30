@@ -69,7 +69,8 @@ export async function resetPasswordWithToken(
       [await bcrypt.hash(parsed.data.password, 10), userId]
     );
     if (updated.rowCount === 0) {
-      await client.query("ROLLBACK");
+      // Keeps the link deleted: it must not work later if the account is restored
+      await client.query("COMMIT");
       return { status: "error", error: "Käyttäjätiliä ei voi enää käyttää" };
     }
 

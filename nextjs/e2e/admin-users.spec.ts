@@ -15,6 +15,7 @@ const EMAIL = TYPED_EMAIL.toLowerCase();
 const FULL_NAME = "E2E Käyttäjä";
 const PASSWORD = "Alku-salasana1!";
 const NEW_PASSWORD = "Uusi-salasana2!";
+const OWN_PASSWORD = "Oma-salasana3!";
 
 async function query<T>(sql: string, params: unknown[] = []): Promise<T[]> {
   const pool = new Pool({ connectionString: process.env.DATABASE_CONNECTION_STRING });
@@ -52,6 +53,38 @@ async function loggedInContext(browser: Browser, email: string, password: string
 async function sessionWorks(page: Page) {
   await page.goto("/jasenalue/profiili");
   return new URL(page.url()).pathname === "/jasenalue/profiili";
+}
+
+// The admin makes a password reset link for the test user
+async function makeResetLink(page: Page) {
+  await page.goto("/admin/users");
+  await userRow(page).getByRole("button", { name: "Salasanan vaihtolinkki" }).click();
+  const link = await page.getByLabel("Salasanan vaihtolinkki").inputValue();
+  expect(link).toContain("/auth/uusi-salasana?token=");
+  await page.goto("/admin/users");
+  return link;
+}
+
+// Opens a reset link in a fresh browser and sets a new password with it
+async function useResetLink(browser: Browser, link: string, password: string) {
+  const context = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+  const page = await context.newPage();
+  await page.goto(link);
+  await page.getByLabel("Uusi salasana", { exact: true }).fill(password);
+  await page.getByLabel("Uusi salasana uudelleen").fill(password);
+  await page.getByRole("button", { name: "Vaihda salasana" }).click();
+  return { context, page };
+}
+
+// Submits the change-password form on the profile page, already opened
+async function submitPasswordChange(page: Page, current: string, next: string) {
+  await page.getByLabel("Nykyinen salasana *").fill(current);
+  await page.getByLabel("Uusi salasana *", { exact: true }).fill(next);
+  await page.getByLabel("Vahvista uusi salasana *").fill(next);
+  await Promise.all([
+    page.waitForResponse((response) => response.request().method() === "POST"),
+    page.getByRole("button", { name: "Vaihda salasana" }).click(),
+  ]);
 }
 
 // Logs in from a fresh browser context and tells whether it worked
@@ -146,6 +179,53 @@ test("a reset link sets a new password once, and ends the old sessions", async (
   // Whoever was logged in before the reset is logged out
   expect(await sessionWorks(before.page)).toBe(false);
   await before.context.close();
+});
+
+test("a reset link made before a lock doesn't work after it", async ({ page, browser }) => {
+  const link = await makeResetLink(page);
+  await userRow(page).getByRole("button", { name: "Poista käytöstä" }).click();
+  await expect(userRow(page).getByText("Poistettu käytöstä")).toBeVisible();
+  await userRow(page).getByRole("button", { name: "Palauta käyttöön" }).click();
+  await expect(userRow(page).getByText("Poistettu käytöstä")).toHaveCount(0);
+
+  const reset = await useResetLink(browser, link, PASSWORD);
+  await expect(reset.page.getByText(/Linkki on vanhentunut tai jo käytetty/)).toBeVisible();
+  await reset.context.close();
+  expect(await canLogIn(browser, EMAIL, NEW_PASSWORD)).toBe(true);
+});
+
+test("changing the password ends an earlier reset link", async ({ page, browser }) => {
+  const link = await makeResetLink(page);
+
+  const member = await loggedInContext(browser, EMAIL, NEW_PASSWORD);
+  await member.page.goto("/jasenalue/profiili");
+  await member.page.getByRole("button", { name: "Vaihda salasana" }).click();
+  await submitPasswordChange(member.page, NEW_PASSWORD, OWN_PASSWORD);
+  await expect(member.page.getByText("Salasana vaihdettu")).toBeVisible();
+  await member.context.close();
+
+  const reset = await useResetLink(browser, link, PASSWORD);
+  await expect(reset.page.getByText(/Linkki on vanhentunut tai jo käytetty/)).toBeVisible();
+  await reset.context.close();
+  expect(await canLogIn(browser, EMAIL, OWN_PASSWORD)).toBe(true);
+});
+
+// The same budget as logins, so a session left open somewhere can't be used
+// to guess the password
+test("changing the password allows ten wrong current passwords, then waits", async ({ browser }) => {
+  const member = await loggedInContext(browser, EMAIL, OWN_PASSWORD);
+  await member.page.goto("/jasenalue/profiili");
+  await member.page.getByRole("button", { name: "Vaihda salasana" }).click();
+
+  for (let n = 1; n <= 10; n++) {
+    await submitPasswordChange(member.page, `Vaara-salasana${n}!`, NEW_PASSWORD);
+    await expect(member.page.getByText("Nykyinen salasana on virheellinen.")).toBeVisible();
+  }
+  await submitPasswordChange(member.page, "Vaara-salasana11!", NEW_PASSWORD);
+  await expect(
+    member.page.getByText("Liian monta väärää salasanaa. Yritä uudelleen 15 minuutin kuluttua.")
+  ).toBeVisible();
+  await member.context.close();
 });
 
 test("anonymising removes the personal details", async ({ page }) => {

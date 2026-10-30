@@ -1,4 +1,5 @@
 "use server";
+import type { Pool, PoolClient } from "pg";
 import connectionPool from "@/utilities/db";
 import { auth } from "@/auth";
 import {
@@ -150,12 +151,16 @@ function buildRepeatSlots(
   return slots;
 }
 
+// A caller that already holds a pool client passes it as db: taking a second
+// connection while holding one lets a burst of such calls use up the pool and
+// stall every other request until the connection timeout
 async function findConflicts(
   plane: string,
   slots: Slot[],
-  excludeId?: number
+  excludeId?: number,
+  db: Pool | PoolClient = connectionPool
 ): Promise<BookingConflict[]> {
-  const response = await connectionPool.query(
+  const response = await db.query(
     `SELECT DISTINCT b.id, b.plane, b.start_time, b.end_time, b.title,
             u.full_name, gb.contact_name
      FROM bookings b
@@ -384,7 +389,7 @@ export async function addRepeatingBookings(
   const client = await connectionPool.connect();
   try {
     if (!options.allowOverlap) {
-      const conflicts = await findConflicts(booking.plane, slots);
+      const conflicts = await findConflicts(booking.plane, slots, undefined, client);
       if (conflicts.length > 0) {
         return { status: "conflict", conflicts };
       }
@@ -463,13 +468,19 @@ export async function addGuestBooking(
       error: `Liian monta varausta lyhyessä ajassa. Yritä uudelleen ${waitText(wait)} kuluttua.`,
     };
   }
+  // Counted in the same step as the check, before anything is awaited, so
+  // requests sent at once can't all pass it; an attempt that ends in a
+  // conflict or an error counts too
+  guestBookingsByIp.hit(ip);
 
   const client = await connectionPool.connect();
   try {
     if (!options.allowOverlap) {
       const conflicts = await findConflicts(
         booking.plane,
-        [{ start: booking.start_time, end: booking.end_time }]
+        [{ start: booking.start_time, end: booking.end_time }],
+        undefined,
+        client
       );
       if (conflicts.length > 0) {
         return { status: "conflict", conflicts };
@@ -514,7 +525,6 @@ export async function addGuestBooking(
     );
 
     await client.query("COMMIT");
-    guestBookingsByIp.hit(ip);
     return { status: "success", result: { id: bookingId } };
   } catch (error) {
     await client.query("ROLLBACK");

@@ -6,6 +6,7 @@ import { randomBytes } from "crypto";
 import pool from "./utilities/db";
 import { LoginFormSchema } from "./utilities/definitions";
 import { clientIp } from "./utilities/rateLimit";
+import { WORKSPACE_DOMAIN, workspaceEmail } from "./utilities/googleWorkspace";
 import {
   emailKey,
   failedLoginsByEmail,
@@ -39,7 +40,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
       authorization: {
         params: {
-          hd: "savonlinnanlentokerho.fi", // Restrict to your workspace domain
+          hd: WORKSPACE_DOMAIN, // a hint for the account chooser; signIn checks the token
           prompt: "select_account",
         },
       },
@@ -126,13 +127,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   ],
 
   callbacks: {
-    async signIn({ user, account, profile }) {
+    async signIn({ account, profile }) {
       if (account?.provider === "google") {
-        // Verify domain for Google Workspace
-        const email = user.email || profile?.email;
-        if (!email?.endsWith("@savonlinnanlentokerho.fi")) {
-          console.error("Rejected non-workspace email:", email);
-          return false; // Reject non-workspace emails
+        // Only accounts of the club's Workspace, as Google's token says
+        const email = workspaceEmail(profile);
+        if (!email) {
+          console.error("Rejected a Google login from outside the club Workspace");
+          return false;
         }
 
         try {
