@@ -7,7 +7,7 @@ import { removePilotAlias, setPilotAlias } from "@/utilities/flightLogs";
 interface PilotMatchingProps {
   unmatched: { name: string; nameKey: string; flights: number; lastFlightLabel: string }[];
   // userName null: marked as no member
-  matched: { name: string; nameKey: string; userName: string | null }[];
+  matched: { name: string; nameKey: string; userName: string | null; userEmail: string | null }[];
   members: { id: string; name: string; email: string }[];
 }
 
@@ -128,7 +128,8 @@ const PilotMatching = ({ unmatched, matched, members }: PilotMatchingProps) => {
             {matchedMembers.map((pilot) => (
               <li key={pilot.nameKey} className="py-2 flex items-center justify-between gap-3">
                 <span className="text-gray-900">
-                  {pilot.name} → {pilot.userName}
+                  {/* With the email: members choose their own name, and two can share one */}
+                  {pilot.name} → {pilot.userName} ({pilot.userEmail})
                 </span>
                 <button
                   type="button"

@@ -164,6 +164,7 @@ export default async function FlightsAdminPage({ searchParams }: PageProps) {
           name: pilot.name,
           nameKey: pilot.nameKey,
           userName: pilot.userId ? pilot.userName : null,
+          userEmail: pilot.userId ? pilot.userEmail : null,
         }))}
         members={members}
       />

@@ -249,6 +249,11 @@ export async function setPayerPaid(
 ): Promise<ActionResult> {
   const access = await requireBillingAdmin();
   if ("error" in access) return { status: "error", error: access.error };
+  // A server action takes whatever the request sends: a string "false" would
+  // mark the sheet paid while the database stays unpaid
+  if (!Number.isInteger(periodId) || typeof payerKey !== "string" || typeof paid !== "boolean") {
+    return { status: "error", error: "Virheellinen pyyntö" };
+  }
 
   const failed = await writePayerPaid(periodId, payerKey, paid, access.user.id);
   if (failed) return { status: "error", error: failed.error };

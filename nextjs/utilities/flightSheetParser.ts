@@ -317,7 +317,7 @@ export function parseFlightSheet(
         const id = text(cell(row, "id"));
         undatedRows.push({
           row: rowNumber,
-          id: id && UUID.test(id) ? id : null,
+          id: id && UUID.test(id) ? id.toLowerCase() : null,
           date: cell(row, "date") ?? null,
           typed,
         });
@@ -360,8 +360,10 @@ export function parseFlightSheet(
     );
 
     flights.push({
-      // Anything but a UUID is replaced by the sync, like a missing ID
-      id: idText && UUID.test(idText) ? idText : null,
+      // Anything but a UUID is replaced by the sync, like a missing ID. Lower
+      // case, as Postgres compares them: two rows whose IDs differ only in case
+      // are one ID, and the sync treats the second as a copied row
+      id: idText && UUID.test(idText) ? idText.toLowerCase() : null,
       row: rowNumber,
       flightDate,
       picName: text(cell(row, "pic")) ?? "",
