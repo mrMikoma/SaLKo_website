@@ -6,6 +6,8 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import * as bcrypt from "bcrypt";
 import { ChangePasswordSchema } from "./definitions";
+import { failedPasswordChecks } from "./loginLimits";
+import { waitText } from "./rateLimit";
 
 // Validation schema for profile updates
 const UpdateProfileSchema = z.object({
@@ -208,6 +210,20 @@ export async function changePassword(
       };
     }
 
+    // Counted before the comparison, in the same step as the check, so
+    // requests sent at once can't all slip under the limit; a right password
+    // clears the count
+    const wait = failedPasswordChecks.blockedFor(session.user.id);
+    if (wait > 0) {
+      return {
+        errors: {
+          general: [`Liian monta väärää salasanaa. Yritä uudelleen ${waitText(wait)} kuluttua.`],
+        },
+        status: "error",
+      };
+    }
+    failedPasswordChecks.hit(session.user.id);
+
     const isValidPassword = await bcrypt.compare(
       currentPassword,
       user.password
@@ -222,6 +238,8 @@ export async function changePassword(
       };
     }
 
+    failedPasswordChecks.reset(session.user.id);
+
     // Hash new password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
@@ -230,6 +248,10 @@ export async function changePassword(
     await pool.query("UPDATE users SET password = $1, sessions_revoked_at = NOW() WHERE id = $2", [
       hashedPassword,
       session.user.id,
+    ]);
+    // A reset link made earlier would still set a password over this one
+    await pool.query("DELETE FROM verification_tokens WHERE identifier = $1", [
+      `password-reset:${session.user.id}`,
     ]);
 
     return {

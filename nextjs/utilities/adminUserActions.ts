@@ -196,6 +196,13 @@ export async function setUserActive(
        WHERE id = $1`,
       [userId]
     );
+    if (!active) {
+      // An open reset link would otherwise work again once the account is
+      // restored; a new link can be made then
+      await pool.query("DELETE FROM verification_tokens WHERE identifier = $1", [
+        `password-reset:${userId}`,
+      ]);
+    }
 
     revalidatePath("/admin/users");
     revalidatePath("/admin");
