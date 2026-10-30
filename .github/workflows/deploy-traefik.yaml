@@ -27,7 +27,7 @@ jobs:
     steps:
       - name: Create runner
         id: create-hcloud-runner
-        uses: Cyclenerd/hcloud-github-runner@v1.4.1
+        uses: Cyclenerd/hcloud-github-runner@94a0a4aa750d832b48cc0f66d24ed56c3fe69448 # v1.4.1
         with:
           mode: create
           github_token: ${{ secrets.HETZNER_GHA_RUNNER_PAT }}
@@ -134,7 +134,7 @@ jobs:
     if: ${{ always() && needs.create-runner.outputs.server_id != '' }}
     steps:
       - name: Delete runner
-        uses: Cyclenerd/hcloud-github-runner@v1.4.1
+        uses: Cyclenerd/hcloud-github-runner@94a0a4aa750d832b48cc0f66d24ed56c3fe69448 # v1.4.1
         with:
           mode: delete
           github_token: ${{ secrets.HETZNER_GHA_RUNNER_PAT }}
