@@ -131,6 +131,10 @@ jobs:
             # salko_admin), with the password URL-encoded for the DSN
             prod_password='${{ env.POSTGRES_PASSWORD }}'
             prod_password_url=$(python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$prod_password")
+            # Umami's own database password, once the prod deploy has set it on
+            # the role (deploy-app-prod.yaml); until then the old one
+            umami_password='${{ env.POSTGRES_PASSWORD }}'
+            if [ -f .umami-db-password-set ]; then umami_password=$(cat .umami-db-password); fi
             # The dev exporter's DSN comes from the dev deploy: keep it
             dev_dsn=$(grep '^DEV_POSTGRES_EXPORTER_DSN=' .env.monitoring 2>/dev/null || true)
 
@@ -140,7 +144,7 @@ jobs:
           ENVIRONMENT=${{ env.ENVIRONMENT }}
           GRAFANA_ADMIN_PASSWORD=${{ env.GRAFANA_ADMIN_PASSWORD }}
           PROD_POSTGRES_EXPORTER_DSN=postgresql://salko_admin:${prod_password_url}@salko-postgres-prod:5432/salko?sslmode=disable
-          DATABASE_URL=postgresql://umami_app:${{ env.POSTGRES_PASSWORD }}@salko-postgres-prod:5432/umami
+          DATABASE_URL=postgresql://umami_app:${umami_password}@salko-postgres-prod:5432/umami
           APP_SECRET=${{ env.UMAMI_APP_SECRET }}
           ENVEOF
             if [ -n "$dev_dsn" ]; then echo "$dev_dsn" >> .env.monitoring; fi

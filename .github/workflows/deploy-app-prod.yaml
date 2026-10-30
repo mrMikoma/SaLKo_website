@@ -184,6 +184,13 @@ jobs:
         run: |
           echo "Deploying to production environment..."
           ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} << "EOF"
+            # Umami's own database password, made on the server once and kept
+            # there (it used to be the superuser's). Hex, so it needs no quoting.
+            if [ ! -s .umami-db-password ]; then
+              (umask 077; openssl rand -hex 24 > .umami-db-password)
+            fi
+            umami_password=$(cat .umami-db-password)
+
             # Create or clear the .env.prod file
             > .env.prod
 
@@ -210,7 +217,8 @@ jobs:
             echo "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}" >> .env.prod
             echo "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" >> .env.prod
             echo "UMAMI_DB_USER=${{ env.UMAMI_DB_USER }}" >> .env.prod
-            echo "UMAMI_DB_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env.prod
+            # Used only when a new database is created (06-create-umami-db.sql)
+            echo "UMAMI_DB_PASSWORD=$umami_password" >> .env.prod
             echo "UMAMI_INTERNAL_URL=${{ env.UMAMI_INTERNAL_URL }}" >> .env.prod
             echo "NEXT_PUBLIC_UMAMI_WEBSITE_ID=${{ secrets.NEXT_PUBLIC_UMAMI_WEBSITE_ID }}" >> .env.prod
             # Switched on stage by stage with the production environment's
@@ -286,7 +294,18 @@ jobs:
             sed -i '/^PROD_POSTGRES_EXPORTER_DSN=/d' .env.monitoring
             echo "PROD_POSTGRES_EXPORTER_DSN=postgresql://salko_admin:${password_url}@salko-postgres-prod:5432/salko?sslmode=disable" >> .env.monitoring
             chmod 600 .env.monitoring
-            sed -i "s|^DATABASE_URL=.*|DATABASE_URL=postgresql://umami_app:${{ env.POSTGRES_PASSWORD }}@salko-postgres-prod:5432/umami|" .env.monitoring || true
+            # Umami's own password (made by the deploy step above): set it on the
+            # existing role, and only then point Umami at it. If that fails,
+            # Umami keeps the URL it has.
+            umami_password=$(cat .umami-db-password 2>/dev/null || true)
+            if [ -n "$umami_password" ] && printf "ALTER ROLE umami_app PASSWORD '%s';\n" "$umami_password" \
+                | docker exec -i salko-postgres-prod sh -c 'psql -X -q -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1'; then
+              touch .umami-db-password-set
+              sed -i '/^DATABASE_URL=/d' .env.monitoring
+              echo "DATABASE_URL=postgresql://umami_app:${umami_password}@salko-postgres-prod:5432/umami" >> .env.monitoring
+            else
+              echo "⚠️ Umami's database password was not changed; it keeps its old URL"
+            fi
             sed -i "s|^APP_SECRET=.*|APP_SECRET=${{ env.UMAMI_APP_SECRET }}|" .env.monitoring || true
             echo "✅ Monitoring secrets updated"
 
