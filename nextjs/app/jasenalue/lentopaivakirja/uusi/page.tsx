@@ -39,7 +39,7 @@ export default async function Page() {
         title="Kirjaa lento"
         subtitle="Lennot menevät kerhon lentopäiväkirjaan"
         breadcrumbs={[{ label: "Jäsenalue", link: false }, "Lentopäiväkirja", "Kirjaa lento"]}
-        backgroundImage="bg-punkaharju-one"
+        backgroundImage="punkaharju"
         compact={true}
         showScrollIndicator={false}
       />

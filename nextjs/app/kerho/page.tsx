@@ -1,25 +1,21 @@
-export const metadata = {
-  title: "Kerho",
+import Backdrop from "@/components/backdrop";
+import { pageMetadata } from "@/utilities/seo";
+
+export const metadata = pageMetadata({
+  title: "Lentokerho Savonlinnassa vuodesta 1962",
   description:
-    "Tutustu Savonlinnan Lentokerhoon – historiamme, jäsenyys, hinnasto ja kotikenttämme Savonlinnan lentoasema.",
-  keywords: [
-    "Savonlinnan Lentokerho",
-    "lentokerho",
-    "ilmailukerho",
-    "Savonlinna",
-    "SaLKo",
-    "ilmailu",
-  ],
-  alternates: { canonical: "/kerho" },
-};
+    "Savonlinnan Lentokerho ry on vuonna 1962 perustettu yleisilmailun ja lentokoulutuksen yhdistys. Tutustu kerhoon, jäsenyyteen, hinnastoon ja kenttään.",
+  path: "/kerho",
+});
 
 export default function Page() {
   return (
     <div className="min-h-screen flex flex-col w-full">
-      <section className="relative w-full min-h-screen flex items-center justify-center bg-cover bg-center bg-olavinlinna-one">
+      <section className="relative w-full min-h-screen flex items-center justify-center">
+        <Backdrop name="olavinlinna" preload />
         <div className="absolute inset-0 bg-gradient-to-b from-sblack/50 via-sblack/40 to-sblued/95"></div>
         <div className="relative z-10 w-full max-w-[1600px] mx-auto px-6 pt-32 pb-16 flex flex-col items-center justify-center">
-          <div className="text-center space-y-6 animate-fade-in">
+          <div className="text-center space-y-6">
             <span className="text-sbluel text-sm md:text-base font-semibold tracking-wider uppercase">
               SaLKo
             </span>

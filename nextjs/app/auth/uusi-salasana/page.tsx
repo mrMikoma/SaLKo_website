@@ -22,7 +22,7 @@ export default async function Page({ searchParams }: PageProps) {
     <div className="min-h-screen flex flex-col w-full">
       <PageHero
         title="Uusi salasana"
-        backgroundImage="bg-punkaharju-one"
+        backgroundImage="punkaharju"
         compact={true}
         showScrollIndicator={false}
       />

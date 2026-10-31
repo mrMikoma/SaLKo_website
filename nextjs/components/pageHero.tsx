@@ -1,5 +1,8 @@
 import React from "react";
 import Link from "next/link";
+import Backdrop, { type BackdropName } from "@/components/backdrop";
+import JsonLd from "@/components/jsonLd";
+import { SITE_URL } from "@/utilities/seo";
 
 // A crumb links to the path its labels spell out, without accents ("Kerho",
 // "Kenttä" → /kerho/kentta). A level that has no page of its own is passed as
@@ -9,11 +12,33 @@ type Crumb = string | { label: string; link: false };
 const crumbLabel = (crumb: Crumb) => (typeof crumb === "string" ? crumb : crumb.label);
 const crumbSlug = (crumb: Crumb) =>
   crumbLabel(crumb).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+const crumbHref = (crumbs: Crumb[], index: number) =>
+  "/" + crumbs.slice(0, index + 1).map(crumbSlug).join("/");
+
+// The same trail as schema.org data for search results. Only when every level
+// above this page has a page of its own; the last level is this page, which
+// search engines take from the URL.
+const breadcrumbJsonLd = (crumbs: Crumb[]) => {
+  if (crumbs.slice(0, -1).some((crumb) => typeof crumb !== "string")) return null;
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Etusivu", item: `${SITE_URL}/` },
+      ...crumbs.map((crumb, index) => ({
+        "@type": "ListItem",
+        position: index + 2,
+        name: crumbLabel(crumb),
+        ...(index < crumbs.length - 1 && { item: SITE_URL + crumbHref(crumbs, index) }),
+      })),
+    ],
+  };
+};
 
 interface PageHeroProps {
   title?: string;
   subtitle?: string;
-  backgroundImage?: string;
+  backgroundImage?: BackdropName;
   breadcrumbs?: Crumb[];
   compact?: boolean;
   children?: React.ReactNode;
@@ -23,23 +48,21 @@ interface PageHeroProps {
 const PageHero = ({
   title,
   subtitle,
-  backgroundImage = "bg-olavinlinna-one",
+  backgroundImage = "olavinlinna",
   breadcrumbs,
   compact = false,
   children,
   showScrollIndicator = true,
 }: PageHeroProps) => {
+  const breadcrumbData = breadcrumbs?.length ? breadcrumbJsonLd(breadcrumbs) : null;
+
   return (
-    <section
-      className={`relative w-full ${backgroundImage} ${
-        compact ? "" : "min-h-screen"
-      }`}
-      style={{
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
-      }}
-    >
+    <section className={`relative w-full ${compact ? "" : "min-h-screen"}`}>
+      {/* Only a full-height hero's photo can be the largest paint; on compact
+          ones it would compete with the page's own images */}
+      <Backdrop name={backgroundImage} preload={!compact} />
+      {breadcrumbData && <JsonLd data={breadcrumbData} />}
+
       {/* Gradient Overlay - Stronger at bottom */}
       <div className="absolute inset-0 bg-gradient-to-b from-sblack/20 via-sblack/60 to-sblued"></div>
 
@@ -57,7 +80,7 @@ const PageHero = ({
                 {breadcrumbs.map((crumb, index) => {
                   const isLast = index === breadcrumbs.length - 1;
                   const label = crumbLabel(crumb);
-                  const href = "/" + breadcrumbs.slice(0, index + 1).map(crumbSlug).join("/");
+                  const href = crumbHref(breadcrumbs, index);
                   return (
                     <React.Fragment key={index}>
                       <span>/</span>
@@ -80,7 +103,7 @@ const PageHero = ({
             )}
 
             {/* Title */}
-            <div className="space-y-2 animate-fade-in">
+            <div className="space-y-2">
               <h1
                 className={`font-bold leading-tight text-swhite text-3xl md:text-4xl lg:text-5xl`}
               >

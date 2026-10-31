@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 
+// The tracker posts to `${data-host-url}/api/send`, and UmamiProvider sets the
+// host URL to /api/umami, hence this route's path
+
+// Umami tells visitors apart and finds their country by IP address, so pass on
+// the visitor's, not this server's. Cloudflare sets cf-connecting-ip.
+const CLIENT_IP_HEADERS = ["cf-connecting-ip", "x-forwarded-for", "x-real-ip"];
+
 // An analytics event is a small JSON object. Anything larger is refused before
 // it is read in full, so anonymous requests can't fill the server's memory.
 const MAX_BODY_BYTES = 16 * 1024;
@@ -37,6 +44,12 @@ export async function POST(request: NextRequest) {
       headers: {
         "Content-Type": "application/json",
         "User-Agent": request.headers.get("user-agent") || "Next.js Proxy",
+        ...Object.fromEntries(
+          CLIENT_IP_HEADERS.flatMap((name) => {
+            const value = request.headers.get(name);
+            return value ? [[name, value]] : [];
+          })
+        ),
       },
       body,
       signal: AbortSignal.timeout(5000),

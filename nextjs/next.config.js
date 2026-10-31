@@ -8,6 +8,9 @@ module.exports = {
   turbopack: { root: __dirname },
   // No "X-Powered-By: Next.js"
   poweredByHeader: false,
+  // 50 for the photos behind dark overlays (components/backdrop.tsx), 75 for
+  // the rest. Only listed qualities are served.
+  images: { qualities: [50, 75] },
   // Basic protection on every page: no framing by other sites (clickjacking),
   // no content-type guessing, no full URLs sent to other sites (a password
   // reset link carries its token in the URL), and HTTPS only for a year once a

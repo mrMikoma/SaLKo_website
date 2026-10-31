@@ -9,7 +9,7 @@ export default function PlaneNotFound() {
         title="Lentokonetta ei löytynyt"
         breadcrumbs={["Kalusto"]}
         compact={false}
-        backgroundImage="bg-efsa-one"
+        backgroundImage="efsa"
         showScrollIndicator={false}
       >
         <div className="max-w-[1600px] mx-auto px-6 pb-20 lg:pb-32">

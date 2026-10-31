@@ -9,27 +9,17 @@ import WeatherWidget from "@/components/weatherWidget";
 import ContentSection from "@/components/contentSection";
 import CallToAction from "@/components/callToAction";
 import Link from "next/link";
+import Backdrop from "@/components/backdrop";
+import JsonLd from "@/components/jsonLd";
+import { clubJsonLd, pageMetadata } from "@/utilities/seo";
 
-export const metadata = {
-  title: "Savonlinnan Lentokerho",
+export const metadata = pageMetadata({
+  title: "Savonlinnan Lentokerho – lentokoulutusta ja esittelylentoja",
+  absoluteTitle: true,
   description:
-    "Savonlinnan Lentokerho ry (SaLKo) - yleisilmailua ja lentokoulutusta Savonlinnassa vuodesta 1962. Tervetuloa mukaan lentämään!",
-  keywords: [
-    "Savonlinnan Lentokerho",
-    "SaLKo",
-    "lentokerho Savonlinna",
-    "lentokoulutus",
-    "esittelylennot",
-    "ilmailu Savonlinna",
-    "EFSA",
-    "yksityislentäjä",
-    "PPL koulutus",
-    "LAPL koulutus",
-    "ilmailukerho",
-    "lentokerho",
-  ],
-  alternates: { canonical: "/" },
-};
+    "Lentokerho Savonlinnan lentoasemalla vuodesta 1962. Lentokoulutusta (PPL, LAPL, purjelento), esittelylentoja ja kuusi kerhokonetta. Tervetuloa lentämään!",
+  path: "/",
+});
 
 export default async function Page() {
   // One query for both places the bulletins show (desktop sidebar, mobile section)
@@ -37,14 +27,18 @@ export default async function Page() {
 
   return (
     <div className="min-h-screen flex flex-col w-full">
+      <JsonLd data={clubJsonLd} />
+
       {/* Hero Section */}
-      <section className="relative w-full min-h-screen flex items-center justify-center bg-cover bg-center bg-olavinlinna-one overflow-hidden">
+      <section className="relative w-full min-h-screen flex items-center justify-center overflow-hidden">
+        <Backdrop name="olavinlinna" preload />
+
         {/* Gradient Overlay */}
         <div className="absolute inset-0 bg-gradient-to-b from-sblack/50 via-sblack/40 to-sblued/95"></div>
         {/* Hero Content */}
         <div className="relative z-10 w-full max-w-[1600px] mx-auto px-6 pt-32 pb-16 flex flex-col lg:flex-row items-center lg:items-start justify-between gap-8 lg:gap-16">
           {/* Main Content - Left Side */}
-          <div className="w-full lg:w-[55%] text-center lg:text-left space-y-8 animate-fade-in mt-16">
+          <div className="w-full lg:w-[55%] text-center lg:text-left space-y-8 mt-16">
             {/* Pretitle */}
             <div className="inline-block">
               <span className="text-sbluel text-sm md:text-base font-semibold tracking-wider uppercase"></span>
@@ -188,7 +182,7 @@ export default async function Page() {
       {/* Weather and Info Section */}
       <ContentSection
         variant="dark"
-        backgroundImage="bg-efsa-one"
+        backgroundImage="efsa"
         overlay="medium"
         containerSize="default"
       >
@@ -311,7 +305,7 @@ export default async function Page() {
       {/* Call to Action Section */}
       <ContentSection
         variant="dark"
-        backgroundImage="bg-ohcon-three"
+        backgroundImage="ohconClouds"
         overlay="heavy"
         containerSize="default"
       >

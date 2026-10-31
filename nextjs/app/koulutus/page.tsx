@@ -7,30 +7,14 @@ import PlaneIcon from "@/components/icons/plane";
 import Image from "next/image";
 import Link from "next/link";
 import pricesData from "@/data/prices.json";
+import { pageMetadata } from "@/utilities/seo";
 
-export const metadata = {
-  title: "Koulutus",
+export const metadata = pageMetadata({
+  title: "Lentokoulutus Savonlinnassa – PPL, LAPL, purjelento",
   description:
-    "Aloita lentokoulutus Savonlinnan Lentokerholla. Tarjoamme PPL-, TMG- ja purjelentokirjakoulutusta sekä lisäkelpuutuksia Savonlinnan lentoasemalla (EFSA).",
-  keywords: [
-    "lentokoulutus",
-    "PPL koulutus",
-    "yksityislentäjä",
-    "lentolupakirja",
-    "purjelentokoulutus",
-    "TMG koulutus",
-    "LAPL koulutus",
-    "NF koulutus",
-    "yölentokelpuutus",
-    "TOW koulutus",
-    "hinauslentokelpuutus",
-    "Savonlinnan Lentokerho",
-    "EFSA",
-    "Savonlinna",
-    "ilmailukoulutus",
-  ],
-  alternates: { canonical: "/koulutus" },
-};
+    "Lentolupakirja Savonlinnasta: PPL-, LAPL-, TMG- ja purjelentokoulutus sekä yölento- ja hinauskelpuutukset Savonlinnan lentoasemalla (EFSA).",
+  path: "/koulutus",
+});
 
 const getPrice = (courseCode: string): string => {
   const price =
@@ -48,7 +32,7 @@ export default function Page() {
         title="Koulutus"
         breadcrumbs={["Koulutus"]}
         compact={false}
-        backgroundImage="bg-ohcon-one"
+        backgroundImage="ohconApron"
       >
         {/* Introduction Section - Inside the hero */}
         <div className="max-w-[1600px] mx-auto px-6 pb-20 lg:pb-32">
@@ -74,7 +58,7 @@ export default function Page() {
       </PageHero>
 
       {/* Main Training Programs Section */}
-      <ContentSection variant="dark" backgroundImage="bg-savonlinna-one">
+      <ContentSection variant="dark" backgroundImage="savonlinna">
         <div className="mb-12">
           <h2 className="text-3xl md:text-4xl font-bold text-swhite mb-4 text-center">
             Koulutusohjelmat Savonlinnassa
@@ -434,7 +418,7 @@ export default function Page() {
       </ContentSection>
 
       {/* Partnership Section */}
-      <ContentSection variant="dark" backgroundImage="bg-mopu-one">
+      <ContentSection variant="dark" backgroundImage="oh386">
         <div className="mb-12">
           <h2 className="text-3xl md:text-4xl font-bold text-swhite mb-4 text-center">
             Yhteistyössä Varkauden lentokerhon kanssa
@@ -449,9 +433,9 @@ export default function Page() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* SPL - Sailplane License */}
             <div className="bg-sblack/50 rounded-lg p-6 border border-sbluel/20 flex flex-col">
-              <h4 className="text-xl font-bold text-sred mb-3">
+              <h3 className="text-xl font-bold text-sred mb-3">
                 SPL - Purjelentäjän lupakirja
-              </h4>
+              </h3>
               <p className="text-swhite/90 mb-4">
                 Voit lentää yksin tai matkustajan kanssa ympäristöystävällisesti
                 auringon energialla
@@ -549,9 +533,9 @@ export default function Page() {
 
             {/* UPL - Ultralight Pilot License */}
             <div className="bg-sblack/50 rounded-lg p-6 border border-sbluel/20 flex flex-col">
-              <h4 className="text-xl font-bold text-sred mb-3">
+              <h3 className="text-xl font-bold text-sred mb-3">
                 UPL - Ultrakevyt lentäjän lupakirja
-              </h4>
+              </h3>
               <p className="text-swhite/90 mb-4">
                 Mahdollistaa lentämisen yksin tai matkustajan kanssa
                 ultrakevyellä moottorilentokoneella
@@ -651,7 +635,7 @@ export default function Page() {
       <ContentSection
         variant="light"
         overlay="light"
-        backgroundImage="bg-ohcon-two"
+        backgroundImage="ohconFlight"
       >
         <div className="mb-12">
           <h2 className="text-3xl md:text-4xl font-bold text-swhite mb-4 text-center">
@@ -763,7 +747,7 @@ export default function Page() {
       </ContentSection>
 
       {/* Flight Training Gallery */}
-      <ContentSection variant="dark" backgroundImage="bg-efsa-one">
+      <ContentSection variant="dark" backgroundImage="efsa">
         <div className="mb-12">
           <h2 className="text-3xl md:text-4xl font-bold text-swhite mb-4 text-center">
             Lentokoulutus käytännössä
@@ -847,7 +831,7 @@ export default function Page() {
       </ContentSection>
 
       {/* Requirements Section */}
-      <ContentSection variant="gradient" backgroundImage="bg-certificate-one">
+      <ContentSection variant="gradient" backgroundImage="certificate">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-bold text-swhite mb-8 text-center">
             Edellytykset

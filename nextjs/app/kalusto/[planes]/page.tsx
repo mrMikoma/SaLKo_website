@@ -5,17 +5,28 @@ import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import PageHero from "@/components/pageHero";
 import ContentSection from "@/components/contentSection";
+import { pageMetadata, summarize } from "@/utilities/seo";
 
 export async function generateMetadata({ params }) {
   const { planes } = await params;
   const plane = planeData.find((p) => p.registeration === planes);
+  if (!plane) {
+    return { title: "Lentokonetta ei löytynyt" };
+  }
 
-  return {
-    title: plane ? `${planes}` : "Lentokonetta ei löytynyt",
-    description: plane
-      ? `${plane.name} - ${plane.registeration}`
-      : "Lentokonetta ei löytynyt",
-  };
+  // Some planes have no description yet ("TBA")
+  const description =
+    plane.description.length >= 70
+      ? summarize(plane.description)
+      : `${plane.name} (${plane.registeration}) on Savonlinnan Lentokerhon kalustoa. Katso koneen tekniset tiedot${plane.images.length > 0 ? " ja kuvat" : ""}.`;
+  const photo = plane.images[0];
+
+  return pageMetadata({
+    title: `${plane.registeration} – ${plane.name}`,
+    description,
+    path: `/kalusto/${plane.registeration}`,
+    image: photo ? { url: photo.src, alt: photo.alt } : undefined,
+  });
 }
 
 export async function generateStaticParams() {
@@ -44,7 +55,7 @@ const Page = async ({ params }) => {
         subtitle={plane.registeration}
         breadcrumbs={["Kalusto", plane.registeration]}
         compact={true}
-        backgroundImage="bg-efsa-one"
+        backgroundImage="efsa"
         showScrollIndicator={false}
       >
         <div className="space-y-8 max-w-7xl mx-auto p-6 w-full">
