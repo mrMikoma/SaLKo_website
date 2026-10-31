@@ -1,0 +1,17 @@
+# Managed by Ansible (infra/ansible/roles/backup). Local changes are overwritten.
+[Unit]
+Description=SaLKo off-site backup of production (nextjs/docs/BACKUP_PLAN.md)
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/salko-backup
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=2h
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=read-only

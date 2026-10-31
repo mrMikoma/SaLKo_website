@@ -1,0 +1,33 @@
+---
+# Nightly off-site backup of production (nextjs/docs/BACKUP_PLAN.md, README.md here).
+# The host clock is UTC, so OnCalendar carries the site timezone. 02:15 is before the
+# apt upgrade (03:30) and the Sunday Docker prune (03:00) and reboot window (04:30).
+backup_timezone: Europe/Helsinki
+backup_on_calendar: "*-*-* 02:15:00"
+backup_randomized_delay: 10m
+
+# From the Ansible Provision workflow. Until all three are set, the role installs the
+# tools and the script but keeps the timer off. Setting only some of them is an error.
+# The shared drive's ID, the last part of its address in Drive (variable BACKUP_DRIVE_ID).
+backup_drive_id: "{{ lookup('env', 'BACKUP_DRIVE_ID') }}"
+# The age public keys (age1...), one per line (variable BACKUP_AGE_RECIPIENTS).
+backup_age_recipients: "{{ lookup('env', 'BACKUP_AGE_RECIPIENTS') }}"
+# The server service account's JSON key, as downloaded (secret BACKUP_DRIVE_SA_JSON).
+backup_drive_sa_json: "{{ lookup('env', 'BACKUP_DRIVE_SA_JSON') }}"
+# The host with the production database (the workflow passes SERVER_IP_SALKO0). Only
+# that host gets the timer and the key; on any other host the role keeps the timer off.
+backup_host: "{{ lookup('env', 'BACKUP_HOST') | trim }}"
+
+backup_postgres_container: salko-postgres-prod
+backup_databases:
+  - salko
+  - umami
+# An rclone remote ("drive:" is the shared drive in rclone.conf) or a local directory ending in /.
+backup_remote: "drive:"
+backup_work_dir: /var/backups/salko
+backup_keep_local: 2
+
+# Ubuntu's rclone is years old. From https://downloads.rclone.org/v<version>/SHA256SUMS,
+# the same as in the GitHub release.
+backup_rclone_version: "1.75.2"
+backup_rclone_deb_sha256: efbfe852181f7191eb3c9043ed1ab49c9b2d0ba045c61c926a5da111c939ec5c

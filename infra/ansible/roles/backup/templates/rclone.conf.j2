@@ -1,0 +1,8 @@
+# Managed by Ansible (infra/ansible/roles/backup). Local changes are overwritten.
+# The club's shared drive. The service account is a Contributor there: it can add
+# files and folders, but not move or delete them.
+[drive]
+type = drive
+scope = drive
+service_account_file = /etc/salko-backup/drive-sa.json
+team_drive = {{ backup_drive_id }}
