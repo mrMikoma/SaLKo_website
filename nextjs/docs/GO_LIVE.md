@@ -142,6 +142,7 @@ What `dev` holds after stage A, from the code review in October 2026:
   - the Postgres exporters and Traefik metrics work;
   - the web ports accept only Cloudflare.
 - **Workflows:** dispatch inputs are checked and deploys run from the reviewed branch.
+- **Backups:** the nightly off-site backup (`BACKUP_PLAN.md`), installed switched off. It starts once its drive, keys and service account are set.
 - **Search visibility** (`SEO_PLAN.md`):
   - each page's own title, description and share image, and structured data;
   - the Umami endpoint the tracker actually calls;
@@ -150,7 +151,11 @@ What `dev` holds after stage A, from the code review in October 2026:
 
 ### Release
 
-1. **Merge** `dev` → `main`.
+0. **The day before:** a dry run of Ansible, as in stage A: Actions → **Ansible Provision** → branch `dev`, "Dry run" ticked. Read the package list of its first task, `apt upgrade: dist`: an upgrade of `docker-ce` or `containerd.io` restarts Docker in step 1.
+1. **Merge** `dev` → `main`. The push starts **Ansible Provision** by itself, with no approval, because `infra/ansible/` and its workflow changed.
+   - It first upgrades every package. If that upgrades Docker, dockerd restarts, and with it every container, for a minute or two.
+   - It installs the backup role (`infra/ansible/roles/backup`). Its timer stays off until the backup settings exist (`BACKUP_PLAN.md`).
+   - Wait until it is green before step 2, then check SSH: `ssh -o PasswordAuthentication=no salko@savonlinnanlentokerho.fi true`.
 2. **Terraform** runs on the push to `main`. Its plan changes only the firewall's HTTP and HTTPS sources to Cloudflare's ranges. **Approve** the apply. Then run the public-page check under "Check" in stage A: every page must still answer 200 through Cloudflare.
 3. **Build the prod image:** Actions → **Build and Publish Production** → branch `main`. Note the version.
 4. **Migrate**, right before the deploy:
