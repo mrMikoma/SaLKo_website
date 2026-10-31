@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { clientIp, RateLimiter, waitText } from "@/utilities/rateLimit";
+import { clientIp, MAX_KEYS, RateLimiter, waitText } from "@/utilities/rateLimit";
 
 const MINUTE = 60_000;
 
@@ -46,6 +46,29 @@ describe("the rate limiter", () => {
     one.hit("a", 1);
     two.hit("a", 2);
     expect(one.blockedFor("a", 2)).toBeGreaterThan(0);
+  });
+});
+
+describe("the key limit", () => {
+  test("many recent keys: the least recently hit go first, a blocked key stays blocked", () => {
+    const limiter = new RateLimiter(`cap-${Math.random()}`, 3, 60_000, 60_000);
+    const now = 1_000_000;
+    for (let i = 0; i < 3; i++) limiter.hit("blocked", now);
+    limiter.hit("early", now);
+    limiter.hit("again", now);
+    const half = MAX_KEYS / 2;
+    for (let i = 0; i < half; i++) limiter.hit(`address-${i}`, now + 1);
+    // Hit again midway, so it is no longer among the least recent
+    limiter.hit("again", now + 2);
+    for (let i = half; i < MAX_KEYS; i++) limiter.hit(`address-${i}`, now + 3);
+
+    expect(limiter.size).toBeLessThanOrEqual(MAX_KEYS);
+    expect(limiter.blockedFor("blocked", now + 4)).toBeGreaterThan(0);
+    // "again" kept its two hits, so a third blocks it; "early" starts over
+    limiter.hit("again", now + 4);
+    limiter.hit("early", now + 4);
+    expect(limiter.blockedFor("again", now + 4)).toBeGreaterThan(0);
+    expect(limiter.blockedFor("early", now + 4)).toBe(0);
   });
 });
 
