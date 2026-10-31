@@ -1,0 +1,81 @@
+{{/*
+  The alert emails (alertmanager.yml). .ExternalURL is Grafana's address:
+  Alertmanager's own UI is not published, so docker-compose.monitoring.yaml
+  sets --web.external-url to GRAFANA_ROOT_URL for these links.
+*/}}
+
+{{ define "salko.subject" -}}
+{{- if .Alerts.Firing -}}
+[SaLKo {{ .CommonLabels.severity | toUpper }}] {{ (index .Alerts.Firing 0).Annotations.summary }}
+{{- if gt (len .Alerts.Firing) 1 }} ({{ len .Alerts.Firing }} firing){{ end }}
+{{- else -}}
+[SaLKo RESOLVED] {{ (index .Alerts.Resolved 0).Annotations.summary }}
+{{- if gt (len .Alerts.Resolved) 1 }} ({{ len .Alerts.Resolved }} resolved){{ end }}
+{{- end }}
+{{- end }}
+
+{{ define "salko.time" }}{{ . | tz "Europe/Helsinki" | date "2.1.2006 15:04" }}{{ end }}
+
+{{ define "salko.html" -}}
+<!DOCTYPE html>
+<html>
+<body style="font-family: Arial, sans-serif; font-size: 14px; color: #1f2933; line-height: 1.4;">
+{{- if .Alerts.Firing }}
+<h2 style="margin: 0 0 8px; color: {{ if eq .CommonLabels.severity "critical" }}#b42318{{ else }}#93370d{{ end }};">
+  {{ if eq .CommonLabels.severity "critical" }}Critical{{ else }}Warning{{ end }}: {{ .GroupLabels.alertname }}
+</h2>
+<ul style="padding-left: 20px;">
+{{- range .Alerts.Firing }}
+  <li style="margin-bottom: 8px;">
+    <strong>{{ .Annotations.summary }}</strong><br>
+    {{ .Annotations.description }}<br>
+    <span style="color: #52606d; font-size: 12px;">Since {{ template "salko.time" .StartsAt }}{{ with .Labels.host }} · host {{ . }}{{ end }}{{ with .Labels.instance }} · {{ . }}{{ end }}</span>
+  </li>
+{{- end }}
+</ul>
+{{- end }}
+{{- if .Alerts.Resolved }}
+<h2 style="margin: 16px 0 8px; color: #067647;">Resolved</h2>
+<ul style="padding-left: 20px;">
+{{- range .Alerts.Resolved }}
+  <li style="margin-bottom: 8px;">
+    {{ .Annotations.summary }}<br>
+    <span style="color: #52606d; font-size: 12px;">{{ template "salko.time" .StartsAt }} – {{ template "salko.time" .EndsAt }}{{ with .Labels.host }} · host {{ . }}{{ end }}</span>
+  </li>
+{{- end }}
+</ul>
+{{- end }}
+<p><a href="{{ .ExternalURL }}/d/salko-overview">Open the SaLKo Overview in Grafana</a> (private network or VPN)</p>
+<p style="color: #52606d; font-size: 12px;">
+  {{- if .Alerts.Firing }}
+  A reminder comes every {{ if eq .CommonLabels.severity "critical" }}4{{ else }}12{{ end }} hours while this lasts, and a message when it is over.
+  To mute it during maintenance: Grafana → Alerting → Silences, Alertmanager.<br>
+  {{- end }}
+  Sent by the SaLKo monitoring (monitoring/alertmanager in the website's repository).
+</p>
+</body>
+</html>
+{{- end }}
+
+{{ define "salko.text" -}}
+{{- if .Alerts.Firing -}}
+{{ if eq .CommonLabels.severity "critical" }}CRITICAL{{ else }}WARNING{{ end }}: {{ .GroupLabels.alertname }}
+{{ range .Alerts.Firing }}
+- {{ .Annotations.summary }}
+  {{ .Annotations.description }}
+  Since {{ template "salko.time" .StartsAt }}{{ with .Labels.host }}, host {{ . }}{{ end }}{{ with .Labels.instance }}, {{ . }}{{ end }}
+{{ end }}
+{{- end }}
+{{- if .Alerts.Resolved }}
+{{- if .Alerts.Firing }}
+
+{{ end }}RESOLVED
+{{ range .Alerts.Resolved }}
+- {{ .Annotations.summary }} ({{ template "salko.time" .StartsAt }} – {{ template "salko.time" .EndsAt }})
+{{ end }}
+{{- end }}
+Grafana: {{ .ExternalURL }}/d/salko-overview (private network or VPN)
+{{- if .Alerts.Firing }}
+To mute it during maintenance: Grafana → Alerting → Silences, Alertmanager.
+{{- end }}
+{{- end }}

@@ -11,7 +11,7 @@ Next.js 16 (App Router, Turbopack), React 19, TypeScript 5 with `strict: false`,
 ## Layout
 
 ```
-app/          # routes; segments are Finnish (kalusto, jasenalue, kerho, …), api/ only for auth, METAR, Umami, booking .ics
+app/          # routes; segments are Finnish (kalusto, jasenalue, kerho, …), api/ only for auth, METAR, Umami, booking .ics, health
 components/   # one folder per feature (bookings/, flightLogs/, admin/, profile/, …), shared ones at the top
 utilities/    # server actions ("use server" files) and helpers; db.ts, roles.ts, definitions.ts
 hooks/        # client hooks, e.g. useBookings (TanStack Query)

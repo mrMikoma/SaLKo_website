@@ -126,7 +126,8 @@ jobs:
 
       - name: Ping test server
         env:
-          SERVER_IPS: ${{ vars.SERVER_IP_SALKO0 }}
+          # The app host, and the monitoring server's host when it has its own
+          SERVER_IPS: ${{ vars.SERVER_IP_SALKO0 }},${{ vars.MONITORING_SERVER_IP }}
           ANSIBLE_HOST_KEY_CHECKING: False
           ANSIBLE_FORCE_COLOR: True
         run: |
@@ -146,7 +147,8 @@ jobs:
 
       - name: Debug network connectivity
         env:
-          SERVER_IPS: ${{ vars.SERVER_IP_SALKO0 }}
+          # The app host, and the monitoring server's host when it has its own
+          SERVER_IPS: ${{ vars.SERVER_IP_SALKO0 }},${{ vars.MONITORING_SERVER_IP }}
           ANSIBLE_HOST_KEY_CHECKING: False
           ANSIBLE_FORCE_COLOR: True
         run: |
@@ -166,7 +168,8 @@ jobs:
 
       - name: Ansible Playbook
         env:
-          SERVER_IPS: ${{ vars.SERVER_IP_SALKO0 }}
+          # The app host, and the monitoring server's host when it has its own
+          SERVER_IPS: ${{ vars.SERVER_IP_SALKO0 }},${{ vars.MONITORING_SERVER_IP }}
           VPS_PUBLIC_KEY: ${{ secrets.VPS_PUBLIC_KEY }}
           SALKO_USER_PW_512: ${{ secrets.SALKO_USER_PW_512 }}
           # Off-site backups (roles/backup), on the host with the production database.
