@@ -44,7 +44,7 @@ export default function Page() {
       <PageHero
         title="Yhteystiedot"
         breadcrumbs={["Yhteystiedot"]}
-        backgroundImage="bg-efsa-one"
+        backgroundImage="efsa"
         showScrollIndicator={false}
         compact={true}
       >
@@ -181,7 +181,7 @@ export default function Page() {
         </div>
       </PageHero>
 
-      <ContentSection variant="dark" backgroundImage="bg-savonlinna-one">
+      <ContentSection variant="dark" backgroundImage="savonlinna">
         <div className="space-y-12">
           {/* Board Members */}
           <ContactCardGrid title="Hallitus 2026" board={board} />

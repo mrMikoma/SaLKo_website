@@ -28,7 +28,7 @@ export default async function Page() {
         title="Varauskalenteri"
         breadcrumbs={["Kalusto", "Varauskalenteri"]}
         compact={true}
-        backgroundImage="bg-mopu-one"
+        backgroundImage="oh386"
         showScrollIndicator={false}
       >
         <BookingSection userContext={userContext} />

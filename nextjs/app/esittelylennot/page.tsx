@@ -18,7 +18,7 @@ export default function Page() {
         title="Esittelylennot"
         breadcrumbs={["Esittelylennot"]}
         compact={false}
-        backgroundImage="bg-punkaharju-one"
+        backgroundImage="punkaharju"
       >
         {/* Introduction Section - Inside the hero */}
         <div className="max-w-[1600px] mx-auto px-6 pb-20 lg:pb-32">
@@ -42,7 +42,7 @@ export default function Page() {
         </div>
       </PageHero>
 
-      <ContentSection variant="dark" backgroundImage="bg-efsa-one">
+      <ContentSection variant="dark" backgroundImage="efsa">
         <div className="space-y-12">
           {/* Types of Flights */}
           <div className="glass rounded-lg p-6 md:p-8 border border-sred/20">

@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import Backdrop, { type BackdropName } from "@/components/backdrop";
 import JsonLd from "@/components/jsonLd";
 import { SITE_URL } from "@/utilities/seo";
 
@@ -37,7 +38,7 @@ const breadcrumbJsonLd = (crumbs: Crumb[]) => {
 interface PageHeroProps {
   title?: string;
   subtitle?: string;
-  backgroundImage?: string;
+  backgroundImage?: BackdropName;
   breadcrumbs?: Crumb[];
   compact?: boolean;
   children?: React.ReactNode;
@@ -47,7 +48,7 @@ interface PageHeroProps {
 const PageHero = ({
   title,
   subtitle,
-  backgroundImage = "bg-olavinlinna-one",
+  backgroundImage = "olavinlinna",
   breadcrumbs,
   compact = false,
   children,
@@ -56,16 +57,10 @@ const PageHero = ({
   const breadcrumbData = breadcrumbs?.length ? breadcrumbJsonLd(breadcrumbs) : null;
 
   return (
-    <section
-      className={`relative w-full ${backgroundImage} ${
-        compact ? "" : "min-h-screen"
-      }`}
-      style={{
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
-      }}
-    >
+    <section className={`relative w-full ${compact ? "" : "min-h-screen"}`}>
+      {/* Only a full-height hero's photo can be the largest paint; on compact
+          ones it would compete with the page's own images */}
+      <Backdrop name={backgroundImage} preload={!compact} />
       {breadcrumbData && <JsonLd data={breadcrumbData} />}
 
       {/* Gradient Overlay - Stronger at bottom */}
@@ -108,7 +103,7 @@ const PageHero = ({
             )}
 
             {/* Title */}
-            <div className="space-y-2 animate-fade-in">
+            <div className="space-y-2">
               <h1
                 className={`font-bold leading-tight text-swhite text-3xl md:text-4xl lg:text-5xl`}
               >

@@ -19,7 +19,7 @@ export default function Page() {
         title="Jäsenyys"
         breadcrumbs={["Kerho", "Jäsenyys"]}
         compact={false}
-        backgroundImage="bg-efsa-one"
+        backgroundImage="efsa"
       >
         {/* Introduction Section - Inside the hero */}
         <div className="max-w-[1600px] mx-auto px-6 pb-20 lg:pb-32">
@@ -117,7 +117,7 @@ export default function Page() {
         </div>
       </PageHero>
 
-      <ContentSection variant="dark" backgroundImage="bg-savonlinna-one">
+      <ContentSection variant="dark" backgroundImage="savonlinna">
         <div className="space-y-12">
           {/* Membership Types */}
           <div className="glass rounded-lg p-4 md:p-6 border border-sred/20 flex flex-col items-center">

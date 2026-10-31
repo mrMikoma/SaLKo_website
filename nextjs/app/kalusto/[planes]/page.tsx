@@ -55,7 +55,7 @@ const Page = async ({ params }) => {
         subtitle={plane.registeration}
         breadcrumbs={["Kalusto", plane.registeration]}
         compact={true}
-        backgroundImage="bg-efsa-one"
+        backgroundImage="efsa"
         showScrollIndicator={false}
       >
         <div className="space-y-8 max-w-7xl mx-auto p-6 w-full">

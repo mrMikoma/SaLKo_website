@@ -18,7 +18,7 @@ export default function Page() {
         title="Hinnasto"
         breadcrumbs={["Kerho", "Hinnasto"]}
         compact={true}
-        backgroundImage="bg-savonlinna-one"
+        backgroundImage="savonlinna"
       >
         {/* Date info - Inside the hero */}
         <div className="max-w-[1600px] mx-auto px-6 pb-12">
@@ -72,7 +72,7 @@ export default function Page() {
         </div>
       </PageHero>
 
-      <ContentSection variant="dark" backgroundImage="bg-efsa-one">
+      <ContentSection variant="dark" backgroundImage="efsa">
         <div className="space-y-12">
           {/* Kalusto */}
           <div className="glass rounded-lg p-8 border border-sred/20 overflow-hidden">

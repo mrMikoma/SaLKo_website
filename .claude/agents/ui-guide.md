@@ -27,8 +27,7 @@ Extended palette: `sky-blue`, `deep-navy`, `light-blue`, `aviation-red`, `cloud-
 - Scale: `text-display` (3.5rem) → `text-tiny` (0.75rem)
 - Body default applied on root: `bg-sblued text-white font-finlandica`
 
-**Background images (Tailwind classes):**
-`bg-efsa-one`, `bg-efsa-two`, `bg-olavinlinna-one`, `bg-olavinlinna-two`, `bg-ohcon-one`, `bg-ohcon-two`, `bg-plane-back`, `bg-hero-img`
+**Background photos:** not CSS classes. `PageHero` and `ContentSection` take `backgroundImage` as a name from `BACKDROPS` in `components/backdrop.tsx` (`olavinlinna`, `punkaharju`, `savonlinna`, `efsa`, `ohconApron`, `ohconFlight`, `ohconClouds`, `oh386`, `certificate`). Elsewhere, render `<Backdrop name="…" />` as the first child of a `relative` element; pass `preload` only to the one at the top of the page. A CSS `background-image` photo is downloaded in full before the first paint, which cost the home page 6 s of mobile LCP. Add new photos to `BACKDROPS`, resized to at most 2000 px.
 
 **Custom utility classes:**
 ```

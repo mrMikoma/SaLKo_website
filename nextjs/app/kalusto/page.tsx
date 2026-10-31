@@ -19,7 +19,7 @@ const Page = () => {
         title="Kalusto"
         breadcrumbs={["Kalusto"]}
         compact={true}
-        backgroundImage="bg-mopu-one"
+        backgroundImage="oh386"
       >
         <div className="space-y-12 max-w-7xl mx-auto py-12 px-6 w-full">
           {/* Aircraft Categories */}

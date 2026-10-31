@@ -17,7 +17,7 @@ export default function Page() {
       <PageHero
         title="Savonlinnan Lentoasema"
         breadcrumbs={["Kerho", "Kenttä"]}
-        backgroundImage="bg-efsa-one"
+        backgroundImage="efsa"
         showScrollIndicator={true}
       >
         <div className="max-w-[1600px] mx-auto px-6 py-12">
@@ -119,7 +119,7 @@ export default function Page() {
         </div>
       </PageHero>
 
-      <ContentSection variant="light" backgroundImage="bg-punkaharju-one">
+      <ContentSection variant="light" backgroundImage="punkaharju">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-bold text-sred mb-8 text-center">
             Säätiedot
@@ -339,7 +339,7 @@ export default function Page() {
       </ContentSection>
 
       {/*
-      <ContentSection variant="dark" backgroundImage="bg-punkaharju-one">
+      <ContentSection variant="dark" backgroundImage="punkaharju">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-bold text-sred mb-8 text-center">
             Kuvia Lentoasemalta
@@ -357,7 +357,7 @@ export default function Page() {
       </ContentSection>
       */}
 
-      <ContentSection variant="darker" backgroundImage="bg-ohcon-one">
+      <ContentSection variant="darker" backgroundImage="ohconApron">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-bold text-sred mb-6 text-center">
             Lisätietoja

@@ -40,7 +40,7 @@ export default function Page() {
         title="Historiaa"
         subtitle="Yli 60 vuotta ilmailua Savonlinnassa"
         breadcrumbs={["Kerho", "Historiaa"]}
-        backgroundImage="bg-olavinlinna-one"
+        backgroundImage="olavinlinna"
         compact={true}
         showScrollIndicator={false}
       />

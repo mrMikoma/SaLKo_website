@@ -47,7 +47,7 @@ export default async function Page() {
         title="Lentopäiväkirja"
         subtitle="Omat lentosi kerhon lentopäiväkirjasta"
         breadcrumbs={[{ label: "Jäsenalue", link: false }, "Lentopäiväkirja"]}
-        backgroundImage="bg-punkaharju-one"
+        backgroundImage="punkaharju"
         compact={true}
         showScrollIndicator={false}
       />

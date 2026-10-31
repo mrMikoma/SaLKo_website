@@ -23,7 +23,7 @@ export default async function Page() {
         title="Tiedotteet"
         subtitle="Kerhon tiedotteet uusimmasta vanhimpaan"
         breadcrumbs={["Kerho", "Tiedotteet"]}
-        backgroundImage="bg-olavinlinna-one"
+        backgroundImage="olavinlinna"
         compact={true}
         showScrollIndicator={false}
       />

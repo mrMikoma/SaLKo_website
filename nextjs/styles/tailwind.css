@@ -29,17 +29,7 @@
   --color-success-green: #4caf50;
   --color-warning-amber: #ffc107;
 
-  /* Background Images */
-  --background-image-efsa-one: url("/images/EFSA/efsa_1.jpg");
-  --background-image-ohcon-one: url("/images/OH-CON/ohcon_1.jpg");
-  --background-image-ohcon-two: url("/images/OH-CON/ohcon_2.jpg");
-  --background-image-ohcon-three: url("/images/OH-CON/ohcon_3.jpg");
-  --background-image-ohcon-four: url("/images/OH-CON/ohcon_4.jpg");
-  --background-image-mopu-one: url("/images/OH-386/oh386_1.jpg");
-  --background-image-olavinlinna-one: url("/images/olavinlinna_1.jpg");
-  --background-image-punkaharju-one: url("/images/punkaharju_1.jpg");
-  --background-image-savonlinna-one: url("/images/savonlinna_1.jpg");
-  --background-image-certificate-one: url("/images/certificate_1.jpg");
+  /* Background photos are next/image, see components/backdrop.tsx */
 
   /* Spacing Scale */
   --spacing-xs: 0.25rem;

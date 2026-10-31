@@ -31,7 +31,7 @@ export default function Page() {
         title="Hallit ja talvisäilytys"
         subtitle="Kaksi lentokonehallia Savonlinnan lentoasemalla"
         breadcrumbs={["Kerho", "Hallit"]}
-        backgroundImage="bg-olavinlinna-one"
+        backgroundImage="olavinlinna"
         compact={true}
         showScrollIndicator={false}
       />
