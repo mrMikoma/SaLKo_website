@@ -15,6 +15,7 @@ The website sends the club's email, starting with bills, from one Google Workspa
   A new kind of mail is a new line there; no new account or setup is needed.
 - **The outbox:** every message is first stored in `email_outbox`, then sent through the Gmail API (`utilities/mail.ts`). A message is claimed before it is sent, so a double click can't send it twice.
 - **`/admin/laskutus/viestit`** lists what was sent or tried, with the error and a retry for failed ones, and has a "Lähetä testiviesti itselleni" button. The settings page says whether mail is on.
+- **A message is only sent in the `MAIL_MODE` it was stored in** (`email_outbox.queued_mode`). One that failed while mail went to the dev address, or was stored while mail was off, is never retried to the real recipient after `MAIL_MODE` changes: send the bill again from its page instead. A message for an invoice that has since been cancelled isn't sent either.
 - **`MAIL_MODE`** decides where mail goes:
 
 | `MAIL_MODE` | Where | Mail goes |

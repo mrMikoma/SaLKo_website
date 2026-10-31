@@ -5,7 +5,7 @@ How everything waiting in `dev` reaches savonlinnanlentokerho.fi, in three stage
 | Stage | What goes live | Switch |
 |---|---|---|
 | **A. Release** | Next.js and Bun security updates, the booking permission fix and new calendar, admin user tools, bulletin drafts, server maintenance and SSH hardening, the SPF and DMARC records; the code of B and C too, switched off | merge `dev` → `main` (#47), migrate, deploy |
-| **A2. Security fixes** | login, password and session hardening, the server and monitoring changes, the Cloudflare-only firewall (see below) | merge `dev` → `main`, migrate (017), deploy, then Monitoring and Traefik |
+| **A2. Security fixes** | login, password and session hardening, the server and monitoring changes, the Cloudflare-only firewall (see below) | merge `dev` → `main`, migrate (017, 018), deploy, then Monitoring and Traefik |
 | **B. Flight log** | the club's real sheet, members logging flights, the treasurer checking them, statistics | production variable `FEATURE_FLIGHT_LOG=true`, redeploy |
 | **C. Billing and email** | prices, billing periods, invoices on the site and by email | production variables `FEATURE_BILLING=true` and `MAIL_MODE=send`, redeploy |
 
@@ -134,6 +134,7 @@ What `dev` holds after stage A, from the code review in October 2026:
   - limits on password guessing;
   - reset links end with a lock or a password change;
   - exact session revocation (`users.session_version`, migration 017).
+- **Mail:** a message is only sent in the `MAIL_MODE` it was stored in (`email_outbox.queued_mode`, migration 018). Billing mail is still off in production.
 - **Server:**
   - the app containers no longer get the database superuser's password;
   - Umami gets its own database password;
@@ -148,7 +149,7 @@ What `dev` holds after stage A, from the code review in October 2026:
 2. **Terraform** runs on the push to `main`. Its plan changes only the firewall's HTTP and HTTPS sources to Cloudflare's ranges. **Approve** the apply. Then run the public-page check under "Check" in stage A: every page must still answer 200 through Cloudflare.
 3. **Build the prod image:** Actions → **Build and Publish Production** → branch `main`. Note the version.
 4. **Migrate**, right before the deploy:
-   - Actions → **Database Migrations** → branch `main`, `prod`, "Dry run" ticked. It should list only `017_users_session_version.sql` as pending.
+   - Actions → **Database Migrations** → branch `main`, `prod`, "Dry run" ticked. It should list `017_users_session_version.sql` and `018_email_outbox_queued_mode.sql` as pending, nothing else.
    - Then run it again without the dry run. **Approve**.
    - Without the column, the new code ends every session, so the deploy must not run before this.
 5. **Deploy:** Actions → **Deploy production from main branch** → branch `main`, the version from step 3. **Approve**.
