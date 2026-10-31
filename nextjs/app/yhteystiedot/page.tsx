@@ -3,6 +3,7 @@ import contacts from "../../data/contacts.json";
 import Image from "next/image";
 import PageHero from "@/components/pageHero";
 import ContentSection from "@/components/contentSection";
+import { pageMetadata } from "@/utilities/seo";
 
 type genericContact = {
   name: string;
@@ -24,24 +25,12 @@ type Person = {
   phone: string;
 };
 
-export const metadata = {
-  title: "Yhteystiedot",
-  description: "Savonlinnan Lentokerho ry:n yhteystiedot",
-  keywords: [
-    "Savonlinnan Lentokerho",
-    "yhteystiedot",
-    "hallitus",
-    "lennonopettaja",
-    "puheenjohtaja",
-    "laskutus",
-    "Savonlinna",
-    "lentokerho",
-    "puhelinnumero",
-    "sähköpostiosoite",
-    "laskutusosoite",
-  ],
-  alternates: { canonical: "/yhteystiedot" },
-};
+export const metadata = pageMetadata({
+  title: "Yhteystiedot – Savonlinnan Lentokerho",
+  description:
+    "Savonlinnan Lentokerho ry:n yhteystiedot: hallitus, lennonopettajat ja laskutus. Lentoasemantie 50, 57310 Savonlinna.",
+  path: "/yhteystiedot",
+});
 
 export default function Page() {
   const { name, address, city, postalCode, country, IBAN, BIC, bank } =

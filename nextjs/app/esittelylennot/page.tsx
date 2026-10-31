@@ -2,21 +2,14 @@ import PageHero from "@/components/pageHero";
 import ContentSection from "@/components/contentSection";
 import CallToAction from "@/components/callToAction";
 import Link from "next/link";
+import { pageMetadata } from "@/utilities/seo";
 
-export const metadata = {
-  title: "Esittelylennot",
-  description: "Koe lentämisen ilo Savonlinnan Lentokerhon esittelylennoilla",
-  keywords: [
-    "Savonlinnan Lentokerho",
-    "esittelylennot",
-    "tutustumislennot",
-    "lentokokemus",
-    "lentokerho",
-    "Savonlinna",
-    "lentäminen",
-  ],
-  alternates: { canonical: "/esittelylennot" },
-};
+export const metadata = pageMetadata({
+  title: "Esittelylennot Savonlinnassa – myös lahjaksi",
+  description:
+    "Koe lentäminen Saimaan yllä esittelylennolla Savonlinnan lentoasemalta. Sopii myös lahjaksi: katso hinnat ja varaa lento.",
+  path: "/esittelylennot",
+});
 
 export default function Page() {
   return (

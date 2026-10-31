@@ -2,19 +2,14 @@ import pricesData from "@/data/prices.json";
 import Link from "next/link";
 import PageHero from "@/components/pageHero";
 import ContentSection from "@/components/contentSection";
+import { pageMetadata } from "@/utilities/seo";
 
-export const metadata = {
-  title: "Hinnasto",
-  description: "Savonlinnan Lentokerhon hinnasto ja jäsenmaksut",
-  keywords: [
-    "Savonlinnan Lentokerho",
-    "hinnasto",
-    "jäsenmaksut",
-    "lentokerho",
-    "Savonlinna",
-  ],
-  alternates: { canonical: "/kerho/hinnasto" },
-};
+export const metadata = pageMetadata({
+  title: "Hinnasto – lentotunnit ja jäsenmaksut",
+  description:
+    "Savonlinnan Lentokerhon hinnasto: jäsenmaksut, kalustomaksu ja kerhon lentokoneiden tunti- ja minuuttihinnat.",
+  path: "/kerho/hinnasto",
+});
 
 export default function Page() {
   return (

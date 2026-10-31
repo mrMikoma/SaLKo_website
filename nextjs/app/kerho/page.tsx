@@ -1,17 +1,11 @@
-export const metadata = {
-  title: "Kerho",
+import { pageMetadata } from "@/utilities/seo";
+
+export const metadata = pageMetadata({
+  title: "Lentokerho Savonlinnassa vuodesta 1962",
   description:
-    "Tutustu Savonlinnan Lentokerhoon – historiamme, jäsenyys, hinnasto ja kotikenttämme Savonlinnan lentoasema.",
-  keywords: [
-    "Savonlinnan Lentokerho",
-    "lentokerho",
-    "ilmailukerho",
-    "Savonlinna",
-    "SaLKo",
-    "ilmailu",
-  ],
-  alternates: { canonical: "/kerho" },
-};
+    "Savonlinnan Lentokerho ry on vuonna 1962 perustettu yleisilmailun ja lentokoulutuksen yhdistys. Tutustu kerhoon, jäsenyyteen, hinnastoon ja kenttään.",
+  path: "/kerho",
+});
 
 export default function Page() {
   return (

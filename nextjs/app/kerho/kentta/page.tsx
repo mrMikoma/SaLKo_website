@@ -2,22 +2,14 @@ import PageHero from "@/components/pageHero";
 import ContentSection from "@/components/contentSection";
 import ImageGallery from "@/components/imageGallery";
 import WeatherWidget from "@/components/weatherWidget";
+import { pageMetadata } from "@/utilities/seo";
 
-export const metadata = {
-  title: "Kenttä",
-  description: "Savonlinnan lentoasema - Savonlinnan Lentokerhon kotikenttä",
-  keywords: [
-    "Savonlinnan lentoasema",
-    "Savonlinnan lentokenttä",
-    "EFSA",
-    "SVL",
-    "lentoasema",
-    "lentokenttä",
-    "kiitotie",
-    "Savonlinna",
-  ],
-  alternates: { canonical: "/kerho/kentta" },
-};
+export const metadata = pageMetadata({
+  title: "Savonlinnan lentoasema (EFSA) – kotikenttämme",
+  description:
+    "Savonlinnan lentoasema EFSA 15 km Savonlinnasta: kiitotie, kenttätiedot ja ajantasainen sää. Savonlinnan Lentokerhon kotikenttä.",
+  path: "/kerho/kentta",
+});
 
 export default function Page() {
   return (

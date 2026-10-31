@@ -3,22 +3,14 @@ import planesData from "@/data/planes.json";
 import PlanePreviewCard from "@/components/planes/planePreviewCard";
 import PageHero from "@/components/pageHero";
 import ContentSection from "@/components/contentSection";
+import { pageMetadata } from "@/utilities/seo";
 
-export const metadata = {
-  title: "Kalusto",
-  description: "Savonlinnan Lentokerhon lentokonekalusto",
-  keywords: [
-    "Savonlinnan Lentokerho",
-    "kalusto",
-    "lentokoneet",
-    "purjelentokoneet",
-    "Cessna 172",
-    "Puchacz",
-    "Junior",
-    "Savonlinna",
-  ],
-  alternates: { canonical: "/kalusto" },
-};
+export const metadata = pageMetadata({
+  title: "Kalusto – kerhon lentokoneet ja purjekoneet",
+  description:
+    "Savonlinnan Lentokerhon kalusto: Cessna 172, Piper Cub, moottoripurjekone Fournier RF-5 ja kolme purjekonetta. Tekniset tiedot ja kuvat.",
+  path: "/kalusto",
+});
 
 const Page = () => {
   return (

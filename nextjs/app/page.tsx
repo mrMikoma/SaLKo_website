@@ -9,27 +9,16 @@ import WeatherWidget from "@/components/weatherWidget";
 import ContentSection from "@/components/contentSection";
 import CallToAction from "@/components/callToAction";
 import Link from "next/link";
+import JsonLd from "@/components/jsonLd";
+import { clubJsonLd, pageMetadata } from "@/utilities/seo";
 
-export const metadata = {
-  title: "Savonlinnan Lentokerho",
+export const metadata = pageMetadata({
+  title: "Savonlinnan Lentokerho – lentokoulutusta ja esittelylentoja",
+  absoluteTitle: true,
   description:
-    "Savonlinnan Lentokerho ry (SaLKo) - yleisilmailua ja lentokoulutusta Savonlinnassa vuodesta 1962. Tervetuloa mukaan lentämään!",
-  keywords: [
-    "Savonlinnan Lentokerho",
-    "SaLKo",
-    "lentokerho Savonlinna",
-    "lentokoulutus",
-    "esittelylennot",
-    "ilmailu Savonlinna",
-    "EFSA",
-    "yksityislentäjä",
-    "PPL koulutus",
-    "LAPL koulutus",
-    "ilmailukerho",
-    "lentokerho",
-  ],
-  alternates: { canonical: "/" },
-};
+    "Lentokerho Savonlinnan lentoasemalla vuodesta 1962. Lentokoulutusta (PPL, LAPL, purjelento), esittelylentoja ja kuusi kerhokonetta. Tervetuloa lentämään!",
+  path: "/",
+});
 
 export default async function Page() {
   // One query for both places the bulletins show (desktop sidebar, mobile section)
@@ -37,6 +26,8 @@ export default async function Page() {
 
   return (
     <div className="min-h-screen flex flex-col w-full">
+      <JsonLd data={clubJsonLd} />
+
       {/* Hero Section */}
       <section className="relative w-full min-h-screen flex items-center justify-center bg-cover bg-center bg-olavinlinna-one overflow-hidden">
         {/* Gradient Overlay */}

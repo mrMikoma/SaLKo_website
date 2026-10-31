@@ -2,12 +2,14 @@ import PageHero from "@/components/pageHero";
 import ContentSection from "@/components/contentSection";
 import Bullet from "@/components/bulletings/bullet";
 import { fetchPublishedBulletins } from "@/utilities/bulletings";
+import { pageMetadata } from "@/utilities/seo";
 
-export const metadata = {
-  title: "Tiedotteet",
-  description: "Savonlinnan Lentokerhon tiedotteet",
-  alternates: { canonical: "/tiedotteet" },
-};
+export const metadata = pageMetadata({
+  title: "Tiedotteet – kerhon ajankohtaiset",
+  description:
+    "Savonlinnan Lentokerhon tiedotteet ja ajankohtaiset asiat uusimmasta vanhimpaan.",
+  path: "/tiedotteet",
+});
 
 /**
  * Every published bulletin; the home page shows the five newest

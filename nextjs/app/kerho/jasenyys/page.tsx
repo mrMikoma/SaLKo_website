@@ -3,19 +3,14 @@ import Link from "next/link";
 import PageHero from "@/components/pageHero";
 import ContentSection from "@/components/contentSection";
 import CallToAction from "@/components/callToAction";
+import { pageMetadata } from "@/utilities/seo";
 
-export const metadata = {
-  title: "Jäsenyys",
-  description: "Liity Savonlinnan Lentokerhon jäseneksi ja koe lentämisen ilo",
-  keywords: [
-    "Savonlinnan Lentokerho",
-    "jäsenyys",
-    "liittyminen",
-    "lentokerho",
-    "Savonlinna",
-  ],
-  alternates: { canonical: "/kerho/jasenyys" },
-};
+export const metadata = pageMetadata({
+  title: "Jäsenyys – liity lentokerhoon",
+  description:
+    "Liity Savonlinnan Lentokerhon jäseneksi: lennä kerhon koneilla, aloita lentokoulutus tai tue kerhoa kannatusjäsenenä.",
+  path: "/kerho/jasenyys",
+});
 
 export default function Page() {
   return (

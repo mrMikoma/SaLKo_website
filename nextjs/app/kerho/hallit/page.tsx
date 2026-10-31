@@ -8,13 +8,14 @@ import PageHero from "@/components/pageHero";
 import ContentSection from "@/components/contentSection";
 import pricesData from "@/data/prices.json";
 import contactsData from "@/data/contacts.json";
+import { pageMetadata } from "@/utilities/seo";
 
-export const metadata = {
+export const metadata = pageMetadata({
   title: "Hallit ja talvisäilytys",
   description:
     "Savonlinnan Lentokerhon kaksi lentokonehallia Savonlinnan lentoasemalla ja talvisäilytys veneille, autoille, matkailuvaunuille ja muulle irtaimistolle.",
-  alternates: { canonical: "/kerho/hallit" },
-};
+  path: "/kerho/hallit",
+});
 
 export default function Page() {
   // Waiting for the club members' review: hidden in production until then

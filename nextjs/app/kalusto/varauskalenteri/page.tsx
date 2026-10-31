@@ -1,20 +1,14 @@
 import BookingSection from "@/components/bookings/bookingSection";
 import { auth } from "@/auth";
 import PageHero from "@/components/pageHero";
+import { pageMetadata } from "@/utilities/seo";
 
-export const metadata = {
-  title: "Varauskalenteri",
-  description: "SaLKo ry - Varauskalenteri",
-  keywords: [
-    "Savonlinnan Lentokerho",
-    "varauskalenteri",
-    "lentokonevaraukset",
-    "lentokoneiden varaus",
-    "SaLKo",
-    "Savonlinna",
-  ],
-  alternates: { canonical: "/kalusto/varauskalenteri" },
-};
+export const metadata = pageMetadata({
+  title: "Varauskalenteri – kerhon koneiden varaukset",
+  description:
+    "Savonlinnan Lentokerhon lentokoneiden varauskalenteri: katso koneiden varaukset ja vapaat ajat.",
+  path: "/kalusto/varauskalenteri",
+});
 
 export default async function Page() {
   // Get session if it exists, but don't require it (public access)
