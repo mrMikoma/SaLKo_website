@@ -20,6 +20,9 @@ import {
 } from "@/schemas/bookingSchema";
 import { headers } from "next/headers";
 import { clientIp, RateLimiter, waitText } from "@/utilities/rateLimit";
+import { logger } from "@/utilities/logger";
+
+const log = logger.child({ module: "bookings" });
 
 // Guest bookings from one address: 10 an hour, then an hour's wait
 const guestBookingsByIp = new RateLimiter("guest-bookings", 10, 60 * 60_000, 60 * 60_000);
@@ -296,7 +299,7 @@ export async function fetchBookingsForDateRange(
 
     return { status: "success", result: bookings };
   } catch (error) {
-    console.error("Error fetching bookings for date range:", error);
+    log.error("Fetching bookings for date range failed", { err: error });
     return { status: "error", error: "Varausten haku epäonnistui" };
   }
 }
@@ -348,7 +351,7 @@ export async function addBooking(
 
     return { status: "success", result: { id: response.rows[0].id } };
   } catch (error) {
-    console.error("Error adding booking:", error);
+    log.error("Adding booking failed", { err: error });
     return { status: "error", error: "Varauksen tallennus epäonnistui" };
   }
 }
@@ -426,7 +429,7 @@ export async function addRepeatingBookings(
     };
   } catch (error) {
     await client.query("ROLLBACK");
-    console.error("Error adding repeating bookings:", error);
+    log.error("Adding repeating bookings failed", { err: error });
     return { status: "error", error: "Toistuvan varauksen tallennus epäonnistui" };
   } finally {
     client.release();
@@ -528,7 +531,7 @@ export async function addGuestBooking(
     return { status: "success", result: { id: bookingId } };
   } catch (error) {
     await client.query("ROLLBACK");
-    console.error("Error creating guest booking:", error);
+    log.error("Creating guest booking failed", { err: error });
     return { status: "error", error: "Vierasvarauksen tallennus epäonnistui" };
   } finally {
     client.release();
@@ -596,7 +599,7 @@ export async function updateBooking(
 
     return { status: "success", result: { id } };
   } catch (error) {
-    console.error("Error updating booking:", error);
+    log.error("Updating booking failed", { err: error });
     return { status: "error", error: "Varauksen päivitys epäonnistui" };
   }
 }
@@ -654,7 +657,7 @@ export async function removeBooking(
 
     return { status: "success", result: { deletedCount: response.rowCount ?? 0 } };
   } catch (error) {
-    console.error("Error removing booking:", error);
+    log.error("Removing booking failed", { err: error });
     return { status: "error", error: "Varauksen poisto epäonnistui" };
   }
 }

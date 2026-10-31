@@ -41,16 +41,15 @@ import {
   readPaperGrid,
   RowMatch,
 } from "@/utilities/paperPage";
+import { logger } from "@/utilities/logger";
+
+const log = logger.child({ module: "flight-log" });
 
 type ActionResult<T = null> =
   | { status: "success"; result: T }
   | { status: "error"; error: string };
 
 const FLIGHT_LOG_DISABLED = "Lentopäiväkirja ei ole vielä käytössä";
-
-// A Google error carries the request, with members' names and remarks in its
-// body, so only its message goes to the log
-const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 // Each save or undo makes several Sheets requests and a sync, all as the one
 // service account: one member can't use up its quota for everyone
@@ -144,7 +143,7 @@ export async function addSampleFlights(registration: string): Promise<ActionResu
     revalidatePath("/admin/lennot");
     return { status: "success", result: { added: inputs.length } };
   } catch (error) {
-    console.error("Error adding sample flights:", errorText(error));
+    log.error("Adding sample flights failed", { err: error });
     return {
       status: "error",
       error:
@@ -202,7 +201,7 @@ export async function setPilotAlias(
       [nameKey(parsed.data.name), parsed.data.name, parsed.data.userId]
     );
   } catch (error) {
-    console.error("Error saving pilot alias:", error);
+    log.error("Saving pilot alias failed", { err: error });
     return { status: "error", error: "Tallennus epäonnistui" };
   }
 
@@ -232,7 +231,7 @@ export async function removePilotAlias(name: string): Promise<ActionResult> {
   try {
     await pool.query("DELETE FROM pilot_aliases WHERE name_key = $1", [nameKey(parsed.data)]);
   } catch (error) {
-    console.error("Error removing pilot alias:", errorText(error));
+    log.error("Removing pilot alias failed", { err: error });
     return { status: "error", error: "Poisto epäonnistui" };
   }
 
@@ -478,7 +477,7 @@ export async function logFlights(
 
     await appendFlightsToSheet(registration, inputs);
   } catch (error) {
-    console.error("Error logging flights:", errorText(error));
+    log.error("Logging flights failed", { err: error });
     return {
       status: "error",
       error:
@@ -499,7 +498,7 @@ export async function logFlights(
       [ids, session.user.id, registration]
     );
   } catch (error) {
-    console.error("Error recording logged flights:", errorText(error));
+    log.error("Recording logged flights failed", { err: error });
     return {
       status: "error",
       error: "Lento tallentui taulukkoon, mutta tallennus jäi kesken. Tallenna uudelleen, niin se viimeistellään.",
@@ -545,7 +544,7 @@ export async function undoFlight(id: string): Promise<ActionResult> {
     await clearWebFlight(entry.rows[0].registration, id);
     await pool.query("UPDATE flight_log_web_entries SET undone_at = NOW() WHERE id = $1", [id]);
   } catch (error) {
-    console.error("Error undoing flight:", errorText(error));
+    log.error("Undoing flight failed", { err: error });
     return {
       status: "error",
       error:
@@ -617,7 +616,7 @@ export async function setFlightStatus(
       changes = await setFlightStatuses(registration, flights, status);
     }
   } catch (caught) {
-    console.error("Error setting flight status:", errorText(caught));
+    log.error("Setting flight status failed", { err: caught });
     error =
       caught instanceof FlightSheetWriteError
         ? caught.message
@@ -639,7 +638,7 @@ export async function setFlightStatus(
       );
     } catch (caught) {
       // The sheet has the new Tila; only the record of who set it is missing
-      console.error("Error recording flight status changes:", errorText(caught));
+      log.error("Recording flight status changes failed", { err: caught });
       error = "Tila tallentui taulukkoon, mutta muutoshistoriaan sitä ei saatu kirjattua.";
     }
   }
@@ -749,7 +748,7 @@ export async function previewPaperPage(
       },
     };
   } catch (error) {
-    console.error("Error previewing paper page:", errorText(error));
+    log.error("Previewing paper page failed", { err: error });
     return { status: "error", error: "Sivun tarkistus epäonnistui" };
   }
 }
@@ -891,7 +890,7 @@ export async function savePaperPage(
       ]
     );
   } catch (caught) {
-    console.error("Error saving paper page:", errorText(caught));
+    log.error("Saving paper page failed", { err: caught });
     error =
       caught instanceof FlightSheetWriteError
         ? caught.message

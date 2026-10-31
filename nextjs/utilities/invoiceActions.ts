@@ -26,6 +26,9 @@ import {
   parseQuantity,
   referenceNumber,
 } from "@/utilities/invoices";
+import { logger } from "@/utilities/logger";
+
+const log = logger.child({ module: "invoices" });
 
 type ActionResult<T = null> =
   | { status: "success"; result: T }
@@ -245,7 +248,7 @@ export async function createInvoices(
     revalidateInvoices();
     return { status: "success", result: { ids: created } };
   } catch (error) {
-    console.error("Error creating invoices:", error);
+    log.error("Creating invoices failed", { err: error });
     return { status: "error", error: "Laskujen luonti epäonnistui" };
   }
 }
@@ -301,7 +304,7 @@ export async function createPeriodInvoices(
     if (pgCode(error) === "23505") {
       return { status: "error", error: "Jakson laskut luotiin juuri toisaalla. Lataa sivu uudelleen." };
     }
-    console.error("Error creating period invoices:", error);
+    log.error("Creating period invoices failed", { err: error });
     return { status: "error", error: "Laskujen luonti epäonnistui" };
   }
   revalidateInvoices();
@@ -357,7 +360,7 @@ export async function addDraftLine(id: number, input: LineForm): Promise<ActionR
     await client.query("COMMIT");
   } catch (error) {
     await client.query("ROLLBACK").catch(() => undefined);
-    console.error("Error adding an invoice line:", error);
+    log.error("Adding an invoice line failed", { err: error });
     return { status: "error", error: "Rivin lisäys epäonnistui" };
   } finally {
     client.release();
@@ -551,7 +554,7 @@ export async function sendInvoices(
       issued += 1;
     } catch (error) {
       await client.query("ROLLBACK").catch(() => undefined);
-      console.error(`Error sending invoice ${id}:`, error);
+      log.error("Sending an invoice failed", { err: error, invoiceId: id });
       errors.push(error instanceof Error && error.message.startsWith("Vuoden") ? error.message : "Laskun lähetys epäonnistui.");
     } finally {
       client.release();

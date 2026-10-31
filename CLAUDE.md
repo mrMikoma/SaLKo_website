@@ -169,6 +169,7 @@ Copy `nextjs/.env.example` to `nextjs/.env` (Claude's hooks block editing `.env`
 | `FLIGHT_LOG_SAMPLE_DATA` | `true` shows the "Esimerkkilennot" button on `/admin/lennot`, which writes a year of made-up flights into an aircraft's tab (`utilities/sampleFlights.ts`). Set in dev, never in prod; defaults to on under `bun dev` |
 | `MAIL_MODE` / `MAIL_REDIRECT_TO` | Email: unset is off (messages only stored in `email_outbox`), `redirect` sends everything to `MAIL_REDIRECT_TO` (dev), `send` mails the recipients (prod). `nextjs/docs/MAIL_SETUP.md` |
 | `MAIL_FROM` / `MAIL_REFRESH_TOKEN` / `MAIL_GMAIL_CLIENT_ID` / `MAIL_GMAIL_CLIENT_SECRET` | The club's one mail account, which sends all mail, its token (`bun run mail:authorize`) and the OAuth client. Replies go to `laskutus@` or `info@` by purpose (`data/contacts.json`) |
+| `LOG_LEVEL` / `LOG_FORMAT` | Server logging (`utilities/logger.ts`, `nextjs/docs/LOGGING.md`): the lowest level written (`trace`…`fatal`, `silent`; default `info` in production, `debug` under `bun dev`) and `json` (default in production) or `pretty` |
 | `E2E_USER_*` / `E2E_ADMIN_*` | `_EMAIL` and `_PASSWORD` of existing accounts for e2e tests against a non-local database (optional) |
 
 ## Deployment

@@ -12,6 +12,15 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/no-explicit-any": "warn",
     },
   },
+  {
+    // Server code logs through utilities/logger.ts: levels, JSON for Loki and
+    // redaction of personal data. The CLI scripts and the browser keep console.
+    files: ["utilities/**/*.ts", "app/api/**/*.ts", "auth.ts", "proxy.ts", "instrumentation.ts"],
+    ignores: ["utilities/logger.ts"],
+    rules: {
+      "no-console": "error",
+    },
+  },
   globalIgnores([
     // Default ignores of eslint-config-next:
     ".next/**",

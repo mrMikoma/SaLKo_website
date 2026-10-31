@@ -6,6 +6,9 @@ import {
   FlightSheetWriteError,
   writeBillingCells,
 } from "@/utilities/flightSheetWriter";
+import { logger } from "@/utilities/logger";
+
+const log = logger.child({ module: "billing" });
 
 /**
  * Marks a closed period's bill to one payer paid, or not: billing_payers,
@@ -58,7 +61,7 @@ export async function writePayerPaid(
     return null;
   } catch (error) {
     await client.query("ROLLBACK").catch(() => undefined);
-    console.error("Error marking a payment:", error);
+    log.error("Marking a payment failed", { err: error });
     return { error: error instanceof FlightSheetWriteError ? error.message : "Tallennus epäonnistui" };
   } finally {
     client.release();
