@@ -37,12 +37,12 @@ export interface OutgoingEmail {
   invoiceId?: number | null; // the invoice it sends
 }
 
-/** Stores a message to send; deliverEmails sends it */
+/** Stores a message to send, with the current MAIL_MODE; deliverEmails sends it */
 export async function queueEmail(db: Queryable, email: OutgoingEmail): Promise<number> {
   const purpose = MAIL_PURPOSES[email.purpose];
   const response = await db.query(
-    `INSERT INTO email_outbox (from_name, reply_to, kind, to_address, to_name, subject, body_text, body_html, created_by, invoice_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+    `INSERT INTO email_outbox (from_name, reply_to, kind, to_address, to_name, subject, body_text, body_html, created_by, invoice_id, queued_mode)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
     [
       purpose.name,
       purpose.replyTo,
@@ -54,6 +54,7 @@ export async function queueEmail(db: Queryable, email: OutgoingEmail): Promise<n
       email.html ?? null,
       email.createdBy ?? null,
       email.invoiceId ?? null,
+      mailMode(),
     ]
   );
   return response.rows[0].id;
@@ -96,27 +97,27 @@ export interface Delivery {
 
 /**
  * Sends one stored message, unless it is already sent or being sent (a send
- * that has hung for ten minutes may be tried again) or it sends an invoice
- * that has been cancelled since. With MAIL_MODE off the message is only
- * marked held.
+ * that has hung for ten minutes may be tried again), it was stored in
+ * another MAIL_MODE, or it sends an invoice that has been cancelled since.
+ * With MAIL_MODE off the message is only marked held.
  */
 async function deliverOne(id: number): Promise<Delivery> {
+  const mode = mailMode();
   const claimed = await connectionPool.query(
     `UPDATE email_outbox
      SET status = 'sending', attempts = attempts + 1, attempted_at = NOW(), last_error = NULL
-     WHERE id = $1
+     WHERE id = $1 AND queued_mode = $2
        AND (status IN ('queued', 'failed')
             OR (status = 'sending' AND attempted_at < NOW() - INTERVAL '10 minutes'))
        AND NOT EXISTS (
          SELECT 1 FROM invoices i WHERE i.id = email_outbox.invoice_id AND i.status = 'cancelled'
        )
      RETURNING from_name, reply_to, to_address, to_name, subject, body_text, body_html`,
-    [id]
+    [id, mode]
   );
   const row = claimed.rows[0];
   if (!row) return { id, status: "skipped" };
 
-  const mode = mailMode();
   if (mode === "off") {
     await connectionPool.query("UPDATE email_outbox SET status = 'held' WHERE id = $1", [id]);
     return { id, status: "held" };
