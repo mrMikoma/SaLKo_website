@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { logger } from "@/utilities/logger";
+
+const log = logger.child({ module: "umami-proxy" });
 
 // The tracker posts to `${data-host-url}/api/send`, and UmamiProvider sets the
 // host URL to /api/umami, hence this route's path
@@ -57,7 +60,7 @@ export async function POST(request: NextRequest) {
 
     // The details stay in the log, not in the answer to an anonymous caller
     if (!response.ok) {
-      console.error(`[Umami Send Proxy] Umami answered ${response.status} ${response.statusText}`);
+      log.warn("Umami answered with an error to an event", { status: response.status });
       return new NextResponse(null, { status: response.status });
     }
 
@@ -69,7 +72,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("[Umami Send Proxy] Error:", error);
+    log.error("Forwarding an Umami event failed", { err: error });
     return new NextResponse(null, { status: 502 });
   }
 }

@@ -4,6 +4,9 @@
  */
 
 import connectionPool from "./db";
+import { logger } from "@/utilities/logger";
+
+const log = logger.child({ module: "metar" });
 
 export interface METARData {
   id: number;
@@ -26,7 +29,7 @@ export async function getLatestMETARFromDB(
   stationCode: string = "EFSA"
 ): Promise<METARData | null> {
   if (!connectionPool) {
-    console.warn("Database connection pool not available");
+    log.warn("Database connection pool not available");
     return null;
   }
 
@@ -58,7 +61,7 @@ export async function getLatestMETARFromDB(
 
     return result.rows[0];
   } catch (error) {
-    console.error("Error fetching latest METAR from database:", error);
+    log.error("Fetching latest METAR from database failed", { err: error });
     throw error;
   }
 }

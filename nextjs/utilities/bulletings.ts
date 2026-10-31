@@ -4,6 +4,9 @@ import { auth } from "@/auth";
 import { hasPermission } from "@/utilities/roles";
 import { revalidatePath } from "next/cache";
 import { bulletinSchema, BulletinInput } from "@/schemas/bulletinSchema";
+import { logger } from "@/utilities/logger";
+
+const log = logger.child({ module: "bulletins" });
 
 export type BulletinStatus = "draft" | "published";
 
@@ -74,7 +77,7 @@ export async function fetchPublishedBulletins(limit?: number): Promise<{
       })),
     };
   } catch (error) {
-    console.error("Error fetching bulletins:", error);
+    log.error("Fetching bulletins failed", { err: error });
     return { status: "error", result: [] };
   }
 }
@@ -111,7 +114,7 @@ export async function fetchAllBulletinsForAdmin(): Promise<{
       })),
     };
   } catch (error) {
-    console.error("Error fetching bulletins for admin:", error);
+    log.error("Fetching bulletins for admin failed", { err: error });
     return { status: "error", result: [] };
   }
 }
@@ -145,7 +148,7 @@ export async function createBulletin(
     revalidateBulletinPages();
     return { success: true };
   } catch (error) {
-    console.error("Error creating bulletin:", error);
+    log.error("Creating bulletin failed", { err: error });
     return { success: false, error: "Tiedotteen luonti epäonnistui" };
   }
 }
@@ -178,7 +181,7 @@ export async function updateBulletin(
     revalidateBulletinPages();
     return { success: true };
   } catch (error) {
-    console.error("Error updating bulletin:", error);
+    log.error("Updating bulletin failed", { err: error });
     return { success: false, error: "Tiedotteen päivitys epäonnistui" };
   }
 }
@@ -211,7 +214,7 @@ export async function setBulletinPublished(
     revalidateBulletinPages();
     return { success: true };
   } catch (error) {
-    console.error("Error publishing bulletin:", error);
+    log.error("Publishing bulletin failed", { err: error });
     return { success: false, error: "Julkaisun muutos epäonnistui" };
   }
 }
@@ -233,7 +236,7 @@ export async function deleteBulletin(id: number): Promise<ActionResult> {
     revalidateBulletinPages();
     return { success: true };
   } catch (error) {
-    console.error("Error deleting bulletin:", error);
+    log.error("Deleting bulletin failed", { err: error });
     return { success: false, error: "Tiedotteen poisto epäonnistui" };
   }
 }

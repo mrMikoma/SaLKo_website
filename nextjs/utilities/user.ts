@@ -1,6 +1,9 @@
 import { auth } from "@/auth";
 import { UserData } from "./definitions";
 import connectionPool from "./db";
+import { logger } from "@/utilities/logger";
+
+const log = logger.child({ module: "user" });
 
 /**
  * Get complete user data from the database
@@ -34,7 +37,7 @@ export async function getUserData(): Promise<UserData | null> {
       auth_provider: user.auth_provider,
     };
   } catch (error) {
-    console.error("Error fetching user info:", error);
+    log.error("Fetching user info failed", { err: error });
     return null;
   }
 }
@@ -51,7 +54,7 @@ export async function getUserRoles(): Promise<string[] | null> {
     }
     return session.user.roles;
   } catch (error) {
-    console.error("Error fetching user roles:", error);
+    log.error("Fetching user roles failed", { err: error });
     return null;
   }
 }
@@ -68,7 +71,7 @@ export async function getUserName(): Promise<string | null> {
     }
     return session.user.name;
   } catch (error) {
-    console.error("Error fetching user name:", error);
+    log.error("Fetching user name failed", { err: error });
     return null;
   }
 }
@@ -84,7 +87,7 @@ export async function getUserId(): Promise<string | null> {
     }
     return session.user.id;
   } catch (error) {
-    console.error("Error fetching user ID:", error);
+    log.error("Fetching user ID failed", { err: error });
     return null;
   }
 }

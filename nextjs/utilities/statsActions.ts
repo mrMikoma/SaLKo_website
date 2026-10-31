@@ -7,6 +7,9 @@ import { auth } from "@/auth";
 import { hasPermission } from "@/utilities/roles";
 import { isFlightLogEnabled } from "@/utilities/features";
 import { parseYearTable } from "@/utilities/flightStats";
+import { logger } from "@/utilities/logger";
+
+const log = logger.child({ module: "stats" });
 
 type ActionResult<T = null> =
   | { status: "success"; result: T }
@@ -66,7 +69,7 @@ export async function deleteYearTotal(registration: string, year: number): Promi
       parsed.data.year,
     ]);
   } catch (error) {
-    console.error("Error deleting a year total:", error instanceof Error ? error.message : error);
+    log.error("Deleting a year total failed", { err: error });
     return { status: "error", error: "Poisto epäonnistui" };
   }
   revalidatePath("/admin/tilastot");

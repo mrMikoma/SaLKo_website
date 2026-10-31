@@ -7,6 +7,9 @@ import { safeRedirect } from "@/utilities/safeRedirect";
 import { clientIp, waitText } from "@/utilities/rateLimit";
 import { loginBlockedFor, TOO_MANY_ATTEMPTS } from "@/utilities/loginLimits";
 import { headers } from "next/headers";
+import { logger } from "@/utilities/logger";
+
+const log = logger.child({ module: "auth" });
 
 export interface LoginState {
   errors?: {
@@ -116,7 +119,7 @@ export async function loginWithGoogle(formData?: FormData) {
     });
   } catch (error) {
     if (error instanceof AuthError) {
-      console.error("Google login error:", error);
+      log.error("Starting the Google login failed", { err: error });
       throw error;
     }
     throw error;

@@ -1,4 +1,7 @@
 import { NextResponse } from "next/server";
+import { logger } from "@/utilities/logger";
+
+const log = logger.child({ module: "umami-proxy" });
 
 export async function GET() {
   const umamiUrl = process.env.UMAMI_INTERNAL_URL || "http://salko-umami:3000";
@@ -15,7 +18,7 @@ export async function GET() {
 
     // The details stay in the log, not in the answer to an anonymous caller
     if (!response.ok) {
-      console.error(`[Umami Script Proxy] Umami answered ${response.status} ${response.statusText}`);
+      log.warn("Umami answered with an error to the script request", { status: response.status });
       return new NextResponse(null, { status: 502 });
     }
 
@@ -28,7 +31,7 @@ export async function GET() {
       },
     });
   } catch (error) {
-    console.error("[Umami Script Proxy] Error:", error);
+    log.error("Fetching the Umami script failed", { err: error });
     return new NextResponse(null, { status: 502 });
   }
 }
