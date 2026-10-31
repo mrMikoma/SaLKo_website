@@ -246,6 +246,11 @@ const NUMBER_RANGES: Partial<Record<SheetColumn, [number, number]>> = {
   hourMeter: [0, 99_999.9],
 };
 
+// Durations and the landings total go into integer columns; a value past
+// these is a typing error that would stop the whole sync
+const MAX_DURATION_MINUTES = 10_000_000;
+const MAX_LANDINGS_TOTAL = 10_000_000;
+
 /** "M. Meikäläinen", "m.meikäläinen" and "M.Meikäläinen" are the same pilot */
 export const nameKey = (name: string): string =>
   name.toLowerCase().replace(/[\s.]+/g, "");
@@ -317,7 +322,7 @@ export function parseFlightSheet(
         const id = text(cell(row, "id"));
         undatedRows.push({
           row: rowNumber,
-          id: id && UUID.test(id) ? id : null,
+          id: id && UUID.test(id) ? id.toLowerCase() : null,
           date: cell(row, "date") ?? null,
           typed,
         });
@@ -342,6 +347,15 @@ export function parseFlightSheet(
       }
       return number;
     };
+    // Unlike numberCell, text here is read as empty without a report: these
+    // columns hold formulas, and a broken one is not the pilot's typing
+    const boundedCell = (key: SheetColumn, value: number | null, max: number) => {
+      if (value !== null && Math.abs(value) > max) {
+        badCells.push({ column: key, value: cell(row, key)! });
+        return null;
+      }
+      return value;
+    };
     const idText = text(cell(row, "id"));
     if (idText && !UUID.test(idText)) badCells.push({ column: "id", value: idText });
 
@@ -349,7 +363,11 @@ export function parseFlightSheet(
 
     // The sheet's own value unless it is empty, 0 (the formula's result for
     // equal times) or negative (past midnight): then the times give it
-    const sheetAirborneMinutes = parseDuration(cell(row, "airborne"));
+    const sheetAirborneMinutes = boundedCell(
+      "airborne",
+      parseDuration(cell(row, "airborne")),
+      MAX_DURATION_MINUTES
+    );
     let airborneMinutes = sheetAirborneMinutes;
     if ((airborneMinutes === null || airborneMinutes <= 0) && takeoffAt && landingAt) {
       airborneMinutes = Math.round((Date.parse(landingAt) - Date.parse(takeoffAt)) / 60_000);
@@ -360,8 +378,10 @@ export function parseFlightSheet(
     );
 
     flights.push({
-      // Anything but a UUID is replaced by the sync, like a missing ID
-      id: idText && UUID.test(idText) ? idText : null,
+      // Anything but a UUID is replaced by the sync, like a missing ID. Lower
+      // case, as Postgres compares them: two rows whose IDs differ only in case
+      // are one ID, and the sync treats the second as a copied row
+      id: idText && UUID.test(idText) ? idText.toLowerCase() : null,
       row: rowNumber,
       flightDate,
       picName: text(cell(row, "pic")) ?? "",
@@ -373,9 +393,13 @@ export function parseFlightSheet(
       landingAt,
       airborneMinutes,
       sheetAirborneMinutes,
-      airframeMinutes: parseDuration(cell(row, "airframeTotal")),
+      airframeMinutes: boundedCell(
+        "airframeTotal",
+        parseDuration(cell(row, "airframeTotal")),
+        MAX_DURATION_MINUTES
+      ),
       landings: numberCell("landings"),
-      totalLandings: numberOrNull(cell(row, "landingsTotal")),
+      totalLandings: boundedCell("landingsTotal", numberOrNull(cell(row, "landingsTotal")), MAX_LANDINGS_TOTAL),
       purposeCode: text(cell(row, "purpose"))?.toUpperCase() ?? null,
       fuelLitres: numberCell("fuel"),
       oilQuarts: numberCell("oil"),

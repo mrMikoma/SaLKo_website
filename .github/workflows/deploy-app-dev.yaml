@@ -14,9 +14,6 @@ on:
         default: "dev"
         type: string
 
-  repository_dispatch:
-    types: [deploy-dev]
-
 # One deploy at a time; a newer one waits for the running one to finish
 concurrency:
   group: deploy-app-dev
@@ -28,8 +25,38 @@ env:
   HOST_URL: "savonlinnanlentokerho.fi"
 
 jobs:
+  # The inputs reach shell scripts here and on the server, so only known values
+  # pass, and only through env, never into a script's text. Checked before a
+  # runner is created.
+  check-inputs:
+    name: Check the inputs
+    runs-on: ubuntu-24.04
+    outputs:
+      image_tag_name: ${{ steps.inputs.outputs.image_tag_name }}
+      image_version: ${{ steps.inputs.outputs.image_version }}
+    steps:
+      - name: Check the inputs
+        id: inputs
+        env:
+          BRANCH_NAME: ${{ inputs.branch_name }}
+          IMAGE_VERSION: ${{ inputs.image_version }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          if [[ "$GITHUB_REF" != "refs/heads/dev" || "$BRANCH_NAME" != "dev" ]]; then
+            echo "::error::kehitys is deployed from the dev branch only (run from dev, branch_name dev)"
+            exit 1
+          fi
+          if [[ ! "$IMAGE_VERSION" =~ ^(latest|v[0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            echo "::error::image_version must be latest or vN.N.N"
+            exit 1
+          fi
+          repo=$(tr '[:upper:]' '[:lower:]' <<< "$REPOSITORY")
+          echo "image_tag_name=ghcr.io/${repo}-nextjs-dev" >> "$GITHUB_OUTPUT"
+          echo "image_version=$IMAGE_VERSION" >> "$GITHUB_OUTPUT"
+
   create-runner:
     name: Create Hetzner Cloud runner
+    needs: check-inputs
     runs-on: ubuntu-24.04
     outputs:
       label: ${{ steps.create-hcloud-runner.outputs.label }}
@@ -37,7 +64,7 @@ jobs:
     steps:
       - name: Create runner
         id: create-hcloud-runner
-        uses: Cyclenerd/hcloud-github-runner@v1.4.1
+        uses: Cyclenerd/hcloud-github-runner@94a0a4aa750d832b48cc0f66d24ed56c3fe69448 # v1.4.1
         with:
           mode: create
           github_token: ${{ secrets.HETZNER_GHA_RUNNER_PAT }}
@@ -86,49 +113,25 @@ jobs:
             ip route show
 
   deploy:
-    needs: create-runner
+    needs:
+      - check-inputs
+      - create-runner
     runs-on: ${{ needs.create-runner.outputs.label }}
     environment: development
     permissions:
       contents: write
       packages: write
+    env:
+      IMAGE_TAG_NAME: ${{ needs.check-inputs.outputs.image_tag_name }}
+      IMAGE_VERSION: ${{ needs.check-inputs.outputs.image_version }}
 
     steps:
-      - name: Extract workflow dispatch inputs
-        if: ${{ github.event_name == 'workflow_dispatch' }}
-        run: |
-          echo "Extracting workflow dispatch inputs..."
-          echo "BRANCH_NAME=${{ github.event.inputs.branch_name }}" >> $GITHUB_ENV
-          echo "IMAGE_VERSION=${{ github.event.inputs.image_version }}" >> $GITHUB_ENV
-
-          # Set IMAGE_TAG_NAME for workflow_dispatch
-          repo_lowercase=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          if [[ "${{ github.event.inputs.branch_name }}" == "main" ]]; then
-            echo "IMAGE_TAG_NAME=ghcr.io/${repo_lowercase}-nextjs" >> $GITHUB_ENV
-          else
-            echo "IMAGE_TAG_NAME=ghcr.io/${repo_lowercase}-nextjs-${{ github.event.inputs.branch_name }}" >> $GITHUB_ENV
-          fi
-          echo "Inputs extracted successfully."
-
-      - name: Extract repository dispatch payload
-        if: ${{ github.event_name == 'repository_dispatch' }}
-        run: |
-          echo "Verifying repository dispatch payload..."
-          if [ -z "${{ github.event.client_payload.branch_name }}" ] || [ -z "${{ github.event.client_payload.image_tag_name }}" ] || [ -z "${{ github.event.client_payload.image_version }}" ]; then
-            echo "❌ Missing required payload fields. Ensure 'branch_name', 'image_tag_name', and 'image_version' are provided."
-            exit 1
-          fi
-
-          echo "Extracting repository dispatch payload..."
-          echo "BRANCH_NAME=${{ github.event.client_payload.branch_name }}" >> $GITHUB_ENV
-          echo "IMAGE_TAG_NAME=${{ github.event.client_payload.image_tag_name }}" >> $GITHUB_ENV
-          echo "IMAGE_VERSION=${{ github.event.client_payload.image_version }}" >> $GITHUB_ENV
-          echo "Payload extracted successfully."
-
+      # The commit this run is for, so the deployed files are the reviewed
+      # ones on dev
       - name: Checkout repository
         uses: actions/checkout@v7.0.1
         with:
-          ref: ${{ github.event.inputs.branch_name || github.event.client_payload.branch_name || 'dev' }}
+          ref: ${{ github.sha }}
           sparse-checkout: |
             docker-compose.dev.yaml
             postgres/init/
@@ -161,7 +164,7 @@ jobs:
           fi
 
           echo "Adjusting permissions on transferred files..."
-          if ! ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} "chmod -R 777 /home/salko/postgres-dev/init/*.sql"; then
+          if ! ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} "chmod 644 /home/salko/postgres-dev/init/*"; then
             echo "Failed to adjust file permissions"
             exit 1
           fi
@@ -171,7 +174,7 @@ jobs:
 
       - name: Deploy APP to SERVER
         env:
-          BRANCH_SUFFIX: ${{ github.event.inputs.branch_name || github.event.client_payload.branch_name || 'dev' }}
+          BRANCH_SUFFIX: "dev"
           NODE_ENV: "production"
           CONTAINER_PORT: "3000"
           HOST_PORT: "3010"
@@ -287,13 +290,19 @@ jobs:
         run: |
           echo "Updating monitoring secrets..."
           ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} << 'EOF'
-            # Update .env.monitoring with dev secrets
-            sed -i "s|^DEV_POSTGRES_EXPORTER_DSN=.*|DEV_POSTGRES_EXPORTER_DSN=postgresql://postgres:${{ env.POSTGRES_PASSWORD }}@salko-postgres-dev:5432/salko?sslmode=disable|" .env.monitoring || true
+            # Update .env.monitoring with dev secrets, adding the line when the
+            # monitoring deploy left it out. The exporter logs in as the
+            # superuser (POSTGRES_USER), with the password URL-encoded
+            password_url=$(python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' '${{ env.POSTGRES_PASSWORD }}')
+            sed -i '/^DEV_POSTGRES_EXPORTER_DSN=/d' .env.monitoring
+            echo "DEV_POSTGRES_EXPORTER_DSN=postgresql://salko_admin:${password_url}@salko-postgres-dev:5432/salko?sslmode=disable" >> .env.monitoring
+            chmod 600 .env.monitoring
             echo "✅ Monitoring secrets updated"
 
-            # Restart monitoring stack to apply new secrets
-            echo "Restarting monitoring stack..."
-            docker compose --env-file .env.monitoring -f docker-compose.monitoring.yaml restart || true
+            # Recreate the services whose settings changed: a restart would
+            # keep their old environment
+            echo "Applying to the monitoring stack..."
+            docker compose --env-file .env.monitoring -f docker-compose.monitoring.yaml up -d || true
           EOF
 
       - name: Notify success
@@ -312,7 +321,7 @@ jobs:
           {
             echo "## Deployment Summary"
             echo "- **Environment:** Development"
-            echo "- **Branch:** \`${{ github.event.inputs.branch_name || github.event.client_payload.branch_name || 'dev' }}\`"
+            echo "- **Branch:** \`${{ github.ref_name }}\`"
             echo "- **Image Version:** \`${{ env.IMAGE_VERSION }}\`"
             echo "- **Image Tag:** \`${{ env.IMAGE_TAG_NAME }}\`"
             echo "- **Site URL:** [https://${{ env.SITE_PREFIX }}.${{ env.HOST_URL }}](https://${{ env.SITE_PREFIX }}.${{ env.HOST_URL }})"
@@ -327,10 +336,10 @@ jobs:
       - create-runner
       - deploy
     runs-on: ubuntu-24.04
-    if: ${{ always() }}
+    if: ${{ always() && needs.create-runner.outputs.server_id != '' }}
     steps:
       - name: Delete runner
-        uses: Cyclenerd/hcloud-github-runner@v1.4.1
+        uses: Cyclenerd/hcloud-github-runner@94a0a4aa750d832b48cc0f66d24ed56c3fe69448 # v1.4.1
         with:
           mode: delete
           github_token: ${{ secrets.HETZNER_GHA_RUNNER_PAT }}

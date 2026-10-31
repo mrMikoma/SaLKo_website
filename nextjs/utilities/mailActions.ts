@@ -81,6 +81,15 @@ export async function retryEmail(id: number): Promise<ActionResult<{ text: strin
   const access = await requireMailAdmin();
   if ("error" in access) return { status: "error", error: access.error };
   if (!Number.isInteger(id)) return { status: "error", error: "Viestiä ei löytynyt" };
+  // deliverEmails skips it too; this says why
+  const cancelled = await pool.query(
+    `SELECT 1 FROM email_outbox o JOIN invoices i ON i.id = o.invoice_id
+     WHERE o.id = $1 AND i.status = 'cancelled'`,
+    [id]
+  );
+  if (cancelled.rows.length > 0) {
+    return { status: "error", error: "Lasku on mitätöity, joten viestiä ei lähetetä." };
+  }
 
   const [delivery] = await deliverEmails([id]);
   revalidateMail();

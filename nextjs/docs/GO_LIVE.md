@@ -5,6 +5,7 @@ How everything waiting in `dev` reaches savonlinnanlentokerho.fi, in three stage
 | Stage | What goes live | Switch |
 |---|---|---|
 | **A. Release** | Next.js and Bun security updates, the booking permission fix and new calendar, admin user tools, bulletin drafts, server maintenance and SSH hardening, the SPF and DMARC records; the code of B and C too, switched off | merge `dev` → `main` (#47), migrate, deploy |
+| **A2. Security fixes** | login, password and session hardening, the server and monitoring changes, the Cloudflare-only firewall (see below) | merge `dev` → `main`, migrate (017), deploy, then Monitoring and Traefik |
 | **B. Flight log** | the club's real sheet, members logging flights, the treasurer checking them, statistics | production variable `FEATURE_FLIGHT_LOG=true`, redeploy |
 | **C. Billing and email** | prices, billing periods, invoices on the site and by email | production variables `FEATURE_BILLING=true` and `MAIL_MODE=send`, redeploy |
 
@@ -124,6 +125,53 @@ Stage A doesn't depend on B or C and carries security fixes, so it shouldn't wai
     docker exec -i salko-postgres-prod sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < /home/salko/backups/migrations/salko-postgres-prod-<time>.dump
     ```
   - Then deploy the previous version with **Deploy production from main branch**.
+
+## Stage A2: security fixes
+
+What `dev` holds after stage A, from the code review in October 2026:
+- **Logins and sessions:**
+  - Google logins must come from the club's Workspace;
+  - limits on password guessing;
+  - reset links end with a lock or a password change;
+  - exact session revocation (`users.session_version`, migration 017).
+- **Server:**
+  - the app containers no longer get the database superuser's password;
+  - Umami gets its own database password;
+  - the admin tools move to a network of their own;
+  - the Postgres exporters and Traefik metrics work;
+  - the web ports accept only Cloudflare.
+- **Workflows:** dispatch inputs are checked and deploys run from the reviewed branch.
+
+### Release
+
+1. **Merge** `dev` → `main`.
+2. **Terraform** runs on the push to `main`. Its plan changes only the firewall's HTTP and HTTPS sources to Cloudflare's ranges. **Approve** the apply. Then run the public-page check under "Check" in stage A: every page must still answer 200 through Cloudflare.
+3. **Build the prod image:** Actions → **Build and Publish Production** → branch `main`. Note the version.
+4. **Migrate**, right before the deploy:
+   - Actions → **Database Migrations** → branch `main`, `prod`, "Dry run" ticked. It should list only `017_users_session_version.sql` as pending.
+   - Then run it again without the dry run. **Approve**.
+   - Without the column, the new code ends every session, so the deploy must not run before this.
+5. **Deploy:** Actions → **Deploy production from main branch** → branch `main`, the version from step 3. **Approve**.
+   - Logged-in members stay logged in.
+   - The deploy gives Umami its own database password and switches Umami to it. If that fails, the log says so and Umami keeps its old one.
+6. **Monitoring:** the push to `main` started **Deploy Monitoring Stack**; **Approve** it now. It moves the admin tools onto the `salko_monitoring` network.
+7. **Traefik:** Actions → **Deploy Traefik** from `main`. It joins `salko_monitoring`, so the admin tools are reachable again. Between steps 6 and 7 they aren't; the public site is unaffected.
+8. **Cronjobs:** Actions → **Deploy Background Cronjobs** → branch `main`. **Approve**. This picks up the pinned runner action; the job itself is unchanged.
+
+### Check
+
+- [ ] Logging in works with Google and with a password, and a member logged in before the release still is.
+- [ ] Grafana, pgAdmin and Umami open from the club networks.
+  - pgAdmin now asks for the database password: it no longer stores the production one.
+- [ ] In Grafana or Prometheus (Status → Targets), `postgres-prod`, `postgres-dev` and `traefik` are up. They never were before.
+- [ ] Umami shows new page views after the release, and its Postgres connection works (no errors in its log).
+- [ ] The site's pages answer through Cloudflare (stage A's check). Anything that used the server's public IP directly no longer reaches ports 80 and 443.
+
+### If it goes wrong
+
+- **Every session ends after the deploy:** migration 017 hasn't run on prod. Run step 4.
+- **Admin tools unreachable:** Traefik isn't on `salko_monitoring`. Run **Deploy Monitoring Stack**, then **Deploy Traefik**.
+- **Umami can't reach its database:** run the prod deploy again (step 5). It sets the role's password from `/home/salko/.umami-db-password` and Umami's URL together. Once the role has the new password, the old one no longer works for it.
 
 ## Stage B: flight log
 

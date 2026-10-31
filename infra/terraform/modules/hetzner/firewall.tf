@@ -33,24 +33,20 @@ resource "hcloud_firewall" "default" {
   }
 
   rule {
-    description     = "Allow HTTP from anywhere"
+    description     = "Allow HTTP from Cloudflare"
     destination_ips = []
     direction       = "in"
     port            = "80"
     protocol        = "tcp"
-    source_ips = [
-      "0.0.0.0/0",
-    ]
+    source_ips      = var.cloudflare_ipv4_ranges
   }
 
   rule {
-    description     = "Allow HTTPS from anywhere"
+    description     = "Allow HTTPS from Cloudflare"
     destination_ips = []
     direction       = "in"
     port            = "443"
     protocol        = "tcp"
-    source_ips = [
-      "0.0.0.0/0",
-    ]
+    source_ips      = var.cloudflare_ipv4_ranges
   }
 }

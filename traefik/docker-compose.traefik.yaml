@@ -21,6 +21,8 @@ services:
     networks:
       - outgoing
       # Specifies that Traefik will be connected to the 'outgoing' network.
+      - monitoring
+      # The monitoring stack's network, where the admin tools are (see below).
 
     ports:
       - 80:80
@@ -102,3 +104,9 @@ networks:
     external: true
     name: global_outgoing
     # Creates a user-defined bridge network called 'outgoing' to allow communication between containers.
+  # The monitoring stack's network (docker-compose.monitoring.yaml): Grafana
+  # and the other admin tools are reached there, and Prometheus scrapes
+  # Traefik's metrics there. Deploy the monitoring stack first on a new host.
+  monitoring:
+    external: true
+    name: salko_monitoring

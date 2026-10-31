@@ -117,6 +117,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             roles: user.roles,
             fullName: user.full_name,
             image: user.avatar_url,
+            // Read with the password it was checked against: a revocation
+            // after this point ends the session
+            sessionVersion: user.session_version,
           };
         } catch (error) {
           console.error("Authentication error:", error);
@@ -144,7 +147,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           );
 
           if (result.rows.length > 0 && result.rows[0].deactivated_at) {
-            console.log("Login blocked for deactivated user:", email);
+            console.log("Google login blocked for a deactivated user");
             return false;
           }
           // As with passwords: guest-only entries are data, not accounts
@@ -188,29 +191,21 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async jwt({ token, user, account }) {
       // For Google OAuth, always fetch user data from database
       // The user object from Google doesn't contain our database ID
+      // Google's own tokens aren't kept: the site never calls Google for the
+      // user, and the session cookie lasts 30 days
       if (account?.provider === "google" && user?.email) {
-        token.accessToken = account.access_token;
-        token.idToken = account.id_token;
-
-        console.log(
-          "[JWT] Google OAuth - Fetching user data for email:",
-          user.email
-        );
         try {
           const result = await pool.query(
-            `SELECT id, roles, full_name FROM users WHERE lower(email) = lower($1) ${SAME_EMAIL_ORDER}`,
+            `SELECT id, roles, full_name, session_version FROM users WHERE lower(email) = lower($1) ${SAME_EMAIL_ORDER}`,
             [user.email]
           );
           if (result.rows.length > 0) {
             token.id = result.rows[0].id;
             token.roles = result.rows[0].roles;
             token.fullName = result.rows[0].full_name;
-            console.log("[JWT] Google OAuth - User found, ID:", token.id);
+            token.sessionVersion = result.rows[0].session_version;
           } else {
-            console.error(
-              "[JWT] Google OAuth - No user found in database for email:",
-              user.email
-            );
+            console.error("[JWT] Google OAuth - no user found in the database for the login");
           }
         } catch (error) {
           console.error(
@@ -224,6 +219,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.id = user.id;
         token.roles = (user as any).roles;
         token.fullName = (user as any).fullName;
+        token.sessionVersion = user.sessionVersion;
       }
 
       // When this session logged in: sessions_revoked_at after it ends the session
@@ -231,19 +227,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.authAt = Math.floor(Date.now() / 1000);
       }
 
-      console.log("[JWT] Final token - ID:", token.id, "Email:", token.email);
       return token;
     },
 
+    // No logging on every request: these lines ended up in Loki with each
+    // member's email and ID
     async session({ session, token }) {
-      console.log("[SESSION] Token ID:", token.id, "Token email:", token.email);
 
       try {
         if (token.id) {
           // Fetch fresh user data from database to ensure we have latest roles/info.
           // A deactivated user's session ends on the next request.
           const result = await pool.query(
-            `SELECT id, email, name, full_name, roles, avatar_url, sessions_revoked_at FROM users
+            `SELECT id, email, name, full_name, roles, avatar_url, sessions_revoked_at, session_version FROM users
              WHERE id = $1 AND deactivated_at IS NULL`,
             [token.id]
           );
@@ -255,7 +251,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             ? Math.floor(new Date(row.sessions_revoked_at).getTime() / 1000)
             : 0;
           const authAt = typeof token.authAt === "number" ? token.authAt : 0;
-          if (row && (revokedAt > authAt || isGuestOnly(row.roles))) {
+          // The number the session logged in with must still be the
+          // account's: unlike the whole-second time above, it leaves no gap.
+          // Tokens from before session_version count as 0.
+          const revoked = revokedAt > authAt || (token.sessionVersion ?? 0) !== row?.session_version;
+          if (row && (revoked || isGuestOnly(row.roles))) {
             console.log("[SESSION] Session ended: revoked or guest-only, user", row.id);
             return null as any;
           }
@@ -268,7 +268,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             session.user.fullName = user.full_name;
             session.user.email = user.email;
             session.user.image = user.avatar_url;
-            console.log("[SESSION] User found by ID:", user.id);
           } else {
             // User not found or deactivated - this can happen during logout or if user was deleted
             // Return null to invalidate the session
@@ -292,7 +291,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         return null as any;
       }
 
-      console.log("[SESSION] Final session.user.id:", session.user?.id);
       return session;
     },
   },

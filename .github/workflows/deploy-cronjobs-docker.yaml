@@ -41,10 +41,26 @@ jobs:
 
       - name: Detect changed cronjobs
         id: detect
+        # The inputs reach scripts and image names, so only known values pass,
+        # and only through env
+        env:
+          BRANCH_NAME: ${{ inputs.branch_name }}
+          SPECIFIC_JOB: ${{ inputs.specific_job }}
         run: |
-          # If specific job specified in manual trigger, use that
-          if [ -n "${{ github.event.inputs.specific_job }}" ]; then
-            echo "jobs=[\"${{ github.event.inputs.specific_job }}\"]" >> $GITHUB_OUTPUT
+          # A manual run deploys the branch it runs from, so the images are
+          # built from the code being deployed
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "$GITHUB_REF" != "refs/heads/$BRANCH_NAME" ]; then
+            echo "::error::Run this workflow from the branch you deploy ($BRANCH_NAME)"
+            exit 1
+          fi
+          # If specific job specified in manual trigger, use that: one of the
+          # cronjobs/ directories with a Dockerfile, nothing else
+          if [ -n "$SPECIFIC_JOB" ]; then
+            if [[ ! "$SPECIFIC_JOB" =~ ^[a-z0-9-]+$ ]] || [ ! -f "cronjobs/$SPECIFIC_JOB/Dockerfile" ]; then
+              echo "::error::specific_job must name a cronjob directory with a Dockerfile"
+              exit 1
+            fi
+            echo "jobs=[\"$SPECIFIC_JOB\"]" >> $GITHUB_OUTPUT
             echo "deploy_all=false" >> $GITHUB_OUTPUT
             exit 0
           fi
@@ -160,7 +176,7 @@ jobs:
     steps:
       - name: Create runner
         id: create-hcloud-runner
-        uses: Cyclenerd/hcloud-github-runner@v1.4.1
+        uses: Cyclenerd/hcloud-github-runner@94a0a4aa750d832b48cc0f66d24ed56c3fe69448 # v1.4.1
         with:
           mode: create
           github_token: ${{ secrets.HETZNER_GHA_RUNNER_PAT }}
@@ -212,7 +228,7 @@ jobs:
     needs: [detect-changes, build-and-push, create-runner]
     if: ${{ needs.detect-changes.outputs.jobs != '[]' }}
     runs-on: ${{ needs.create-runner.outputs.label }}
-    environment: ${{ (github.event.inputs.branch_name == 'main' || github.ref == 'refs/heads/main') && 'production' || 'development' }}
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
     strategy:
       matrix:
         job: ${{ fromJson(needs.detect-changes.outputs.jobs) }}
@@ -225,14 +241,9 @@ jobs:
       - name: Define deployment variables
         id: vars
         run: |
-          # Determine branch and environment
-          if [ "${{ github.event_name }}" = "push" ]; then
-            # Auto-deploy from push (only dev branch)
-            BRANCH_NAME="${{ github.ref_name }}"
-          else
-            # Manual workflow_dispatch
-            BRANCH_NAME="${{ github.event.inputs.branch_name }}"
-          fi
+          # Determine branch and environment: the branch this run is on, which
+          # detect-changes has matched with the branch_name input
+          BRANCH_NAME="$GITHUB_REF_NAME"
 
           # Set branch suffix and environment based on branch
           if [ "$BRANCH_NAME" = "main" ]; then
@@ -330,7 +341,7 @@ jobs:
     if: ${{ always() && needs.create-runner.outputs.server_id != '' }}
     steps:
       - name: Delete runner
-        uses: Cyclenerd/hcloud-github-runner@v1.4.1
+        uses: Cyclenerd/hcloud-github-runner@94a0a4aa750d832b48cc0f66d24ed56c3fe69448 # v1.4.1
         with:
           mode: delete
           github_token: ${{ secrets.HETZNER_GHA_RUNNER_PAT }}
@@ -347,7 +358,7 @@ jobs:
       - name: Summary
         run: |
           # Determine environment
-          if [ "${{ github.event.inputs.branch_name }}" = "main" ] || [ "${{ github.ref }}" = "refs/heads/main" ]; then
+          if [ "$GITHUB_REF" = "refs/heads/main" ]; then
             ENVIRONMENT="Production"
             BRANCH="main"
           else

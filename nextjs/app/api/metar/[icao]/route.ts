@@ -48,14 +48,9 @@ export async function GET(
       fetchedAt: metarData.fetchedAt,
     });
   } catch (error) {
+    // The details stay in the log: a database error can name internal hosts
     console.error("METAR API error:", error);
 
-    return NextResponse.json(
-      {
-        error: "Internal server error",
-        message: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
