@@ -66,3 +66,28 @@ test("a failed invoice message is not tried again once the invoice is cancelled"
     await query("DELETE FROM invoices WHERE id = $1", [invoice.id]);
   }
 });
+
+test("a failed message stored in another mail mode is not sent in this one", async ({ page }) => {
+  test.skip(!isLocalDatabase(), "writes a message: local database only");
+  const subject = `E2E-viesti ${Date.now()} kehitystila`;
+  // Failed while mail went to the dev address; mail is off in tests
+  const [message] = await query(
+    `INSERT INTO email_outbox (from_name, kind, to_address, subject, body_text, status, queued_mode)
+     VALUES ('E2E', 'test', 'e2e-user@salko.invalid', $1, 'e2e', 'failed', 'redirect')
+     RETURNING id`,
+    [subject]
+  );
+  try {
+    await page.goto("/admin/laskutus/viestit");
+    const item = page.getByRole("listitem").filter({ hasText: subject });
+    await item.getByRole("button", { name: `Yritä uudelleen: ${subject}` }).click();
+    await expect(item.getByRole("alert")).toHaveText(
+      "Viesti tallennettiin, kun sähköposti oli kehitystilassa, ja nyt se on pois päältä, joten sitä ei lähetetä. Lähetä uusi viesti."
+    );
+    const [after] = await query("SELECT status, attempts FROM email_outbox WHERE id = $1", [message.id]);
+    expect(after).toEqual({ status: "failed", attempts: 0 });
+  } finally {
+    await query("DELETE FROM email_outbox WHERE id = $1", [message.id]);
+  }
+});
+

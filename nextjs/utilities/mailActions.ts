@@ -29,6 +29,13 @@ const revalidateMail = () => {
   revalidatePath("/admin/laskutus/asetukset");
 };
 
+// MAIL_MODE as the settings page says it
+const MODE_TEXT: Record<string, string> = {
+  send: "käytössä",
+  redirect: "kehitystilassa",
+  off: "pois päältä",
+};
+
 const DELIVERY_TEXT: Record<Exclude<DeliveryStatus, "failed">, string> = {
   sent: "Lähetetty.",
   held: "Tallennettu, ei lähetetty: sähköposti ei ole käytössä (MAIL_MODE).",
@@ -81,14 +88,26 @@ export async function retryEmail(id: number): Promise<ActionResult<{ text: strin
   const access = await requireMailAdmin();
   if ("error" in access) return { status: "error", error: access.error };
   if (!Number.isInteger(id)) return { status: "error", error: "Viestiä ei löytynyt" };
-  // deliverEmails skips it too; this says why
-  const cancelled = await pool.query(
-    `SELECT 1 FROM email_outbox o JOIN invoices i ON i.id = o.invoice_id
-     WHERE o.id = $1 AND i.status = 'cancelled'`,
-    [id]
-  );
-  if (cancelled.rows.length > 0) {
+  // deliverEmails skips these too; this says why
+  const stored = (
+    await pool.query(
+      `SELECT o.kind, o.queued_mode, i.status AS invoice_status
+       FROM email_outbox o LEFT JOIN invoices i ON i.id = o.invoice_id
+       WHERE o.id = $1`,
+      [id]
+    )
+  ).rows[0];
+  if (!stored) return { status: "error", error: "Viestiä ei löytynyt" };
+  if (stored.invoice_status === "cancelled") {
     return { status: "error", error: "Lasku on mitätöity, joten viestiä ei lähetetä." };
+  }
+  if (stored.queued_mode !== mailMode()) {
+    return {
+      status: "error",
+      error: `Viesti tallennettiin, kun sähköposti oli ${MODE_TEXT[stored.queued_mode] ?? "toisessa tilassa"}, ja nyt se on ${MODE_TEXT[mailMode()]}, joten sitä ei lähetetä. ${
+        stored.kind === "invoice" ? "Lähetä lasku uudelleen laskun sivulta." : "Lähetä uusi viesti."
+      }`,
+    };
   }
 
   const [delivery] = await deliverEmails([id]);
