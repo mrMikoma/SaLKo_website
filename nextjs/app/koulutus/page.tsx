@@ -433,9 +433,9 @@ export default function Page() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* SPL - Sailplane License */}
             <div className="bg-sblack/50 rounded-lg p-6 border border-sbluel/20 flex flex-col">
-              <h4 className="text-xl font-bold text-sred mb-3">
+              <h3 className="text-xl font-bold text-sred mb-3">
                 SPL - Purjelentäjän lupakirja
-              </h4>
+              </h3>
               <p className="text-swhite/90 mb-4">
                 Voit lentää yksin tai matkustajan kanssa ympäristöystävällisesti
                 auringon energialla
@@ -533,9 +533,9 @@ export default function Page() {
 
             {/* UPL - Ultralight Pilot License */}
             <div className="bg-sblack/50 rounded-lg p-6 border border-sbluel/20 flex flex-col">
-              <h4 className="text-xl font-bold text-sred mb-3">
+              <h3 className="text-xl font-bold text-sred mb-3">
                 UPL - Ultrakevyt lentäjän lupakirja
-              </h4>
+              </h3>
               <p className="text-swhite/90 mb-4">
                 Mahdollistaa lentämisen yksin tai matkustajan kanssa
                 ultrakevyellä moottorilentokoneella

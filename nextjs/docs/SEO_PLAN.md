@@ -1,7 +1,7 @@
 # Plan: search visibility (SEO)
 
 **Date:** 2026-10-30
-**Status:** 0.1 and phase 1 (except 1.5) are built on `feature/seo-skill`, not yet merged. The `seo` skill (`.claude/skills/seo/`) has the per-page checklist and the audit scripts. Tick items here as PRs do them.
+**Status:** 0.1, phase 1 (except 1.5) and phase 2 (except 2.4 and the colour contrast in 2.5) are built on `feature/seo-skill`, not yet merged. The `seo` skill (`.claude/skills/seo/`) has the per-page checklist and the audit scripts. Tick items here as PRs do them.
 
 The goal: people near Savonlinna who search for flight training, intro flights or a flying club find this site first, and links shared on Facebook or WhatsApp show the right page with a good image. The site is in Finnish and serves a local audience, so most of the gain comes from correct technical basics, a little more text on thin pages, and a Google Business Profile. Off-site work is the club's to do.
 
@@ -71,16 +71,22 @@ Without working analytics and Search Console there is no way to tell whether any
 
 Page experience is a small ranking factor, but on mobile it is most of what visitors feel.
 
-- [ ] **2.1 Shrink the images in `public/images/`.** Resize to at most 2000 px wide, about 300 kB, and strip EXIF:
-  - `certificate_1.jpg` (5 MB), `planning_1.jpg`, `planning_2.jpg`;
-  - the logo PNG (2.3 MB): a 512 px version for the navbar and footer, with the original kept outside `public/` if needed;
-  - the CSS hero backgrounds (`olavinlinna_1`, `punkaharju_1`, `savonlinna_1`, `efsa_1`).
+**Result.** Lighthouse, mobile, both columns measured the same way, on local production builds (2026-10-30):
 
-  The old files stay in git history. That costs only clone size, so leave the history alone.
-- [ ] **2.2 Hero images through next/image.** Render the `PageHero` background and the home hero as `<Image fill priority sizes="100vw">` behind the gradient, instead of a `bg-*` CSS class, so they get AVIF/WebP, responsive sizes and a preload.
-- [ ] **2.3 Find the LCP render delay.** About 5–6 s of the home and esittelylennot LCP is render delay on hero text. The first suspect is `animate-fade-in`, which starts the hero content at opacity 0, plus about 600 ms of script evaluation on a throttled CPU. Remove the animation from the hero, measure again with `lighthouse.ts` against a production build, then check against the real-user (CrUX) data in Search Console.
-- [ ] **2.4 Cacheable public pages** *(larger, decide separately)*. Public pages render per request with `no-store` only because the root layout awaits `auth()` for the navbar. Giving the session to the navbar on the client would let public pages render statically, cut TTFB, re-enable the back/forward cache, and let Cloudflare cache them. Watch out: the feature flags are read per request on purpose (the prod image is built without them, see `utilities/features.ts`), so pages that read them must stay dynamic. Only worth it if 2.3 doesn't get LCP under 2.5 s.
-- [ ] **2.5 Lighthouse accessibility findings**: `color-contrast` on several pages, `heading-order` on home and koulutus, `target-size` on plane pages. These aren't ranking factors, but they are cheap to fix and help everyone.
+| Page | Before (`dev`) | After |
+|---|---|---|
+| `/` | 54, LCP 7.5 s, 1513 kB | 97, LCP 1.7 s, 596 kB |
+| `/esittelylennot` | 77, 5.9 s, 1099 kB | 97, 2.6 s, 358 kB |
+| `/koulutus` | 77, 6.5 s, 6351 kB | 97, 2.6 s, 424 kB |
+| `/kalusto/OH-CON` | 84, 4.3 s, 577 kB | 94, 2.9 s, 353 kB |
+| `/kalusto` | 89, 3.7 s, 507 kB | 97, 2.6 s, 373 kB |
+| `/kerho/hinnasto` | 81, 4.9 s, 819 kB | 97, 2.6 s, 385 kB |
+
+- [x] **2.1 Shrink the images in `public/images/`.** `certificate_1.jpg`, `planning_1.jpg`, `planning_2.jpg` and `punkaharju_1.jpg` are now at most 2000 px, 170–400 kB each (they were 0.5–5 MB). The three phone photos were stored sideways with an EXIF rotation flag; the rotation is now applied to the pixels and the EXIF removed. The logo PNG went from 3380 px and 2.3 MB to 600 px and 77 kB, still 5× its largest use (120 px). `public/images` went from 19 MB to 3.1 MB. The old files stay in git history, which only costs clone size.
+- [x] **2.2 Background photos through next/image.** `components/backdrop.tsx` renders them as `<Image fill sizes="100vw" quality={50}>`, so each screen gets a resized WebP. Quality 50 is about 30 % fewer bytes than 75 and doesn't show under the dark gradients. `PageHero`, `ContentSection`, `FeatureCard` and the full-height heroes of `/`, `/kerho` and the 404 page use it. Full-height heroes preload their photo, and everything else loads lazily. The `bg-*-one` CSS classes and their `url()` variables are gone, and `backgroundImage` props take a name from `BACKDROPS`. `next.config.js` allows the qualities 50 and 75.
+- [x] **2.3 Find the LCP render delay.** It wasn't mainly the animation. The hero text actually painted after 0.1–0.2 s, but Lighthouse's simulated LCP counts every byte requested before that paint. CSS background photos are all requested at once, visible or not: 0.8–1.1 MB per page, and 6.3 MB on `/koulutus`. Removing them in an experiment took the home page from 8.0 s to 2.1 s. 2.1 and 2.2 fix the cause. The `animate-fade-in` on hero text (home, `/kerho`, `PageHero` titles) is also removed, since it held the home page's paint back by another 0.5 s. Next: once Search Console has data, compare with the real-user (CrUX) numbers, which are what Google ranks on.
+- [ ] **2.4 Cacheable public pages** *(not needed now)*. Public pages render per request with `no-store` only because the root layout awaits `auth()` for the navbar. Giving the session to the navbar on the client would let public pages render statically, cut TTFB, re-enable the back/forward cache, and let Cloudflare cache them. Watch out: the feature flags are read per request on purpose (the prod image is built without them, see `utilities/features.ts`), so pages that read them must stay dynamic. 2.1–2.3 brought lab LCP to about 2.6 s or less on the pages measured above, so revisit this only if the field data in Search Console says LCP or TTFB is poor.
+- [ ] **2.5 Lighthouse accessibility findings.** Done: `heading-order` (the "Kerhotiedotteet" sidebar on `/` is an `h2`, and the SPL/UPL cards on `/koulutus` are `h3`) and `target-size` (the gallery dots are 24 px buttons with Finnish labels). **Open, needs a design decision:** `color-contrast`. White on the brand red `sred` (#e84855) is 3.5:1, and the WCAG minimum for normal text is 4.5:1. That affects the red buttons, e.g. "Lähde esittelylennolle", and the blue `sbluel` badge on plane pages (4.4:1). Options are a darker red for buttons (#c62f3c gives 4.9:1), or bigger and bolder button text (3:1 is enough at 18.7 px bold).
 
 ## Phase 3: content (needs the club)
 
@@ -118,4 +124,4 @@ For local searches, these matter more than anything in the code.
 
 ## Order
 
-0.1 and 0.2 first. Then 1.1–1.4 and 1.6–1.8 together in one PR to `dev`, since they touch the same metadata. Then 2.1–2.3, which is mostly images. 1.5 gets its own PR with the user present, because it changes login. Phases 3 and 4 run in parallel, whenever the club has time.
+0.1, phase 1 (except 1.5) and phase 2 went into one PR to `dev`, as separate commits. Next: 0.2 (the user), then 1.5 in its own PR with the user present, because it changes login. Phases 3 and 4 run in parallel, whenever the club has time.
