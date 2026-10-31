@@ -20,7 +20,7 @@ palvelin/<year>/salko-prod-<UTC time>.tar.age.sha256
 ennen-migraatiota/salko-postgres-prod-<UTC time>.dump.age   from postgres/migrate.sh
 ```
 
-**Nothing is ever deleted or overwritten there:** the server's service account is a Contributor, which can add files but can't delete them. A Manager deletes old copies by hand, about once a year (`BACKUP_PLAN.md`, "How long copies are kept").
+**Nothing is ever deleted or replaced there.** The script never uploads over a file that exists, and the server's service account is a Contributor, which can add and edit files but can't move or delete them. Each file's first version is marked to be kept forever in its version history, even if a new version is uploaded over it. A Manager deletes old copies by hand, about once a year (`BACKUP_PLAN.md`, "How long copies are kept").
 
 **There are no automatic checks.** A failed night leaves `salko-backup.service` failed, and its copy waits in `/var/backups/salko` until the next night uploads it too.
 
@@ -46,6 +46,8 @@ Only the host with the production database gets the timer and the key. The workf
    - variable `BACKUP_AGE_RECIPIENTS`: both public keys, one per line. Lines starting with `#` are comments;
    - secret `BACKUP_DRIVE_SA_JSON`: the JSON key file's contents, as they are.
 5. **Ansible Provision** from `main`. Any merge to `main` that touches `infra/ansible/` also starts it. The timer is on after that, and the first copy is made the same night.
+
+The weekly copy of GitHub and the Terraform state uses the same drive and keys, with a service account of its own: `nextjs/docs/BACKUP_GITHUB.md`.
 
 ## Checking it
 

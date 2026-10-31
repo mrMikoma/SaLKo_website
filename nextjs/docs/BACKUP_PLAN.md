@@ -1,6 +1,6 @@
 # Plan: off-site backups and handover
 
-**Status:** decided (2026-10-31). Phase 1, the backup role, is built and switched off until phase 0 is done; how to switch it on is in `infra/ansible/roles/backup/README.md`.
+**Status:** decided (2026-10-31). Phases 1 and 2, the backup role and the weekly copy of GitHub, are built and switched off until phase 0 is done. How to switch them on: `infra/ansible/roles/backup/README.md` and `BACKUP_GITHUB.md`.
 
 The goal is that three things can happen without losing the club's data or its website:
 
@@ -42,7 +42,7 @@ The answer to 1 and 2 is a nightly encrypted copy of everything that can't be re
   - the server lost but the accounts fine: one evening;
   - an account lost: one weekend, for someone following the guide without the maintainer.
 - **The club owns the copies:** they are in a shared drive of the club's Workspace, not in anyone's own Drive.
-- **The server can add copies but can't delete or read old ones.** A broken-into server can't wipe the history or read last month's data.
+- **The server can add copies but can't delete or read old ones.** A broken-into server can't delete the history or read last month's data. A Contributor can still upload a new version of a file, so each copy's first version is marked to be kept forever in its version history.
 - **Checked by hand, not automatically** (the maintainer's decision, 2026-10-31): a restore after the first night, and one trial of `RECOVERY.md` on a throwaway server.
 
 ## What is backed up
@@ -77,7 +77,7 @@ The answer to 1 and 2 is a nightly encrypted copy of everything that can't be re
 - **A shared drive,** for example "SaLKo palvelimen varmuuskopiot". Its files belong to the club, not to whoever uploaded them.
 - **Members:**
   - **Managers:** the maintainer, plus whoever the maintainer's own plan names. Only Managers can delete permanently.
-  - **`salko-backup-server@…`,** a service account for the server: **Contributor**. It can add files, but it can't move or delete them.
+  - **`salko-backup-server@…`,** a service account for the server: **Contributor**. It can add and edit files, but it can't move or delete them.
   - **`salko-backup-ci@…`,** a service account for GitHub Actions: Contributor too. It adds the weekly copies of GitHub and the Terraform state.
 - **Folders:**
   - `palvelin/<year>/`: the nightly files;
@@ -109,7 +109,7 @@ The answer to 1 and 2 is a nightly encrypted copy of everything that can't be re
 - **The script,** `/usr/local/sbin/salko-backup`:
   1. Dumps `salko`, `umami` and the roles through `docker exec salko-postgres-prod`, as `postgres/migrate.sh` does.
   2. Packs items 1–4 into one `salko-prod-<UTC time>.tar`, encrypts it with age and writes its sha256.
-  3. Uploads it with `rclone copyto --immutable`, never `sync`. Each night is a new file and nothing is overwritten. New pre-migration dumps go up the same way.
+  3. Uploads it with `rclone copyto --ignore-existing`, never `sync`, so a file already in the drive is never replaced. Each night is a new file, and its first version is marked to be kept forever (`--drive-keep-revision-forever`). New pre-migration dumps go up the same way.
   4. Uploads, too, any earlier copy whose upload failed.
   5. Keeps the last two nights in `/var/backups/salko`, for a quick restore that doesn't need Drive.
   6. Exits non-zero on any failure, so systemd marks the run failed.
@@ -127,7 +127,9 @@ The answer to 1 and 2 is a nightly encrypted copy of everything that can't be re
 
 The repo has no scheduled workflows yet. One new one:
 
-- **`backup-github.yaml`,** weekly and on demand. It copies items 6–8 and the recovery guide to the drive. The Terraform state is encrypted to the same two keys.
+- **`backup-github.yaml`,** weekly and on demand, on a GitHub-hosted runner. It copies items 6–8 and the recovery guide to the drive. The Terraform state is encrypted to the same two keys.
+- **Its secret:** the CI service account's JSON key, as `BACKUP_DRIVE_CI_SA_JSON`. It reuses `BACKUP_DRIVE_ID`, `BACKUP_AGE_RECIPIENTS` and Terraform's R2 secrets. Until the key is set, the workflow copies nothing.
+- What it copies, and how to restore from it: `BACKUP_GITHUB.md`.
 
 **Not automated, by decision** (2026-10-31): no daily freshness check, no monthly restore test and no alerts.
 - A failed night only shows as a failed systemd unit on the server (`systemctl --failed`, `journalctl -u salko-backup`), or as a missing date in the drive.
@@ -189,11 +191,12 @@ These become `RECOVERY.md` in phase 3, with exact commands. The restore steps re
 0. **Accounts and keys, by the maintainer, by hand:**
    - create the shared drive and the two service accounts, choosing the Workspace settings while doing it;
    - make the two age keys; where the club key is kept is the maintainer's own plan;
-   - set `BACKUP_DRIVE_ID`, `BACKUP_AGE_RECIPIENTS` and `BACKUP_DRIVE_SA_JSON` (`infra/ansible/roles/backup/README.md`), then run Ansible Provision from `main`. The CI service account's key is for phase 2.
+   - set `BACKUP_DRIVE_ID`, `BACKUP_AGE_RECIPIENTS` and `BACKUP_DRIVE_SA_JSON` (`infra/ansible/roles/backup/README.md`), then run Ansible Provision from `main`;
+   - set `BACKUP_DRIVE_CI_SA_JSON` (`BACKUP_GITHUB.md`), then run **Backup GitHub** from `main`.
 1. **PR: the `backup` role and script** (built, 2026-10-31).
    - A dry run from `dev`, then the real run from `main`.
    - After the first night: download the file, decrypt it by hand with each key, and restore it locally. That proves both keys before anything relies on them.
-2. **PR: the weekly GitHub copy.**
+2. **PR: the weekly GitHub copy** (built, 2026-10-31).
 3. **PR: the docs:** `RECOVERY.md`, `MAINTAINER_HANDBOOK.md` with both registers, and `GITHUB_SECRETS_SETUP.md` retired. The envelope's template stays outside the repo.
 4. **The maintainer, outside the repo:** the key and access plan, the envelope, and the one trial of `RECOVERY.md`.
 5. **Later, each with its own plan:**
