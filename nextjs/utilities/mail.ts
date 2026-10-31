@@ -96,8 +96,9 @@ export interface Delivery {
 
 /**
  * Sends one stored message, unless it is already sent or being sent (a send
- * that has hung for ten minutes may be tried again). With MAIL_MODE off the
- * message is only marked held.
+ * that has hung for ten minutes may be tried again) or it sends an invoice
+ * that has been cancelled since. With MAIL_MODE off the message is only
+ * marked held.
  */
 async function deliverOne(id: number): Promise<Delivery> {
   const claimed = await connectionPool.query(
@@ -106,6 +107,9 @@ async function deliverOne(id: number): Promise<Delivery> {
      WHERE id = $1
        AND (status IN ('queued', 'failed')
             OR (status = 'sending' AND attempted_at < NOW() - INTERVAL '10 minutes'))
+       AND NOT EXISTS (
+         SELECT 1 FROM invoices i WHERE i.id = email_outbox.invoice_id AND i.status = 'cancelled'
+       )
      RETURNING from_name, reply_to, to_address, to_name, subject, body_text, body_html`,
     [id]
   );

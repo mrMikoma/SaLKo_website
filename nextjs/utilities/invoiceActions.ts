@@ -462,10 +462,21 @@ export async function sendInvoices(
     try {
       await client.query("BEGIN");
       const row = (
-        await client.query("SELECT * FROM invoices WHERE id = $1 AND status = 'draft' FOR UPDATE", [id])
+        await client.query(
+          `SELECT i.*, p.paid_at AS payer_paid_at FROM invoices i
+           LEFT JOIN billing_payers p ON p.period_id = i.period_id AND p.payer_key = i.payer_key
+           WHERE i.id = $1 AND i.status = 'draft' FOR UPDATE OF i`,
+          [id]
+        )
       ).rows[0];
       if (!row) {
         await client.query("ROLLBACK");
+        continue;
+      }
+      // Marked paid (in cash, say) after the draft was made
+      if (row.payer_paid_at) {
+        await client.query("ROLLBACK");
+        errors.push(`${row.recipient_name}: jakson lasku on jo merkitty maksetuksi, ei lähetetty.`);
         continue;
       }
       const lines = await client.query(

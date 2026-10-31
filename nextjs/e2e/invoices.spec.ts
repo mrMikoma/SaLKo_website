@@ -154,3 +154,47 @@ test("drafts sent together from the list; one without email is issued for printi
   const numbers = await query("SELECT number FROM invoices WHERE title = $1 ORDER BY number", [batch]);
   expect(numbers[1].number - numbers[0].number).toBe(1);
 });
+
+test("a period's draft is not sent once its payer is marked paid", async ({ page }) => {
+  page.on("dialog", (dialog) => dialog.accept());
+  const seconds = Math.floor(Date.now() / 1000);
+  // A one-day period of its own, years before any real one, and named so the
+  // billing spec's clean-up leaves it alone
+  const [period] = await query(
+    `INSERT INTO billing_periods (name, starts_on, ends_on, closed_at)
+     VALUES ($1, DATE '1990-01-01' + $2::int, DATE '1990-01-01' + $2::int, NOW())
+     RETURNING id`,
+    [`e2e-maksettu-${seconds}`, seconds % 3650]
+  );
+  try {
+    await query(
+      `INSERT INTO billing_payers (period_id, payer_key, payer_name, total_cents, paid_at)
+       VALUES ($1, 'name:e2emaksaja', 'E2E Maksaja', 2500, NOW())`,
+      [period.id]
+    );
+    // Made before the payment was marked, so it is still a draft
+    const [draft] = await query(
+      `INSERT INTO invoices (recipient_name, title, period_id, payer_key, total_cents)
+       VALUES ('E2E Maksaja', $1, $2, 'name:e2emaksaja', 2500)
+       RETURNING id`,
+      [`${title} maksettu`, period.id]
+    );
+    await query(
+      `INSERT INTO invoice_lines (invoice_id, position, description, amount_cents, unit_cents)
+       VALUES ($1, 1, 'Lennot', 2500, 2500)`,
+      [draft.id]
+    );
+
+    await page.goto(`/admin/laskut/${draft.id}`);
+    await page.getByRole("button", { name: "Viimeistele lasku tulostettavaksi" }).click();
+    await expect(page.getByRole("status")).toHaveText(
+      "E2E Maksaja: jakson lasku on jo merkitty maksetuksi, ei lähetetty."
+    );
+    const [after] = await query("SELECT status, number FROM invoices WHERE id = $1", [draft.id]);
+    expect(after).toEqual({ status: "draft", number: null });
+  } finally {
+    await query("DELETE FROM invoices WHERE period_id = $1", [period.id]);
+    await query("DELETE FROM billing_periods WHERE id = $1", [period.id]);
+  }
+});
+
