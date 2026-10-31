@@ -2,66 +2,81 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
   external_labels:
-    cluster: 'salko-production'
-    environment: '${ENVIRONMENT}'
+    cluster: salko
 
-# Alertmanager configuration (optional, can be added later)
-# alerting:
-#   alertmanagers:
-#     - static_configs:
-#         - targets: []
+# The app hosts' metrics (node-exporter, cAdvisor, the Postgres exporters,
+# Traefik, the agent itself) are not scraped from here: each host's agent
+# (monitoring/alloy/config.alloy) scrapes them and pushes them in through the
+# gateway (remote write, --web.enable-remote-write-receiver), so this server
+# needs no way into the app hosts. They arrive with a `host` label.
 
-# Load rules once and periodically evaluate them
 rule_files:
-  # - "alerts.yml"
+  - /etc/prometheus/alerts.yml
 
+# Firing alerts go to Alertmanager, which emails them
+# (monitoring/alertmanager/alertmanager.yml)
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+# Here: the monitoring server's own parts, and the uptime probes.
 scrape_configs:
-  # Prometheus itself
-  - job_name: 'prometheus'
+  - job_name: prometheus
     static_configs:
       - targets: ['localhost:9090']
 
-  # Node Exporter - Host system metrics
-  - job_name: 'node-exporter'
-    static_configs:
-      - targets: ['node-exporter:9100']
-        labels:
-          instance: 'salko-server'
-
-  # cAdvisor - Container metrics
-  - job_name: 'cadvisor'
-    static_configs:
-      - targets: ['cadvisor:8080']
-        labels:
-          instance: 'salko-server'
-
-  # Postgres Exporter - Dev database
-  - job_name: 'postgres-dev'
-    scrape_interval: 30s
-    static_configs:
-      - targets: ['postgres-exporter-dev:9187']
-        labels:
-          database: 'dev'
-          instance: 'salko-postgres-dev'
-
-  # Postgres Exporter - Prod database
-  - job_name: 'postgres-prod'
-    scrape_interval: 30s
-    static_configs:
-      - targets: ['postgres-exporter-prod:9187']
-        labels:
-          database: 'prod'
-          instance: 'salko-postgres-prod'
-
-  # Grafana metrics
-  - job_name: 'grafana'
+  - job_name: grafana
     scrape_interval: 30s
     static_configs:
       - targets: ['grafana:3000']
 
-  # Traefik metrics (if enabled)
-  - job_name: 'traefik'
+  - job_name: loki
     scrape_interval: 30s
     static_configs:
-      - targets: ['traefik:8080']
-    metrics_path: '/metrics'
+      - targets: ['loki:3100']
+
+  - job_name: alertmanager
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['alertmanager:9093']
+
+  # The public sites as a visitor sees them, through Cloudflare
+  # (monitoring/blackbox/blackbox.yml): probe_success, probe_duration_seconds,
+  # probe_ssl_earliest_cert_expiry
+  - job_name: blackbox
+    metrics_path: /probe
+    params:
+      module: [http_page]
+    scrape_interval: 30s
+    scrape_timeout: 15s
+    static_configs:
+      - targets: ['https://savonlinnanlentokerho.fi/']
+        labels:
+          site: prod
+      - targets: ['https://kehitys.savonlinnanlentokerho.fi/']
+        labels:
+          site: dev
+    relabel_configs: &probe_relabel
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  # The app and its database answer (nextjs/app/api/health/route.ts)
+  - job_name: blackbox-health
+    metrics_path: /probe
+    params:
+      module: [http_health]
+    scrape_interval: 30s
+    scrape_timeout: 15s
+    static_configs:
+      - targets: ['https://savonlinnanlentokerho.fi/api/health']
+        labels:
+          site: prod
+      - targets: ['https://kehitys.savonlinnanlentokerho.fi/api/health']
+        labels:
+          site: dev
+    relabel_configs: *probe_relabel

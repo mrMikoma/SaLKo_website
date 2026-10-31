@@ -1,5 +1,12 @@
 name: Deploy Monitoring Stack
 
+# Two parts (monitoring/README.md):
+# - the server (docker-compose.monitoring.yaml: Prometheus, Loki, Grafana,
+#   Alertmanager and the gateway) on vars.MONITORING_SERVER_IP, the private
+#   address of the monitoring host, or on salko0 (vars.SERVER_IP_SALKO0) when
+#   that is unset;
+# - the agent (docker-compose.monitoring-agent.yaml: Alloy, the exporters,
+#   pgAdmin and Umami) on salko0, pushing to the server's gateway.
 on:
   push:
     branches:
@@ -7,25 +14,39 @@ on:
     paths:
       - 'monitoring/**'
       - 'docker-compose.monitoring.yaml'
+      - 'docker-compose.monitoring-agent.yaml'
       - '.github/workflows/deploy-monitoring.yaml'
   workflow_dispatch:
     inputs:
-      force_deploy:
-        description: 'Force deployment even without changes'
-        required: false
-        default: 'false'
-        type: choice
-        options:
-          - 'true'
-          - 'false'
+      send_test_alert:
+        description: 'Send a test alert email to admin@savonlinnanlentokerho.fi after the deploy'
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy-monitoring
+  cancel-in-progress: false
 
 env:
   NAME_PREFIX: "salko"
-  ENVIRONMENT: "prod"
 
 jobs:
+  # The monitoring stack watches production, so it is deployed from main only.
+  # Checked before a runner is created.
+  check-branch:
+    name: Check the branch
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check the branch
+        run: |
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Deploy the monitoring stack from the main branch only (this run is on $GITHUB_REF)"
+            exit 1
+          fi
+
   create-runner:
     name: Create Hetzner Cloud runner
+    needs: check-branch
     runs-on: ubuntu-24.04
     outputs:
       label: ${{ steps.create-hcloud-runner.outputs.label }}
@@ -87,171 +108,132 @@ jobs:
     environment: production
     permissions:
       contents: read
+    env:
+      # The app host, where the agent runs
+      APP_HOST: ${{ vars.SERVER_IP_SALKO0 }}
+      # The monitoring server's host: a private address, as the server
+      # publishes its gateway and Grafana on it when it is not the app host
+      MONITORING_HOST: ${{ vars.MONITORING_SERVER_IP || vars.SERVER_IP_SALKO0 }}
+      AGENT_HOST: salko0
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7.0.1
-        with:
-          ref: main
 
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.VPS_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H ${{ vars.SERVER_IP_SALKO0 }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H "$APP_HOST" >> ~/.ssh/known_hosts
+          if [ "$MONITORING_HOST" != "$APP_HOST" ]; then
+            ssh-keyscan -H "$MONITORING_HOST" >> ~/.ssh/known_hosts
+          fi
+          if [ "$MONITORING_HOST" = "$APP_HOST" ]; then
+            echo "The monitoring server runs on the app host ($APP_HOST)"
+          else
+            echo "The monitoring server runs on $MONITORING_HOST, the agent on $APP_HOST"
+          fi
 
-      - name: Create monitoring directories on server
+      - name: Transfer the files
         run: |
-          echo "Creating monitoring directories..."
-          ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} << 'EOF'
-            mkdir -p /home/salko/monitoring/{prometheus-data,loki-data,grafana-data}
-          EOF
+          ssh -i ~/.ssh/id_ed25519 "salko@$MONITORING_HOST" 'mkdir -p monitoring'
+          scp -i ~/.ssh/id_ed25519 ./docker-compose.monitoring.yaml "salko@$MONITORING_HOST:docker-compose.monitoring.yaml"
+          scp -i ~/.ssh/id_ed25519 -r ./monitoring/prometheus ./monitoring/loki ./monitoring/grafana ./monitoring/alertmanager ./monitoring/gateway ./monitoring/blackbox ./monitoring/scripts "salko@$MONITORING_HOST:monitoring/"
 
-      - name: Transfer monitoring configuration files
+          ssh -i ~/.ssh/id_ed25519 "salko@$APP_HOST" 'mkdir -p monitoring'
+          scp -i ~/.ssh/id_ed25519 ./docker-compose.monitoring-agent.yaml "salko@$APP_HOST:docker-compose.monitoring-agent.yaml"
+          scp -i ~/.ssh/id_ed25519 -r ./monitoring/alloy ./monitoring/scripts "salko@$APP_HOST:monitoring/"
+
+      # Secrets reach the scripts on stdin, never on a command line
+      - name: Deploy the monitoring server
+        env:
+          GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
         run: |
-          echo "Transferring docker-compose.monitoring.yaml..."
-          scp -i ~/.ssh/id_ed25519 ./docker-compose.monitoring.yaml salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/docker-compose.monitoring.yaml
+          # On its own host the server publishes the gateway and Grafana on
+          # the private address; next to the apps it publishes nothing outside
+          # the host
+          if [ "$MONITORING_HOST" = "$APP_HOST" ]; then bind=127.0.0.1; else bind="$MONITORING_HOST"; fi
+          {
+            printf 'export NAME_PREFIX=%q\n' "$NAME_PREFIX"
+            printf 'export MONITORING_BIND_ADDR=%q\n' "$bind"
+            printf 'export GRAFANA_ADMIN_PASSWORD=%q\n' "$GRAFANA_ADMIN_PASSWORD"
+            echo 'bash monitoring/scripts/deploy-server.sh </dev/null'
+          } | ssh -i ~/.ssh/id_ed25519 "salko@$MONITORING_HOST" bash -s
 
-          echo "Transferring monitoring configs..."
-          scp -i ~/.ssh/id_ed25519 -r ./monitoring/* salko@${{ vars.SERVER_IP_SALKO0 }}:/home/salko/monitoring/
-
-          echo "Verifying file transfers..."
-          ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} "ls -la /home/salko/docker-compose.monitoring.yaml /home/salko/monitoring/"
-
-      - name: Deploy monitoring stack
+      - name: Deploy the agent
         env:
           GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           UMAMI_APP_SECRET: ${{ secrets.UMAMI_APP_SECRET }}
         run: |
-          echo "Deploying monitoring stack..."
-          ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} << 'EOF'
-            # The exporter logs in as the database's superuser (POSTGRES_USER,
-            # salko_admin), with the password URL-encoded for the DSN
-            prod_password='${{ env.POSTGRES_PASSWORD }}'
-            prod_password_url=$(python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$prod_password")
-            # Umami's own database password, once the prod deploy has set it on
-            # the role (deploy-app-prod.yaml); until then the old one
-            umami_password='${{ env.POSTGRES_PASSWORD }}'
-            if [ -f .umami-db-password-set ]; then umami_password=$(cat .umami-db-password); fi
-            # The dev exporter's DSN comes from the dev deploy: keep it
-            dev_dsn=$(grep '^DEV_POSTGRES_EXPORTER_DSN=' .env.monitoring 2>/dev/null || true)
+          # The agents' password is made on the server (deploy-server.sh)
+          push_password=$(ssh -i ~/.ssh/id_ed25519 "salko@$MONITORING_HOST" 'cat monitoring/gateway/push-password')
+          echo "::add-mask::$push_password"
+          if [ "$MONITORING_HOST" = "$APP_HOST" ]; then
+            push_url=http://monitoring-gateway:8080
+            elsewhere=false
+          else
+            push_url="http://$MONITORING_HOST:3101"
+            elsewhere=true
+          fi
+          {
+            printf 'export NAME_PREFIX=%q\n' "$NAME_PREFIX"
+            printf 'export AGENT_HOST=%q\n' "$AGENT_HOST"
+            printf 'export MONITORING_PUSH_URL=%q\n' "$push_url"
+            printf 'export MONITORING_PUSH_PASSWORD=%q\n' "$push_password"
+            printf 'export SERVER_ELSEWHERE=%q\n' "$elsewhere"
+            printf 'export GRAFANA_ADMIN_PASSWORD=%q\n' "$GRAFANA_ADMIN_PASSWORD"
+            printf 'export POSTGRES_PASSWORD=%q\n' "$POSTGRES_PASSWORD"
+            printf 'export UMAMI_APP_SECRET=%q\n' "$UMAMI_APP_SECRET"
+            echo 'bash monitoring/scripts/deploy-agent.sh </dev/null'
+          } | ssh -i ~/.ssh/id_ed25519 "salko@$APP_HOST" bash -s
 
-            # Create or update the .env.monitoring file
-            cat > .env.monitoring << ENVEOF
-          NAME_PREFIX=${{ env.NAME_PREFIX }}
-          ENVIRONMENT=${{ env.ENVIRONMENT }}
-          GRAFANA_ADMIN_PASSWORD=${{ env.GRAFANA_ADMIN_PASSWORD }}
-          PROD_POSTGRES_EXPORTER_DSN=postgresql://salko_admin:${prod_password_url}@salko-postgres-prod:5432/salko?sslmode=disable
-          DATABASE_URL=postgresql://umami_app:${umami_password}@salko-postgres-prod:5432/umami
-          APP_SECRET=${{ env.UMAMI_APP_SECRET }}
-          ENVEOF
-            if [ -n "$dev_dsn" ]; then echo "$dev_dsn" >> .env.monitoring; fi
-            chmod 600 .env.monitoring
-
-            echo ".env.monitoring file created."
-
-            # Stop the current monitoring stack if running
-            echo "Stopping current monitoring stack..."
-            docker compose --env-file .env.monitoring -f docker-compose.monitoring.yaml down || true
-
-            # Configure pgAdmin4 server connections - remove directory if it exists, create file
-            echo "Configuring pgAdmin4 database servers..."
-            rm -rf /home/salko/monitoring/pgadmin-data/servers.json
-            echo '{"Servers":{"1":{"Name":"SaLKo Dev","Group":"Servers","Host":"salko-postgres-dev","Port":5432,"MaintenanceDB":"salko","Username":"salko_admin","SSLMode":"disable","Comment":"Development database"}}}' > /home/salko/monitoring/pgadmin-data/servers.json
-
-            # No .pgpass: it held the production superuser's password under the
-            # dev server's entry, and servers.json never pointed at it.
-            # pgAdmin asks for the password when connecting.
-            rm -f /home/salko/monitoring/pgadmin-data/.pgpass
-            echo "✅ pgAdmin4 servers.json created"
-
-            # Start the monitoring stack
-            echo "Starting monitoring stack..."
-            docker compose --env-file .env.monitoring -f docker-compose.monitoring.yaml up -d
-
-            # Wait for services to start
-            sleep 15
-
-            # Verify deployment
-            echo "Verifying deployment..."
-            docker compose --env-file .env.monitoring -f docker-compose.monitoring.yaml ps
-
-            # Check if Grafana is responding
-            if docker ps | grep -q "salko-grafana"; then
-              echo "✅ Grafana is running"
-            else
-              echo "❌ Grafana failed to start"
-              exit 1
-            fi
-
-            # Check if Prometheus is responding
-            if docker ps | grep -q "salko-prometheus"; then
-              echo "✅ Prometheus is running"
-            else
-              echo "❌ Prometheus failed to start"
-              exit 1
-            fi
-
-            # Check if Loki is responding
-            if docker ps | grep -q "salko-loki"; then
-              echo "✅ Loki is running"
-            else
-              echo "❌ Loki failed to start"
-              exit 1
-            fi
-
-            # Check if pgAdmin4 is running
-            if docker ps | grep -q "salko-pgadmin"; then
-              echo "✅ pgAdmin4 is running"
-            else
-              echo "⚠️  pgAdmin4 not running"
-            fi
-
-            echo "Cleaning up old images..."
-            docker image prune -f
-
-            echo "✅ Monitoring stack deployment complete!"
+      # End to end: the agent's own metric and its logs have reached the server
+      - name: Check that the agent's data arrives
+        run: |
+          ssh -i ~/.ssh/id_ed25519 "salko@$MONITORING_HOST" AGENT_HOST="$AGENT_HOST" NAME_PREFIX="$NAME_PREFIX" bash -s <<'EOF'
+            set -u
+            ask() { docker exec "$NAME_PREFIX-monitoring-gateway" wget -qO- "$1" 2>/dev/null || true; }
+            metric="http://prometheus:9090/api/v1/query?query=up%7Bjob%3D%22alloy%22%2Chost%3D%22${AGENT_HOST}%22%7D"
+            logs="http://loki:3100/loki/api/v1/query?query=sum(count_over_time(%7Bhost%3D%22${AGENT_HOST}%22%7D%5B2m%5D))"
+            for _ in $(seq 1 24); do
+              if ask "$metric" | grep -q '"1"\]' && ask "$logs" | grep -q '"result":\[{'; then
+                echo "✅ Metrics and logs from $AGENT_HOST arrive at the server"
+                exit 0
+              fi
+              sleep 5
+            done
+            echo "❌ No metrics or logs from $AGENT_HOST after 2 minutes" >&2
+            docker logs --tail 20 "$NAME_PREFIX-monitoring-gateway" >&2 || true
+            exit 1
           EOF
 
-      - name: Notify success
-        if: ${{ success() }}
+      # Proves the whole way to the inbox: Alertmanager, Google's SMTP relay
+      # (which must accept this host's IP) and the email itself
+      - name: Send a test alert email
+        if: ${{ inputs.send_test_alert }}
         run: |
-          echo "✅ Monitoring stack deployment successful!"
-          echo "Access Grafana at: http://10.1.0.x:3001 (from your local network)"
-          echo "Default credentials: admin / (password from secrets)"
-
-      - name: Notify failure
-        if: ${{ failure() }}
-        run: |
-          echo "❌ Monitoring stack deployment failed!"
+          ssh -i ~/.ssh/id_ed25519 "salko@$MONITORING_HOST" "NAME_PREFIX=$NAME_PREFIX bash monitoring/scripts/send-test-alert.sh </dev/null"
 
       - name: Post Task Summary
+        if: ${{ always() }}
         run: |
           {
             echo "## Monitoring Stack Deployment Summary"
-            echo "- **Environment:** ${{ env.ENVIRONMENT }}"
-            echo "- **Branch:** \`main\`"
-            echo "- **Grafana URL:** https://grafana.savonlinnanlentokerho.fi"
-            echo "- **Traefik Dashboard:** https://traefik.savonlinnanlentokerho.fi/dashboard/"
+            echo "- **Branch:** \`${{ github.ref_name }}\`"
+            echo "- **Server host:** \`${MONITORING_HOST}\`$([ "$MONITORING_HOST" = "$APP_HOST" ] && echo ' (the app host)')"
+            echo "- **Agent host:** \`${APP_HOST}\` (${AGENT_HOST})"
+            echo "- **Grafana:** https://grafana.savonlinnanlentokerho.fi$([ "$MONITORING_HOST" != "$APP_HOST" ] && echo " or http://${MONITORING_HOST}:3000")"
             echo "- **Deployment Status:** \`${{ job.status }}\`"
             echo ""
-            echo "### Services Deployed"
-            echo "- Grafana (Dashboards)"
-            echo "- Prometheus (Metrics)"
-            echo "- Loki (Logs)"
-            echo "- Promtail (Log Collection)"
-            echo "- Node Exporter (Host Metrics)"
-            echo "- cAdvisor (Container Metrics)"
-            echo "- Postgres Exporters (DB Metrics)"
-            echo ""
-            echo "### Access Information"
-            echo "All services are accessible from 10.0.0.0/16 network only"
+            echo "### Services"
+            echo "- Server: Prometheus (with the alert rules), Loki, Grafana, Alertmanager (alert emails to admin@savonlinnanlentokerho.fi), the blackbox exporter (uptime probes), the push gateway"
+            echo "- Agent: Grafana Alloy (logs and metrics), Node Exporter, cAdvisor, Postgres Exporters, pgAdmin, Umami"
             echo ""
             echo "**Workflow:** ${{ github.workflow }}"
             echo "**Run:** [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
-          } >> $GITHUB_STEP_SUMMARY
+          } >> "$GITHUB_STEP_SUMMARY"
 
   delete-runner:
     name: Delete Hetzner Cloud runner
@@ -259,7 +241,7 @@ jobs:
       - create-runner
       - deploy
     runs-on: ubuntu-24.04
-    if: ${{ always() }}
+    if: ${{ always() && needs.create-runner.outputs.server_id != '' }}
     steps:
       - name: Delete runner
         uses: Cyclenerd/hcloud-github-runner@94a0a4aa750d832b48cc0f66d24ed56c3fe69448 # v1.4.1

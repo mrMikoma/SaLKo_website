@@ -22,7 +22,7 @@ entryPoints:
   websecure:
     address: ":443"
 
-  # Prometheus scrapes Traefik here (monitoring/prometheus/prometheus.yml);
+  # The monitoring agent scrapes Traefik here (monitoring/alloy/config.alloy);
   # not published on the host
   metrics:
     address: ":8080"

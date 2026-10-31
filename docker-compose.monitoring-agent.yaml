@@ -1,0 +1,179 @@
+# The monitoring agent of an app host (salko0): what has to run where the apps
+# and their databases are. Grafana Alloy reads every container's log and
+# scrapes the exporters below, then pushes both to the monitoring server
+# (docker-compose.monitoring.yaml) through its gateway, wherever that runs:
+# MONITORING_PUSH_URL in .env.monitoring says where. pgAdmin and Umami are here
+# as well because they need this host's database networks.
+#
+#   docker compose --env-file .env.monitoring -f docker-compose.monitoring-agent.yaml up -d
+#
+# .env.monitoring keeps its old name: the app deploys write their database
+# DSNs and Umami's settings into it (deploy-app-{dev,prod}.yaml).
+name: salko-monitoring-agent
+
+services:
+  alloy:
+    image: grafana/alloy:v1.21.3
+    container_name: ${NAME_PREFIX}-alloy
+    command:
+      - run
+      - /etc/alloy/config.alloy
+      - --storage.path=/var/lib/alloy/data
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --disable-reporting
+    volumes:
+      - ./monitoring/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      # Read positions and the write-ahead log: nothing is lost or sent twice
+      # across restarts, or while the server is away
+      - ${MONITORING_DATA_DIR:-/home/salko/monitoring}/alloy-data:/var/lib/alloy/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/log:/var/log:ro
+    environment:
+      - AGENT_HOST=${AGENT_HOST:-salko0}
+      - MONITORING_PUSH_URL=${MONITORING_PUSH_URL:-http://monitoring-gateway:8080}
+      - MONITORING_PUSH_USER=${MONITORING_PUSH_USER:-agent}
+      - MONITORING_PUSH_PASSWORD=${MONITORING_PUSH_PASSWORD}
+    networks:
+      - monitoring
+    restart: unless-stopped
+    labels:
+      - logging=promtail
+
+  node-exporter:
+    image: prom/node-exporter:v1.12.1
+    container_name: ${NAME_PREFIX}-node-exporter
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--path.rootfs=/host"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host:ro,rslave
+    networks:
+      - monitoring
+    restart: unless-stopped
+    labels:
+      - logging=promtail
+      - traefik.enable=true
+      - traefik.docker.network=salko_monitoring
+      - traefik.http.routers.nodeexporter.rule=Host(`nodeexporter.savonlinnanlentokerho.fi`)
+      - traefik.http.routers.nodeexporter.entrypoints=websecure
+      - traefik.http.routers.nodeexporter.tls.certresolver=cloudflare
+      - traefik.http.routers.nodeexporter.middlewares=internal-only@file
+      - traefik.http.services.nodeexporter.loadbalancer.server.port=9100
+
+  cadvisor:
+    image: ghcr.io/google/cadvisor:v0.60.6
+    container_name: ${NAME_PREFIX}-cadvisor
+    privileged: true
+    devices:
+      - /dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro
+    networks:
+      - monitoring
+    restart: unless-stopped
+    labels:
+      - logging=promtail
+      - traefik.enable=true
+      - traefik.docker.network=salko_monitoring
+      - traefik.http.routers.cadvisor.rule=Host(`cadvisor.savonlinnanlentokerho.fi`)
+      - traefik.http.routers.cadvisor.entrypoints=websecure
+      - traefik.http.routers.cadvisor.tls.certresolver=cloudflare
+      - traefik.http.routers.cadvisor.middlewares=internal-only@file
+      - traefik.http.services.cadvisor.loadbalancer.server.port=8080
+
+  # Each exporter gets its own DSN only, not the whole .env.monitoring
+  postgres-exporter-dev:
+    image: prometheuscommunity/postgres-exporter:v0.20.1
+    container_name: ${NAME_PREFIX}-postgres-exporter-dev
+    environment:
+      - DATA_SOURCE_NAME=${DEV_POSTGRES_EXPORTER_DSN:-}
+    networks:
+      - monitoring
+      - dev_internal
+    restart: unless-stopped
+    labels:
+      - logging=promtail
+
+  postgres-exporter-prod:
+    image: prometheuscommunity/postgres-exporter:v0.20.1
+    container_name: ${NAME_PREFIX}-postgres-exporter-prod
+    environment:
+      - DATA_SOURCE_NAME=${PROD_POSTGRES_EXPORTER_DSN:-}
+    networks:
+      - monitoring
+      - prod_internal
+    restart: unless-stopped
+    labels:
+      - logging=promtail
+
+  pgadmin:
+    image: dpage/pgadmin4:9.18
+    container_name: ${NAME_PREFIX}-pgadmin
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@savonlinnanlentokerho.fi
+      - PGADMIN_DEFAULT_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      - PGADMIN_CONFIG_SERVER_MODE=True
+      - PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED=False
+      - PGADMIN_SERVER_JSON_FILE=/var/lib/pgadmin/servers.json
+      - PGPASS_FILE=/var/lib/pgadmin/.pgpass
+    networks:
+      - monitoring
+      - dev_internal
+      - prod_internal
+    volumes:
+      - ${MONITORING_DATA_DIR:-/home/salko/monitoring}/pgadmin-data:/var/lib/pgadmin
+    restart: unless-stopped
+    labels:
+      - logging=promtail
+      - traefik.enable=true
+      - traefik.docker.network=salko_monitoring
+      - traefik.http.routers.pgadmin.rule=Host(`pgadmin.savonlinnanlentokerho.fi`)
+      - traefik.http.routers.pgadmin.entrypoints=websecure
+      - traefik.http.routers.pgadmin.tls.certresolver=cloudflare
+      - traefik.http.routers.pgadmin.middlewares=internal-only@file
+      - traefik.http.services.pgadmin.loadbalancer.server.port=80
+
+  umami:
+    image: ghcr.io/umami-software/umami:3.4.1
+    container_name: ${NAME_PREFIX}-umami
+    environment:
+      - DATABASE_TYPE=postgresql
+      - DATABASE_URL=${DATABASE_URL:-}
+      - APP_SECRET=${APP_SECRET:-}
+      - DISABLE_TELEMETRY=1
+    networks:
+      - monitoring
+      - prod_internal
+    restart: unless-stopped
+    labels:
+      - logging=promtail
+      - traefik.enable=true
+      - traefik.docker.network=salko_monitoring
+      - traefik.http.routers.umami.rule=Host(`umami.savonlinnanlentokerho.fi`)
+      - traefik.http.routers.umami.entrypoints=websecure
+      - traefik.http.routers.umami.tls.certresolver=cloudflare
+      - traefik.http.routers.umami.middlewares=internal-only@file
+      - traefik.http.services.umami.loadbalancer.server.port=3000
+
+networks:
+  # The admin tools and exporters are on this network only, with Traefik (and
+  # the monitoring server when it runs on this host), and not on
+  # global_outgoing with the public apps: the exporters have no login of their
+  # own. Created by Ansible (docker_install) and by deploy-monitoring.yaml.
+  monitoring:
+    external: true
+    name: salko_monitoring
+  dev_internal:
+    external: true
+    name: salko_dev_internal
+  prod_internal:
+    external: true
+    name: salko_prod_internal

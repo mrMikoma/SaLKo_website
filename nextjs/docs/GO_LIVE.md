@@ -160,7 +160,7 @@ What `dev` holds after stage A, from the code review in October 2026:
 5. **Deploy:** Actions → **Deploy production from main branch** → branch `main`, the version from step 3. **Approve**.
    - Members logged in on savonlinnanlentokerho.fi stay logged in. Sessions on `www.` end: `www.` now redirects to the apex, and a login cookie belongs to the host that set it. Google logins used to finish on `www.`, so expect members to log in once more.
    - The deploy gives Umami its own database password and switches Umami to it. If that fails, the log says so and Umami keeps its old one.
-6. **Monitoring:** the push to `main` started **Deploy Monitoring Stack**; **Approve** it now. It moves the admin tools onto the `salko_monitoring` network.
+6. **Monitoring:** the push to `main` started **Deploy Monitoring Stack**; **Approve** it now. It moves the admin tools onto the `salko_monitoring` network and splits the stack into the server and the agent (Grafana Alloy replaces Promtail and Prometheus' own scraping, `monitoring/README.md`). It also starts Alertmanager, which emails alerts to admin@savonlinnanlentokerho.fi. Its last step checks that the agent's metrics and logs arrive.
 7. **Traefik:** Actions → **Deploy Traefik** from `main`. It joins `salko_monitoring`, so the admin tools are reachable again. Between steps 6 and 7 they aren't; the public site is unaffected.
 8. **Cronjobs:** Actions → **Deploy Background Cronjobs** → branch `main`. **Approve**. This picks up the pinned runner action; the job itself is unchanged.
 
@@ -170,7 +170,9 @@ What `dev` holds after stage A, from the code review in October 2026:
 - [ ] `www.` redirects, keeping the path: `curl -sI https://www.savonlinnanlentokerho.fi/kalusto | grep -iE '^(HTTP|location)'` shows `301` and `location: https://savonlinnanlentokerho.fi/kalusto`.
 - [ ] Grafana, pgAdmin and Umami open from the club networks.
   - pgAdmin now asks for the database password: it no longer stores the production one.
-- [ ] In Grafana or Prometheus (Status → Targets), `postgres-prod`, `postgres-dev` and `traefik` are up. They never were before.
+- [ ] Grafana opens on **SaLKo Overview**: Website UP, App & database OK, Database (prod) UP, Monitoring agent REPORTING, and no critical alerts.
+- [ ] **Alert emails:** set up the SMTP relay in the Google Admin console for salko0's public IPv4 address ("Alert emails" in `monitoring/README.md`, steps 1–4). Then run **Deploy Monitoring Stack** from `main` with **Send a test alert email** ticked. Its last step passes, and admin@savonlinnanlentokerho.fi gets `[SaLKo WARNING] Test alert from the monitoring deploy`, then its `RESOLVED` five minutes later.
+- [ ] In Grafana → Explore → Prometheus, `up{host="salko0"}` is 1 for `node-exporter`, `cadvisor`, `postgres` (dev and prod), `traefik` and `alloy`. The Postgres and Traefik ones never were before.
 - [ ] Umami shows new page views after the release, and its Postgres connection works (no errors in its log).
 - [ ] The site's pages answer through Cloudflare (stage A's check). Anything that used the server's public IP directly no longer reaches ports 80 and 443.
 - [ ] Search: from the repo root, `bun .claude/skills/seo/scripts/audit.ts` reports no errors. Google's Rich Results Test (https://search.google.com/test/rich-results) reads the structured data on `/` and `/kalusto/OH-CON` without errors. Then set up Search Console (`SEO_PLAN.md`, 0.2).
@@ -180,6 +182,8 @@ What `dev` holds after stage A, from the code review in October 2026:
 - **Every session ends after the deploy:** migration 017 hasn't run on prod. Run step 4. (Sessions on `www.` ending is expected, see step 5.)
 - **Google login says `redirect_uri_mismatch`:** the Google OAuth client is missing `https://savonlinnanlentokerho.fi/api/auth/callback/google` under Authorized redirect URIs (it was there on 2026-10-31). Add it in Google Cloud Console → Credentials; no deploy needed.
 - **Admin tools unreachable:** Traefik isn't on `salko_monitoring`. Run **Deploy Monitoring Stack**, then **Deploy Traefik**.
+- **Monitoring shows no data, or the deploy's last check fails:** see Troubleshooting in `monitoring/README.md` (Alloy's log, the gateway's password).
+- **The test alert email fails:** the run prints Google's answer. A refused relay means the Admin console's SMTP relay doesn't list salko0's public IP, or the change hasn't taken effect yet. Alerts still show in Grafana meanwhile.
 - **Umami can't reach its database:** run the prod deploy again (step 5). It sets the role's password from `/home/salko/.umami-db-password` and Umami's URL together. Once the role has the new password, the old one no longer works for it.
 
 ## Stage B: flight log

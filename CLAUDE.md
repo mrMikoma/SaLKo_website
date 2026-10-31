@@ -140,7 +140,7 @@ Roles: `admin` has the whole admin site. `treasurer` (laskuttaja) has the flight
 ### Data Flow Pattern
 
 - **Server actions** (`"use server"`) in `utilities/` handle all DB mutations and are called directly from client components.
-- **API routes** (`app/api/`) exist only for: METAR reads, Umami analytics proxy (forwards to internal `salko-umami:3000`), NextAuth, and the booking `.ics` export (`api/varaukset/[id]/kalenteri`, see `nextjs/docs/BOOKINGS.md`).
+- **API routes** (`app/api/`) exist only for: METAR reads, Umami analytics proxy (forwards to internal `salko-umami:3000`), NextAuth, the booking `.ics` export (`api/varaukset/[id]/kalenteri`, see `nextjs/docs/BOOKINGS.md`), and `api/health`, which the monitoring's uptime probe calls (200 when the app and its database answer, 503 otherwise).
 - **Static content** (contacts, plane specs, prices, history) is kept in JSON files under `nextjs/data/` and imported at build time — not stored in the DB.
 - TanStack Query (`providers/QueryProvider.tsx`) is used on the client for data fetching that benefits from caching/refetching (e.g. bookings calendar).
 
@@ -179,7 +179,7 @@ CI/CD runs on GitHub Actions. Build jobs run on GitHub-hosted runners; jobs that
 - `build-and-publish-prod.yaml` (manual, refuses any branch but `main`) builds the prod image; `deploy-app-prod.yaml` (manual, from `main`) runs `docker compose pull && up` on the server. The production environment's variables `FEATURE_FLIGHT_LOG`, `FEATURE_BILLING` and `MAIL_MODE` switch the flight log, billing and email on at deploy; the release steps are in `nextjs/docs/GO_LIVE.md`.
 - `db-migrate.yaml` applies `postgres/migrations/` to the dev or prod database (see Schema Changes).
 - `test.yaml` runs lint, types and the e2e suite on PRs (see Testing and Browser Checks).
-- `deploy-cronjobs-docker.yaml`, `deploy-monitoring.yaml` and `deploy-traefik.yaml` deploy the other stacks; `ansible-provision.yaml` and `terraform-plan-and-apply.yaml` manage the host.
+- `deploy-cronjobs-docker.yaml`, `deploy-monitoring.yaml` and `deploy-traefik.yaml` deploy the other stacks; `ansible-provision.yaml` and `terraform-plan-and-apply.yaml` manage the host. The monitoring stack is a server (Prometheus, Loki, Grafana, Alertmanager: on `vars.MONITORING_SERVER_IP`, or salko0 when unset) and an agent on salko0 (Grafana Alloy) that pushes to it. Alerts are emailed to admin@savonlinnanlentokerho.fi through Google Workspace's SMTP relay; see `monitoring/README.md`.
 - Dispatch inputs are checked against known values in a first job, before a runner is created, and reach scripts only through `env:`. The deploys check out the commit the run is on: prod and Traefik from `main` only, kehitys from `dev` only, a cronjob deploy from the branch it deploys, and Ansible for real from `main` and as a dry run from `main` or `dev`.
 
 The Next.js build uses `output: "standalone"` and runs behind Traefik with TLS via Cloudflare.

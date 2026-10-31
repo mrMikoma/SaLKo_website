@@ -3,7 +3,8 @@ import os
 import json
 
 server_ips = os.getenv("SERVER_IPS", "")
-ip_list = [ip.strip() for ip in server_ips.split(",") if ip.strip()]
+# Comma-separated; empty entries (an unset variable) and repeats are dropped
+ip_list = list(dict.fromkeys(ip.strip() for ip in server_ips.split(",") if ip.strip()))
 
 inventory = {
     "all": {
