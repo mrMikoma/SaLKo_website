@@ -180,7 +180,9 @@ jobs:
           APP_DB_USER: "salko_app"
           UMAMI_DB_USER: "umami_app"
           UMAMI_INTERNAL_URL: "http://salko-umami:3000"
-          NEXTAUTH_URL: "https://${{ env.SITE_PREFIX }}.${{ env.HOST_URL }}"
+          # The apex, not www: Traefik redirects www there (docker-compose.prod.yaml),
+          # so sign-in has to start and end on the apex for its cookies
+          NEXTAUTH_URL: "https://${{ env.HOST_URL }}"
         run: |
           echo "Deploying to production environment..."
           ssh -i ~/.ssh/id_ed25519 salko@${{ vars.SERVER_IP_SALKO0 }} << "EOF"
@@ -319,7 +321,7 @@ jobs:
         if: ${{ success() }}
         run: |
           echo "✅ Deployment successful!"
-          echo "Site is available at: https://${{ env.SITE_PREFIX }}.${{ env.HOST_URL }}"
+          echo "Site is available at: https://${{ env.HOST_URL }}"
 
       - name: Notify failure
         if: ${{ failure() }}
@@ -334,7 +336,7 @@ jobs:
             echo "- **Branch:** \`${{ github.ref_name }}\`"
             echo "- **Image Version:** \`${{ env.IMAGE_VERSION }}\`"
             echo "- **Image Tag:** \`${{ env.IMAGE_TAG_NAME }}\`"
-            echo "- **Site URL:** [https://${{ env.SITE_PREFIX }}.${{ env.HOST_URL }}](https://${{ env.SITE_PREFIX }}.${{ env.HOST_URL }})"
+            echo "- **Site URL:** [https://${{ env.HOST_URL }}](https://${{ env.HOST_URL }})"
             echo "- **Deployment Status:** \`${{ job.status }}\`"
             echo "- **Workflow:** ${{ github.workflow }}"
             echo "- **Run:** [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"

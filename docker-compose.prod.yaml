@@ -80,6 +80,12 @@ services:
       - environment=prod
       - traefik.enable=true
       - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.rule=Host(`${HOST_URL}`) || Host(`${SITE_PREFIX}.${HOST_URL}`)
+      # One host for search engines and sign-in cookies: www answers with a
+      # permanent redirect to the same path on the apex
+      - traefik.http.middlewares.nextjs-${BRANCH_SUFFIX}-apex.redirectregex.regex=^https?://${SITE_PREFIX}\.${HOST_URL}/(.*)
+      - traefik.http.middlewares.nextjs-${BRANCH_SUFFIX}-apex.redirectregex.replacement=https://${HOST_URL}/$${1}
+      - traefik.http.middlewares.nextjs-${BRANCH_SUFFIX}-apex.redirectregex.permanent=true
+      - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.middlewares=nextjs-${BRANCH_SUFFIX}-apex
       - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.entrypoints=websecure
       - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.tls.certresolver=cloudflare
       - traefik.http.services.nextjs-${BRANCH_SUFFIX}.loadbalancer.server.port=${CONTAINER_PORT}
