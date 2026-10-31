@@ -17,8 +17,11 @@ type Stores = Map<string, Map<string, Entry>>;
 const globalStores = globalThis as unknown as Record<symbol, Stores | undefined>;
 const stores: Stores = (globalStores[STORE_KEY] ??= new Map());
 
-// Forget keys that have been quiet this long, so the maps don't grow forever
-const MAX_KEYS = 10_000;
+// The most keys a limiter keeps. Past it, quiet keys are forgotten first;
+// if everything is recent (someone trying thousands of addresses), the
+// least recently hit keys go, blocked ones last, down to 90 % so that the
+// next prune is many hits away.
+export const MAX_KEYS = 10_000;
 
 export class RateLimiter {
   private readonly entries: Map<string, Entry>;
@@ -55,6 +58,8 @@ export class RateLimiter {
       entry.blockedUntil = now + this.blockMs;
       entry.times = [];
     }
+    // Last in the map's order: the most recently hit
+    this.entries.delete(key);
     this.entries.set(key, entry);
   }
 
@@ -68,6 +73,18 @@ export class RateLimiter {
       const lastEvent = entry.times.at(-1) ?? 0;
       if (entry.blockedUntil <= now && lastEvent <= now - this.windowMs) this.entries.delete(key);
     }
+    const target = Math.floor(MAX_KEYS * 0.9);
+    for (const blocked of [false, true]) {
+      for (const [key, entry] of this.entries) {
+        if (this.entries.size <= target) return;
+        if (entry.blockedUntil > now === blocked) this.entries.delete(key);
+      }
+    }
+  }
+
+  /** How many keys it holds, for tests */
+  get size(): number {
+    return this.entries.size;
   }
 }
 
