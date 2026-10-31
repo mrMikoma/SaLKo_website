@@ -10,3 +10,4 @@
     - ssh_hardening
     - docker_install
     - maintenance
+    - backup
