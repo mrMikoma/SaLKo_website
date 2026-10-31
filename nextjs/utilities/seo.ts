@@ -110,6 +110,7 @@ export const clubJsonLd = {
       sameAs: [
         "https://www.facebook.com/savonlinnanlentokerho",
         "https://www.instagram.com/savonlinnanlentokerho/",
+        "https://www.youtube.com/@savonlinnanlentokrho",
       ],
     },
     {

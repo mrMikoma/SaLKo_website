@@ -57,7 +57,7 @@ export default async function Page() {
           <div className="flex justify-end">
             <Link
               href="/jasenalue/lentopaivakirja/uusi"
-              className="min-h-11 inline-flex items-center px-6 rounded-lg bg-sred text-white font-semibold shadow-lg hover:bg-sred/90"
+              className="min-h-11 inline-flex items-center px-6 rounded-lg bg-sred-dark text-white font-semibold shadow-lg hover:bg-sred-dark/90"
             >
               + Kirjaa lento
             </Link>

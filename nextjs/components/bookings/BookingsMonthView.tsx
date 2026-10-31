@@ -141,7 +141,7 @@ export const BookingsMonthView = memo(
                     {day.day}
                   </span>
                   {dayBookings.length > 0 && (
-                    <span className="text-xs bg-sred text-swhite rounded-full px-1.5 sm:px-2 py-0.5">
+                    <span className="text-xs bg-sred-dark text-swhite rounded-full px-1.5 sm:px-2 py-0.5">
                       {dayBookings.length}
                     </span>
                   )}

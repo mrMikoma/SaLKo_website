@@ -1,6 +1,9 @@
 import Link from "next/link";
 import Image from "next/image";
 import Container from "./container";
+import contacts from "@/data/contacts.json";
+
+const { general } = contacts;
 
 export default function Footer() {
   const firstNavigation = [
@@ -46,6 +49,16 @@ export default function Footer() {
               Kerhomme toiminta tukeutuu Savonlinnan Lentoasemalle, 15 km
               Savonlinnasta Enonkoskelle päin.
             </div>
+
+            {/* The same address as on /yhteystiedot and in the JSON-LD, so search
+                engines tie the club's listings together */}
+            <address className="mt-4 not-italic">
+              {general.address}, {general.postalCode} {general.city}
+              <br />
+              <a href={`mailto:${general.email}`} className="hover:text-sbluel transition-colors">
+                {general.email}
+              </a>
+            </address>
           </div>
 
           <div>

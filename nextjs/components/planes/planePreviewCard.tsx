@@ -11,9 +11,12 @@ interface PlanePreviewCardProps {
     }>;
   };
   type: "motor" | "glider";
+  // Only for the first card: it is the largest image in the first screen on
+  // phones, and lazy loading held it back by two seconds
+  preload?: boolean;
 }
 
-const PlanePreviewCard = ({ plane, type }: PlanePreviewCardProps) => {
+const PlanePreviewCard = ({ plane, type, preload = false }: PlanePreviewCardProps) => {
   const typeLabel = type === "motor" ? "Moottorilentokone" : "Purjelentokone";
   const hasImage = plane.images && plane.images.length > 0;
 
@@ -31,6 +34,7 @@ const PlanePreviewCard = ({ plane, type }: PlanePreviewCardProps) => {
               alt={plane.images[0].alt}
               fill
               sizes="(min-width: 768px) 50vw, 100vw"
+              preload={preload}
               className="object-cover group-hover:scale-105 transition-all duration-500"
             />
             <div className="absolute inset-0 bg-sblack/20"></div>

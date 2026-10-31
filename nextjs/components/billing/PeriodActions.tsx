@@ -61,7 +61,7 @@ export const OpenPeriodActions = ({
           type="button"
           onClick={close}
           disabled={isPending || !canClose}
-          className="min-h-11 px-5 rounded-lg bg-sred text-white font-semibold hover:bg-sred/90 disabled:opacity-50"
+          className="min-h-11 px-5 rounded-lg bg-sred-dark text-white font-semibold hover:bg-sred-dark/90 disabled:opacity-50"
         >
           {isPending ? "Suljetaan…" : "Sulje jakso"}
         </button>

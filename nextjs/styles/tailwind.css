@@ -15,6 +15,10 @@
   --color-sblue: #003580;
   --color-sbluel: #2d7a94;
   --color-sred: #e84855;
+  /* Backgrounds behind text: swhite on these is 5.4:1 and 4.9:1, on sbluel
+     4.4:1 and on sred 3.5:1, below WCAG's 4.5:1 for normal text */
+  --color-sbluel-dark: #276c83;
+  --color-sred-dark: #c62f3c;
   --color-sgrey: #e6e6e6;
 
   /* Extended Aviation Palette */

@@ -61,7 +61,7 @@ export default async function Page() {
             <div className="flex flex-col sm:flex-row flex-wrap gap-3 justify-center lg:justify-start pt-2">
               <Link
                 href="/esittelylennot"
-                className="px-8 py-4 bg-sred text-swhite font-semibold rounded-lg shadow-xl hover:bg-sred/90 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 text-center"
+                className="px-8 py-4 bg-sred-dark text-swhite font-semibold rounded-lg shadow-xl hover:bg-sred-dark/90 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 text-center"
               >
                 Lähde esittelylennolle
               </Link>

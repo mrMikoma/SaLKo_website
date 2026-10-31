@@ -18,7 +18,11 @@ You are the UI reference for the SaLKo website (Finnish aviation club). Consult 
 | `sblue` | #003580 | Primary blue — CTAs, buttons |
 | `sbluel` | #2d7a94 | Light blue — accents, hover states |
 | `sred` | #e84855 | Aviation red — primary CTA, alerts, badges |
+| `sred-dark` | #c62f3c | Red behind text — CTA buttons, badges |
+| `sbluel-dark` | #276c83 | Light blue behind text — buttons |
 | `sgrey` | #e6e6e6 | Light grey — borders, dividers |
+
+**Behind text, use the `-dark` reds and light blues** (`bg-sred-dark text-swhite hover:bg-sred-dark/90`). Text on `sred` is 3.5:1 and on `sbluel` 4.4:1, below WCAG's 4.5:1 for normal text, and Lighthouse's accessibility audit flags it. `sred` and `sbluel` stay for borders, underlines, dots, icons and red text.
 
 Extended palette: `sky-blue`, `deep-navy`, `light-blue`, `aviation-red`, `cloud-white`, `charcoal`, `light-grey`, `horizon-orange`, `success-green`, `warning-amber`
 
