@@ -153,11 +153,15 @@ interface SyncContext {
  * - Of rows sharing an ID (a whole row copied), the one that matches the
  *   database keeps it and the copies get new ones, reported: their Tila and
  *   Laskutusjakso came with the copy.
+ * - A row copied from another aircraft's tab gets a new ID too, while that
+ *   tab still has the flight: syncing both would move the flight between
+ *   the aircraft on every run. A row moved there (gone from the other tab
+ *   since its last sync) keeps its ID and moves the flight.
  * Refuses a tab whose rows carry other flights' IDs, as after sorting the
  * flight columns without the website's: syncing it would pair Tila and the
  * history with the wrong flights.
  */
-async function assignIds(
+export async function assignIds(
   client: PoolClient,
   registration: string,
   parsed: ParsedSheet
@@ -195,7 +199,22 @@ async function assignIds(
   }
   const present = new Set([...rowsById.keys(), ...parsed.undatedRows.flatMap((row) => (row.id ? [row.id] : []))]);
 
-  const copiedFrom = new Map<ParsedFlight, number>();
+  // Where each copy came from, for the report
+  const copiedFrom = new Map<ParsedFlight, string>();
+  const elsewhere = (
+    await client.query(
+      `SELECT id, registration FROM sheet_flights
+       WHERE id = ANY($1::uuid[]) AND registration <> $2 AND missing_since IS NULL`,
+      [[...rowsById.keys()], registration]
+    )
+  ).rows;
+  for (const { id, registration: other } of elsewhere) {
+    for (const copy of rowsById.get(id) ?? []) {
+      copy.id = null;
+      copiedFrom.set(copy, `koneen ${other} lennolla`);
+    }
+    rowsById.delete(id);
+  }
   for (const [id, rows] of rowsById) {
     if (rows.length < 2) continue;
     const before = stored.get(id);
@@ -206,7 +225,7 @@ async function assignIds(
     for (const copy of rows) {
       if (copy === keeper) continue;
       copy.id = null;
-      copiedFrom.set(copy, keeper.row);
+      copiedFrom.set(copy, `rivillä ${keeper.row}`);
     }
   }
 
@@ -227,7 +246,7 @@ async function assignIds(
         row: flight.row,
         flightId: flight.id,
         kind: "copied_row",
-        message: `Rivillä oli sama ID kuin rivillä ${copyOf}, joten se sai uuden.${
+        message: `Rivillä oli sama ID kuin ${copyOf}, joten se sai uuden.${
           flight.status || flight.billingPeriod
             ? ` Tarkista sen Tila (${flight.status ?? "tyhjä"}) ja Laskutusjakso (${flight.billingPeriod ?? "tyhjä"}): ne kopioituivat rivin mukana.`
             : ""
