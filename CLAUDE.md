@@ -146,7 +146,7 @@ Roles: `admin` has the whole admin site. `treasurer` (laskuttaja) has the flight
 
 ### Umami Analytics
 
-Proxied through the Next.js app (`/api/umami/script` and `/api/umami/send`) to avoid ad-blockers. The `UmamiProvider` component injects the script tag only when `NEXT_PUBLIC_UMAMI_WEBSITE_ID` is set.
+Proxied through the Next.js app (`/api/umami/script` and `/api/umami/api/send`) to avoid ad-blockers. The tracker posts events to `<data-host-url>/api/send`, and `data-host-url` is `/api/umami`, hence the doubled `api`. The send proxy passes on the visitor's IP headers, which Umami needs to count visitors. The `UmamiProvider` component injects the script tag only when `NEXT_PUBLIC_UMAMI_WEBSITE_ID` is set.
 
 ## Environment Variables
 
