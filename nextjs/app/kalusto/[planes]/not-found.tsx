@@ -20,7 +20,7 @@ export default function PlaneNotFound() {
               </p>
               <Link
                 href="/kalusto"
-                className="inline-block px-8 py-4 bg-sred text-swhite font-semibold rounded-lg shadow-xl hover:bg-sred/90 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300"
+                className="inline-block px-8 py-4 bg-sred-dark text-swhite font-semibold rounded-lg shadow-xl hover:bg-sred-dark/90 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300"
               >
                 Palaa kalustoon
               </Link>

@@ -27,7 +27,7 @@ const CallToAction = ({
 
     switch (variant) {
       case "primary":
-        return `${baseClasses} bg-sred text-swhite hover:bg-sred/90 hover:shadow-2xl hover:-translate-y-1`;
+        return `${baseClasses} bg-sred-dark text-swhite hover:bg-sred-dark/90 hover:shadow-2xl hover:-translate-y-1`;
       case "secondary":
         return `${baseClasses} bg-sblue/80 backdrop-blur-sm text-swhite hover:bg-sblue hover:shadow-2xl hover:-translate-y-1 border-2 border-sbluel/30`;
       case "outline":

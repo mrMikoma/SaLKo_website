@@ -646,7 +646,7 @@ export default function Page() {
         <div className="max-w-4xl mx-auto space-y-8">
           {/* Step 1 */}
           <div className="flex gap-6 items-start">
-            <div className="flex-shrink-0 w-12 h-12 bg-sred rounded-full flex items-center justify-center text-swhite font-bold text-xl">
+            <div className="flex-shrink-0 w-12 h-12 bg-sred-dark rounded-full flex items-center justify-center text-swhite font-bold text-xl">
               1
             </div>
             <div>
@@ -663,7 +663,7 @@ export default function Page() {
 
           {/* Step 2 */}
           <div className="flex gap-6 items-start">
-            <div className="flex-shrink-0 w-12 h-12 bg-sred rounded-full flex items-center justify-center text-swhite font-bold text-xl">
+            <div className="flex-shrink-0 w-12 h-12 bg-sred-dark rounded-full flex items-center justify-center text-swhite font-bold text-xl">
               2
             </div>
             <div>
@@ -679,7 +679,7 @@ export default function Page() {
 
           {/* Step 3 */}
           <div className="flex gap-6 items-start">
-            <div className="flex-shrink-0 w-12 h-12 bg-sred rounded-full flex items-center justify-center text-swhite font-bold text-xl">
+            <div className="flex-shrink-0 w-12 h-12 bg-sred-dark rounded-full flex items-center justify-center text-swhite font-bold text-xl">
               3
             </div>
             <div>
@@ -696,7 +696,7 @@ export default function Page() {
 
           {/* Step 4 */}
           <div className="flex gap-6 items-start">
-            <div className="flex-shrink-0 w-12 h-12 bg-sred rounded-full flex items-center justify-center text-swhite font-bold text-xl">
+            <div className="flex-shrink-0 w-12 h-12 bg-sred-dark rounded-full flex items-center justify-center text-swhite font-bold text-xl">
               4
             </div>
             <div>
@@ -713,7 +713,7 @@ export default function Page() {
 
           {/* Step 5 */}
           <div className="flex gap-6 items-start">
-            <div className="flex-shrink-0 w-12 h-12 bg-sred rounded-full flex items-center justify-center text-swhite font-bold text-xl">
+            <div className="flex-shrink-0 w-12 h-12 bg-sred-dark rounded-full flex items-center justify-center text-swhite font-bold text-xl">
               5
             </div>
             <div>
@@ -730,7 +730,7 @@ export default function Page() {
 
           {/* Step 6 */}
           <div className="flex gap-6 items-start">
-            <div className="flex-shrink-0 w-12 h-12 bg-sred rounded-full flex items-center justify-center text-swhite font-bold text-xl">
+            <div className="flex-shrink-0 w-12 h-12 bg-sred-dark rounded-full flex items-center justify-center text-swhite font-bold text-xl">
               6
             </div>
             <div>

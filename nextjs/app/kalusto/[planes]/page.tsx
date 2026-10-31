@@ -77,7 +77,7 @@ const Page = async ({ params }) => {
           <div className="text-center pt-4">
             <Link
               href="/kalusto"
-              className="inline-flex items-center gap-2 px-8 py-4 bg-sbluel text-swhite font-semibold rounded-lg shadow-xl hover:bg-sbluel/90 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300"
+              className="inline-flex items-center gap-2 px-8 py-4 bg-sbluel-dark text-swhite font-semibold rounded-lg shadow-xl hover:bg-sbluel-dark/90 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300"
             >
               <span>←</span>
               <span>Takaisin kalustoon</span>
