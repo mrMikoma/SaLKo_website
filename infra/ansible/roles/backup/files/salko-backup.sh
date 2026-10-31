@@ -11,8 +11,8 @@
 #      every new pre-migration dump (encrypted the same way);
 #   5. keeps the newest KEEP_LOCAL copies in WORK_DIR.
 #
-# Nothing is deleted or overwritten on the remote (rclone --immutable). The
-# server's Drive account can't delete there anyway.
+# Nothing on the remote is deleted or replaced: a file that exists there is
+# left as it is. The server's Drive account can't delete there anyway.
 #
 # Settings come from /etc/salko-backup/backup.conf, or SALKO_BACKUP_CONF.
 set -Eeuo pipefail
@@ -35,9 +35,12 @@ log() { printf '%s\n' "$*"; }
 fail() { log "ERROR: $*" >&2; exit 1; }
 trap 'log "ERROR: failed at line $LINENO" >&2' ERR
 
+# --ignore-existing, because --immutable doesn't stop copyto from replacing a
+# file (rclone 1.75.2). Each file's first version is kept forever in Drive's
+# version history, even if someone uploads a new version over it later.
 upload() { # <local file> <remote path>
-  rclone copyto --immutable --retries 5 --low-level-retries 10 --stats 0 \
-    --drive-stop-on-upload-limit "$1" "$2"
+  rclone copyto --ignore-existing --drive-keep-revision-forever --retries 5 \
+    --low-level-retries 10 --stats 0 --drive-stop-on-upload-limit "$1" "$2"
 }
 
 size() { du -h "$1" | cut -f1; }
