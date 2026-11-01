@@ -147,10 +147,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7.0.1
+        # Cone mode takes folders only. The files at the root and in each listed
+        # folder's parent come along anyway (postgres/migrate.sh).
         with:
           sparse-checkout: |
             postgres/migrations/
-            postgres/migrate.sh
 
       - name: Setup SSH
         run: |
