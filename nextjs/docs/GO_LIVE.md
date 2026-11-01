@@ -174,7 +174,7 @@ What `dev` holds after stage A, from the code review in October 2026:
 ### Check
 
 - [ ] Logging in works with Google and with a password, and a member logged in on savonlinnanlentokerho.fi before the release still is. Start the Google login from https://savonlinnanlentokerho.fi: it must end there, logged in.
-- [ ] `www.` redirects, keeping the path: `curl -sI https://www.savonlinnanlentokerho.fi/kalusto | grep -iE '^(HTTP|location)'` shows `301` and `location: https://savonlinnanlentokerho.fi/kalusto`.
+- [ ] `www.` redirects, keeping the path: `curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' https://www.savonlinnanlentokerho.fi/kalusto` shows `301 https://savonlinnanlentokerho.fi/kalusto`. Use a GET as above: `curl -I` sends HEAD, which gets a 308 like every method but GET.
 - [ ] Grafana, pgAdmin and Umami open from the club networks.
   - pgAdmin now asks for the database password: it no longer stores the production one.
 - [ ] Grafana opens on **SaLKo Overview**: Website UP, App & database OK, Database (prod) UP, Monitoring agent REPORTING, and no critical alerts.
