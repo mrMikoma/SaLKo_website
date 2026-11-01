@@ -65,3 +65,45 @@ export async function getLatestMETARFromDB(
     throw error;
   }
 }
+
+export interface METARObservationRow {
+  rawMetar: string;
+  observationTime: Date;
+  fetchedAt: Date;
+}
+
+/**
+ * The observations of the last `hours` hours, newest first, counted back from
+ * the newest observation rather than from now, so it stays in database time.
+ */
+export async function getRecentMETARsFromDB(
+  stationCode: string = "EFSA",
+  hours: number = 12
+): Promise<METARObservationRow[]> {
+  if (!connectionPool) {
+    log.warn("Database connection pool not available");
+    return [];
+  }
+
+  const query = `
+    SELECT
+      raw_metar as "rawMetar",
+      observation_time as "observationTime",
+      fetched_at as "fetchedAt"
+    FROM metar_data
+    WHERE station_code = $1
+      AND observation_time >= (
+        SELECT max(observation_time) FROM metar_data WHERE station_code = $1
+      ) - make_interval(hours => $2)
+    ORDER BY observation_time DESC
+    LIMIT 100;
+  `;
+
+  try {
+    const result = await connectionPool.query(query, [stationCode, hours]);
+    return result.rows;
+  } catch (error) {
+    log.error("Fetching recent METARs from database failed", { err: error });
+    throw error;
+  }
+}

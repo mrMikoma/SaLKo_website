@@ -5,81 +5,43 @@
 
 "use server";
 
-import { getLatestMETARFromDB } from "@/utilities/metarService";
+import { getRecentMETARsFromDB } from "@/utilities/metarService";
 import { logger } from "@/utilities/logger";
 
 const log = logger.child({ module: "metar" });
 
-export interface METARResponse {
+export interface METARObservation {
+  raw: string;
+  /** ISO time of the observation */
+  observedAt: string;
+}
+
+export interface METARHistoryResponse {
   success: boolean;
-  data?: {
-    raw: string;
-    temperature: string;
-    windSpeed: string;
-    windDirection: string;
-    visibility: string;
-    clouds: string;
-    qnh: string;
-    timestamp: string;
-  };
+  /** Newest first: the latest report and the 12 hours before it */
+  observations: METARObservation[];
   error?: string;
 }
 
 /**
- * Get the latest METAR data
- * This is a server action that can be called from client components
+ * EFSA's latest METAR and the 12 hours before it, raw; the widget decodes
+ * them (utilities/metarDecode.ts).
  */
-export async function getLatestMETAR(): Promise<METARResponse> {
+export async function getRecentMETARs(): Promise<METARHistoryResponse> {
   try {
-    const metar = await getLatestMETARFromDB();
-
-    if (!metar) {
-      return {
-        success: false,
-        error: "No METAR data available",
-      };
+    const rows = await getRecentMETARsFromDB("EFSA", 12);
+    if (rows.length === 0) {
+      return { success: false, observations: [], error: "No METAR data available" };
     }
-
-    // Format timestamp for display - show relative time
-    const observationDate = metar.observationTime
-      ? new Date(metar.observationTime)
-      : new Date(metar.fetchedAt);
-
-    const now = new Date();
-    const diffMs = now.getTime() - observationDate.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-
-    let timestamp: string;
-    if (diffMins < 1) {
-      timestamp = "Päivitetty juuri äsken";
-    } else if (diffMins < 60) {
-      timestamp = `Päivitetty ${diffMins} min sitten`;
-    } else if (diffMins < 1440) {
-      const hours = Math.floor(diffMins / 60);
-      timestamp = `Päivitetty ${hours} h sitten`;
-    } else {
-      const days = Math.floor(diffMins / 1440);
-      timestamp = `Päivitetty ${days} pv sitten`;
-    }
-
     return {
       success: true,
-      data: {
-        raw: metar.rawMetar,
-        temperature: metar.temperature || "N/A",
-        windSpeed: metar.windSpeed || "N/A",
-        windDirection: metar.windDirection || "N/A",
-        visibility: metar.visibility || "N/A",
-        clouds: metar.clouds || "N/A",
-        qnh: metar.qnh || "N/A",
-        timestamp,
-      },
+      observations: rows.map((row) => ({
+        raw: row.rawMetar,
+        observedAt: new Date(row.observationTime).toISOString(),
+      })),
     };
   } catch (error) {
-    log.error("Reading the latest METAR failed", { err: error });
-    return {
-      success: false,
-      error: "Failed to fetch METAR data",
-    };
+    log.error("Reading recent METARs failed", { err: error });
+    return { success: false, observations: [], error: "Failed to fetch METAR data" };
   }
 }
