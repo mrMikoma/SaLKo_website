@@ -18,6 +18,9 @@ import {
   SHEET_ZONE,
 } from "@/utilities/flightSheetParser";
 import { inputHash } from "@/utilities/flightInputHash";
+import { logger } from "@/utilities/logger";
+
+const log = logger.child({ module: "flight-sync" });
 
 /**
  * Copies the flight log sheet into sheet_flights. The sheet is the only place
@@ -133,9 +136,6 @@ const UPSERT_FLIGHTS = `
      OR sheet_flights.registration <> EXCLUDED.registration
      OR sheet_flights.missing_since IS NOT NULL
   RETURNING id`;
-
-// A Google error carries the request, so only its message goes to the log
-const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 interface SyncContext {
   purposes: Map<string, { isTraining: boolean }>;
@@ -380,6 +380,7 @@ export async function syncFlightSheets(
   let closeConnection = false;
   let runId: number | null = null;
   const summary = emptySummary("success");
+  const startedAt = Date.now();
 
   try {
     if (wait) {
@@ -439,7 +440,7 @@ export async function syncFlightSheets(
           summary.idsAssigned += result.idsAssigned;
           summary.issues += result.issues;
         } catch (error) {
-          console.error(`Flight log sync failed for ${tab.sheet_name}:`, errorText(error));
+          log.error("Flight log sync failed for an aircraft tab", { err: error, sheet: tab.sheet_name });
           failures.push(`${tab.sheet_name}: ${describeSheetError(error, configuredServiceAccount())}`);
         }
       }
@@ -468,15 +469,28 @@ export async function syncFlightSheets(
          WHERE id < (SELECT id FROM sheet_sync_runs ORDER BY id DESC OFFSET $1 LIMIT 1)`,
         [KEEP_SYNC_RUNS]
       );
+      log.info("Flight log sync finished", {
+        runId,
+        // triggeredBy is a person's name: only whether it was the automatic run
+        automatic: triggeredBy === "automaattinen",
+        status: summary.status,
+        tabs: aircraft.length,
+        failedTabs: failures.length,
+        rowsRead: summary.rowsRead,
+        rowsChanged: summary.rowsChanged,
+        idsAssigned: summary.idsAssigned,
+        issues: summary.issues,
+        durationMs: Date.now() - startedAt,
+      });
       return summary;
     } finally {
       await client.query("SELECT pg_advisory_unlock($1)", [SYNC_LOCK_KEY]).catch((error) => {
-        console.error("Releasing the flight log sync lock failed:", errorText(error));
+        log.error("Releasing the flight log sync lock failed", { err: error });
         closeConnection = true;
       });
     }
   } catch (error) {
-    console.error("Flight log sync failed:", errorText(error));
+    log.error("Flight log sync failed", { err: error });
     const message = error
       ? describeSheetError(error, configuredServiceAccount())
       : "Lentopäiväkirjan synkronointi epäonnistui";

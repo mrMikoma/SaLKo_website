@@ -6,6 +6,9 @@
 "use server";
 
 import { getLatestMETARFromDB } from "@/utilities/metarService";
+import { logger } from "@/utilities/logger";
+
+const log = logger.child({ module: "metar" });
 
 export interface METARResponse {
   success: boolean;
@@ -73,7 +76,7 @@ export async function getLatestMETAR(): Promise<METARResponse> {
       },
     };
   } catch (error) {
-    console.error("Error in getLatestMETAR server action:", error);
+    log.error("Reading the latest METAR failed", { err: error });
     return {
       success: false,
       error: "Failed to fetch METAR data",

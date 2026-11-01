@@ -8,6 +8,9 @@ import * as bcrypt from "bcrypt";
 import { ChangePasswordSchema } from "./definitions";
 import { failedPasswordChecks } from "./loginLimits";
 import { waitText } from "./rateLimit";
+import { logger } from "@/utilities/logger";
+
+const log = logger.child({ module: "profile" });
 
 // Validation schema for profile updates
 const UpdateProfileSchema = z.object({
@@ -85,7 +88,7 @@ export async function updateProfile(
       message: "Profiili päivitetty onnistuneesti",
     };
   } catch (error) {
-    console.error("Error updating profile:", error);
+    log.error("Updating profile failed", { err: error });
     return {
       errors: {
         general: ["Profiilin päivitys epäonnistui. Yritä uudelleen."],
@@ -120,7 +123,7 @@ export async function isProfileComplete(): Promise<boolean> {
     // Check if all optional contact fields are filled
     return !!(user.phone && user.address && user.city && user.postal_code);
   } catch (error) {
-    console.error("Error checking profile completion:", error);
+    log.error("Checking profile completion failed", { err: error });
     return false;
   }
 }
@@ -260,7 +263,7 @@ export async function changePassword(
       message: "Salasana vaihdettu. Kirjaudu sisään uudella salasanalla.",
     };
   } catch (error) {
-    console.error("Error changing password:", error);
+    log.error("Changing password failed", { err: error });
     return {
       errors: {
         general: ["Salasanan vaihto epäonnistui. Yritä uudelleen."],

@@ -5,6 +5,9 @@ import { z } from "zod";
 import * as bcrypt from "bcrypt";
 import pool from "@/utilities/db";
 import { PasswordSchema } from "@/utilities/definitions";
+import { logger } from "@/utilities/logger";
+
+const log = logger.child({ module: "password-reset" });
 
 export type ResetPasswordState =
   | { status: "success" }
@@ -78,7 +81,7 @@ export async function resetPasswordWithToken(
     return { status: "success" };
   } catch (error) {
     await client.query("ROLLBACK").catch(() => undefined);
-    console.error("Error resetting password:", error);
+    log.error("Resetting password failed", { err: error });
     return { status: "error", error: "Salasanan vaihto epäonnistui" };
   } finally {
     client.release();

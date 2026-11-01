@@ -65,6 +65,8 @@ services:
       - MAIL_GMAIL_CLIENT_SECRET=${MAIL_GMAIL_CLIENT_SECRET:-}
       - MAIL_REFRESH_TOKEN=${MAIL_REFRESH_TOKEN:-}
       - PGTZ=${PGTZ:-}
+      # Logging (nextjs/docs/LOGGING.md): unset is JSON at level info
+      - LOG_LEVEL=${LOG_LEVEL:-}
     restart: unless-stopped
     # healthcheck:
     #   test: curl --fail http://localhost:3001/ || exit 1

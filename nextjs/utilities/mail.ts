@@ -2,6 +2,7 @@ import "server-only";
 
 import { google } from "googleapis";
 import connectionPool from "@/utilities/db";
+import { logger } from "@/utilities/logger";
 import { buildMime, Mailbox } from "@/utilities/mime";
 import {
   describeMailError,
@@ -14,6 +15,8 @@ import {
   redirectAddress,
   redirected,
 } from "@/utilities/mailConfig";
+
+const log = logger.child({ module: "mail" });
 
 /**
  * Sending email from the club's one Google Workspace mail account
@@ -120,6 +123,7 @@ async function deliverOne(id: number): Promise<Delivery> {
 
   if (mode === "off") {
     await connectionPool.query("UPDATE email_outbox SET status = 'held' WHERE id = $1", [id]);
+    log.info("Email held: sending is off", { emailId: id });
     return { id, status: "held" };
   }
 
@@ -147,11 +151,13 @@ async function deliverOne(id: number): Promise<Delivery> {
        WHERE id = $1`,
       [id, message.to.address, providerId]
     );
+    log.info("Email sent", { emailId: id, mode });
     return { id, status: "sent" };
   } catch (error) {
     const text = describeMailError(error, mailAccount().address);
-    // Only the message: a Google error object also carries the request
-    console.error(`Email ${id} was not sent:`, (error as Error)?.message ?? error);
+    // The logger keeps only the error's type, message and status: a Google
+    // error object also carries the request
+    log.error("Sending an email failed", { err: error, emailId: id });
     await connectionPool.query(
       "UPDATE email_outbox SET status = 'failed', last_error = $2 WHERE id = $1",
       [id, text]
