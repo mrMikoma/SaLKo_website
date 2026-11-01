@@ -236,8 +236,11 @@ export function getFlightSheet(): FlightSheet {
   }
 
   const key = parseServiceAccountKey(serviceAccountKey!);
-  const auth = new google.auth.GoogleAuth({
-    credentials: key,
+  // A JWT client made from the key. GoogleAuth's `credentials` option does the
+  // same, but google-auth-library 11 deprecates it and warns on every use.
+  const auth = new google.auth.JWT({
+    email: key.client_email,
+    key: key.private_key,
     scopes: ["https://www.googleapis.com/auth/spreadsheets"],
   });
   return new GoogleFlightSheet(
