@@ -1,0 +1,10 @@
+# Managed by Ansible (infra/ansible/roles/backup). Local changes are overwritten.
+# Read by /usr/local/sbin/salko-backup.
+POSTGRES_CONTAINER={{ backup_postgres_container | quote }}
+DATABASES={{ backup_databases | join(' ') | quote }}
+RECIPIENTS_FILE=/etc/salko-backup/recipients.txt
+RCLONE_CONFIG=/etc/salko-backup/rclone.conf
+REMOTE={{ backup_remote | quote }}
+WORK_DIR={{ backup_work_dir | quote }}
+KEEP_LOCAL={{ backup_keep_local | int }}
+SERVER_HOME=/home/salko

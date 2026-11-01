@@ -1,0 +1,141 @@
+---
+- name: Check the backup settings
+  ansible.builtin.assert:
+    that:
+      - backup_settings_given | length in [0, 3]
+      - ansible_facts['architecture'] == 'x86_64'
+    fail_msg: >-
+      Set all of BACKUP_DRIVE_ID, BACKUP_AGE_RECIPIENTS and BACKUP_DRIVE_SA_JSON, or none
+      (set now: {{ backup_settings_given | join(', ') | default('none', true) }}).
+      The rclone package below is for x86_64.
+    quiet: true
+
+- name: Check the backup keys and the drive ID
+  ansible.builtin.assert:
+    that:
+      - backup_age_recipient_lines | length > 0
+      - backup_age_recipient_lines | reject('match', '^age1[02-9ac-hj-np-z]{58}$') | list | length == 0
+      - backup_drive_id is match('^[A-Za-z0-9_-]+$')
+      - (backup_drive_sa_json | from_json).type | default('') == 'service_account'
+    fail_msg: >-
+      BACKUP_AGE_RECIPIENTS must hold age public keys (age1...), one per line;
+      BACKUP_DRIVE_ID the shared drive's ID; BACKUP_DRIVE_SA_JSON a service account's JSON key.
+    quiet: true
+  when: backup_settings_complete | bool
+  # A failed check would otherwise print the key in the public Actions log
+  no_log: true
+
+- name: Install age
+  ansible.builtin.apt:
+    name: age
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Create the rclone download directory
+  ansible.builtin.file:
+    path: /var/cache/salko-backup
+    state: directory
+    mode: "0755"
+    owner: root
+    group: root
+
+- name: Download rclone
+  ansible.builtin.get_url:
+    url: "https://downloads.rclone.org/v{{ backup_rclone_version }}/rclone-v{{ backup_rclone_version }}-linux-amd64.deb"
+    dest: "/var/cache/salko-backup/rclone-v{{ backup_rclone_version }}-linux-amd64.deb"
+    checksum: "sha256:{{ backup_rclone_deb_sha256 }}"
+    mode: "0644"
+    owner: root
+    group: root
+  register: backup_rclone_download
+
+# A dry run does not download, so there is nothing to install yet.
+- name: Install rclone
+  ansible.builtin.apt:
+    deb: "/var/cache/salko-backup/rclone-v{{ backup_rclone_version }}-linux-amd64.deb"
+  when: not (ansible_check_mode and backup_rclone_download is changed)
+
+- name: Create the backup directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0700"
+    owner: root
+    group: root
+  loop:
+    - /etc/salko-backup
+    - "{{ backup_work_dir }}"
+
+- name: Install the backup script
+  ansible.builtin.copy:
+    src: salko-backup.sh
+    dest: /usr/local/sbin/salko-backup
+    mode: "0755"
+    owner: root
+    group: root
+
+- name: Write the backup settings
+  ansible.builtin.template:
+    src: backup.conf.j2
+    dest: /etc/salko-backup/backup.conf
+    mode: "0600"
+    owner: root
+    group: root
+
+- name: Write the age public keys
+  ansible.builtin.copy:
+    content: "{{ backup_age_recipient_lines | join('\n') }}\n"
+    dest: /etc/salko-backup/recipients.txt
+    mode: "0644"
+    owner: root
+    group: root
+  when: backup_configured | bool
+
+- name: Write the rclone settings
+  ansible.builtin.template:
+    src: rclone.conf.j2
+    dest: /etc/salko-backup/rclone.conf
+    mode: "0600"
+    owner: root
+    group: root
+  when: backup_configured | bool
+
+- name: Write the Drive service account key
+  ansible.builtin.copy:
+    content: "{{ backup_drive_sa_json }}"
+    dest: /etc/salko-backup/drive-sa.json
+    mode: "0600"
+    owner: root
+    group: root
+  when: backup_configured | bool
+  no_log: true
+  diff: false
+
+- name: Remove the Drive service account key when backups are off
+  ansible.builtin.file:
+    path: /etc/salko-backup/drive-sa.json
+    state: absent
+  when: not (backup_configured | bool)
+
+- name: Install the backup systemd units
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    mode: "0644"
+    owner: root
+    group: root
+  loop:
+    - salko-backup.service
+    - salko-backup.timer
+  register: backup_unit_files
+  notify: Restart the backup timer
+
+# A dry run does not write the unit files above, so new units can't be switched yet.
+- name: Switch the backup timer on or off
+  ansible.builtin.systemd:
+    name: salko-backup.timer
+    enabled: "{{ backup_configured | bool }}"
+    state: "{{ 'started' if backup_configured | bool else 'stopped' }}"
+    daemon_reload: true
+  when: not (ansible_check_mode and backup_unit_files is changed)

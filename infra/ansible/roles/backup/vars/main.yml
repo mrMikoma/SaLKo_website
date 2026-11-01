@@ -1,0 +1,8 @@
+---
+backup_age_recipient_lines: "{{ backup_age_recipients | split('\n') | map('trim') | reject('match', '^(#|$)') | list }}"
+backup_settings_given: >-
+  {{ {'BACKUP_DRIVE_ID': backup_drive_id, 'BACKUP_AGE_RECIPIENTS': backup_age_recipients,
+      'BACKUP_DRIVE_SA_JSON': backup_drive_sa_json} | dict2items | selectattr('value') | map(attribute='key') | list }}
+backup_settings_complete: "{{ backup_settings_given | length == 3 }}"
+# The timer and the key go only on the host with the production database.
+backup_configured: "{{ backup_settings_complete and inventory_hostname == backup_host }}"

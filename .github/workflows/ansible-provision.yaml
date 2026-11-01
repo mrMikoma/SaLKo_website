@@ -169,6 +169,12 @@ jobs:
           SERVER_IPS: ${{ vars.SERVER_IP_SALKO0 }}
           VPS_PUBLIC_KEY: ${{ secrets.VPS_PUBLIC_KEY }}
           SALKO_USER_PW_512: ${{ secrets.SALKO_USER_PW_512 }}
+          # Off-site backups (roles/backup), on the host with the production database.
+          # Until all three settings are set, the backup timer stays off.
+          BACKUP_HOST: ${{ vars.SERVER_IP_SALKO0 }}
+          BACKUP_DRIVE_ID: ${{ vars.BACKUP_DRIVE_ID }}
+          BACKUP_AGE_RECIPIENTS: ${{ vars.BACKUP_AGE_RECIPIENTS }}
+          BACKUP_DRIVE_SA_JSON: ${{ secrets.BACKUP_DRIVE_SA_JSON }}
           ANSIBLE_HOST_KEY_CHECKING: False
           ANSIBLE_FORCE_COLOR: True
           CHECK_MODE: ${{ inputs.check_mode }}
