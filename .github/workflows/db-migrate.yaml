@@ -55,15 +55,39 @@ jobs:
           echo "Target: $TARGET, dry run: $DRY_RUN, ref: $GITHUB_REF"
 
   create-runner:
-    name: Create Hetzner Cloud runner
+    name: Pick a runner (homelab or Hetzner Cloud)
     needs: check
     runs-on: ubuntu-24.04
     outputs:
-      label: ${{ steps.create-hcloud-runner.outputs.label }}
+      label: ${{ steps.homelab.outputs.available == 'true' && 'homelab' || steps.create-hcloud-runner.outputs.label }}
       server_id: ${{ steps.create-hcloud-runner.outputs.server_id }}
     steps:
+      # The self-hosted runner labelled `homelab` reaches salko0 over a VPN. It takes the job
+      # when it's online and idle; otherwise a Hetzner Cloud runner is created as before.
+      # USE_HOMELAB_RUNNER=false (repository variable) always creates a Hetzner runner.
+      - name: Check the homelab runner
+        id: homelab
+        env:
+          GH_TOKEN: ${{ secrets.HETZNER_GHA_RUNNER_PAT }}
+          REPOSITORY: ${{ github.repository }}
+          USE_HOMELAB_RUNNER: ${{ vars.USE_HOMELAB_RUNNER }}
+        run: |
+          available=false
+          if [[ "$USE_HOMELAB_RUNNER" != false ]]; then
+            available=$(gh api "repos/$REPOSITORY/actions/runners" --jq \
+              'any(.runners[]; .status == "online" and (.busy | not) and any(.labels[]; .name == "homelab"))') \
+              || available=false
+          fi
+          echo "available=$available" >> "$GITHUB_OUTPUT"
+          if [[ "$available" == true ]]; then
+            echo "::notice::The homelab runner takes this job"
+          else
+            echo "::notice::The homelab runner is not available: creating a Hetzner Cloud runner"
+          fi
+
       - name: Create runner
         id: create-hcloud-runner
+        if: steps.homelab.outputs.available != 'true'
         uses: Cyclenerd/hcloud-github-runner@94a0a4aa750d832b48cc0f66d24ed56c3fe69448 # v1.4.1
         with:
           mode: create

@@ -174,7 +174,7 @@ Copy `nextjs/.env.example` to `nextjs/.env` (Claude's hooks block editing `.env`
 
 ## Deployment
 
-CI/CD runs on GitHub Actions. Build jobs run on GitHub-hosted runners; jobs that touch the server create a temporary self-hosted runner in Hetzner Cloud (`create-runner` / `delete-runner`). `main` is production and `dev` is the development environment. Changes reach either one only through a PR and these workflows, never by hand on the server.
+CI/CD runs on GitHub Actions. Build jobs run on GitHub-hosted runners. Jobs that touch the server need a runner that reaches salko0's private address (`vars.SERVER_IP_SALKO0`, 10.1.2.2), and `create-runner` picks one: the self-hosted runner labelled `homelab`, which reaches it over a VPN, when that runner is online and idle, otherwise a temporary runner in Hetzner Cloud, which `delete-runner` removes. The repository variable `USE_HOMELAB_RUNNER=false` always takes Hetzner. `main` is production and `dev` is the development environment. Changes reach either one only through a PR and these workflows, never by hand on the server.
 
 - `build-and-publish-dev.yaml` runs on pushes to `dev` that touch `nextjs/`, pushes the image to GHCR and starts `deploy-app-dev.yaml` from the same branch (`workflow_dispatch`), so changes to the dev deploy take effect on `dev` without waiting for `main`.
 - `build-and-publish-prod.yaml` (manual, refuses any branch but `main`) builds the prod image; `deploy-app-prod.yaml` (manual, from `main`) runs `docker compose pull && up` on the server. The production environment's variables `FEATURE_FLIGHT_LOG`, `FEATURE_BILLING` and `MAIL_MODE` switch the flight log, billing and email on at deploy; the release steps are in `nextjs/docs/GO_LIVE.md`.
