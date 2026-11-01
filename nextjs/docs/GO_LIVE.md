@@ -142,7 +142,9 @@ What `dev` holds after stage A, from the code review in October 2026:
   - the Postgres exporters and Traefik metrics work;
   - the web ports accept only Cloudflare.
 - **Workflows:** dispatch inputs are checked and deploys run from the reviewed branch.
-- **Backups:** the nightly off-site backup (`BACKUP_PLAN.md`), installed switched off. It starts once its drive, keys and service account are set.
+- **Backups** (`BACKUP_PLAN.md`), both switched off until their drive, keys and service accounts are set:
+  - the nightly off-site backup of the server;
+  - the weekly copy of GitHub and the Terraform state (`BACKUP_GITHUB.md`), a new scheduled workflow.
 - **Search visibility** (`SEO_PLAN.md`):
   - each page's own title, description and share image, and structured data;
   - the Umami endpoint the tracker actually calls;

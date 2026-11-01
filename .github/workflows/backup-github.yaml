@@ -1,0 +1,106 @@
+name: Backup GitHub
+
+# The weekly copy of what lives outside the server (the repository, the
+# Terraform state, the Actions variables and the recovery guide) to the club's
+# shared drive. Off until the secret BACKUP_DRIVE_CI_SA_JSON is set.
+# nextjs/docs/BACKUP_GITHUB.md has what it copies, how to switch it on and how
+# to restore from it.
+
+on:
+  schedule:
+    # Mondays 03:17 UTC. Scheduled runs use the workflow on the default branch (main).
+    - cron: "17 3 * * 1"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup-github
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: Copy to the shared drive
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      # Nothing is printed from the secrets, only whether they are set.
+      - name: Check the settings
+        id: settings
+        env:
+          SA_JSON: ${{ secrets.BACKUP_DRIVE_CI_SA_JSON }}
+          DRIVE_ID: ${{ vars.BACKUP_DRIVE_ID }}
+          RECIPIENTS: ${{ vars.BACKUP_AGE_RECIPIENTS }}
+          R2_KEY: ${{ secrets.CF_BUCKET_ACCESS_KEY }}
+          R2_SECRET: ${{ secrets.CF_BUCKET_SECRET_KEY }}
+        run: |
+          if [ -z "$SA_JSON" ]; then
+            echo "::notice title=Weekly copy off::The secret BACKUP_DRIVE_CI_SA_JSON is not set, so nothing was copied (nextjs/docs/BACKUP_GITHUB.md)."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          missing=()
+          [ -n "$DRIVE_ID" ] || missing+=("variable BACKUP_DRIVE_ID")
+          [ -n "$RECIPIENTS" ] || missing+=("variable BACKUP_AGE_RECIPIENTS")
+          [ -n "$R2_KEY" ] || missing+=("secret CF_BUCKET_ACCESS_KEY")
+          [ -n "$R2_SECRET" ] || missing+=("secret CF_BUCKET_SECRET_KEY")
+          if [ "${#missing[@]}" -gt 0 ]; then
+            list=$(printf '%s, ' "${missing[@]}")
+            echo "::error::BACKUP_DRIVE_CI_SA_JSON is set, but these are missing: ${list%, }"
+            exit 1
+          fi
+          if ! jq -e '.type == "service_account"' <<< "$SA_JSON" > /dev/null 2>&1; then
+            echo "::error::BACKUP_DRIVE_CI_SA_JSON is not a service account's JSON key"
+            exit 1
+          fi
+          if ! [[ $DRIVE_ID =~ ^[A-Za-z0-9_-]+$ ]]; then
+            echo "::error::BACKUP_DRIVE_ID is not a shared drive ID (the last part of its address in Drive)"
+            exit 1
+          fi
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout repository
+        if: steps.settings.outputs.enabled == 'true'
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      # age from Ubuntu, and the same rclone as the server, pinned in the backup role.
+      - name: Install age and rclone
+        if: steps.settings.outputs.enabled == 'true'
+        run: |
+          defaults=infra/ansible/roles/backup/defaults/main.yml
+          version=$(yq '.backup_rclone_version' "$defaults")
+          sha256=$(yq '.backup_rclone_deb_sha256' "$defaults")
+          deb="$RUNNER_TEMP/rclone-v$version-linux-amd64.deb"
+          curl -fsSL --retry 3 -o "$deb" "https://downloads.rclone.org/v$version/rclone-v$version-linux-amd64.deb"
+          echo "$sha256  $deb" | sha256sum -c --quiet
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq age "$deb"
+          age --version
+          rclone version | head -n 1
+
+      - name: Copy to the shared drive
+        if: steps.settings.outputs.enabled == 'true'
+        env:
+          REMOTE: "drive:"
+          RECIPIENTS: ${{ vars.BACKUP_AGE_RECIPIENTS }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}.git
+          # The state Terraform's backend keeps (infra/terraform/providers.tf).
+          STATE_SOURCE: r2:salko-website/terraform.tfstate
+          VARS_JSON: ${{ toJSON(vars) }}
+          # rclone's two remotes come from the environment; there is no config file.
+          RCLONE_CONFIG: /dev/null
+          RCLONE_CONFIG_DRIVE_TYPE: drive
+          RCLONE_CONFIG_DRIVE_SCOPE: drive
+          RCLONE_CONFIG_DRIVE_TEAM_DRIVE: ${{ vars.BACKUP_DRIVE_ID }}
+          RCLONE_CONFIG_DRIVE_SERVICE_ACCOUNT_CREDENTIALS: ${{ secrets.BACKUP_DRIVE_CI_SA_JSON }}
+          RCLONE_CONFIG_R2_TYPE: s3
+          RCLONE_CONFIG_R2_PROVIDER: Cloudflare
+          RCLONE_CONFIG_R2_REGION: auto
+          RCLONE_CONFIG_R2_ENDPOINT: https://b60de3b655609a784e6dff508195806d.r2.cloudflarestorage.com
+          RCLONE_CONFIG_R2_ACCESS_KEY_ID: ${{ secrets.CF_BUCKET_ACCESS_KEY }}
+          RCLONE_CONFIG_R2_SECRET_ACCESS_KEY: ${{ secrets.CF_BUCKET_SECRET_KEY }}
+        run: .github/scripts/backup-github.sh
