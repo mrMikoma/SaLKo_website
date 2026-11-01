@@ -104,9 +104,11 @@ networks:
     external: true
     name: global_outgoing
     # Creates a user-defined bridge network called 'outgoing' to allow communication between containers.
-  # The monitoring stack's network (docker-compose.monitoring.yaml): Grafana
-  # and the other admin tools are reached there, and Prometheus scrapes
-  # Traefik's metrics there. Deploy the monitoring stack first on a new host.
+  # The monitoring network (docker-compose.monitoring-agent.yaml, and
+  # docker-compose.monitoring.yaml while the monitoring server runs on this
+  # host): Grafana and the other admin tools are reached there, and the
+  # monitoring agent scrapes Traefik's metrics there. Ansible (docker_install)
+  # creates it.
   monitoring:
     external: true
     name: salko_monitoring

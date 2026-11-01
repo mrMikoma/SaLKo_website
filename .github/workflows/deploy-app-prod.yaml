@@ -312,9 +312,15 @@ jobs:
             echo "✅ Monitoring secrets updated"
 
             # Recreate the services whose settings changed: a restart would
-            # keep their old environment
+            # keep their old environment. The exporters and Umami are in the
+            # monitoring agent's stack; on a host still on the older single
+            # monitoring stack, in that one.
             echo "Applying to the monitoring stack..."
-            docker compose --env-file .env.monitoring -f docker-compose.monitoring.yaml up -d || true
+            if [ -f docker-compose.monitoring-agent.yaml ]; then
+              docker compose --env-file .env.monitoring -f docker-compose.monitoring-agent.yaml up -d || true
+            else
+              docker compose --env-file .env.monitoring -f docker-compose.monitoring.yaml up -d || true
+            fi
           EOF
 
       - name: Notify success

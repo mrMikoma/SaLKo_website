@@ -1,3 +1,15 @@
+# The monitoring server: Prometheus (metrics), Loki (logs), Grafana,
+# Alertmanager (alert emails) and the gateway that agents push to. It keeps no
+# ties to the app host: it can run on salko0 next to the apps, as now, or on
+# any other host in the private network.
+# deploy-monitoring.yaml puts it on vars.MONITORING_SERVER_IP, or on
+# vars.SERVER_IP_SALKO0 when that is unset. Each app host runs the agent
+# (docker-compose.monitoring-agent.yaml), which collects that host's metrics
+# and logs and pushes them here through the gateway. See monitoring/README.md.
+#
+#   docker compose --env-file .env.monitoring-server -f docker-compose.monitoring.yaml up -d
+name: salko-monitoring
+
 services:
   prometheus:
     image: prom/prometheus:v3.15.1
@@ -6,16 +18,14 @@ services:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"
       - "--storage.tsdb.retention.time=30d"
-      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
-      - "--web.console.templates=/usr/share/prometheus/consoles"
+      # The agents push their samples (remote write) through the gateway
+      - "--web.enable-remote-write-receiver"
     volumes:
-      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - /home/salko/monitoring/prometheus-data:/prometheus
+      - ./monitoring/prometheus:/etc/prometheus:ro
+      - ${MONITORING_DATA_DIR:-/home/salko/monitoring}/prometheus-data:/prometheus
     networks:
       - monitoring
     restart: unless-stopped
-    environment:
-      - ENVIRONMENT=${ENVIRONMENT}
     labels:
       - logging=promtail
       - traefik.enable=true
@@ -26,43 +36,13 @@ services:
       - traefik.http.routers.prometheus.middlewares=internal-only@file
       - traefik.http.services.prometheus.loadbalancer.server.port=9090
 
-  grafana:
-    image: grafana/grafana:12.4.13-ubuntu
-    container_name: ${NAME_PREFIX}-grafana
-    volumes:
-      - /home/salko/monitoring/grafana-data:/var/lib/grafana
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
-    networks:
-      - monitoring
-    restart: unless-stopped
-    environment:
-      - GF_SECURITY_ADMIN_USER=admin@savonlinnanlentokerho.fi
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
-      - GF_USERS_ALLOW_SIGN_UP=false
-      - GF_SERVER_ROOT_URL=https://grafana.savonlinnanlentokerho.fi
-      - GF_ANALYTICS_REPORTING_ENABLED=false
-      - GF_ANALYTICS_CHECK_FOR_UPDATES=false
-      - GF_INSTALL_PLUGINS=
-    labels:
-      - logging=promtail
-      - traefik.enable=true
-      - traefik.docker.network=salko_monitoring
-      - traefik.http.routers.grafana.rule=Host(`grafana.savonlinnanlentokerho.fi`)
-      - traefik.http.routers.grafana.entrypoints=websecure
-      - traefik.http.routers.grafana.tls.certresolver=cloudflare
-      - traefik.http.routers.grafana.middlewares=internal-only@file
-      - traefik.http.services.grafana.loadbalancer.server.port=3000
-    depends_on:
-      - prometheus
-      - loki
-
   loki:
     image: grafana/loki:3.7.9
     container_name: ${NAME_PREFIX}-loki
     command: -config.file=/etc/loki/loki-config.yaml
     volumes:
       - ./monitoring/loki/loki-config.yaml:/etc/loki/loki-config.yaml:ro
-      - /home/salko/monitoring/loki-data:/loki
+      - ${MONITORING_DATA_DIR:-/home/salko/monitoring}/loki-data:/loki
     networks:
       - monitoring
     restart: unless-stopped
@@ -76,154 +56,115 @@ services:
       - traefik.http.routers.loki.middlewares=internal-only@file
       - traefik.http.services.loki.loadbalancer.server.port=3100
 
-  promtail:
-    image: grafana/promtail:3.6.11
-    container_name: ${NAME_PREFIX}-promtail
-    command: -config.file=/etc/promtail/promtail-config.yaml
+  grafana:
+    image: grafana/grafana:12.4.13-ubuntu
+    container_name: ${NAME_PREFIX}-grafana
     volumes:
-      - ./monitoring/promtail/promtail-config.yaml:/etc/promtail/promtail-config.yaml:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /var/log:/var/log:ro
+      - ${MONITORING_DATA_DIR:-/home/salko/monitoring}/grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - monitoring
+    # Next to Traefik (salko0), Grafana is grafana.savonlinnanlentokerho.fi.
+    # On a host of its own it is also published on that host's private
+    # address, http://<MONITORING_BIND_ADDR>:3000 (unpublished by default).
+    ports:
+      - "${MONITORING_BIND_ADDR:-127.0.0.1}:3000:3000"
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin@savonlinnanlentokerho.fi
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=${GRAFANA_ROOT_URL:-https://grafana.savonlinnanlentokerho.fi}
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_ANALYTICS_CHECK_FOR_UPDATES=false
+      - GF_INSTALL_PLUGINS=
+      # The overview opens first: is the site up, is anything wrong
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/provisioning/dashboards/salko-overview.json
+    labels:
+      - logging=promtail
+      - traefik.enable=true
+      - traefik.docker.network=salko_monitoring
+      - traefik.http.routers.grafana.rule=Host(`grafana.savonlinnanlentokerho.fi`)
+      - traefik.http.routers.grafana.entrypoints=websecure
+      - traefik.http.routers.grafana.tls.certresolver=cloudflare
+      - traefik.http.routers.grafana.middlewares=internal-only@file
+      - traefik.http.services.grafana.loadbalancer.server.port=3000
+    depends_on:
+      - prometheus
+      - loki
+      - alertmanager
+
+  # Sends Prometheus' alerts by email (monitoring/alertmanager/alertmanager.yml).
+  # Not published: Grafana shows its alerts and silences (Alerting).
+  alertmanager:
+    image: prom/alertmanager:v0.34.2
+    container_name: ${NAME_PREFIX}-alertmanager
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+      # One instance, no cluster
+      - "--cluster.listen-address="
+      # Its UI is not reachable, so the links in the emails go to Grafana
+      - "--web.external-url=${GRAFANA_ROOT_URL:-https://grafana.savonlinnanlentokerho.fi}"
+      - "--web.route-prefix=/"
+    volumes:
+      - ./monitoring/alertmanager:/etc/alertmanager:ro
+      # Silences and what has been sent; created from the image, owned by its user
+      - alertmanager-data:/alertmanager
     networks:
       - monitoring
     restart: unless-stopped
+    labels:
+      - logging=promtail
+
+  # Loads the public sites as a visitor would, through Cloudflare, when
+  # Prometheus asks (monitoring/blackbox/blackbox.yml): is the site up, how
+  # fast, when its certificate expires
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.29.1
+    container_name: ${NAME_PREFIX}-blackbox-exporter
+    command:
+      - "--config.file=/etc/blackbox/blackbox.yml"
+    volumes:
+      - ./monitoring/blackbox/blackbox.yml:/etc/blackbox/blackbox.yml:ro
+    networks:
+      - monitoring
+    restart: unless-stopped
+    labels:
+      - logging=promtail
+
+  # The only way in for the agents: Loki's push and Prometheus' remote write,
+  # behind a password (monitoring/gateway/nginx.conf). Loki and Prometheus have
+  # no login of their own. An agent on this host pushes over the Docker network
+  # (http://monitoring-gateway:8080); one on another host pushes to
+  # http://<MONITORING_BIND_ADDR>:3101, the private address this host
+  # publishes the gateway on.
+  monitoring-gateway:
+    image: nginx:1.30.6-alpine
+    container_name: ${NAME_PREFIX}-monitoring-gateway
+    volumes:
+      - ./monitoring/gateway/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ${MONITORING_DATA_DIR:-/home/salko/monitoring}/gateway/htpasswd:/etc/nginx/htpasswd:ro
+    networks:
+      monitoring:
+        aliases:
+          - monitoring-gateway
+    ports:
+      - "${MONITORING_BIND_ADDR:-127.0.0.1}:3101:8080"
+    restart: unless-stopped
+    labels:
+      - logging=promtail
     depends_on:
+      - prometheus
       - loki
 
-  node-exporter:
-    image: prom/node-exporter:v1.12.1
-    container_name: ${NAME_PREFIX}-node-exporter
-    command:
-      - "--path.procfs=/host/proc"
-      - "--path.sysfs=/host/sys"
-      - "--path.rootfs=/host"
-      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
-    volumes:
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - /:/host:ro,rslave
-    networks:
-      - monitoring
-    restart: unless-stopped
-    labels:
-      - logging=promtail
-      - traefik.enable=true
-      - traefik.docker.network=salko_monitoring
-      - traefik.http.routers.nodeexporter.rule=Host(`nodeexporter.savonlinnanlentokerho.fi`)
-      - traefik.http.routers.nodeexporter.entrypoints=websecure
-      - traefik.http.routers.nodeexporter.tls.certresolver=cloudflare
-      - traefik.http.routers.nodeexporter.middlewares=internal-only@file
-      - traefik.http.services.nodeexporter.loadbalancer.server.port=9100
-
-  cadvisor:
-    image: ghcr.io/google/cadvisor:v0.60.6
-    container_name: ${NAME_PREFIX}-cadvisor
-    privileged: true
-    devices:
-      - /dev/kmsg
-    volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:ro
-      - /sys:/sys:ro
-      - /var/lib/docker:/var/lib/docker:ro
-      - /dev/disk:/dev/disk:ro
-    networks:
-      - monitoring
-    restart: unless-stopped
-    labels:
-      - logging=promtail
-      - traefik.enable=true
-      - traefik.docker.network=salko_monitoring
-      - traefik.http.routers.cadvisor.rule=Host(`cadvisor.savonlinnanlentokerho.fi`)
-      - traefik.http.routers.cadvisor.entrypoints=websecure
-      - traefik.http.routers.cadvisor.tls.certresolver=cloudflare
-      - traefik.http.routers.cadvisor.middlewares=internal-only@file
-      - traefik.http.services.cadvisor.loadbalancer.server.port=8080
-
-  postgres-exporter-dev:
-    image: prometheuscommunity/postgres-exporter:v0.20.1
-    container_name: ${NAME_PREFIX}-postgres-exporter-dev
-    env_file: .env.monitoring
-    environment:
-      - DATA_SOURCE_NAME=${DEV_POSTGRES_EXPORTER_DSN}
-    networks:
-      - monitoring
-      - dev_internal
-    restart: unless-stopped
-    labels:
-      - logging=promtail
-
-  postgres-exporter-prod:
-    image: prometheuscommunity/postgres-exporter:v0.20.1
-    container_name: ${NAME_PREFIX}-postgres-exporter-prod
-    env_file: .env.monitoring
-    environment:
-      - DATA_SOURCE_NAME=${PROD_POSTGRES_EXPORTER_DSN}
-    networks:
-      - monitoring
-      - prod_internal
-    restart: unless-stopped
-    labels:
-      - logging=promtail
-
-  pgadmin:
-    image: dpage/pgadmin4:9.18
-    container_name: ${NAME_PREFIX}-pgadmin
-    environment:
-      - PGADMIN_DEFAULT_EMAIL=admin@savonlinnanlentokerho.fi
-      - PGADMIN_DEFAULT_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
-      - PGADMIN_CONFIG_SERVER_MODE=True
-      - PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED=False
-      - PGADMIN_SERVER_JSON_FILE=/var/lib/pgadmin/servers.json
-      - PGPASS_FILE=/var/lib/pgadmin/.pgpass
-    networks:
-      - monitoring
-      - dev_internal
-      - prod_internal
-    volumes:
-      - /home/salko/monitoring/pgadmin-data:/var/lib/pgadmin
-    restart: unless-stopped
-    labels:
-      - logging=promtail
-      - traefik.enable=true
-      - traefik.docker.network=salko_monitoring
-      - traefik.http.routers.pgadmin.rule=Host(`pgadmin.savonlinnanlentokerho.fi`)
-      - traefik.http.routers.pgadmin.entrypoints=websecure
-      - traefik.http.routers.pgadmin.tls.certresolver=cloudflare
-      - traefik.http.routers.pgadmin.middlewares=internal-only@file
-      - traefik.http.services.pgadmin.loadbalancer.server.port=80
-
-  umami:
-    image: ghcr.io/umami-software/umami:3.4.1
-    container_name: ${NAME_PREFIX}-umami
-    env_file: .env.monitoring
-    environment:
-      - DATABASE_TYPE=postgresql
-      - DISABLE_TELEMETRY=1
-    networks:
-      - monitoring
-      - prod_internal
-    restart: unless-stopped
-    labels:
-      - logging=promtail
-      - traefik.enable=true
-      - traefik.docker.network=salko_monitoring
-      - traefik.http.routers.umami.rule=Host(`umami.savonlinnanlentokerho.fi`)
-      - traefik.http.routers.umami.entrypoints=websecure
-      - traefik.http.routers.umami.tls.certresolver=cloudflare
-      - traefik.http.routers.umami.middlewares=internal-only@file
-      - traefik.http.services.umami.loadbalancer.server.port=3000
-
 networks:
-  # The admin tools are on this network only, with Traefik, and not on
-  # global_outgoing with the public apps: Loki, Prometheus and the exporters
-  # have no login of their own
+  # Shared with the agent and Traefik when they run on this host. Created by
+  # Ansible (docker_install) and by deploy-monitoring.yaml, not by this file,
+  # so that the agent's stack and this one can each come and go.
   monitoring:
+    external: true
     name: salko_monitoring
-    driver: bridge
-  dev_internal:
-    external: true
-    name: salko_dev_internal
-  prod_internal:
-    external: true
-    name: salko_prod_internal
+
+volumes:
+  alertmanager-data:

@@ -33,6 +33,13 @@ for (const path of ["/jasenalue/profiili", "/jasenalue/lentopaivakirja", "/admin
   });
 }
 
+test("/api/health answers ok when the database does", async ({ request }) => {
+  const response = await request.get("/api/health");
+  expect(response.status()).toBe(200);
+  expect(response.headers()["cache-control"]).toContain("no-store");
+  expect(await response.json()).toEqual({ status: "ok" });
+});
+
 test("login dialog opens from the navbar", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Jäsenalue" }).click();
