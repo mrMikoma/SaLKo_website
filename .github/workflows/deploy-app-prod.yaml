@@ -149,10 +149,11 @@ jobs:
       # ones on main
       - name: Checkout repository
         uses: actions/checkout@v7.0.1
+        # Cone mode takes folders only. The files at the root and in each listed
+        # folder's parent come along anyway (docker-compose.prod.yaml).
         with:
           ref: ${{ github.sha }}
           sparse-checkout: |
-            docker-compose.prod.yaml
             postgres/init/
 
       - name: Setup SSH
