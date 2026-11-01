@@ -87,20 +87,16 @@ export const parseMETAR = (metar: string): ParsedMETAR => {
     const hour = parseInt(timeMatch[2]);
     const minute = parseInt(timeMatch[3]);
 
-    // Create date object for current month/year
+    // The METAR has only the day of the month: this month's, or the previous
+    // month's when this month's would be in the future or doesn't exist. On
+    // 1 November, "31" is 31 October; Date.UTC alone would roll 31 November
+    // over to 1 December.
     const now = new Date();
-    observationTime = new Date(Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      day,
-      hour,
-      minute,
-      0
-    ));
-
-    // Handle month boundary (if day is in future, it's from previous month)
-    if (observationTime > now) {
-      observationTime.setUTCMonth(observationTime.getUTCMonth() - 1);
+    const inMonth = (monthOffset: number) =>
+      new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + monthOffset, day, hour, minute, 0));
+    observationTime = inMonth(0);
+    if (observationTime.getUTCDate() !== day || observationTime > now) {
+      observationTime = inMonth(-1);
     }
   }
 
