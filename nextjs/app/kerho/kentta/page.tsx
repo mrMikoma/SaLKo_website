@@ -120,11 +120,11 @@ export default function Page() {
       </PageHero>
 
       <ContentSection variant="light" backgroundImage="punkaharju">
-        <div className="max-w-4xl mx-auto">
+        <div id="saa" className="max-w-4xl mx-auto scroll-mt-24">
           <h2 className="text-3xl md:text-4xl font-bold text-sred mb-8 text-center">
             Säätiedot
           </h2>
-          <WeatherWidget />
+          <WeatherWidget variant="full" />
         </div>
       </ContentSection>
 
