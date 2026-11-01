@@ -1,0 +1,54 @@
+# Where Prometheus' alerts (monitoring/prometheus/alerts.yml) go: an email to
+# the club's admin address. See "Alert emails" in monitoring/README.md.
+#
+# Mail goes through Google Workspace's SMTP relay, which accepts it by the
+# sending server's IP address, so there is no password here. The Admin console
+# has to allow the monitoring server's public IP once (README). An app password
+# for smtp.gmail.com was ruled out: it opens the whole mailbox
+# (nextjs/docs/MAIL_SETUP.md). Hetzner blocks outgoing 25 and 465, not 587.
+global:
+  smtp_smarthost: smtp-relay.gmail.com:587
+  smtp_from: SaLKo monitoring <admin@savonlinnanlentokerho.fi>
+  # Google's relay turns away EHLO localhost, Alertmanager's default
+  smtp_hello: savonlinnanlentokerho.fi
+  smtp_require_tls: true
+
+templates:
+  - /etc/alertmanager/templates/*.tmpl
+
+route:
+  receiver: admin-email
+  # One email per alert and severity: a site outage doesn't pile up with disk
+  # warnings, and the same alert on several targets comes as one
+  group_by: [alertname, severity]
+  group_wait: 1m
+  group_interval: 5m
+  # Reminders while it still fires: warnings twice a day
+  repeat_interval: 12h
+  routes:
+    # Critical every 4 hours
+    - matchers: [severity="critical"]
+      repeat_interval: 4h
+
+# An alert that follows from another one is not sent while the cause fires
+inhibit_rules:
+  # The site is down: its health check, slowness and errors follow from that
+  - source_matchers: [alertname="WebsiteDown"]
+    target_matchers: [alertname=~"WebsiteHealthCheckFailing|WebsiteSlow|WebsiteServerErrors"]
+  # Nothing comes from the agent: its host's metrics look missing or down
+  - source_matchers: [alertname="MonitoringAgentSilent"]
+    target_matchers: [alertname=~"ContainerNotRunning|ContainerRestarting|PostgresDown|PostgresDevDown|Host.+|ScrapeTargetDown|OriginCertificateExpiringSoon"]
+  # The disk is full: the warning at 85 % adds nothing
+  - source_matchers: [alertname="HostDiskFull"]
+    target_matchers: [alertname="HostDiskAlmostFull"]
+    equal: [host]
+
+receivers:
+  - name: admin-email
+    email_configs:
+      - to: admin@savonlinnanlentokerho.fi
+        send_resolved: true
+        headers:
+          Subject: '{{ template "salko.subject" . }}'
+        html: '{{ template "salko.html" . }}'
+        text: '{{ template "salko.text" . }}'

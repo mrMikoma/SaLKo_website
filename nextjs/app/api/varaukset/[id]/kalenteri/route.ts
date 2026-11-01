@@ -1,6 +1,9 @@
 import { auth } from "@/auth";
 import connectionPool from "@/utilities/db";
 import { buildIcs, CalendarEvent } from "@/utilities/calendarExport";
+import { logger } from "@/utilities/logger";
+
+const log = logger.child({ module: "calendar-export" });
 
 /**
  * GET /api/varaukset/:id/kalenteri — the booking as an .ics file, and with
@@ -64,7 +67,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("Error exporting booking to calendar:", error);
+    log.error("Exporting booking to calendar failed", { err: error });
     return new Response("Kalenteritiedoston luonti epäonnistui", { status: 500 });
   }
 }

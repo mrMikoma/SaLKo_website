@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
+import { logger } from "@/utilities/logger";
+
+const log = logger.child({ module: "umami-proxy" });
 
 export async function GET() {
   const umamiUrl = process.env.UMAMI_INTERNAL_URL || "http://salko-umami:3000";
-
-  console.log(`[Umami Script Proxy] Fetching from: ${umamiUrl}/script.js`);
-  console.log(
-    `[Umami Script Proxy] ENV UMAMI_INTERNAL_URL: ${process.env.UMAMI_INTERNAL_URL}`
-  );
 
   try {
     const response = await fetch(`${umamiUrl}/script.js`, {
@@ -18,17 +16,13 @@ export async function GET() {
       signal: AbortSignal.timeout(5000),
     });
 
-    console.log(`[Umami Script Proxy] Response status: ${response.status}`);
-
+    // The details stay in the log, not in the answer to an anonymous caller
     if (!response.ok) {
-      const errorMsg = `Failed to fetch script: ${response.status} ${response.statusText}`;
-      console.error(`[Umami Script Proxy] ${errorMsg}`);
-      return new NextResponse(errorMsg, { status: 502 });
+      log.warn("Umami answered with an error to the script request", { status: response.status });
+      return new NextResponse(null, { status: 502 });
     }
 
     const script = await response.text();
-    console.log(`[Umami Script Proxy] Success! Fetched ${script.length} bytes`);
-
     return new NextResponse(script, {
       status: 200,
       headers: {
@@ -37,15 +31,7 @@ export async function GET() {
       },
     });
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
-    const errorName = error instanceof Error ? error.name : "Error";
-    const fullError = `${errorName}: ${errorMessage}`;
-
-    console.error(`[Umami Script Proxy] Error:`, error);
-
-    return new NextResponse(`Internal Server Error: ${fullError}`, {
-      status: 500,
-    });
+    log.error("Fetching the Umami script failed", { err: error });
+    return new NextResponse(null, { status: 502 });
   }
 }

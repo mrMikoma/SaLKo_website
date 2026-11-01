@@ -3,6 +3,9 @@
 import { auth } from "@/auth";
 import pool from "@/utilities/db";
 import { hasPermission } from "@/utilities/roles";
+import { logger } from "@/utilities/logger";
+
+const log = logger.child({ module: "admin-stats" });
 
 export interface UserStats {
   total: number;
@@ -85,7 +88,7 @@ export async function getDashboardStats(): Promise<DashboardStats | null> {
       recentUsers: recentUsers.rows as RecentUser[],
     };
   } catch (error) {
-    console.error("Error fetching dashboard stats:", error);
+    log.error("Fetching dashboard stats failed", { err: error });
     return null;
   }
 }

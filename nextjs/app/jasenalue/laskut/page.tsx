@@ -38,7 +38,7 @@ export default async function Page() {
         title="Laskut"
         subtitle="Kerhon sinulle lähettämät laskut"
         breadcrumbs={[{ label: "Jäsenalue", link: false }, "Laskut"]}
-        backgroundImage="bg-punkaharju-one"
+        backgroundImage="punkaharju"
         compact={true}
         showScrollIndicator={false}
       />

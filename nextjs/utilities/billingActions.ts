@@ -14,6 +14,9 @@ import {
   FlightSheetWriteError,
   writeBillingCells,
 } from "@/utilities/flightSheetWriter";
+import { logger } from "@/utilities/logger";
+
+const log = logger.child({ module: "billing" });
 
 type ActionResult<T = null> =
   | { status: "success"; result: T }
@@ -40,15 +43,12 @@ const revalidateBilling = () => {
 
 const pgCode = (error: unknown) => (error as { code?: string })?.code;
 
-// A Google error carries the request, so only its message goes to the log
-const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error));
-
 /** Runs a settings change; a database error is logged and answered in Finnish */
 async function saving(what: string, work: () => Promise<ActionResult>): Promise<ActionResult> {
   try {
     return await work();
   } catch (error) {
-    console.error(`Error saving ${what}:`, errorText(error));
+    log.error("Saving billing settings failed", { err: error, what });
     return { status: "error", error: "Tallennus epäonnistui" };
   }
 }
@@ -88,7 +88,7 @@ export async function createBillingPeriod(
     if (pgCode(error) === "23P01") {
       return { status: "error", error: "Jakso menee päällekkäin toisen jakson kanssa" };
     }
-    console.error("Error creating billing period:", errorText(error));
+    log.error("Creating billing period failed", { err: error });
     return { status: "error", error: "Jakson luonti epäonnistui" };
   }
 }
@@ -221,7 +221,7 @@ export async function closeBillingPeriod(
     await client.query("COMMIT");
   } catch (error) {
     await client.query("ROLLBACK").catch(() => undefined);
-    console.error("Error closing billing period:", errorText(error));
+    log.error("Closing billing period failed", { err: error });
     return {
       status: "error",
       error:
@@ -249,6 +249,11 @@ export async function setPayerPaid(
 ): Promise<ActionResult> {
   const access = await requireBillingAdmin();
   if ("error" in access) return { status: "error", error: access.error };
+  // A server action takes whatever the request sends: a string "false" would
+  // mark the sheet paid while the database stays unpaid
+  if (!Number.isInteger(periodId) || typeof payerKey !== "string" || typeof paid !== "boolean") {
+    return { status: "error", error: "Virheellinen pyyntö" };
+  }
 
   const failed = await writePayerPaid(periodId, payerKey, paid, access.user.id);
   if (failed) return { status: "error", error: failed.error };

@@ -20,7 +20,9 @@ CREATE TABLE
     -- Set when an admin removes the user: no login, history (bookings) is kept
     deactivated_at TIMESTAMPTZ,
     -- Sessions that logged in before this end (nextjs/auth.ts)
-    sessions_revoked_at TIMESTAMPTZ
+    sessions_revoked_at TIMESTAMPTZ,
+    -- Goes up when the sessions are revoked; a session with another number ends
+    session_version INTEGER NOT NULL DEFAULT 0
   );
 
 -- Create bullets table
@@ -532,7 +534,9 @@ CREATE TABLE IF NOT EXISTS email_outbox (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   created_by TEXT REFERENCES users (id) ON DELETE SET NULL,
   sent_at TIMESTAMPTZ,
-  invoice_id INT REFERENCES invoices (id) ON DELETE SET NULL -- the invoice it sends
+  invoice_id INT REFERENCES invoices (id) ON DELETE SET NULL, -- the invoice it sends
+  -- MAIL_MODE when it was stored; it is only sent in that mode
+  queued_mode TEXT CHECK (queued_mode IN ('off', 'redirect', 'send'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_email_outbox_created ON email_outbox (created_at DESC);

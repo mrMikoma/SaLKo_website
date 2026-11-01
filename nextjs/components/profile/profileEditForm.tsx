@@ -186,7 +186,7 @@ const ProfileEditForm = ({ user, onCancel }: ProfileEditFormProps) => {
         <button
           type="submit"
           disabled={isPending}
-          className="flex-1 sm:flex-none bg-sred text-swhite px-8 py-3 rounded-lg hover:bg-sred/90 hover:shadow-2xl hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 transition-all duration-300 font-bold shadow-xl border-2 border-transparent hover:border-sred/50"
+          className="flex-1 sm:flex-none bg-sred-dark text-swhite px-8 py-3 rounded-lg hover:bg-sred-dark/90 hover:shadow-2xl hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 transition-all duration-300 font-bold shadow-xl border-2 border-transparent hover:border-sred/50"
         >
           {isPending ? (
             <>

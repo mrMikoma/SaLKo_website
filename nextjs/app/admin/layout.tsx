@@ -11,7 +11,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
       <div className="print:hidden">
         <PageHero
           title="Järjestelmän hallintapaneeli"
-          backgroundImage="bg-punkaharju-one"
+          backgroundImage="punkaharju"
           compact={true}
           showScrollIndicator={false}
         >

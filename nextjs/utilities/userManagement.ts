@@ -6,15 +6,21 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import * as bcrypt from "bcrypt";
 import { ChangePasswordSchema } from "./definitions";
+import { failedPasswordChecks } from "./loginLimits";
+import { waitText } from "./rateLimit";
+import { logger } from "@/utilities/logger";
+
+const log = logger.child({ module: "profile" });
 
 // Validation schema for profile updates
 const UpdateProfileSchema = z.object({
   // The name also goes into the flight log sheet, bills and CSV files
   full_name: z.string().trim().min(1, "Koko nimi vaaditaan").max(100, "Nimi on liian pitkä"),
-  phone: z.string().optional(),
-  address: z.string().optional(),
-  city: z.string().optional(),
-  postal_code: z.string().optional(),
+  // The same limits as the admin's form; an empty field arrives as null
+  phone: z.string().trim().max(30, "Puhelinnumero on liian pitkä").nullish(),
+  address: z.string().trim().max(200, "Osoite on liian pitkä").nullish(),
+  city: z.string().trim().max(100, "Kaupunki on liian pitkä").nullish(),
+  postal_code: z.string().trim().max(10, "Postinumero on liian pitkä").nullish(),
 });
 
 export interface UpdateProfileState {
@@ -82,7 +88,7 @@ export async function updateProfile(
       message: "Profiili päivitetty onnistuneesti",
     };
   } catch (error) {
-    console.error("Error updating profile:", error);
+    log.error("Updating profile failed", { err: error });
     return {
       errors: {
         general: ["Profiilin päivitys epäonnistui. Yritä uudelleen."],
@@ -117,7 +123,7 @@ export async function isProfileComplete(): Promise<boolean> {
     // Check if all optional contact fields are filled
     return !!(user.phone && user.address && user.city && user.postal_code);
   } catch (error) {
-    console.error("Error checking profile completion:", error);
+    log.error("Checking profile completion failed", { err: error });
     return false;
   }
 }
@@ -208,6 +214,20 @@ export async function changePassword(
       };
     }
 
+    // Counted before the comparison, in the same step as the check, so
+    // requests sent at once can't all slip under the limit; a right password
+    // clears the count
+    const wait = failedPasswordChecks.blockedFor(session.user.id);
+    if (wait > 0) {
+      return {
+        errors: {
+          general: [`Liian monta väärää salasanaa. Yritä uudelleen ${waitText(wait)} kuluttua.`],
+        },
+        status: "error",
+      };
+    }
+    failedPasswordChecks.hit(session.user.id);
+
     const isValidPassword = await bcrypt.compare(
       currentPassword,
       user.password
@@ -222,14 +242,20 @@ export async function changePassword(
       };
     }
 
+    failedPasswordChecks.reset(session.user.id);
+
     // Hash new password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
     // Update password in database
     // Ends every session of the account, this one too: the member logs in again
-    await pool.query("UPDATE users SET password = $1, sessions_revoked_at = NOW() WHERE id = $2", [
+    await pool.query("UPDATE users SET password = $1, sessions_revoked_at = NOW(), session_version = session_version + 1 WHERE id = $2", [
       hashedPassword,
       session.user.id,
+    ]);
+    // A reset link made earlier would still set a password over this one
+    await pool.query("DELETE FROM verification_tokens WHERE identifier = $1", [
+      `password-reset:${session.user.id}`,
     ]);
 
     return {
@@ -237,7 +263,7 @@ export async function changePassword(
       message: "Salasana vaihdettu. Kirjaudu sisään uudella salasanalla.",
     };
   } catch (error) {
-    console.error("Error changing password:", error);
+    log.error("Changing password failed", { err: error });
     return {
       errors: {
         general: ["Salasanan vaihto epäonnistui. Yritä uudelleen."],

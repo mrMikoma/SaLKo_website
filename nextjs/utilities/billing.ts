@@ -220,6 +220,31 @@ function flightAmount(flight: BillingFlight, ctx: BillingContext) {
   return { payer, perMinute, minutes: flight.airborneMinutes, cents: flight.airborneMinutes * perMinute };
 }
 
+/**
+ * Why a flight changed after its period closed can't be corrected yet. A
+ * correction prices the flight as it is now, so it needs what a new flight
+ * needs: a known purpose, a matched name, an airborne time that isn't negative
+ * and a price. Without them it would credit the whole billed amount, or more,
+ * without anyone looking at it. A purpose nobody pays for is not a problem:
+ * that flight is credited in full, as is a removed one.
+ */
+function correctionBlocker(flight: BillingFlight, ctx: BillingContext): Omit<Blocker, "rows"> | null {
+  const payer = payerOf(flight, ctx);
+  if (payer.kind === "unknown_purpose") {
+    return { kind: "unknown_purpose", message: `Tuntematon lennon tarkoitus ${payer.code ?? "(tyhjä)"}` };
+  }
+  if (payer.kind === "unmatched") {
+    return { kind: "unmatched", message: `Nimeä "${payer.name}" ei ole yhdistetty jäseneen` };
+  }
+  if (payer.kind !== "payer") return null;
+  if (flight.airborneMinutes === null) return { kind: "missing_minutes", message: "Ilmassa oloaika puuttuu" };
+  if (flight.airborneMinutes < 0) return { kind: "missing_minutes", message: "Ilmassa oloaika on negatiivinen" };
+  if (!rateOn(ctx.rates, flight.registration, flight.flightDate)) {
+    return { kind: "no_rate", message: `Koneelle ${flight.registration} ei ole hintaa` };
+  }
+  return null;
+}
+
 export function billPeriod(input: PeriodInput, ctx: BillingContext): PeriodBill {
   const payers = new Map<string, PayerBill>();
   const unbilled: BillLine[] = [];
@@ -307,6 +332,11 @@ export function billPeriod(input: PeriodInput, ctx: BillingContext): PeriodBill 
       block("missing_minutes", "Ilmassa oloaika puuttuu", flight.sheetRow);
       continue;
     }
+    // Possible when the sheet's value is typed in and the times are empty
+    if (flight.airborneMinutes < 0) {
+      block("missing_minutes", "Ilmassa oloaika on negatiivinen", flight.sheetRow);
+      continue;
+    }
     const rate = rateOn(ctx.rates, flight.registration, flight.flightDate);
     if (!rate) {
       block("no_rate", `Koneelle ${flight.registration} ei ole hintaa`, flight.sheetRow);
@@ -362,11 +392,12 @@ export function billPeriod(input: PeriodInput, ctx: BillingContext): PeriodBill 
 
   // Corrections to flights billed in closed periods
   for (const changed of input.changed) {
-    const now = changed.current ? flightAmount(changed.current, ctx) : null;
-    if (now && now.payer.kind === "unmatched") {
-      block("unmatched", `Nimeä "${now.payer.name}" ei ole yhdistetty jäseneen`, changed.current!.sheetRow);
+    const problem = changed.current ? correctionBlocker(changed.current, ctx) : null;
+    if (problem) {
+      block(problem.kind, problem.message, changed.current!.sheetRow);
       continue;
     }
+    const now = changed.current ? flightAmount(changed.current, ctx) : null;
     const billedByPayer = new Map<string, { cents: number; minutes: number }>();
     for (const line of changed.billed) {
       if (!line.payerKey || (line.kind !== "flight" && line.kind !== "adjustment")) continue;

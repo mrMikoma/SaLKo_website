@@ -61,7 +61,7 @@ const ResetPasswordForm = ({ token }: { token: string }) => {
       <button
         type="submit"
         disabled={pending}
-        className="w-full min-h-11 rounded-lg bg-sred px-4 py-2.5 font-semibold text-swhite shadow-md hover:bg-sred/90 disabled:opacity-60"
+        className="w-full min-h-11 rounded-lg bg-sred-dark px-4 py-2.5 font-semibold text-swhite shadow-md hover:bg-sred-dark/90 disabled:opacity-60"
       >
         {pending ? "Tallennetaan…" : "Vaihda salasana"}
       </button>

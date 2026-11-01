@@ -86,7 +86,7 @@ const ProfileManager = ({ user }: ProfileManagerProps) => {
           <div className="flex flex-col sm:flex-row gap-3">
             <button
               onClick={() => setIsEditing(true)}
-              className="w-full sm:w-auto bg-sred text-swhite px-6 py-3 rounded-lg hover:bg-sred/90 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-300 font-bold shadow-xl border-2 border-transparent hover:border-sred/50"
+              className="w-full sm:w-auto bg-sred-dark text-swhite px-6 py-3 rounded-lg hover:bg-sred-dark/90 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-300 font-bold shadow-xl border-2 border-transparent hover:border-sred/50"
             >
               <svg
                 className="w-5 h-5 inline mr-2"

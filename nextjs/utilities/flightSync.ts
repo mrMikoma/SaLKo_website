@@ -18,6 +18,9 @@ import {
   SHEET_ZONE,
 } from "@/utilities/flightSheetParser";
 import { inputHash } from "@/utilities/flightInputHash";
+import { logger } from "@/utilities/logger";
+
+const log = logger.child({ module: "flight-sync" });
 
 /**
  * Copies the flight log sheet into sheet_flights. The sheet is the only place
@@ -134,9 +137,6 @@ const UPSERT_FLIGHTS = `
      OR sheet_flights.missing_since IS NOT NULL
   RETURNING id`;
 
-// A Google error carries the request, so only its message goes to the log
-const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error));
-
 interface SyncContext {
   purposes: Map<string, { isTraining: boolean }>;
   knownPilots: Set<string>;
@@ -153,11 +153,15 @@ interface SyncContext {
  * - Of rows sharing an ID (a whole row copied), the one that matches the
  *   database keeps it and the copies get new ones, reported: their Tila and
  *   Laskutusjakso came with the copy.
+ * - A row copied from another aircraft's tab gets a new ID too, while that
+ *   tab still has the flight: syncing both would move the flight between
+ *   the aircraft on every run. A row moved there (gone from the other tab
+ *   since its last sync) keeps its ID and moves the flight.
  * Refuses a tab whose rows carry other flights' IDs, as after sorting the
  * flight columns without the website's: syncing it would pair Tila and the
  * history with the wrong flights.
  */
-async function assignIds(
+export async function assignIds(
   client: PoolClient,
   registration: string,
   parsed: ParsedSheet
@@ -195,7 +199,22 @@ async function assignIds(
   }
   const present = new Set([...rowsById.keys(), ...parsed.undatedRows.flatMap((row) => (row.id ? [row.id] : []))]);
 
-  const copiedFrom = new Map<ParsedFlight, number>();
+  // Where each copy came from, for the report
+  const copiedFrom = new Map<ParsedFlight, string>();
+  const elsewhere = (
+    await client.query(
+      `SELECT id, registration FROM sheet_flights
+       WHERE id = ANY($1::uuid[]) AND registration <> $2 AND missing_since IS NULL`,
+      [[...rowsById.keys()], registration]
+    )
+  ).rows;
+  for (const { id, registration: other } of elsewhere) {
+    for (const copy of rowsById.get(id) ?? []) {
+      copy.id = null;
+      copiedFrom.set(copy, `koneen ${other} lennolla`);
+    }
+    rowsById.delete(id);
+  }
   for (const [id, rows] of rowsById) {
     if (rows.length < 2) continue;
     const before = stored.get(id);
@@ -206,7 +225,7 @@ async function assignIds(
     for (const copy of rows) {
       if (copy === keeper) continue;
       copy.id = null;
-      copiedFrom.set(copy, keeper.row);
+      copiedFrom.set(copy, `rivillä ${keeper.row}`);
     }
   }
 
@@ -227,7 +246,7 @@ async function assignIds(
         row: flight.row,
         flightId: flight.id,
         kind: "copied_row",
-        message: `Rivillä oli sama ID kuin rivillä ${copyOf}, joten se sai uuden.${
+        message: `Rivillä oli sama ID kuin ${copyOf}, joten se sai uuden.${
           flight.status || flight.billingPeriod
             ? ` Tarkista sen Tila (${flight.status ?? "tyhjä"}) ja Laskutusjakso (${flight.billingPeriod ?? "tyhjä"}): ne kopioituivat rivin mukana.`
             : ""
@@ -361,6 +380,7 @@ export async function syncFlightSheets(
   let closeConnection = false;
   let runId: number | null = null;
   const summary = emptySummary("success");
+  const startedAt = Date.now();
 
   try {
     if (wait) {
@@ -420,7 +440,7 @@ export async function syncFlightSheets(
           summary.idsAssigned += result.idsAssigned;
           summary.issues += result.issues;
         } catch (error) {
-          console.error(`Flight log sync failed for ${tab.sheet_name}:`, errorText(error));
+          log.error("Flight log sync failed for an aircraft tab", { err: error, sheet: tab.sheet_name });
           failures.push(`${tab.sheet_name}: ${describeSheetError(error, configuredServiceAccount())}`);
         }
       }
@@ -449,15 +469,28 @@ export async function syncFlightSheets(
          WHERE id < (SELECT id FROM sheet_sync_runs ORDER BY id DESC OFFSET $1 LIMIT 1)`,
         [KEEP_SYNC_RUNS]
       );
+      log.info("Flight log sync finished", {
+        runId,
+        // triggeredBy is a person's name: only whether it was the automatic run
+        automatic: triggeredBy === "automaattinen",
+        status: summary.status,
+        tabs: aircraft.length,
+        failedTabs: failures.length,
+        rowsRead: summary.rowsRead,
+        rowsChanged: summary.rowsChanged,
+        idsAssigned: summary.idsAssigned,
+        issues: summary.issues,
+        durationMs: Date.now() - startedAt,
+      });
       return summary;
     } finally {
       await client.query("SELECT pg_advisory_unlock($1)", [SYNC_LOCK_KEY]).catch((error) => {
-        console.error("Releasing the flight log sync lock failed:", errorText(error));
+        log.error("Releasing the flight log sync lock failed", { err: error });
         closeConnection = true;
       });
     }
   } catch (error) {
-    console.error("Flight log sync failed:", errorText(error));
+    log.error("Flight log sync failed", { err: error });
     const message = error
       ? describeSheetError(error, configuredServiceAccount())
       : "Lentopäiväkirjan synkronointi epäonnistui";

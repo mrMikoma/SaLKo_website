@@ -9,6 +9,9 @@ import { isFlightLogEnabled } from "@/utilities/features";
 import { PasswordSchema } from "@/utilities/definitions";
 import { revalidatePath } from "next/cache";
 import * as bcrypt from "bcrypt";
+import { logger } from "@/utilities/logger";
+
+const log = logger.child({ module: "admin-users" });
 
 export interface User {
   id: string;
@@ -122,7 +125,7 @@ export async function getAllUsers(searchQuery?: string): Promise<User[] | null> 
 
     return users.rows as User[];
   } catch (error) {
-    console.error("Error fetching users:", error);
+    log.error("Fetching users failed", { err: error });
     return null;
   }
 }
@@ -164,7 +167,7 @@ export async function updateUserRoles(
     revalidatePath("/admin/users");
     return { success: true };
   } catch (error) {
-    console.error("Error updating user roles:", error);
+    log.error("Updating user roles failed", { err: error });
     return { success: false, error: "Roolien päivitys epäonnistui" };
   }
 }
@@ -192,16 +195,23 @@ export async function setUserActive(
       // Deactivating also ends the sessions for good: restoring the account
       // later doesn't bring them back (auth.ts)
       `UPDATE users SET deactivated_at = ${active ? "NULL" : "COALESCE(deactivated_at, NOW())"}
-         ${active ? "" : ", sessions_revoked_at = NOW()"}
+         ${active ? "" : ", sessions_revoked_at = NOW(), session_version = session_version + 1"}
        WHERE id = $1`,
       [userId]
     );
+    if (!active) {
+      // An open reset link would otherwise work again once the account is
+      // restored; a new link can be made then
+      await pool.query("DELETE FROM verification_tokens WHERE identifier = $1", [
+        `password-reset:${userId}`,
+      ]);
+    }
 
     revalidatePath("/admin/users");
     revalidatePath("/admin");
     return { success: true };
   } catch (error) {
-    console.error("Error changing user status:", error);
+    log.error("Changing user status failed", { err: error });
     return { success: false, error: "Käyttäjän tilan muutos epäonnistui" };
   }
 }
@@ -230,7 +240,8 @@ export async function anonymizeUser(userId: string): Promise<ActionResult> {
          email = 'poistettu-' || id || '@salko.invalid',
          phone = '', address = '', city = '', postal_code = '',
          password = NULL, google_id = NULL, avatar_url = NULL,
-         deactivated_at = COALESCE(deactivated_at, NOW()), sessions_revoked_at = NOW()
+         deactivated_at = COALESCE(deactivated_at, NOW()), sessions_revoked_at = NOW(),
+         session_version = session_version + 1
        WHERE id = $1`,
       [userId]
     );
@@ -243,7 +254,7 @@ export async function anonymizeUser(userId: string): Promise<ActionResult> {
     revalidatePath("/admin");
     return { success: true };
   } catch (error) {
-    console.error("Error anonymizing user:", error);
+    log.error("Anonymizing user failed", { err: error });
     return { success: false, error: "Anonymisointi epäonnistui" };
   }
 }
@@ -274,12 +285,16 @@ export async function deleteUser(userId: string): Promise<ActionResult> {
     }
 
     await pool.query("DELETE FROM users WHERE id = $1", [userId]);
+    // verification_tokens has no foreign key to users
+    await pool.query("DELETE FROM verification_tokens WHERE identifier = $1", [
+      `password-reset:${userId}`,
+    ]);
 
     revalidatePath("/admin/users");
     revalidatePath("/admin");
     return { success: true };
   } catch (error) {
-    console.error("Error deleting user:", error);
+    log.error("Deleting user failed", { err: error });
     return { success: false, error: "Käyttäjän poisto epäonnistui" };
   }
 }
@@ -298,7 +313,7 @@ export async function getUserById(userId: string): Promise<User | null> {
     ]);
     return result.rows.length === 0 ? null : (result.rows[0] as User);
   } catch (error) {
-    console.error("Error fetching user:", error);
+    log.error("Fetching user failed", { err: error });
     return null;
   }
 }
@@ -386,7 +401,7 @@ export async function createCredentialUser(formData: {
     revalidatePath("/admin/users");
     return { success: true };
   } catch (error) {
-    console.error("Error creating user:", error);
+    log.error("Creating user failed", { err: error });
     return { success: false, error: "Käyttäjän luonti epäonnistui" };
   }
 }
@@ -432,7 +447,7 @@ export async function createPasswordResetLink(
     const url = new URL(`/auth/uusi-salasana?token=${token}`, base).toString();
     return { success: true, url };
   } catch (error) {
-    console.error("Error creating password reset link:", error);
+    log.error("Creating password reset link failed", { err: error });
     return { success: false, error: "Linkin luonti epäonnistui" };
   }
 }
@@ -502,7 +517,7 @@ export async function updateUserInfo(
     revalidatePath("/admin/users");
     return { success: true };
   } catch (error) {
-    console.error("Error updating user info:", error);
+    log.error("Updating user info failed", { err: error });
     return { success: false, error: "Käyttäjän tietojen päivitys epäonnistui" };
   }
 }

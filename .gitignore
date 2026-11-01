@@ -22,3 +22,12 @@ TODO.md
 /monitoring/prometheus-data
 /monitoring/loki-data
 /monitoring/grafana-data
+
+# Keys and service-account key files must never be committed (the flight log's
+# Google key file downloads as JSON: paste it into the GitHub secret instead)
+*.pem
+*.key
+*.p12
+*.pfx
+*-service-account*.json
+*.iam.gserviceaccount.com.json

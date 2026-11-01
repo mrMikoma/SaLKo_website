@@ -1,11 +1,12 @@
 import React from "react";
+import Backdrop, { type BackdropName } from "@/components/backdrop";
 
 interface ContentSectionProps {
   children: React.ReactNode;
   variant?: "dark" | "darker" | "gradient" | "light";
   className?: string;
   containerSize?: "default" | "wide" | "full";
-  backgroundImage?: string;
+  backgroundImage?: BackdropName;
   overlay?: "light" | "medium" | "heavy" | "none";
 }
 
@@ -41,14 +42,9 @@ const ContentSection = ({
 
   if (backgroundImage) {
     return (
-      <section
-        className={`relative w-full py-16 lg:py-24 ${backgroundImage} ${className}`}
-        style={{
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
-        }}
-      >
+      <section className={`relative w-full py-16 lg:py-24 ${className}`}>
+        <Backdrop name={backgroundImage} />
+
         {/* Overlay */}
         {overlay !== "none" && (
           <div className={`absolute inset-0 ${overlayClasses[overlay]}`}></div>

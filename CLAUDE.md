@@ -116,18 +116,18 @@ Rules for migration files:
 ### Authentication (NextAuth v5)
 
 Configured in `auth.ts`. Two providers:
-1. **Google OAuth** — restricted to `@savonlinnanlentokerho.fi` domain via `hd` parameter. First login auto-creates a `user`-role record.
+1. **Google OAuth** — restricted to the club's Workspace: `signIn` requires the ID token's `hd` claim to be `savonlinnanlentokerho.fi` and `email_verified` to be true (`utilities/googleWorkspace.ts`). The `hd` request parameter is only a hint for the account chooser. First login auto-creates a `user`-role record.
 2. **Credentials** — email + bcrypt password, validated by `LoginFormSchema` (Zod).
 
 The JWT callback fetches `id`, `roles`, and `full_name` from the DB for both providers, and stamps the login time (`authAt`). The session callback re-fetches the same fields on every request to keep role data fresh. It returns `null` (invalidating the session) when:
 - the user is deleted or deactivated;
-- the session logged in before `users.sessions_revoked_at`, which a password change or reset and a deactivation set;
+- the session logged in before `users.sessions_revoked_at`, or `users.session_version` has changed since it logged in. A password change or reset, a deactivation and an anonymisation set the first and raise the second; the number leaves no gap where the whole-second time could (a password change and a deactivation also delete the account's open reset links);
 - the account is guest-only;
 - the database fails.
 
 next-auth then still hands out a bare session without `id`, so checks look at `session.user.id`, as `proxy.ts` does.
 
-Failed password logins are rate-limited in `authorize()` (`utilities/loginLimits.ts`, `utilities/rateLimit.ts`): 10 per email address in 15 minutes, and 20 per IP address in a minute. Unknown addresses are compared against a dummy hash, so timing doesn't reveal accounts. Accounts whose emails differ only in case are tried exact spelling first. Anonymous guest bookings are limited to 10 an hour per IP, and to at most 14 days starting from today.
+Failed password logins are rate-limited in `authorize()` (`utilities/loginLimits.ts`, `utilities/rateLimit.ts`): 10 per email address in 15 minutes, and 20 per IP address in a minute. Wrong current passwords in `changePassword` have the same per-account budget. Unknown addresses are compared against a dummy hash, so timing doesn't reveal accounts. Accounts whose emails differ only in case are tried exact spelling first. Anonymous guest bookings are limited to 10 an hour per IP, and to at most 14 days starting from today.
 
 Session strategy is JWT with 30-day expiry. `trustHost: true` is required because the app runs behind Traefik.
 
@@ -140,13 +140,13 @@ Roles: `admin` has the whole admin site. `treasurer` (laskuttaja) has the flight
 ### Data Flow Pattern
 
 - **Server actions** (`"use server"`) in `utilities/` handle all DB mutations and are called directly from client components.
-- **API routes** (`app/api/`) exist only for: METAR reads, Umami analytics proxy (forwards to internal `salko-umami:3000`), NextAuth, and the booking `.ics` export (`api/varaukset/[id]/kalenteri`, see `nextjs/docs/BOOKINGS.md`).
+- **API routes** (`app/api/`) exist only for: METAR reads, Umami analytics proxy (forwards to internal `salko-umami:3000`), NextAuth, the booking `.ics` export (`api/varaukset/[id]/kalenteri`, see `nextjs/docs/BOOKINGS.md`), and `api/health`, which the monitoring's uptime probe calls (200 when the app and its database answer, 503 otherwise).
 - **Static content** (contacts, plane specs, prices, history) is kept in JSON files under `nextjs/data/` and imported at build time — not stored in the DB.
 - TanStack Query (`providers/QueryProvider.tsx`) is used on the client for data fetching that benefits from caching/refetching (e.g. bookings calendar).
 
 ### Umami Analytics
 
-Proxied through the Next.js app (`/api/umami/script` and `/api/umami/send`) to avoid ad-blockers. The `UmamiProvider` component injects the script tag only when `NEXT_PUBLIC_UMAMI_WEBSITE_ID` is set.
+Proxied through the Next.js app (`/api/umami/script` and `/api/umami/api/send`) to avoid ad-blockers. The tracker posts events to `<data-host-url>/api/send`, and `data-host-url` is `/api/umami`, hence the doubled `api`. The send proxy passes on the visitor's IP headers, which Umami needs to count visitors. The `UmamiProvider` component injects the script tag only when `NEXT_PUBLIC_UMAMI_WEBSITE_ID` is set.
 
 ## Environment Variables
 
@@ -158,7 +158,6 @@ Copy `nextjs/.env.example` to `nextjs/.env` (Claude's hooks block editing `.env`
 | `NEXTAUTH_SECRET` | NextAuth JWT secret |
 | `NEXTAUTH_URL` | App public URL |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth |
-| `SESSION_SECRET` | Legacy jose JWT secret (used by `utilities/sessions.ts`) |
 | `NEXT_PUBLIC_UMAMI_WEBSITE_ID` | Umami site ID (optional) |
 | `UMAMI_INTERNAL_URL` | Internal Umami URL (default: `http://salko-umami:3000`) |
 | `ALLOW_INDEXING` | `true` only in production; otherwise `robots.ts` disallows crawling |
@@ -170,6 +169,7 @@ Copy `nextjs/.env.example` to `nextjs/.env` (Claude's hooks block editing `.env`
 | `FLIGHT_LOG_SAMPLE_DATA` | `true` shows the "Esimerkkilennot" button on `/admin/lennot`, which writes a year of made-up flights into an aircraft's tab (`utilities/sampleFlights.ts`). Set in dev, never in prod; defaults to on under `bun dev` |
 | `MAIL_MODE` / `MAIL_REDIRECT_TO` | Email: unset is off (messages only stored in `email_outbox`), `redirect` sends everything to `MAIL_REDIRECT_TO` (dev), `send` mails the recipients (prod). `nextjs/docs/MAIL_SETUP.md` |
 | `MAIL_FROM` / `MAIL_REFRESH_TOKEN` / `MAIL_GMAIL_CLIENT_ID` / `MAIL_GMAIL_CLIENT_SECRET` | The club's one mail account, which sends all mail, its token (`bun run mail:authorize`) and the OAuth client. Replies go to `laskutus@` or `info@` by purpose (`data/contacts.json`) |
+| `LOG_LEVEL` / `LOG_FORMAT` | Server logging (`utilities/logger.ts`, `nextjs/docs/LOGGING.md`): the lowest level written (`trace`…`fatal`, `silent`; default `info` in production, `debug` under `bun dev`) and `json` (default in production) or `pretty` |
 | `E2E_USER_*` / `E2E_ADMIN_*` | `_EMAIL` and `_PASSWORD` of existing accounts for e2e tests against a non-local database (optional) |
 
 ## Deployment
@@ -177,9 +177,10 @@ Copy `nextjs/.env.example` to `nextjs/.env` (Claude's hooks block editing `.env`
 CI/CD runs on GitHub Actions. Build jobs run on GitHub-hosted runners; jobs that touch the server create a temporary self-hosted runner in Hetzner Cloud (`create-runner` / `delete-runner`). `main` is production and `dev` is the development environment. Changes reach either one only through a PR and these workflows, never by hand on the server.
 
 - `build-and-publish-dev.yaml` runs on pushes to `dev` that touch `nextjs/`, pushes the image to GHCR and starts `deploy-app-dev.yaml` from the same branch (`workflow_dispatch`), so changes to the dev deploy take effect on `dev` without waiting for `main`.
-- `build-and-publish-prod.yaml` (manual, from `main`) builds the prod image; `deploy-app-prod.yaml` (manual or `repository_dispatch`) runs `docker compose pull && up` on the server. The production environment's variables `FEATURE_FLIGHT_LOG`, `FEATURE_BILLING` and `MAIL_MODE` switch the flight log, billing and email on at deploy; the release steps are in `nextjs/docs/GO_LIVE.md`.
+- `build-and-publish-prod.yaml` (manual, refuses any branch but `main`) builds the prod image; `deploy-app-prod.yaml` (manual, from `main`) runs `docker compose pull && up` on the server. The production environment's variables `FEATURE_FLIGHT_LOG`, `FEATURE_BILLING` and `MAIL_MODE` switch the flight log, billing and email on at deploy; the release steps are in `nextjs/docs/GO_LIVE.md`.
 - `db-migrate.yaml` applies `postgres/migrations/` to the dev or prod database (see Schema Changes).
 - `test.yaml` runs lint, types and the e2e suite on PRs (see Testing and Browser Checks).
-- `deploy-cronjobs-docker.yaml`, `deploy-monitoring.yaml` and `deploy-traefik.yaml` deploy the other stacks; `ansible-provision.yaml` and `terraform-plan-and-apply.yaml` manage the host.
+- `deploy-cronjobs-docker.yaml`, `deploy-monitoring.yaml` and `deploy-traefik.yaml` deploy the other stacks; `ansible-provision.yaml` and `terraform-plan-and-apply.yaml` manage the host. The monitoring stack is a server (Prometheus, Loki, Grafana, Alertmanager: on `vars.MONITORING_SERVER_IP`, or salko0 when unset) and an agent on salko0 (Grafana Alloy) that pushes to it. Alerts are emailed to admin@savonlinnanlentokerho.fi through Google Workspace's SMTP relay; see `monitoring/README.md`.
+- Dispatch inputs are checked against known values in a first job, before a runner is created, and reach scripts only through `env:`. The deploys check out the commit the run is on: prod and Traefik from `main` only, kehitys from `dev` only, a cronjob deploy from the branch it deploys, and Ansible for real from `main` and as a dry run from `main` or `dev`.
 
 The Next.js build uses `output: "standalone"` and runs behind Traefik with TLS via Cloudflare.

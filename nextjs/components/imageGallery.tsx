@@ -98,7 +98,7 @@ const ImageGallery = ({ images, title = "Gallery" }: ImageGalleryProps) => {
             fill
             sizes="(min-width: 1280px) 1280px, 100vw"
             className="object-cover transition-opacity duration-500"
-            priority={currentIndex === 0}
+            preload={currentIndex === 0}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-sblack/60 via-transparent to-transparent"></div>
           {/* Fullscreen Icon Hint */}
@@ -170,18 +170,24 @@ const ImageGallery = ({ images, title = "Gallery" }: ImageGalleryProps) => {
             </div>
 
             {/* Dot Indicators */}
-            <div className="absolute bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 sm:gap-2">
+            {/* Each dot sits in a 24 px button, big enough to tap */}
+            <div className="absolute bottom-0 sm:bottom-2 left-1/2 -translate-x-1/2 flex">
               {images.map((_, index) => (
                 <button
                   key={index}
                   onClick={() => goToSlide(index)}
-                  className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full transition-all duration-300 ${
-                    index === currentIndex
-                      ? "bg-sred w-6 sm:w-8"
-                      : "bg-swhite/50 hover:bg-swhite/80"
-                  }`}
-                  aria-label={`Go to image ${index + 1}`}
-                />
+                  className="group/dot flex items-center justify-center h-6 min-w-6 px-0.5"
+                  aria-label={`Näytä kuva ${index + 1}`}
+                  aria-current={index === currentIndex}
+                >
+                  <span
+                    className={`block h-2 sm:h-3 rounded-full transition-all duration-300 ${
+                      index === currentIndex
+                        ? "bg-sred w-6 sm:w-8"
+                        : "w-2 sm:w-3 bg-swhite/50 group-hover/dot:bg-swhite/80"
+                    }`}
+                  />
+                </button>
               ))}
             </div>
           </>
@@ -246,7 +252,7 @@ const ImageGallery = ({ images, title = "Gallery" }: ImageGalleryProps) => {
                 className="object-contain"
                 quality={100}
                 sizes="100vw"
-                priority
+                preload
               />
             </div>
 
@@ -313,7 +319,7 @@ const ImageGallery = ({ images, title = "Gallery" }: ImageGalleryProps) => {
                 </div>
 
                 {/* Dot Indicators */}
-                <div className="absolute bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 sm:gap-2">
+                <div className="absolute bottom-0 sm:bottom-2 left-1/2 -translate-x-1/2 flex">
                   {images.map((_, index) => (
                     <button
                       key={index}
@@ -324,13 +330,18 @@ const ImageGallery = ({ images, title = "Gallery" }: ImageGalleryProps) => {
                       onTouchEnd={(e) => {
                         e.stopPropagation();
                       }}
-                      className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full transition-all duration-300 ${
-                        index === currentIndex
-                          ? "bg-sred w-6 sm:w-8"
-                          : "bg-swhite/50 hover:bg-swhite/80 active:bg-swhite"
-                      }`}
-                      aria-label={`Go to image ${index + 1}`}
-                    />
+                      className="group/dot flex items-center justify-center h-6 min-w-6 px-0.5"
+                      aria-label={`Näytä kuva ${index + 1}`}
+                      aria-current={index === currentIndex}
+                    >
+                      <span
+                        className={`block h-2 sm:h-3 rounded-full transition-all duration-300 ${
+                          index === currentIndex
+                            ? "bg-sred w-6 sm:w-8"
+                            : "w-2 sm:w-3 bg-swhite/50 group-hover/dot:bg-swhite/80 group-active/dot:bg-swhite"
+                        }`}
+                      />
+                    </button>
                   ))}
                 </div>
               </>

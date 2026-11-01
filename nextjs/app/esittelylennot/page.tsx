@@ -2,21 +2,14 @@ import PageHero from "@/components/pageHero";
 import ContentSection from "@/components/contentSection";
 import CallToAction from "@/components/callToAction";
 import Link from "next/link";
+import { pageMetadata } from "@/utilities/seo";
 
-export const metadata = {
-  title: "Esittelylennot",
-  description: "Koe lentämisen ilo Savonlinnan Lentokerhon esittelylennoilla",
-  keywords: [
-    "Savonlinnan Lentokerho",
-    "esittelylennot",
-    "tutustumislennot",
-    "lentokokemus",
-    "lentokerho",
-    "Savonlinna",
-    "lentäminen",
-  ],
-  alternates: { canonical: "/esittelylennot" },
-};
+export const metadata = pageMetadata({
+  title: "Esittelylennot Savonlinnassa – myös lahjaksi",
+  description:
+    "Koe lentäminen Saimaan yllä esittelylennolla Savonlinnan lentoasemalta. Sopii myös lahjaksi: katso hinnat ja varaa lento.",
+  path: "/esittelylennot",
+});
 
 export default function Page() {
   return (
@@ -25,7 +18,7 @@ export default function Page() {
         title="Esittelylennot"
         breadcrumbs={["Esittelylennot"]}
         compact={false}
-        backgroundImage="bg-punkaharju-one"
+        backgroundImage="punkaharju"
       >
         {/* Introduction Section - Inside the hero */}
         <div className="max-w-[1600px] mx-auto px-6 pb-20 lg:pb-32">
@@ -49,7 +42,7 @@ export default function Page() {
         </div>
       </PageHero>
 
-      <ContentSection variant="dark" backgroundImage="bg-efsa-one">
+      <ContentSection variant="dark" backgroundImage="efsa">
         <div className="space-y-12">
           {/* Types of Flights */}
           <div className="glass rounded-lg p-6 md:p-8 border border-sred/20">

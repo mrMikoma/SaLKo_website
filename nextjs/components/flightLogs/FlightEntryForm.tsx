@@ -629,7 +629,7 @@ const FlightEntryForm = ({ options, today, yesterday }: FlightEntryFormProps) =>
         <button
           type="submit"
           disabled={isPending}
-          className="min-h-11 shrink-0 whitespace-nowrap px-4 sm:px-6 rounded-lg bg-sred text-white font-semibold hover:bg-sred/90 disabled:opacity-60"
+          className="min-h-11 shrink-0 whitespace-nowrap px-4 sm:px-6 rounded-lg bg-sred-dark text-white font-semibold hover:bg-sred-dark/90 disabled:opacity-60"
         >
           {isPending ? "Tallennetaan…" : legs.length > 1 ? `Tallenna ${legs.length} lentoa` : "Tallenna lento"}
         </button>

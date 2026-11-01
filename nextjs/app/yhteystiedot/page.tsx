@@ -3,6 +3,7 @@ import contacts from "../../data/contacts.json";
 import Image from "next/image";
 import PageHero from "@/components/pageHero";
 import ContentSection from "@/components/contentSection";
+import { pageMetadata } from "@/utilities/seo";
 
 type genericContact = {
   name: string;
@@ -24,24 +25,12 @@ type Person = {
   phone: string;
 };
 
-export const metadata = {
-  title: "Yhteystiedot",
-  description: "Savonlinnan Lentokerho ry:n yhteystiedot",
-  keywords: [
-    "Savonlinnan Lentokerho",
-    "yhteystiedot",
-    "hallitus",
-    "lennonopettaja",
-    "puheenjohtaja",
-    "laskutus",
-    "Savonlinna",
-    "lentokerho",
-    "puhelinnumero",
-    "sähköpostiosoite",
-    "laskutusosoite",
-  ],
-  alternates: { canonical: "/yhteystiedot" },
-};
+export const metadata = pageMetadata({
+  title: "Yhteystiedot – Savonlinnan Lentokerho",
+  description:
+    "Savonlinnan Lentokerho ry:n yhteystiedot: hallitus, lennonopettajat ja laskutus. Lentoasemantie 50, 57310 Savonlinna.",
+  path: "/yhteystiedot",
+});
 
 export default function Page() {
   const { name, address, city, postalCode, country, IBAN, BIC, bank } =
@@ -55,7 +44,7 @@ export default function Page() {
       <PageHero
         title="Yhteystiedot"
         breadcrumbs={["Yhteystiedot"]}
-        backgroundImage="bg-efsa-one"
+        backgroundImage="efsa"
         showScrollIndicator={false}
         compact={true}
       >
@@ -192,7 +181,7 @@ export default function Page() {
         </div>
       </PageHero>
 
-      <ContentSection variant="dark" backgroundImage="bg-savonlinna-one">
+      <ContentSection variant="dark" backgroundImage="savonlinna">
         <div className="space-y-12">
           {/* Board Members */}
           <ContactCardGrid title="Hallitus 2026" board={board} />

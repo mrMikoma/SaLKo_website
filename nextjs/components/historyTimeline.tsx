@@ -84,7 +84,7 @@ const HistoryTimeline = ({
           <div className="text-center mt-12">
             <Link
               href="/kerho/historiaa"
-              className="inline-block px-8 py-4 bg-sred text-swhite font-semibold rounded-lg shadow-xl hover:bg-sred/90 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300"
+              className="inline-block px-8 py-4 bg-sred-dark text-swhite font-semibold rounded-lg shadow-xl hover:bg-sred-dark/90 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300"
             >
               Lue lisää historiastamme
             </Link>

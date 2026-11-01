@@ -7,11 +7,14 @@ export const UmamiProvider = () => {
   }
   return (
     <>
+      {/* Page addresses without their query: a password reset link carries
+          its token there, and analytics must not store it */}
       <Script
         async
         src="/api/umami/script"
         data-website-id={websiteId}
         data-host-url="/api/umami"
+        data-exclude-search="true"
       />
     </>
   );

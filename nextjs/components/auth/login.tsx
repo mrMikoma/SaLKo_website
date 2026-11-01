@@ -97,7 +97,7 @@ const Login = ({ redirectTo }: { redirectTo?: string }) => {
             <button
               disabled={pending}
               type="submit"
-              className="flex w-full justify-center rounded-lg bg-sred px-4 py-3 text-base font-bold tracking-wide text-swhite shadow-xl hover:bg-sred/90 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 border-2 border-transparent hover:border-sred/50"
+              className="flex w-full justify-center rounded-lg bg-sred-dark px-4 py-3 text-base font-bold tracking-wide text-swhite shadow-xl hover:bg-sred-dark/90 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 border-2 border-transparent hover:border-sred/50"
             >
               {pending ? "Kirjaudutaan..." : "Kirjaudu sisään"}
             </button>

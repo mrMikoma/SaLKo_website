@@ -5,6 +5,9 @@ import { z } from "zod";
 import * as bcrypt from "bcrypt";
 import pool from "@/utilities/db";
 import { PasswordSchema } from "@/utilities/definitions";
+import { logger } from "@/utilities/logger";
+
+const log = logger.child({ module: "password-reset" });
 
 export type ResetPasswordState =
   | { status: "success" }
@@ -64,12 +67,13 @@ export async function resetPasswordWithToken(
 
     const userId = found.rows[0].identifier.slice(IDENTIFIER_PREFIX.length);
     const updated = await client.query(
-      `UPDATE users SET password = $1, sessions_revoked_at = NOW()
+      `UPDATE users SET password = $1, sessions_revoked_at = NOW(), session_version = session_version + 1
        WHERE id = $2 AND auth_provider = 'credentials' AND deactivated_at IS NULL`,
       [await bcrypt.hash(parsed.data.password, 10), userId]
     );
     if (updated.rowCount === 0) {
-      await client.query("ROLLBACK");
+      // Keeps the link deleted: it must not work later if the account is restored
+      await client.query("COMMIT");
       return { status: "error", error: "Käyttäjätiliä ei voi enää käyttää" };
     }
 
@@ -77,7 +81,7 @@ export async function resetPasswordWithToken(
     return { status: "success" };
   } catch (error) {
     await client.query("ROLLBACK").catch(() => undefined);
-    console.error("Error resetting password:", error);
+    log.error("Resetting password failed", { err: error });
     return { status: "error", error: "Salasanan vaihto epäonnistui" };
   } finally {
     client.release();

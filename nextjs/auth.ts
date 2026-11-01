@@ -6,6 +6,8 @@ import { randomBytes } from "crypto";
 import pool from "./utilities/db";
 import { LoginFormSchema } from "./utilities/definitions";
 import { clientIp } from "./utilities/rateLimit";
+import { WORKSPACE_DOMAIN, workspaceEmail } from "./utilities/googleWorkspace";
+import { logger } from "./utilities/logger";
 import {
   emailKey,
   failedLoginsByEmail,
@@ -29,6 +31,10 @@ async function comparePassword(password: string, hash: string | null): Promise<b
 // lowercased) are picked in a fixed order: the exact spelling first
 const SAME_EMAIL_ORDER = "ORDER BY (email = $1) DESC, created_at, id";
 
+// Auth events carry the user's ID at most: never the email address or the
+// IP address that was used
+const log = logger.child({ module: "auth" });
+
 const isGuestOnly = (roles: string[] | null) => !roles || (roles.length === 1 && roles[0] === "guest");
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
@@ -39,7 +45,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
       authorization: {
         params: {
-          hd: "savonlinnanlentokerho.fi", // Restrict to your workspace domain
+          hd: WORKSPACE_DOMAIN, // a hint for the account chooser; signIn checks the token
           prompt: "select_account",
         },
       },
@@ -62,11 +68,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const ip = clientIp(request.headers);
         // Too many failed logins for this email or from this address
         if (loginBlockedFor(email, ip) > 0) {
+          log.warn("Password login refused: too many failed attempts");
           throw new TooManyLoginAttempts();
         }
         const failed = () => {
           failedLoginsByEmail.hit(emailKey(email));
           failedLoginsByIp.hit(ip);
+          log.info("Password login failed: unknown account or wrong password");
           return null;
         };
 
@@ -97,7 +105,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
           // Block users who only have the "guest" role (data-only entries)
           if (isGuestOnly(user.roles)) {
-            console.log("Login blocked for a guest-only user");
+            log.info("Password login refused: guest-only account", { userId: user.id });
             return null;
           }
 
@@ -108,6 +116,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             "UPDATE users SET last_login = NOW() WHERE id = $1",
             [user.id]
           );
+          log.info("Password login succeeded", { userId: user.id });
 
           return {
             id: user.id,
@@ -116,9 +125,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             roles: user.roles,
             fullName: user.full_name,
             image: user.avatar_url,
+            // Read with the password it was checked against: a revocation
+            // after this point ends the session
+            sessionVersion: user.session_version,
           };
         } catch (error) {
-          console.error("Authentication error:", error);
+          log.error("Password login failed with an error", { err: error });
           return null;
         }
       },
@@ -126,13 +138,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   ],
 
   callbacks: {
-    async signIn({ user, account, profile }) {
+    async signIn({ account, profile }) {
       if (account?.provider === "google") {
-        // Verify domain for Google Workspace
-        const email = user.email || profile?.email;
-        if (!email?.endsWith("@savonlinnanlentokerho.fi")) {
-          console.error("Rejected non-workspace email:", email);
-          return false; // Reject non-workspace emails
+        // Only accounts of the club's Workspace, as Google's token says
+        const email = workspaceEmail(profile);
+        if (!email) {
+          log.warn("Google login refused: not an account of the club Workspace");
+          return false;
         }
 
         try {
@@ -143,12 +155,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           );
 
           if (result.rows.length > 0 && result.rows[0].deactivated_at) {
-            console.log("Login blocked for deactivated user:", email);
+            log.info("Google login refused: deactivated account", { userId: result.rows[0].id });
             return false;
           }
           // As with passwords: guest-only entries are data, not accounts
           if (result.rows.length > 0 && isGuestOnly(result.rows[0].roles)) {
-            console.log("Google login blocked for a guest-only user");
+            log.info("Google login refused: guest-only account", { userId: result.rows[0].id });
             return false;
           }
 
@@ -168,6 +180,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 profile?.picture,
               ]
             );
+            log.info("Google login created a new member account");
           } else {
             // Update existing user with Google info
             await pool.query(
@@ -175,9 +188,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                WHERE id = $4`,
               [profile?.sub, profile?.picture, true, result.rows[0].id]
             );
+            log.info("Google login succeeded", { userId: result.rows[0].id });
           }
         } catch (error) {
-          console.error("Google sign in error:", error);
+          log.error("Google login failed with an error", { err: error });
           return false;
         }
       }
@@ -187,35 +201,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async jwt({ token, user, account }) {
       // For Google OAuth, always fetch user data from database
       // The user object from Google doesn't contain our database ID
+      // Google's own tokens aren't kept: the site never calls Google for the
+      // user, and the session cookie lasts 30 days
       if (account?.provider === "google" && user?.email) {
-        token.accessToken = account.access_token;
-        token.idToken = account.id_token;
-
-        console.log(
-          "[JWT] Google OAuth - Fetching user data for email:",
-          user.email
-        );
         try {
           const result = await pool.query(
-            `SELECT id, roles, full_name FROM users WHERE lower(email) = lower($1) ${SAME_EMAIL_ORDER}`,
+            `SELECT id, roles, full_name, session_version FROM users WHERE lower(email) = lower($1) ${SAME_EMAIL_ORDER}`,
             [user.email]
           );
           if (result.rows.length > 0) {
             token.id = result.rows[0].id;
             token.roles = result.rows[0].roles;
             token.fullName = result.rows[0].full_name;
-            console.log("[JWT] Google OAuth - User found, ID:", token.id);
+            token.sessionVersion = result.rows[0].session_version;
           } else {
-            console.error(
-              "[JWT] Google OAuth - No user found in database for email:",
-              user.email
-            );
+            log.warn("Google login: no user in the database for the token");
           }
         } catch (error) {
-          console.error(
-            "[JWT] Error fetching user data for Google OAuth:",
-            error
-          );
+          log.error("Google login: reading the user for the token failed", { err: error });
         }
       }
       // For credentials provider, user object contains our database fields
@@ -223,6 +226,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.id = user.id;
         token.roles = (user as any).roles;
         token.fullName = (user as any).fullName;
+        token.sessionVersion = user.sessionVersion;
       }
 
       // When this session logged in: sessions_revoked_at after it ends the session
@@ -230,19 +234,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.authAt = Math.floor(Date.now() / 1000);
       }
 
-      console.log("[JWT] Final token - ID:", token.id, "Email:", token.email);
       return token;
     },
 
+    // No logging on every request: these lines ended up in Loki with each
+    // member's email and ID
     async session({ session, token }) {
-      console.log("[SESSION] Token ID:", token.id, "Token email:", token.email);
 
       try {
         if (token.id) {
           // Fetch fresh user data from database to ensure we have latest roles/info.
           // A deactivated user's session ends on the next request.
           const result = await pool.query(
-            `SELECT id, email, name, full_name, roles, avatar_url, sessions_revoked_at FROM users
+            `SELECT id, email, name, full_name, roles, avatar_url, sessions_revoked_at, session_version FROM users
              WHERE id = $1 AND deactivated_at IS NULL`,
             [token.id]
           );
@@ -254,8 +258,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             ? Math.floor(new Date(row.sessions_revoked_at).getTime() / 1000)
             : 0;
           const authAt = typeof token.authAt === "number" ? token.authAt : 0;
-          if (row && (revokedAt > authAt || isGuestOnly(row.roles))) {
-            console.log("[SESSION] Session ended: revoked or guest-only, user", row.id);
+          // The number the session logged in with must still be the
+          // account's: unlike the whole-second time above, it leaves no gap.
+          // Tokens from before session_version count as 0.
+          const revoked = revokedAt > authAt || (token.sessionVersion ?? 0) !== row?.session_version;
+          if (row && (revoked || isGuestOnly(row.roles))) {
+            log.info("Session ended: revoked or guest-only", { userId: row.id });
             return null as any;
           }
 
@@ -267,31 +275,23 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             session.user.fullName = user.full_name;
             session.user.email = user.email;
             session.user.image = user.avatar_url;
-            console.log("[SESSION] User found by ID:", user.id);
           } else {
             // User not found or deactivated - this can happen during logout or if user was deleted
             // Return null to invalidate the session
-            console.log(
-              "[SESSION] No user found for ID:",
-              token.id,
-              "- session will be invalidated"
-            );
+            log.info("Session ended: user deleted or deactivated", { userId: token.id });
             return null as any;
           }
         } else {
           // No token ID - session is invalid
-          console.log(
-            "[SESSION] Token missing user ID - session will be invalidated"
-          );
+          log.debug("Session ended: token without a user ID");
           return null as any;
         }
       } catch (error) {
-        console.error("[SESSION] Error in session callback:", error);
+        log.error("Session check failed; the session ends", { err: error });
         // On database error, invalidate the session
         return null as any;
       }
 
-      console.log("[SESSION] Final session.user.id:", session.user?.id);
       return session;
     },
   },

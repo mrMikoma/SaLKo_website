@@ -26,6 +26,9 @@ import {
   parseQuantity,
   referenceNumber,
 } from "@/utilities/invoices";
+import { logger } from "@/utilities/logger";
+
+const log = logger.child({ module: "invoices" });
 
 type ActionResult<T = null> =
   | { status: "success"; result: T }
@@ -245,7 +248,7 @@ export async function createInvoices(
     revalidateInvoices();
     return { status: "success", result: { ids: created } };
   } catch (error) {
-    console.error("Error creating invoices:", error);
+    log.error("Creating invoices failed", { err: error });
     return { status: "error", error: "Laskujen luonti epäonnistui" };
   }
 }
@@ -301,7 +304,7 @@ export async function createPeriodInvoices(
     if (pgCode(error) === "23505") {
       return { status: "error", error: "Jakson laskut luotiin juuri toisaalla. Lataa sivu uudelleen." };
     }
-    console.error("Error creating period invoices:", error);
+    log.error("Creating period invoices failed", { err: error });
     return { status: "error", error: "Laskujen luonti epäonnistui" };
   }
   revalidateInvoices();
@@ -316,6 +319,7 @@ export async function updateDraft(
 ): Promise<ActionResult> {
   const access = await requireBillingAdmin();
   if ("error" in access) return { status: "error", error: access.error };
+  if (!Number.isInteger(id)) return { status: "error", error: "Virheellinen pyyntö" };
   const parsed = draftSchema.safeParse(input);
   if (!parsed.success) return { status: "error", error: parsed.error.issues[0].message };
   const { recipient, title, message } = parsed.data;
@@ -332,6 +336,7 @@ export async function updateDraft(
 export async function addDraftLine(id: number, input: LineForm): Promise<ActionResult> {
   const access = await requireBillingAdmin();
   if ("error" in access) return { status: "error", error: access.error };
+  if (!Number.isInteger(id)) return { status: "error", error: "Virheellinen pyyntö" };
   const line = parseLine(input);
   if ("error" in line) return { status: "error", error: line.error };
 
@@ -355,7 +360,7 @@ export async function addDraftLine(id: number, input: LineForm): Promise<ActionR
     await client.query("COMMIT");
   } catch (error) {
     await client.query("ROLLBACK").catch(() => undefined);
-    console.error("Error adding an invoice line:", error);
+    log.error("Adding an invoice line failed", { err: error });
     return { status: "error", error: "Rivin lisäys epäonnistui" };
   } finally {
     client.release();
@@ -368,6 +373,7 @@ export async function addDraftLine(id: number, input: LineForm): Promise<ActionR
 export async function removeDraftLine(id: number, lineId: number): Promise<ActionResult> {
   const access = await requireBillingAdmin();
   if ("error" in access) return { status: "error", error: access.error };
+  if (!Number.isInteger(id) || !Number.isInteger(lineId)) return { status: "error", error: "Virheellinen pyyntö" };
   const removed = await pool.query(
     `DELETE FROM invoice_lines l USING invoices i
      WHERE l.id = $2 AND l.invoice_id = $1 AND i.id = l.invoice_id AND i.status = 'draft' AND l.source = 'other'`,
@@ -382,6 +388,7 @@ export async function removeDraftLine(id: number, lineId: number): Promise<Actio
 export async function deleteDraft(id: number): Promise<ActionResult> {
   const access = await requireBillingAdmin();
   if ("error" in access) return { status: "error", error: access.error };
+  if (!Number.isInteger(id)) return { status: "error", error: "Virheellinen pyyntö" };
   const deleted = await pool.query("DELETE FROM invoices WHERE id = $1 AND status = 'draft'", [id]);
   if (deleted.rowCount === 0) return { status: "error", error: "Vain luonnoksen voi poistaa" };
   revalidateInvoices();
@@ -458,10 +465,21 @@ export async function sendInvoices(
     try {
       await client.query("BEGIN");
       const row = (
-        await client.query("SELECT * FROM invoices WHERE id = $1 AND status = 'draft' FOR UPDATE", [id])
+        await client.query(
+          `SELECT i.*, p.paid_at AS payer_paid_at FROM invoices i
+           LEFT JOIN billing_payers p ON p.period_id = i.period_id AND p.payer_key = i.payer_key
+           WHERE i.id = $1 AND i.status = 'draft' FOR UPDATE OF i`,
+          [id]
+        )
       ).rows[0];
       if (!row) {
         await client.query("ROLLBACK");
+        continue;
+      }
+      // Marked paid (in cash, say) after the draft was made
+      if (row.payer_paid_at) {
+        await client.query("ROLLBACK");
+        errors.push(`${row.recipient_name}: jakson lasku on jo merkitty maksetuksi, ei lähetetty.`);
         continue;
       }
       const lines = await client.query(
@@ -536,7 +554,7 @@ export async function sendInvoices(
       issued += 1;
     } catch (error) {
       await client.query("ROLLBACK").catch(() => undefined);
-      console.error(`Error sending invoice ${id}:`, error);
+      log.error("Sending an invoice failed", { err: error, invoiceId: id });
       errors.push(error instanceof Error && error.message.startsWith("Vuoden") ? error.message : "Laskun lähetys epäonnistui.");
     } finally {
       client.release();
@@ -625,6 +643,8 @@ export async function resendInvoice(
 export async function setInvoicePaid(id: number, paid: boolean): Promise<ActionResult> {
   const access = await requireBillingAdmin();
   if ("error" in access) return { status: "error", error: access.error };
+  // A string "false" would be truthy here but false in SQL
+  if (typeof paid !== "boolean") return { status: "error", error: "Virheellinen pyyntö" };
   const invoice = Number.isInteger(id) ? await getInvoice(id) : null;
   if (!invoice || invoice.status !== (paid ? "open" : "paid")) {
     return { status: "error", error: paid ? "Vain avoimen laskun voi merkitä maksetuksi" : "Lasku ei ole maksettu" };
@@ -656,6 +676,7 @@ const cancelSchema = z.string().trim().min(1, "Kerro, miksi lasku mitätöidää
 export async function cancelInvoice(id: number, reason: string): Promise<ActionResult> {
   const access = await requireBillingAdmin();
   if ("error" in access) return { status: "error", error: access.error };
+  if (!Number.isInteger(id)) return { status: "error", error: "Virheellinen pyyntö" };
   const parsed = cancelSchema.safeParse(reason);
   if (!parsed.success) return { status: "error", error: parsed.error.issues[0].message };
   const updated = await pool.query(

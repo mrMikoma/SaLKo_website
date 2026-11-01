@@ -15,8 +15,25 @@ on:
       - ".github/workflows/ansible-provision.yaml"
 
 jobs:
+  # Real runs only from main, dry runs from main or dev. Checked before a runner
+  # is created, because the later steps run the branch's own files with the
+  # server's root key.
+  check-branch:
+    name: Check the branch
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check the branch
+        env:
+          CHECK_MODE: ${{ inputs.check_mode }}
+        run: |
+          if [ "$GITHUB_REF" = "refs/heads/main" ]; then exit 0; fi
+          if [ "$GITHUB_REF" = "refs/heads/dev" ] && [ "$CHECK_MODE" = "true" ]; then exit 0; fi
+          echo "::error::Real runs only from main, dry runs from main or dev (this run is on $GITHUB_REF)"
+          exit 1
+
   create-runner:
     name: Create Hetzner Cloud runner
+    needs: check-branch
     runs-on: ubuntu-24.04
     outputs:
       label: ${{ steps.create-hcloud-runner.outputs.label }}
@@ -24,7 +41,7 @@ jobs:
     steps:
       - name: Create runner
         id: create-hcloud-runner
-        uses: Cyclenerd/hcloud-github-runner@v1.4.1
+        uses: Cyclenerd/hcloud-github-runner@94a0a4aa750d832b48cc0f66d24ed56c3fe69448 # v1.4.1
         with:
           mode: create
           github_token: ${{ secrets.HETZNER_GHA_RUNNER_PAT }}
@@ -80,7 +97,7 @@ jobs:
         uses: actions/checkout@v7.0.1
 
       - name: Setup Python
-        uses: actions/setup-python@v7.0.0
+        uses: actions/setup-python@v7.1.0
         with:
           python-version: "3.13"
 
@@ -109,7 +126,8 @@ jobs:
 
       - name: Ping test server
         env:
-          SERVER_IPS: ${{ vars.SERVER_IP_SALKO0 }}
+          # The app host, and the monitoring server's host when it has its own
+          SERVER_IPS: ${{ vars.SERVER_IP_SALKO0 }},${{ vars.MONITORING_SERVER_IP }}
           ANSIBLE_HOST_KEY_CHECKING: False
           ANSIBLE_FORCE_COLOR: True
         run: |
@@ -129,7 +147,8 @@ jobs:
 
       - name: Debug network connectivity
         env:
-          SERVER_IPS: ${{ vars.SERVER_IP_SALKO0 }}
+          # The app host, and the monitoring server's host when it has its own
+          SERVER_IPS: ${{ vars.SERVER_IP_SALKO0 }},${{ vars.MONITORING_SERVER_IP }}
           ANSIBLE_HOST_KEY_CHECKING: False
           ANSIBLE_FORCE_COLOR: True
         run: |
@@ -149,9 +168,16 @@ jobs:
 
       - name: Ansible Playbook
         env:
-          SERVER_IPS: ${{ vars.SERVER_IP_SALKO0 }}
+          # The app host, and the monitoring server's host when it has its own
+          SERVER_IPS: ${{ vars.SERVER_IP_SALKO0 }},${{ vars.MONITORING_SERVER_IP }}
           VPS_PUBLIC_KEY: ${{ secrets.VPS_PUBLIC_KEY }}
           SALKO_USER_PW_512: ${{ secrets.SALKO_USER_PW_512 }}
+          # Off-site backups (roles/backup), on the host with the production database.
+          # Until all three settings are set, the backup timer stays off.
+          BACKUP_HOST: ${{ vars.SERVER_IP_SALKO0 }}
+          BACKUP_DRIVE_ID: ${{ vars.BACKUP_DRIVE_ID }}
+          BACKUP_AGE_RECIPIENTS: ${{ vars.BACKUP_AGE_RECIPIENTS }}
+          BACKUP_DRIVE_SA_JSON: ${{ secrets.BACKUP_DRIVE_SA_JSON }}
           ANSIBLE_HOST_KEY_CHECKING: False
           ANSIBLE_FORCE_COLOR: True
           CHECK_MODE: ${{ inputs.check_mode }}
@@ -188,10 +214,10 @@ jobs:
       - create-runner
       - ansible-provision
     runs-on: ubuntu-24.04
-    if: ${{ always() }}
+    if: ${{ always() && needs.create-runner.outputs.server_id != '' }}
     steps:
       - name: Delete runner
-        uses: Cyclenerd/hcloud-github-runner@v1.4.1
+        uses: Cyclenerd/hcloud-github-runner@94a0a4aa750d832b48cc0f66d24ed56c3fe69448 # v1.4.1
         with:
           mode: delete
           github_token: ${{ secrets.HETZNER_GHA_RUNNER_PAT }}

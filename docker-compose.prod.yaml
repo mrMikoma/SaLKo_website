@@ -38,11 +38,35 @@ services:
     networks:
       - internal
       - outgoing
-    env_file: .env.prod
+    # Only what the app reads: .env.prod also holds the database
+    # superuser's and other services' passwords, which this container
+    # must not get (unset ones become empty)
     environment:
       - PORT=${CONTAINER_PORT}
       - HOSTNAME=${HOSTNAME}
       - DATABASE_CONNECTION_STRING=postgresql://${APP_DB_USER}:${APP_DB_PASSWORD}@${NAME_PREFIX}-postgres-${BRANCH_SUFFIX}:${PGPORT}/${POSTGRES_DB}
+      - NODE_ENV=${NODE_ENV:-}
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - UMAMI_INTERNAL_URL=${UMAMI_INTERNAL_URL:-}
+      - NEXT_PUBLIC_UMAMI_WEBSITE_ID=${NEXT_PUBLIC_UMAMI_WEBSITE_ID:-}
+      - FEATURE_FLIGHT_LOG=${FEATURE_FLIGHT_LOG:-}
+      - FEATURE_BILLING=${FEATURE_BILLING:-}
+      - FEATURE_PAGES_IN_REVIEW=${FEATURE_PAGES_IN_REVIEW:-}
+      - FLIGHT_LOG_SAMPLE_DATA=${FLIGHT_LOG_SAMPLE_DATA:-}
+      - FLIGHT_LOG_SPREADSHEET_ID=${FLIGHT_LOG_SPREADSHEET_ID:-}
+      - GOOGLE_SERVICE_ACCOUNT_KEY=${GOOGLE_SERVICE_ACCOUNT_KEY:-}
+      - MAIL_MODE=${MAIL_MODE:-}
+      - MAIL_REDIRECT_TO=${MAIL_REDIRECT_TO:-}
+      - MAIL_FROM=${MAIL_FROM:-}
+      - MAIL_GMAIL_CLIENT_ID=${MAIL_GMAIL_CLIENT_ID:-}
+      - MAIL_GMAIL_CLIENT_SECRET=${MAIL_GMAIL_CLIENT_SECRET:-}
+      - MAIL_REFRESH_TOKEN=${MAIL_REFRESH_TOKEN:-}
+      - PGTZ=${PGTZ:-}
+      # Logging (nextjs/docs/LOGGING.md): unset is JSON at level info
+      - LOG_LEVEL=${LOG_LEVEL:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -58,6 +82,12 @@ services:
       - environment=prod
       - traefik.enable=true
       - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.rule=Host(`${HOST_URL}`) || Host(`${SITE_PREFIX}.${HOST_URL}`)
+      # One host for search engines and sign-in cookies: www answers with a
+      # permanent redirect to the same path on the apex
+      - traefik.http.middlewares.nextjs-${BRANCH_SUFFIX}-apex.redirectregex.regex=^https?://${SITE_PREFIX}\.${HOST_URL}/(.*)
+      - traefik.http.middlewares.nextjs-${BRANCH_SUFFIX}-apex.redirectregex.replacement=https://${HOST_URL}/$${1}
+      - traefik.http.middlewares.nextjs-${BRANCH_SUFFIX}-apex.redirectregex.permanent=true
+      - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.middlewares=nextjs-${BRANCH_SUFFIX}-apex
       - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.entrypoints=websecure
       - traefik.http.routers.nextjs-${BRANCH_SUFFIX}.tls.certresolver=cloudflare
       - traefik.http.services.nextjs-${BRANCH_SUFFIX}.loadbalancer.server.port=${CONTAINER_PORT}

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import React from "react";
 
@@ -35,9 +36,12 @@ const FeatureCard = ({
         {/* Background Image (if provided) */}
         {imageSrc && (
           <div className="absolute inset-0 opacity-20 group-hover:opacity-30 transition-opacity duration-300">
-            <div
-              className="w-full h-full bg-cover bg-center"
-              style={{ backgroundImage: `url(${imageSrc})` }}
+            <Image
+              src={imageSrc}
+              alt=""
+              fill
+              sizes="(min-width: 768px) 33vw, 100vw"
+              className="object-cover"
             />
           </div>
         )}

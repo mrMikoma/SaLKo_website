@@ -119,6 +119,12 @@ describe("cell values", () => {
 });
 
 describe("parseFlightSheet", () => {
+  // Postgres compares UUIDs without case, so the sync must too
+  test("reads flight IDs in lower case", () => {
+    const parsed = parseFlightSheet(sheet(flightRow({ 24: ID_A.toUpperCase() })));
+    expect(parsed.flights[0].id).toBe(ID_A);
+  });
+
   test("reads a flight row in club time", () => {
     const parsed = parseFlightSheet(sheet(flightRow({ 24: ID_A, 26: "Tarkistettu" })));
     expect(parsed.errors).toEqual([]);
@@ -266,6 +272,22 @@ describe("findFlightIssues", () => {
       .map((issue) => issue.message);
     expect(messages).toHaveLength(4);
     expect(messages.join("\n")).toContain('Lentoonlähtöaika "14.05" ei kelpaa: kirjoita kellonaika muodossa 14:05');
+  });
+
+  test("a duration or landings total too big for the database is read as empty and reported", () => {
+    const parsed = parseFlightSheet(
+      sheet(flightRow({ 8: "99999999:00", 9: 1e9, 11: 1e12 }), flightRow({ 9: "#REF!", 11: "#REF!" }))
+    );
+    const [huge, broken] = parsed.flights;
+    expect(huge).toMatchObject({ sheetAirborneMinutes: null, airframeMinutes: null, totalLandings: null });
+    // The times still give the airborne time
+    expect(huge.airborneMinutes).toBe(39);
+    expect(broken).toMatchObject({ airframeMinutes: null, totalLandings: null, badCells: [] });
+    expect(
+      findFlightIssues(parsed.flights, context)
+        .filter((issue) => issue.kind === "bad_value")
+        .map((issue) => `${issue.row}:${issue.message.split(" ")[0]}`)
+    ).toEqual(["3:Ilmassa", "3:Kokonais", "3:Laskujen"]);
   });
 
   test("dates in the future, before 2000, or a year before the row above", () => {

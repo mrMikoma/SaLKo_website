@@ -41,16 +41,15 @@ import {
   readPaperGrid,
   RowMatch,
 } from "@/utilities/paperPage";
+import { logger } from "@/utilities/logger";
+
+const log = logger.child({ module: "flight-log" });
 
 type ActionResult<T = null> =
   | { status: "success"; result: T }
   | { status: "error"; error: string };
 
 const FLIGHT_LOG_DISABLED = "Lentopäiväkirja ei ole vielä käytössä";
-
-// A Google error carries the request, with members' names and remarks in its
-// body, so only its message goes to the log
-const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 // Each save or undo makes several Sheets requests and a sync, all as the one
 // service account: one member can't use up its quota for everyone
@@ -144,7 +143,7 @@ export async function addSampleFlights(registration: string): Promise<ActionResu
     revalidatePath("/admin/lennot");
     return { status: "success", result: { added: inputs.length } };
   } catch (error) {
-    console.error("Error adding sample flights:", errorText(error));
+    log.error("Adding sample flights failed", { err: error });
     return {
       status: "error",
       error:
@@ -181,7 +180,14 @@ export async function setPilotAlias(
 
   try {
     if (parsed.data.userId) {
-      const user = await pool.query("SELECT 1 FROM users WHERE id = $1", [parsed.data.userId]);
+      // Only an account the member list offers (getMemberOptions): not the
+      // system guest, a deactivated or an anonymised one
+      const user = await pool.query(
+        `SELECT 1 FROM users
+         WHERE id = $1 AND NOT (roles = ARRAY['guest']::text[])
+           AND deactivated_at IS NULL AND email NOT LIKE 'poistettu-%@salko.invalid'`,
+        [parsed.data.userId]
+      );
       if (user.rowCount === 0) {
         return { status: "error", error: "Jäsentä ei löytynyt" };
       }
@@ -195,7 +201,7 @@ export async function setPilotAlias(
       [nameKey(parsed.data.name), parsed.data.name, parsed.data.userId]
     );
   } catch (error) {
-    console.error("Error saving pilot alias:", error);
+    log.error("Saving pilot alias failed", { err: error });
     return { status: "error", error: "Tallennus epäonnistui" };
   }
 
@@ -225,7 +231,7 @@ export async function removePilotAlias(name: string): Promise<ActionResult> {
   try {
     await pool.query("DELETE FROM pilot_aliases WHERE name_key = $1", [nameKey(parsed.data)]);
   } catch (error) {
-    console.error("Error removing pilot alias:", errorText(error));
+    log.error("Removing pilot alias failed", { err: error });
     return { status: "error", error: "Poisto epäonnistui" };
   }
 
@@ -262,8 +268,9 @@ const optionalNumber = (max: number, message: string) =>
   z.number().min(0, message).max(max, message).nullable();
 
 const legSchema = z.object({
-  // Made by the form, so saving the same legs again finds them in the sheet
-  id: z.uuid("Lomake on vanhentunut. Lataa sivu uudelleen."),
+  // Made by the form, so saving the same legs again finds them in the sheet.
+  // Lower case, as the sheet parser and Postgres compare them
+  id: z.uuid("Lomake on vanhentunut. Lataa sivu uudelleen.").transform((id) => id.toLowerCase()),
   departure: airfieldField,
   arrival: airfieldField,
   takeoff: clockField,
@@ -291,32 +298,41 @@ export type LogFlightsInput = z.input<typeof logFlightsSchema>;
 /**
  * How the member is written in the flight log. Their matched sheet name if
  * they have one; otherwise "M.Meikäläinen" from their full name, or the full name,
- * whichever nobody uses yet, matched to them now. A name already in the sheet
- * or in pilot_aliases is never claimed here: it may be another pilot's, and
- * matching it would hand them that pilot's flights and bills. The admin
- * matches those on /admin/lennot.
+ * whichever nobody uses yet. A name already in the sheet or in pilot_aliases is
+ * never taken here: it may be another pilot's, and matching it would hand them
+ * that pilot's flights and bills. The admin matches those on /admin/lennot.
+ * A new name is matched to the member (claimSheetName) only once their flights
+ * are in the sheet, so a save that fails doesn't reserve a name.
  */
-async function memberSheetName(userId: string, fullName: string): Promise<string | null> {
+async function memberSheetName(
+  userId: string,
+  fullName: string
+): Promise<{ name: string; isNew: boolean } | null> {
   const existing = await pool.query(
     "SELECT name FROM pilot_aliases WHERE user_id = $1 ORDER BY updated_at DESC LIMIT 1",
     [userId]
   );
-  if (existing.rows.length > 0) return existing.rows[0].name;
+  if (existing.rows.length > 0) return { name: existing.rows[0].name, isNew: false };
 
   for (const candidate of [sheetNameFor(fullName), fullName.trim()]) {
     if (!candidate) continue;
-    const claimed = await pool.query(
-      `INSERT INTO pilot_aliases (name_key, name, user_id)
-       SELECT $1::text, $2::text, $3::text
-       WHERE NOT EXISTS (SELECT 1 FROM sheet_flights WHERE pic_key = $1)
-         AND NOT EXISTS (SELECT 1 FROM sheet_flights WHERE second_key = $1)
-       ON CONFLICT (name_key) DO NOTHING
-       RETURNING name`,
-      [nameKey(candidate), candidate, userId]
+    const taken = await pool.query(
+      `SELECT 1 FROM pilot_aliases WHERE name_key = $1
+       UNION ALL SELECT 1 FROM sheet_flights WHERE pic_key = $1 OR second_key = $1
+       LIMIT 1`,
+      [nameKey(candidate)]
     );
-    if (claimed.rows.length > 0) return claimed.rows[0].name;
+    if (taken.rows.length === 0) return { name: candidate, isNew: true };
   }
   return null;
+}
+
+async function claimSheetName(userId: string, name: string): Promise<void> {
+  await pool.query(
+    `INSERT INTO pilot_aliases (name_key, name, user_id) VALUES ($1, $2, $3)
+     ON CONFLICT (name_key) DO NOTHING`,
+    [nameKey(name), name, userId]
+  );
 }
 
 /**
@@ -388,6 +404,7 @@ export async function logFlights(
 
   let inputs: SheetFlightInput[] = [];
   let sheetName: string | null = null;
+  let newSheetName = false;
   try {
     const purposes = await pool.query(
       "SELECT code, is_training FROM flight_purposes WHERE active"
@@ -408,17 +425,19 @@ export async function logFlights(
       };
     }
 
-    sheetName = await memberSheetName(
+    const member = await memberSheetName(
       session.user.id,
       session.user.fullName || session.user.name || ""
     );
-    if (!sheetName) {
+    if (!member) {
       return {
         status: "error",
         error:
           "Nimesi on jo lentopäiväkirjassa, mutta sitä ei ole yhdistetty sinuun. Pyydä laskuttajaa yhdistämään nimesi, niin voit kirjata lentoja.",
       };
     }
+    sheetName = member.name;
+    newSheetName = member.isNew;
 
     // Saved already: the answer to an earlier try was lost on the way
     const saved = await pool.query(
@@ -458,7 +477,7 @@ export async function logFlights(
 
     await appendFlightsToSheet(registration, inputs);
   } catch (error) {
-    console.error("Error logging flights:", errorText(error));
+    log.error("Logging flights failed", { err: error });
     return {
       status: "error",
       error:
@@ -471,6 +490,7 @@ export async function logFlights(
   // The flights are in the sheet now. Saving again finds them there by their
   // IDs and only finishes this step.
   try {
+    if (newSheetName) await claimSheetName(session.user.id, sheetName);
     await pool.query(
       `INSERT INTO flight_log_web_entries (id, user_id, registration)
        SELECT unnest($1::uuid[]), $2, $3
@@ -478,7 +498,7 @@ export async function logFlights(
       [ids, session.user.id, registration]
     );
   } catch (error) {
-    console.error("Error recording logged flights:", errorText(error));
+    log.error("Recording logged flights failed", { err: error });
     return {
       status: "error",
       error: "Lento tallentui taulukkoon, mutta tallennus jäi kesken. Tallenna uudelleen, niin se viimeistellään.",
@@ -524,7 +544,7 @@ export async function undoFlight(id: string): Promise<ActionResult> {
     await clearWebFlight(entry.rows[0].registration, id);
     await pool.query("UPDATE flight_log_web_entries SET undone_at = NOW() WHERE id = $1", [id]);
   } catch (error) {
-    console.error("Error undoing flight:", errorText(error));
+    log.error("Undoing flight failed", { err: error });
     return {
       status: "error",
       error:
@@ -549,8 +569,9 @@ const setFlightStatusSchema = z.object({
         id: z.uuid(),
         inputHash: z.string().max(64).nullable(),
         // The Tila the page showed, so a change someone else made meanwhile
-        // isn't overwritten
-        status: z.string().max(40).nullable().optional(),
+        // isn't overwritten. Required: without it the sheet writer would skip
+        // that check
+        status: z.string().max(40).nullable(),
       })
     )
     .min(1, "Valitse ensin lennot")
@@ -595,7 +616,7 @@ export async function setFlightStatus(
       changes = await setFlightStatuses(registration, flights, status);
     }
   } catch (caught) {
-    console.error("Error setting flight status:", errorText(caught));
+    log.error("Setting flight status failed", { err: caught });
     error =
       caught instanceof FlightSheetWriteError
         ? caught.message
@@ -617,7 +638,7 @@ export async function setFlightStatus(
       );
     } catch (caught) {
       // The sheet has the new Tila; only the record of who set it is missing
-      console.error("Error recording flight status changes:", errorText(caught));
+      log.error("Recording flight status changes failed", { err: caught });
       error = "Tila tallentui taulukkoon, mutta muutoshistoriaan sitä ei saatu kirjattua.";
     }
   }
@@ -727,7 +748,7 @@ export async function previewPaperPage(
       },
     };
   } catch (error) {
-    console.error("Error previewing paper page:", errorText(error));
+    log.error("Previewing paper page failed", { err: error });
     return { status: "error", error: "Sivun tarkistus epäonnistui" };
   }
 }
@@ -810,6 +831,12 @@ export async function savePaperPage(
         if (!decision.id) {
           return { status: "error", error: `Rivi ${line.index + 1}: taulukon riviä ei ole valittu` };
         }
+        // Only a flight of this aircraft on the page's dates, as the preview
+        // showed it: the input hash makes the writer refuse a row that has
+        // changed since
+        if (!inSheet.has(decision.id) || !decision.inputHash) {
+          return { status: "error", error: "Sivu on muuttunut. Tarkista se uudelleen ennen tallennusta." };
+        }
         const matched = { id: decision.id, inputHash: decision.inputHash };
         if (decision.action === "confirm") {
           page.confirms.push(matched);
@@ -828,6 +855,24 @@ export async function savePaperPage(
     if (page.append.length + page.confirms.length + page.corrections.length === 0) {
       return { status: "error", error: "Sivulla ei ole tallennettavaa" };
     }
+    // A flight in a closed period is billed whatever the sheet says now, as in
+    // setFlightStatus
+    const matchedIds = [...page.confirms, ...page.corrections].map((flight) => flight.id);
+    if (matchedIds.length > 0) {
+      const billed = await pool.query(
+        `SELECT DISTINCT f.sheet_row FROM billing_lines b
+         JOIN sheet_flights f ON f.id = b.flight_id
+         WHERE b.flight_id = ANY($1::uuid[])
+         ORDER BY f.sheet_row`,
+        [matchedIds]
+      );
+      if (billed.rows.length > 0) {
+        return {
+          status: "error",
+          error: `Rivit ${billed.rows.map((row) => row.sheet_row).join(", ")} kuuluvat jo suljettuun laskutusjaksoon, eikä niitä muuteta täällä.`,
+        };
+      }
+    }
 
     const { matched } = await writePaperPage(registration, page);
     const previous = new Map(matched.map((m) => [m.id, m.oldStatus]));
@@ -845,7 +890,7 @@ export async function savePaperPage(
       ]
     );
   } catch (caught) {
-    console.error("Error saving paper page:", errorText(caught));
+    log.error("Saving paper page failed", { err: caught });
     error =
       caught instanceof FlightSheetWriteError
         ? caught.message

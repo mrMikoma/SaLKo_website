@@ -3,22 +3,14 @@ import planesData from "@/data/planes.json";
 import PlanePreviewCard from "@/components/planes/planePreviewCard";
 import PageHero from "@/components/pageHero";
 import ContentSection from "@/components/contentSection";
+import { pageMetadata } from "@/utilities/seo";
 
-export const metadata = {
-  title: "Kalusto",
-  description: "Savonlinnan Lentokerhon lentokonekalusto",
-  keywords: [
-    "Savonlinnan Lentokerho",
-    "kalusto",
-    "lentokoneet",
-    "purjelentokoneet",
-    "Cessna 172",
-    "Puchacz",
-    "Junior",
-    "Savonlinna",
-  ],
-  alternates: { canonical: "/kalusto" },
-};
+export const metadata = pageMetadata({
+  title: "Kalusto – kerhon lentokoneet ja purjekoneet",
+  description:
+    "Savonlinnan Lentokerhon kalusto: Cessna 172, Piper Cub, moottoripurjekone Fournier RF-5 ja kolme purjekonetta. Tekniset tiedot ja kuvat.",
+  path: "/kalusto",
+});
 
 const Page = () => {
   return (
@@ -27,7 +19,7 @@ const Page = () => {
         title="Kalusto"
         breadcrumbs={["Kalusto"]}
         compact={true}
-        backgroundImage="bg-mopu-one"
+        backgroundImage="oh386"
       >
         <div className="space-y-12 max-w-7xl mx-auto py-12 px-6 w-full">
           {/* Aircraft Categories */}
@@ -44,11 +36,12 @@ const Page = () => {
                       plane.registeration === "OH-CON" ||
                       plane.registeration === "OH-PDX",
                   )
-                  .map((plane: any) => (
+                  .map((plane: any, index: number) => (
                     <PlanePreviewCard
                       key={plane.registeration}
                       plane={plane}
                       type="motor"
+                      preload={index === 0}
                     />
                   ))}
               </div>
@@ -90,7 +83,7 @@ const Page = () => {
               </p>
               <Link
                 href="/kalusto/varauskalenteri"
-                className="inline-block px-8 py-4 bg-sred text-swhite font-semibold rounded-lg shadow-xl hover:bg-sred/90 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300"
+                className="inline-block px-8 py-4 bg-sred-dark text-swhite font-semibold rounded-lg shadow-xl hover:bg-sred-dark/90 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300"
               >
                 Siirry varauskalenteriin
               </Link>

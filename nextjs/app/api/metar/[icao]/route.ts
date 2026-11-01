@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getLatestMETARFromDB } from "@/utilities/metarService";
+import { logger } from "@/utilities/logger";
+
+const log = logger.child({ module: "metar" });
 
 export async function GET(
   request: NextRequest,
@@ -48,14 +51,9 @@ export async function GET(
       fetchedAt: metarData.fetchedAt,
     });
   } catch (error) {
-    console.error("METAR API error:", error);
+    // The details stay in the log: a database error can name internal hosts
+    log.error("METAR request failed", { err: error });
 
-    return NextResponse.json(
-      {
-        error: "Internal server error",
-        message: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

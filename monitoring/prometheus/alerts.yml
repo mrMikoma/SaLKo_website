@@ -1,0 +1,188 @@
+# Alert rules, evaluated by Prometheus. They show as firing alerts on the
+# SaLKo Overview dashboard (Grafana's home page) and under Alerting in Grafana,
+# and Alertmanager emails them (monitoring/alertmanager/alertmanager.yml).
+# severity: critical = the public site or its data is hurt now, a reminder
+# every 4 hours; warning = look at it soon, a reminder every 12 hours.
+groups:
+  - name: website
+    rules:
+      - alert: WebsiteDown
+        expr: probe_success{job="blackbox", site="prod"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "savonlinnanlentokerho.fi does not answer with a page"
+          description: "The probe of {{ $labels.instance }} has failed for 2 minutes (Cloudflare, Traefik or the app container)."
+
+      - alert: WebsiteHealthCheckFailing
+        expr: probe_success{job="blackbox-health", site="prod"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "The production app or its database is not healthy"
+          description: "{{ $labels.instance }} has not answered {\"status\":\"ok\"} for 2 minutes."
+
+      - alert: DevSiteDown
+        expr: probe_success{job=~"blackbox|blackbox-health", site="dev"} == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "kehitys.savonlinnanlentokerho.fi is down"
+          description: "The probe of {{ $labels.instance }} has failed for 5 minutes."
+
+      - alert: WebsiteSlow
+        expr: probe_duration_seconds{job="blackbox", site="prod"} > 3
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "The front page takes over 3 s to load"
+          description: "{{ $labels.instance }} took {{ $value | humanizeDuration }} to answer the probe."
+
+      - alert: WebsiteServerErrors
+        expr: |
+          (
+            sum(rate(traefik_service_requests_total{service=~"nextjs-prod@.*", code=~"5.."}[5m]))
+              / sum(rate(traefik_service_requests_total{service=~"nextjs-prod@.*"}[5m]))
+          ) > 0.05
+          and sum(rate(traefik_service_requests_total{service=~"nextjs-prod@.*"}[5m])) > 0.02
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Over 5 % of production requests end in a server error"
+          description: "{{ $value | humanizePercentage }} of the requests to the production app answered 5xx in the last 5 minutes."
+
+      - alert: CertificateExpiringSoon
+        expr: (probe_ssl_earliest_cert_expiry{site="prod"} - time()) / 86400 < 14
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "The public TLS certificate expires in under 14 days"
+          description: "{{ $labels.instance }}: {{ $value | humanize }} days left."
+
+      - alert: OriginCertificateExpiringSoon
+        expr: (min by (cn) (traefik_tls_certs_not_after) - time()) / 86400 < 14
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Traefik's certificate for {{ $labels.cn }} expires in under 14 days"
+          description: "{{ $value | humanize }} days left; Traefik should have renewed it (Cloudflare DNS challenge)."
+
+  - name: services
+    rules:
+      - alert: ContainerNotRunning
+        expr: |
+          absent(container_last_seen{name="salko-nextjs-prod"})
+          or absent(container_last_seen{name="salko-postgres-prod"})
+          or absent(container_last_seen{name="traefik"})
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Container {{ $labels.name }} is not running"
+          description: "cAdvisor has not seen {{ $labels.name }} for 2 minutes."
+
+      - alert: ContainerRestarting
+        expr: changes(container_start_time_seconds{name=~"salko-.+|traefik"}[15m]) > 2
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container {{ $labels.name }} keeps restarting"
+          description: "{{ $labels.name }} restarted {{ $value }} times in 15 minutes."
+
+      - alert: PostgresDown
+        expr: pg_up{database="prod"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "The production database does not answer"
+          description: "postgres-exporter cannot reach salko-postgres-prod."
+
+      - alert: PostgresDevDown
+        expr: pg_up{database="dev"} == 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "The dev database does not answer"
+          description: "postgres-exporter cannot reach salko-postgres-dev."
+
+  - name: host
+    rules:
+      - alert: HostDiskAlmostFull
+        expr: |
+          100 - node_filesystem_avail_bytes{mountpoint="/", fstype!="rootfs"}
+            / node_filesystem_size_bytes{mountpoint="/", fstype!="rootfs"} * 100 > 85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "The disk of {{ $labels.host }} is {{ $value | humanize }} % full"
+          description: "Over 85 % of / is used. Old images and logs are pruned weekly (infra/ansible/roles/maintenance)."
+
+      - alert: HostDiskFull
+        expr: |
+          100 - node_filesystem_avail_bytes{mountpoint="/", fstype!="rootfs"}
+            / node_filesystem_size_bytes{mountpoint="/", fstype!="rootfs"} * 100 > 95
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "The disk of {{ $labels.host }} is {{ $value | humanize }} % full"
+          description: "Postgres and the deploys fail when / fills up."
+
+      - alert: HostMemoryHigh
+        expr: (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 > 90
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.host }} uses {{ $value | humanize }} % of its memory"
+          description: "Over 90 % for 10 minutes."
+
+      - alert: HostCpuHigh
+        expr: 100 - avg by (host) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100 > 90
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.host }} CPU at {{ $value | humanize }} %"
+          description: "Over 90 % for 15 minutes."
+
+  - name: monitoring
+    rules:
+      - alert: MonitoringAgentSilent
+        expr: absent_over_time(up{job="alloy"}[3m])
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "No data from the monitoring agent"
+          description: "Nothing has arrived from Alloy for 5 minutes: the other alerts and the dashboards are blind."
+
+      - alert: ScrapeTargetDown
+        expr: up{job!="alloy"} == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.job }} ({{ $labels.instance }}) cannot be scraped"
+          description: "Its metrics are missing from the dashboards."
+
+      # Shows in Grafana: by email it can't get through, by definition
+      - alert: AlertEmailsFailing
+        # Per attempt: alertmanager_notifications_failed_total waits for all retries
+        expr: sum(increase(alertmanager_notification_requests_failed_total{integration="email"}[30m])) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "Alert emails are not getting through"
+          description: "{{ $value | humanize }} attempts to send an alert email failed in 30 minutes. See its log (salko-alertmanager) and the SMTP relay setting in the Google Admin console (monitoring/README.md)."

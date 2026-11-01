@@ -21,7 +21,7 @@ export default async function Page() {
           title="Käyttäjätietoja ei löytynyt"
           subtitle="Kirjaudu sisään nähdäksesi profiilisi"
           breadcrumbs={["Profiili"]}
-          backgroundImage="bg-punkaharju-one"
+          backgroundImage="punkaharju"
           showScrollIndicator={false}
         />
       </div>
@@ -34,7 +34,7 @@ export default async function Page() {
         title="Profiili"
         subtitle={user.full_name}
         breadcrumbs={["Profiili"]}
-        backgroundImage="bg-punkaharju-one"
+        backgroundImage="punkaharju"
         compact={true}
         showScrollIndicator={false}
       />

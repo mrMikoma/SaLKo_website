@@ -5,17 +5,28 @@ import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import PageHero from "@/components/pageHero";
 import ContentSection from "@/components/contentSection";
+import { pageMetadata, summarize } from "@/utilities/seo";
 
 export async function generateMetadata({ params }) {
   const { planes } = await params;
   const plane = planeData.find((p) => p.registeration === planes);
+  if (!plane) {
+    return { title: "Lentokonetta ei löytynyt" };
+  }
 
-  return {
-    title: plane ? `${planes}` : "Lentokonetta ei löytynyt",
-    description: plane
-      ? `${plane.name} - ${plane.registeration}`
-      : "Lentokonetta ei löytynyt",
-  };
+  // Some planes have no description yet ("TBA")
+  const description =
+    plane.description.length >= 70
+      ? summarize(plane.description)
+      : `${plane.name} (${plane.registeration}) on Savonlinnan Lentokerhon kalustoa. Katso koneen tekniset tiedot${plane.images.length > 0 ? " ja kuvat" : ""}.`;
+  const photo = plane.images[0];
+
+  return pageMetadata({
+    title: `${plane.registeration} – ${plane.name}`,
+    description,
+    path: `/kalusto/${plane.registeration}`,
+    image: photo ? { url: photo.src, alt: photo.alt } : undefined,
+  });
 }
 
 export async function generateStaticParams() {
@@ -44,7 +55,7 @@ const Page = async ({ params }) => {
         subtitle={plane.registeration}
         breadcrumbs={["Kalusto", plane.registeration]}
         compact={true}
-        backgroundImage="bg-efsa-one"
+        backgroundImage="efsa"
         showScrollIndicator={false}
       >
         <div className="space-y-8 max-w-7xl mx-auto p-6 w-full">
@@ -66,7 +77,7 @@ const Page = async ({ params }) => {
           <div className="text-center pt-4">
             <Link
               href="/kalusto"
-              className="inline-flex items-center gap-2 px-8 py-4 bg-sbluel text-swhite font-semibold rounded-lg shadow-xl hover:bg-sbluel/90 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300"
+              className="inline-flex items-center gap-2 px-8 py-4 bg-sbluel-dark text-swhite font-semibold rounded-lg shadow-xl hover:bg-sbluel-dark/90 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300"
             >
               <span>←</span>
               <span>Takaisin kalustoon</span>

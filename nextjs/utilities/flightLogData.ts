@@ -323,11 +323,12 @@ export interface MatchedPilot {
   // null: marked as no member, billed under the name at the non-member price
   userId: string | null;
   userName: string | null;
+  userEmail: string | null;
 }
 
 export async function getMatchedPilots(): Promise<MatchedPilot[]> {
   const response = await connectionPool.query(
-    `SELECT a.name, a.name_key, a.user_id, u.full_name
+    `SELECT a.name, a.name_key, a.user_id, u.full_name, u.email
      FROM pilot_aliases a LEFT JOIN users u ON u.id = a.user_id
      ORDER BY u.full_name NULLS LAST, a.name`
   );
@@ -336,6 +337,7 @@ export async function getMatchedPilots(): Promise<MatchedPilot[]> {
     nameKey: row.name_key,
     userId: row.user_id,
     userName: row.full_name,
+    userEmail: row.email,
   }));
 }
 

@@ -11,6 +11,13 @@ import { RateLimiter } from "@/utilities/rateLimit";
 export const failedLoginsByEmail = new RateLimiter("login-email", 10, 15 * 60_000, 15 * 60_000);
 export const failedLoginsByIp = new RateLimiter("login-ip", 20, 60_000, 10 * 60_000);
 
+/**
+ * Wrong current passwords when a logged-in member changes the password
+ * (userManagement.ts), per account: the same budget as logins, so a borrowed
+ * session can't guess the password faster than the login form allows.
+ */
+export const failedPasswordChecks = new RateLimiter("password-check", 10, 15 * 60_000, 15 * 60_000);
+
 export const emailKey = (email: string) => email.trim().toLowerCase();
 
 /** Milliseconds until this email or IP may try again; 0 when neither is blocked */

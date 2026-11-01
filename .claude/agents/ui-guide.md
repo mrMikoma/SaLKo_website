@@ -18,7 +18,11 @@ You are the UI reference for the SaLKo website (Finnish aviation club). Consult 
 | `sblue` | #003580 | Primary blue — CTAs, buttons |
 | `sbluel` | #2d7a94 | Light blue — accents, hover states |
 | `sred` | #e84855 | Aviation red — primary CTA, alerts, badges |
+| `sred-dark` | #c62f3c | Red behind text — CTA buttons, badges |
+| `sbluel-dark` | #276c83 | Light blue behind text — buttons |
 | `sgrey` | #e6e6e6 | Light grey — borders, dividers |
+
+**Behind text, use the `-dark` reds and light blues** (`bg-sred-dark text-swhite hover:bg-sred-dark/90`). Text on `sred` is 3.5:1 and on `sbluel` 4.4:1, below WCAG's 4.5:1 for normal text, and Lighthouse's accessibility audit flags it. `sred` and `sbluel` stay for borders, underlines, dots, icons and red text.
 
 Extended palette: `sky-blue`, `deep-navy`, `light-blue`, `aviation-red`, `cloud-white`, `charcoal`, `light-grey`, `horizon-orange`, `success-green`, `warning-amber`
 
@@ -27,8 +31,7 @@ Extended palette: `sky-blue`, `deep-navy`, `light-blue`, `aviation-red`, `cloud-
 - Scale: `text-display` (3.5rem) → `text-tiny` (0.75rem)
 - Body default applied on root: `bg-sblued text-white font-finlandica`
 
-**Background images (Tailwind classes):**
-`bg-efsa-one`, `bg-efsa-two`, `bg-olavinlinna-one`, `bg-olavinlinna-two`, `bg-ohcon-one`, `bg-ohcon-two`, `bg-plane-back`, `bg-hero-img`
+**Background photos:** not CSS classes. `PageHero` and `ContentSection` take `backgroundImage` as a name from `BACKDROPS` in `components/backdrop.tsx` (`olavinlinna`, `punkaharju`, `savonlinna`, `efsa`, `ohconApron`, `ohconFlight`, `ohconClouds`, `oh386`, `certificate`). Elsewhere, render `<Backdrop name="…" />` as the first child of a `relative` element; pass `preload` only to the one at the top of the page. A CSS `background-image` photo is downloaded in full before the first paint, which cost the home page 6 s of mobile LCP. Add new photos to `BACKDROPS`, resized to at most 2000 px.
 
 **Custom utility classes:**
 ```

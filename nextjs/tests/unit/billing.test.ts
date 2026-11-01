@@ -109,8 +109,11 @@ describe("what stops a period from closing", () => {
       flight({ picName: "Uusi Nimi", sheetRow: 3 }),
       flight({ purposeCode: "XYZ", sheetRow: 4 }),
       flight({ airborneMinutes: null, sheetRow: 5 }),
+      flight({ takeoff: null, landing: null, airborneMinutes: -30, sheetRow: 6 }),
     ]);
+    // In flight order: the one without times comes first
     expect(result.blockers).toEqual([
+      { kind: "missing_minutes", message: "Ilmassa oloaika on negatiivinen", rows: [6] },
       { kind: "unchecked", message: "Tarkistamatta", rows: [1, 2] },
       { kind: "unmatched", message: 'Nimeä "Uusi Nimi" ei ole yhdistetty jäseneen', rows: [3] },
       { kind: "unknown_purpose", message: "Tuntematon lennon tarkoitus XYZ", rows: [4] },
@@ -206,5 +209,22 @@ describe("flights changed after their period closed", () => {
     expect(removed.payers[0].totalCents).toBe(-40 * 310);
     const remark = bill([], { changed: [{ flightId: "x", current: flight({ id: "x" }), billed }] });
     expect(remark.payers).toEqual([]);
+  });
+
+  // Without these the correction would credit the whole amount, or more,
+  // without anyone looking at it
+  test("a change that can't be priced stops the period instead of crediting", () => {
+    const changedTo = (changes: Partial<BillingFlight>) =>
+      bill([], { changed: [{ flightId: "x", current: flight({ id: "x", sheetRow: 7, ...changes }), billed }] });
+    for (const [changes, kind, message] of [
+      [{ purposeCode: "ZZZ" }, "unknown_purpose", "Tuntematon lennon tarkoitus ZZZ"],
+      [{ airborneMinutes: null }, "missing_minutes", "Ilmassa oloaika puuttuu"],
+      [{ takeoff: null, landing: null, airborneMinutes: -5940 }, "missing_minutes", "Ilmassa oloaika on negatiivinen"],
+      [{ registration: "OH-XXX" }, "no_rate", "Koneelle OH-XXX ei ole hintaa"],
+    ] as const) {
+      const result = changedTo(changes);
+      expect(result.blockers).toEqual([{ kind, message, rows: [7] }]);
+      expect(result.payers).toEqual([]);
+    }
   });
 });

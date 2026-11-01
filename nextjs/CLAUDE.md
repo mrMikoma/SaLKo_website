@@ -11,7 +11,7 @@ Next.js 16 (App Router, Turbopack), React 19, TypeScript 5 with `strict: false`,
 ## Layout
 
 ```
-app/          # routes; segments are Finnish (kalusto, jasenalue, kerho, …), api/ only for auth, METAR, Umami, booking .ics
+app/          # routes; segments are Finnish (kalusto, jasenalue, kerho, …), api/ only for auth, METAR, Umami, booking .ics, health
 components/   # one folder per feature (bookings/, flightLogs/, admin/, profile/, …), shared ones at the top
 utilities/    # server actions ("use server" files) and helpers; db.ts, roles.ts, definitions.ts
 hooks/        # client hooks, e.g. useBookings (TanStack Query)
@@ -33,7 +33,7 @@ proxy.ts      # route protection (Next 16's replacement for middleware.ts)
   2. validates input with Zod;
   3. queries with `pool` from `@/utilities/db`, always parameterized (`$1`, `$2`, …);
   4. calls `revalidatePath()` for pages that show the changed data;
-  5. returns `{ status: "success" | "error", error?, result? }`. Error messages are user-facing and in Finnish; log details with `console.error`.
+  5. returns `{ status: "success" | "error", error?, result? }`. Error messages are user-facing and in Finnish; log details with the module's logger, `log.error("Saving X failed", { err: error, xId })` (`utilities/logger.ts`, `docs/LOGGING.md`): IDs only, no personal data.
 - **Access control:** `proxy.ts` redirects anonymous users away from `/jasenalue/*`, and keeps `/admin/*` to admins, except the flight log and billing sections, which treasurers can also open (`canOpenAdminPath()` in `utilities/roles.ts`). That is only a UI guard. The server action check above is what protects data.
 - **Forms** call server actions through `useActionState` (`components/auth/login.tsx`, `components/profile/*Form.tsx`).
 - **Client data** that needs caching or refetching goes through TanStack Query hooks in `hooks/` (see `useBookings.ts`).
@@ -46,10 +46,9 @@ proxy.ts      # route protection (Next 16's replacement for middleware.ts)
 
 - `tsconfig.json` has `strict: false`, so the compiler won't catch missing null checks. `@typescript-eslint/no-explicit-any` is only a warning; use real types in new code.
 - `pool` from `utilities/db.ts` is `null` when `DATABASE_CONNECTION_STRING` is unset or `CI` is set.
-- `auth.ts` logs `[JWT]` and `[SESSION]` lines on every request; in dev they also appear in the browser console.
 - `next-env.d.ts` and the managed block in `AGENTS.md` are written by `next dev`. `next-env.d.ts` is gitignored; `AGENTS.md` is committed as generated.
 - After you edit a file, the hooks report ESLint errors in it, and at the end of the turn they report TypeScript errors (see "Claude Code Setup" in the root `CLAUDE.md`).
 
 ## More Docs
 
-`docs/` has background on specific features: `BOOKINGS.md` (current booking calendar: club time, permissions, saving, export), `FLIGHT_LOG.md` (the flight log sync), `FLIGHT_LOG_SETUP.md` (connecting an environment to a Google Sheet, with the empty template `lentopaivakirja-pohja.xlsx`) and `FLIGHT_LOG_PLAN.md` (the plan for flight log, billing and stats), `INVOICES.md` (issuing and emailing bills, reference numbers, the member's view), `GO_LIVE.md` (the production release checklist, in stages), `MAIL_SETUP.md` (sending email from the club's Google Workspace account: DNS, the OAuth client, `MAIL_MODE`), `AUTH_SETUP.md`, `GITHUB_SECRETS_SETUP.md` and `METAR_SETUP.md`, plus the historical `BOOKING_MODERNIZATION.md`, `BOOKING_PHASE2_IMPROVEMENTS.md` and `BOOKING_PHASE3_TODO.md`. They were written at different times, so check them against the code.
+`docs/` has background on specific features: `BOOKINGS.md` (current booking calendar: club time, permissions, saving, export), `FLIGHT_LOG.md` (the flight log sync), `FLIGHT_LOG_SETUP.md` (connecting an environment to a Google Sheet, with the empty template `lentopaivakirja-pohja.xlsx`) and `FLIGHT_LOG_PLAN.md` (the plan for flight log, billing and stats), `INVOICES.md` (issuing and emailing bills, reference numbers, the member's view), `GO_LIVE.md` (the production release checklist, in stages), `SEO_PLAN.md` (search visibility: findings and phased plan; the `seo` skill has the per-page checklist and audit scripts), `MAIL_SETUP.md` (sending email from the club's Google Workspace account: DNS, the OAuth client, `MAIL_MODE`), `LOGGING.md` (the server logger: levels, JSON records, redaction), `BACKUP_PLAN.md` (off-site backups and handover) and `BACKUP_GITHUB.md` (the weekly copy of GitHub and the Terraform state; the nightly server copy is in `infra/ansible/roles/backup/README.md`), `AUTH_SETUP.md`, `GITHUB_SECRETS_SETUP.md` and `METAR_SETUP.md`, plus the historical `BOOKING_MODERNIZATION.md`, `BOOKING_PHASE2_IMPROVEMENTS.md` and `BOOKING_PHASE3_TODO.md`. They were written at different times, so check them against the code.

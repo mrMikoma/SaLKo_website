@@ -1,0 +1,215 @@
+// Grafana Alloy: the monitoring agent of an app host (docker-compose.monitoring-agent.yaml).
+// It replaces Promtail (end of life) and Prometheus' own scraping of this
+// host: logs and metrics are collected here and pushed to the monitoring
+// server's gateway, so the server can run on this host or on any other host
+// in the private network. Settings come from the environment:
+//
+//   AGENT_HOST                the host's name, the `host` label on everything sent
+//   MONITORING_PUSH_URL       the gateway, http://monitoring-gateway:8080 on the same host
+//   MONITORING_PUSH_USER/_PASSWORD  the gateway's login (deploy-monitoring.yaml)
+//
+// Alloy's own UI is on :12345 on the salko_monitoring network.
+
+// ---------------------------------------------------------------------------
+// Where everything goes
+
+prometheus.remote_write "server" {
+	endpoint {
+		url = sys.env("MONITORING_PUSH_URL") + "/api/v1/write"
+
+		basic_auth {
+			username = sys.env("MONITORING_PUSH_USER")
+			password = sys.env("MONITORING_PUSH_PASSWORD")
+		}
+	}
+
+	external_labels = {
+		host = sys.env("AGENT_HOST"),
+	}
+}
+
+loki.write "server" {
+	endpoint {
+		url = sys.env("MONITORING_PUSH_URL") + "/loki/api/v1/push"
+
+		basic_auth {
+			username = sys.env("MONITORING_PUSH_USER")
+			password = sys.env("MONITORING_PUSH_PASSWORD")
+		}
+	}
+
+	external_labels = {
+		host = sys.env("AGENT_HOST"),
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Container logs: every container with the label logging=promtail (the label
+// keeps its old name, so the app compose files need no change)
+
+discovery.docker "containers" {
+	host             = "unix:///var/run/docker.sock"
+	refresh_interval = "10s"
+
+	filter {
+		name   = "label"
+		values = ["logging=promtail"]
+	}
+}
+
+// The labels Promtail used, so the dashboards and saved queries still work.
+// No container ID or image label: they change on every deploy and only
+// multiply the streams.
+discovery.relabel "containers" {
+	targets = []
+
+	rule {
+		source_labels = ["__meta_docker_container_name"]
+		regex         = "/(.*)"
+		target_label  = "container"
+	}
+
+	rule {
+		source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+		target_label  = "compose_project"
+	}
+
+	rule {
+		source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+		target_label  = "compose_service"
+	}
+
+	rule {
+		source_labels = ["__meta_docker_container_label_environment"]
+		target_label  = "environment"
+	}
+
+	rule {
+		source_labels = ["__meta_docker_container_log_stream"]
+		target_label  = "stream"
+	}
+
+	rule {
+		target_label = "job"
+		replacement  = "docker"
+	}
+}
+
+loki.source.docker "containers" {
+	host          = "unix:///var/run/docker.sock"
+	targets       = discovery.docker.containers.targets
+	relabel_rules = discovery.relabel.containers.rules
+	forward_to    = [loki.process.redact.receiver]
+}
+
+// The host's own logs (syslog, auth.log, ...)
+local.file_match "system" {
+	path_targets = [{
+		"__path__" = "/var/log/*log",
+		"job"      = "varlogs",
+	}]
+}
+
+loki.source.file "system" {
+	targets = local.file_match.system.targets
+	// A file seen for the first time is read from its end, not its history
+	tail_from_end = true
+	forward_to    = [loki.process.redact.receiver]
+}
+
+// Secrets and personal data out of every line before it leaves the host. The
+// app redacts its own records (nextjs/utilities/logger.ts); this is for the
+// rest: postgres-exporter prints its whole DSN, password included, when it
+// can't parse it, and Postgres' DETAIL lines carry row values such as email
+// addresses. Each captured group is replaced.
+loki.process "redact" {
+	// password=..., password: ..., "password":"..." (only the value, so JSON
+	// stays JSON)
+	stage.replace {
+		expression = "(?i)pass(?:word|wd)?[\"']?\\s*[=:]\\s*(?:'([^']*)'|\"([^\"]*)\"|([^\\s,;&'\"]+))"
+		replace    = "[REDACTED]"
+	}
+
+	// user:password@ in connection strings and URLs
+	stage.replace {
+		expression = "[a-zA-Z][a-zA-Z0-9+.-]*://[^\\s:@/]+:([^\\s@/]+)@"
+		replace    = "[REDACTED]"
+	}
+
+	// Authorization header values
+	stage.replace {
+		expression = "(?i)(?:bearer|basic)\\s+([A-Za-z0-9._~+/=-]{8,})"
+		replace    = "[REDACTED]"
+	}
+
+	// Email addresses
+	stage.replace {
+		expression = "([A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\\.[A-Za-z0-9-]+)*\\.[A-Za-z]{2,})"
+		replace    = "[email]"
+	}
+
+	forward_to = [loki.write.server.receiver]
+}
+
+// Loki finds each line's level itself (detected_level): from the "level"
+// field of the app's JSON records (nextjs/utilities/logger.ts), and from
+// words like ERROR or WARN in the other containers' plain text.
+
+// ---------------------------------------------------------------------------
+// Metrics: the exporters next to this agent, and Traefik
+
+prometheus.scrape "node" {
+	job_name        = "node-exporter"
+	scrape_interval = "15s"
+	targets         = [{"__address__" = "node-exporter:9100", "instance" = sys.env("AGENT_HOST")}]
+	forward_to      = [prometheus.remote_write.server.receiver]
+}
+
+prometheus.scrape "cadvisor" {
+	job_name        = "cadvisor"
+	scrape_interval = "15s"
+	targets         = [{"__address__" = "cadvisor:8080", "instance" = sys.env("AGENT_HOST")}]
+	forward_to      = [prometheus.remote_write.server.receiver]
+}
+
+prometheus.scrape "postgres" {
+	job_name        = "postgres"
+	scrape_interval = "30s"
+	targets         = [
+		{"__address__" = "postgres-exporter-dev:9187", "database" = "dev", "instance" = "salko-postgres-dev"},
+		{"__address__" = "postgres-exporter-prod:9187", "database" = "prod", "instance" = "salko-postgres-prod"},
+	]
+	forward_to = [prometheus.remote_write.server.receiver]
+}
+
+// Traefik's metrics entrypoint (traefik/traefik.yaml), on salko_monitoring
+prometheus.scrape "traefik" {
+	job_name        = "traefik"
+	scrape_interval = "15s"
+	targets         = [{"__address__" = "traefik:8080", "instance" = sys.env("AGENT_HOST")}]
+	forward_to      = [prometheus.remote_write.server.receiver]
+}
+
+// The agent itself, so the server can tell a silent agent from a quiet host
+prometheus.exporter.self "alloy" { }
+
+discovery.relabel "alloy" {
+	targets = prometheus.exporter.self.alloy.targets
+
+	rule {
+		target_label = "job"
+		replacement  = "alloy"
+	}
+
+	rule {
+		target_label = "instance"
+		replacement  = sys.env("AGENT_HOST")
+	}
+}
+
+prometheus.scrape "alloy" {
+	job_name        = "alloy"
+	scrape_interval = "30s"
+	targets         = discovery.relabel.alloy.output
+	forward_to      = [prometheus.remote_write.server.receiver]
+}

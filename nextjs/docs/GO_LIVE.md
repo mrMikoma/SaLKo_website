@@ -5,6 +5,7 @@ How everything waiting in `dev` reaches savonlinnanlentokerho.fi, in three stage
 | Stage | What goes live | Switch |
 |---|---|---|
 | **A. Release** | Next.js and Bun security updates, the booking permission fix and new calendar, admin user tools, bulletin drafts, server maintenance and SSH hardening, the SPF and DMARC records; the code of B and C too, switched off | merge `dev` → `main` (#47), migrate, deploy |
+| **A2. Security fixes** | login, password and session hardening, the server and monitoring changes, the Cloudflare-only firewall, search visibility and `www.` → apex (see below) | merge `dev` → `main`, migrate (017, 018), deploy, then Monitoring and Traefik |
 | **B. Flight log** | the club's real sheet, members logging flights, the treasurer checking them, statistics | production variable `FEATURE_FLIGHT_LOG=true`, redeploy |
 | **C. Billing and email** | prices, billing periods, invoices on the site and by email | production variables `FEATURE_BILLING=true` and `MAIL_MODE=send`, redeploy |
 
@@ -124,6 +125,73 @@ Stage A doesn't depend on B or C and carries security fixes, so it shouldn't wai
     docker exec -i salko-postgres-prod sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < /home/salko/backups/migrations/salko-postgres-prod-<time>.dump
     ```
   - Then deploy the previous version with **Deploy production from main branch**.
+
+## Stage A2: security fixes
+
+What `dev` holds after stage A, from the code review in October 2026:
+- **Logins and sessions:**
+  - Google logins must come from the club's Workspace;
+  - limits on password guessing;
+  - reset links end with a lock or a password change;
+  - exact session revocation (`users.session_version`, migration 017).
+- **Mail:** a message is only sent in the `MAIL_MODE` it was stored in (`email_outbox.queued_mode`, migration 018). Billing mail is still off in production.
+- **Server:**
+  - the app containers no longer get the database superuser's password;
+  - Umami gets its own database password;
+  - the admin tools move to a network of their own;
+  - the Postgres exporters and Traefik metrics work;
+  - the web ports accept only Cloudflare.
+- **Workflows:** dispatch inputs are checked and deploys run from the reviewed branch.
+- **Backups** (`BACKUP_PLAN.md`), both switched off until their drive, keys and service accounts are set:
+  - the nightly off-site backup of the server;
+  - the weekly copy of GitHub and the Terraform state (`BACKUP_GITHUB.md`), a new scheduled workflow.
+- **Search visibility** (`SEO_PLAN.md`):
+  - each page's own title, description and share image, and structured data;
+  - the Umami endpoint the tracker actually calls;
+  - lighter images;
+  - `www.savonlinnanlentokerho.fi` redirects to the apex, and `NEXTAUTH_URL` is the apex.
+
+### Release
+
+0. **The day before:** a dry run of Ansible, as in stage A: Actions → **Ansible Provision** → branch `dev`, "Dry run" ticked. Read the package list of its first task, `apt upgrade: dist`: an upgrade of `docker-ce` or `containerd.io` restarts Docker in step 1.
+1. **Merge** `dev` → `main`. The push starts **Ansible Provision** by itself, with no approval, because `infra/ansible/` and its workflow changed.
+   - It first upgrades every package. If that upgrades Docker, dockerd restarts, and with it every container, for a minute or two.
+   - It installs the backup role (`infra/ansible/roles/backup`). Its timer stays off until the backup settings exist (`BACKUP_PLAN.md`).
+   - Wait until it is green before step 2, then check SSH: `ssh -o PasswordAuthentication=no salko@savonlinnanlentokerho.fi true`.
+2. **Terraform** runs on the push to `main`. Its plan changes only the firewall's HTTP and HTTPS sources to Cloudflare's ranges. **Approve** the apply. Then run the public-page check under "Check" in stage A: every page must still answer 200 through Cloudflare.
+3. **Build the prod image:** Actions → **Build and Publish Production** → branch `main`. Note the version.
+4. **Migrate**, right before the deploy:
+   - Actions → **Database Migrations** → branch `main`, `prod`, "Dry run" ticked. It should list `017_users_session_version.sql` and `018_email_outbox_queued_mode.sql` as pending, nothing else.
+   - Then run it again without the dry run. **Approve**.
+   - Without the column, the new code ends every session, so the deploy must not run before this.
+5. **Deploy:** Actions → **Deploy production from main branch** → branch `main`, the version from step 3. **Approve**.
+   - Members logged in on savonlinnanlentokerho.fi stay logged in. Sessions on `www.` end: `www.` now redirects to the apex, and a login cookie belongs to the host that set it. Google logins used to finish on `www.`, so expect members to log in once more.
+   - The deploy gives Umami its own database password and switches Umami to it. If that fails, the log says so and Umami keeps its old one.
+6. **Monitoring:** the push to `main` started **Deploy Monitoring Stack**; **Approve** it now. It moves the admin tools onto the `salko_monitoring` network and splits the stack into the server and the agent (Grafana Alloy replaces Promtail and Prometheus' own scraping, `monitoring/README.md`). It also starts Alertmanager, which emails alerts to admin@savonlinnanlentokerho.fi. Its last step checks that the agent's metrics and logs arrive.
+7. **Traefik:** Actions → **Deploy Traefik** from `main`. It joins `salko_monitoring`, so the admin tools are reachable again. Between steps 6 and 7 they aren't; the public site is unaffected.
+8. **Cronjobs:** Actions → **Deploy Background Cronjobs** → branch `main`. **Approve**. This picks up the pinned runner action; the job itself is unchanged.
+
+### Check
+
+- [ ] Logging in works with Google and with a password, and a member logged in on savonlinnanlentokerho.fi before the release still is. Start the Google login from https://savonlinnanlentokerho.fi: it must end there, logged in.
+- [ ] `www.` redirects, keeping the path: `curl -sI https://www.savonlinnanlentokerho.fi/kalusto | grep -iE '^(HTTP|location)'` shows `301` and `location: https://savonlinnanlentokerho.fi/kalusto`.
+- [ ] Grafana, pgAdmin and Umami open from the club networks.
+  - pgAdmin now asks for the database password: it no longer stores the production one.
+- [ ] Grafana opens on **SaLKo Overview**: Website UP, App & database OK, Database (prod) UP, Monitoring agent REPORTING, and no critical alerts.
+- [ ] **Alert emails:** set up the SMTP relay in the Google Admin console for salko0's public IPv4 address ("Alert emails" in `monitoring/README.md`, steps 1–4). Then run **Deploy Monitoring Stack** from `main` with **Send a test alert email** ticked. Its last step passes, and admin@savonlinnanlentokerho.fi gets `[SaLKo WARNING] Test alert from the monitoring deploy`, then its `RESOLVED` five minutes later.
+- [ ] In Grafana → Explore → Prometheus, `up{host="salko0"}` is 1 for `node-exporter`, `cadvisor`, `postgres` (dev and prod), `traefik` and `alloy`. The Postgres and Traefik ones never were before.
+- [ ] Umami shows new page views after the release, and its Postgres connection works (no errors in its log).
+- [ ] The site's pages answer through Cloudflare (stage A's check). Anything that used the server's public IP directly no longer reaches ports 80 and 443.
+- [ ] Search: from the repo root, `bun .claude/skills/seo/scripts/audit.ts` reports no errors. Google's Rich Results Test (https://search.google.com/test/rich-results) reads the structured data on `/` and `/kalusto/OH-CON` without errors. Then set up Search Console (`SEO_PLAN.md`, 0.2).
+
+### If it goes wrong
+
+- **Every session ends after the deploy:** migration 017 hasn't run on prod. Run step 4. (Sessions on `www.` ending is expected, see step 5.)
+- **Google login says `redirect_uri_mismatch`:** the Google OAuth client is missing `https://savonlinnanlentokerho.fi/api/auth/callback/google` under Authorized redirect URIs (it was there on 2026-10-31). Add it in Google Cloud Console → Credentials; no deploy needed.
+- **Admin tools unreachable:** Traefik isn't on `salko_monitoring`. Run **Deploy Monitoring Stack**, then **Deploy Traefik**.
+- **Monitoring shows no data, or the deploy's last check fails:** see Troubleshooting in `monitoring/README.md` (Alloy's log, the gateway's password).
+- **The test alert email fails:** the run prints Google's answer. A refused relay means the Admin console's SMTP relay doesn't list salko0's public IP, or the change hasn't taken effect yet. Alerts still show in Grafana meanwhile.
+- **Umami can't reach its database:** run the prod deploy again (step 5). It sets the role's password from `/home/salko/.umami-db-password` and Umami's URL together. Once the role has the new password, the old one no longer works for it.
 
 ## Stage B: flight log
 

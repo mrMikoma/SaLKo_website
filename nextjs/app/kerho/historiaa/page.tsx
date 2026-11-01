@@ -8,13 +8,14 @@ import PageHero from "@/components/pageHero";
 import ContentSection from "@/components/contentSection";
 import HistoryTimeline from "@/components/historyTimeline";
 import historyData from "@/data/history.json";
+import { pageMetadata } from "@/utilities/seo";
 
-export const metadata = {
-  title: "Historiaa",
+export const metadata = pageMetadata({
+  title: "Historiaa – lentokerho vuodesta 1962",
   description:
     "Savonlinnan Lentokerhon historia: jäältä lennetyistä 1930-luvun liidoista ja kerhon perustamisesta 1962 Savonlinnan lentoaseman hallien ja koneiden vaiheisiin.",
-  alternates: { canonical: "/kerho/historiaa" },
-};
+  path: "/kerho/historiaa",
+});
 
 // Anchor ids for the table of contents
 const slug = (title: string) =>
@@ -39,7 +40,7 @@ export default function Page() {
         title="Historiaa"
         subtitle="Yli 60 vuotta ilmailua Savonlinnassa"
         breadcrumbs={["Kerho", "Historiaa"]}
-        backgroundImage="bg-olavinlinna-one"
+        backgroundImage="olavinlinna"
         compact={true}
         showScrollIndicator={false}
       />
