@@ -704,6 +704,24 @@ const INPUT_COLUMNS: SheetColumn[] = [
 // The website's own columns, apart from ID
 const WEBSITE_COLUMNS: SheetColumn[] = ["source", "status", "billingPeriod"];
 
+const lastFlightRow = (parsed: ParsedSheet, firstDataRow: number) =>
+  parsed.flights.reduce((last, flight) => Math.max(last, flight.row), firstDataRow - 1);
+
+/** Whether someone has typed into a row: any of the columns people type into */
+function typedInto(cells: SheetValue[] | undefined, parsed: ParsedSheet): boolean {
+  return INPUT_COLUMNS.some((key) => {
+    const index = parsed.columns[key];
+    return index !== undefined && !isBlank((cells ?? [])[index]);
+  });
+}
+
+/** The columns people or the website type into, which formulas never go into */
+export function typedColumnIndexes(parsed: ParsedSheet): number[] {
+  return [...INPUT_COLUMNS, ...WEBSITE_COLUMNS].flatMap((key) =>
+    parsed.columns[key] === undefined ? [] : [parsed.columns[key]!]
+  );
+}
+
 /**
  * Rows a new flight can go into: the rows after the last flight that are
  * pre-filled with the formulas (formulas[i] is row i + 1 of the airborne-time
@@ -716,23 +734,59 @@ export function findWritableRows(
   formulas: string[],
   firstDataRow = 3
 ): number[] {
-  const lastFlightRow = parsed.flights.reduce(
-    (last, flight) => Math.max(last, flight.row),
-    firstDataRow - 1
-  );
-
   const rows: number[] = [];
-  for (let row = lastFlightRow + 1; row <= formulas.length; row++) {
+  for (let row = lastFlightRow(parsed, firstDataRow) + 1; row <= formulas.length; row++) {
     if (!formulas[row - 1]?.startsWith("=")) break;
-    const cells = values[row - 1] ?? [];
-    const typedInto = INPUT_COLUMNS.some((key) => {
-      const index = parsed.columns[key];
-      return index !== undefined && !isBlank(cells[index]);
-    });
-    if (typedInto) break;
+    if (typedInto(values[row - 1], parsed)) break;
     rows.push(row);
   }
   return rows;
+}
+
+// Formula rows added at a time when they run out, as the biller would drag
+// them down, so that the next saves find rows ready
+export const FORMULA_ROWS_TO_ADD = 100;
+
+export type FlightRowPlan =
+  | { kind: "write"; rows: number[] }
+  // Continue the formulas of sourceRow into firstRow..lastRow; sourceRow is
+  // null when the tab has no formula row to continue
+  | { kind: "extend"; sourceRow: number | null; firstRow: number; lastRow: number }
+  // A row someone has typed into is in the way
+  | { kind: "blocked"; row: number };
+
+/**
+ * Where `count` new flights go: the pre-filled formula rows after the last
+ * flight (findWritableRows), when there are enough. When they run out, the
+ * formulas are continued below them, as dragging the last formula row down
+ * in Sheets does, rather than refusing the flight: that is what the biller
+ * would do. Only empty rows get formulas, and a row someone has typed into
+ * stops it, so nothing typed is ever written over.
+ */
+export function planFlightRows(
+  values: SheetValues,
+  parsed: ParsedSheet,
+  formulas: string[],
+  count: number,
+  firstDataRow = 3
+): FlightRowPlan {
+  const rows = findWritableRows(values, parsed, formulas, firstDataRow);
+  if (rows.length >= count) return { kind: "write", rows };
+
+  const firstRow = (rows.at(-1) ?? lastFlightRow(parsed, firstDataRow)) + 1;
+  const wanted = Math.max(count - rows.length, FORMULA_ROWS_TO_ADD);
+  let lastRow = firstRow - 1;
+  while (lastRow - firstRow + 1 < wanted && !typedInto(values[lastRow], parsed)) lastRow++;
+  if (lastRow - firstRow + 1 < count - rows.length) return { kind: "blocked", row: lastRow + 1 };
+
+  let sourceRow: number | null = null;
+  for (let row = Math.min(firstRow - 1, formulas.length); row >= firstDataRow; row--) {
+    if (formulas[row - 1]?.startsWith("=")) {
+      sourceRow = row;
+      break;
+    }
+  }
+  return { kind: "extend", sourceRow, firstRow, lastRow };
 }
 
 export interface SheetFlightInput {
