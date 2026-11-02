@@ -43,6 +43,11 @@ export interface FlightSheet {
   // One column as formulas ("=H5-G5"), to find the rows that are pre-filled
   // with formulas; index 0 is row 1
   readFormulas(tab: string, column: number): Promise<string[]>;
+  // Continues the formulas of sourceRow into rows firstRow..lastRow, as
+  // dragging the row down in Sheets does: only the cells that hold a formula,
+  // with their formatting and their references moved, never into
+  // skipColumns. Adds rows to the tab when it is too short.
+  extendFormulas(tab: string, sourceRow: number, firstRow: number, lastRow: number, skipColumns: number[]): Promise<void>;
   // Google's numeric id of each tab, for links into the sheet
   tabIds(): Promise<Map<string, number>>;
   // Link to a row, given the tab's id
@@ -101,6 +106,56 @@ class GoogleFlightSheet implements FlightSheet {
       valueRenderOption: "FORMULA",
     });
     return (response.data.values ?? []).map((row) => String(row?.[0] ?? ""));
+  }
+
+  async extendFormulas(
+    tab: string,
+    sourceRow: number,
+    firstRow: number,
+    lastRow: number,
+    skipColumns: number[]
+  ): Promise<void> {
+    const [meta, source] = await Promise.all([
+      this.sheets.spreadsheets.get({
+        spreadsheetId: this.spreadsheetId,
+        fields: "sheets.properties(sheetId,title,gridProperties.rowCount)",
+      }),
+      this.sheets.spreadsheets.values.get({
+        spreadsheetId: this.spreadsheetId,
+        range: `${quoteTab(tab)}!${sourceRow}:${sourceRow}`,
+        valueRenderOption: "FORMULA",
+      }),
+    ]);
+    const properties = meta.data.sheets?.find((s) => s.properties?.title === tab)?.properties;
+    if (properties?.sheetId === undefined || properties.sheetId === null) {
+      throw new Error(`Välilehteä ${tab} ei löydy taulukosta`);
+    }
+    const sheetId = properties.sheetId;
+    const columns = (source.data.values?.[0] ?? []).flatMap((value, column) =>
+      typeof value === "string" && value.startsWith("=") && !skipColumns.includes(column) ? [column] : []
+    );
+    if (columns.length === 0) return;
+
+    const rowCount = properties.gridProperties?.rowCount ?? 0;
+    const requests: sheets_v4.Schema$Request[] = [];
+    if (lastRow > rowCount) {
+      requests.push({ appendDimension: { sheetId, dimension: "ROWS", length: lastRow - rowCount } });
+    }
+    // One source cell pasted over many rows repeats it, references moved
+    for (const column of columns) {
+      requests.push({
+        copyPaste: {
+          source: { sheetId, startRowIndex: sourceRow - 1, endRowIndex: sourceRow, startColumnIndex: column, endColumnIndex: column + 1 },
+          destination: { sheetId, startRowIndex: firstRow - 1, endRowIndex: lastRow, startColumnIndex: column, endColumnIndex: column + 1 },
+          pasteType: "PASTE_NORMAL",
+          pasteOrientation: "NORMAL",
+        },
+      });
+    }
+    await this.sheets.spreadsheets.batchUpdate({
+      spreadsheetId: this.spreadsheetId,
+      requestBody: { requests },
+    });
   }
 
   async tabIds(): Promise<Map<string, number>> {
@@ -172,6 +227,31 @@ class FixtureFlightSheet implements FlightSheet {
     return values.map((row) => (typeof row[column] === "number" ? "=fixture" : ""));
   }
 
+  async extendFormulas(
+    tab: string,
+    sourceRow: number,
+    firstRow: number,
+    lastRow: number,
+    skipColumns: number[]
+  ): Promise<void> {
+    const values = this.tabs()[tab];
+    if (!values) {
+      throw new Error(`Välilehteä ${tab} ei löydy taulukosta`);
+    }
+    // A number outside the typed-in columns stands for a formula; the copies
+    // hold 0, as the pre-filled rows do
+    const source = values[sourceRow - 1] ?? [];
+    for (let row = firstRow; row <= lastRow; row++) {
+      while (values.length < row) values.push([]);
+      const target = values[row - 1];
+      source.forEach((value, column) => {
+        if (typeof value !== "number" || skipColumns.includes(column)) return;
+        while (target.length <= column) target.push("");
+        target[column] = 0;
+      });
+    }
+  }
+
   async tabIds(): Promise<Map<string, number>> {
     return new Map();
   }
@@ -190,6 +270,10 @@ function parseLikeSheets(value: string | number): SheetValue {
   }
   if (value.startsWith("'")) {
     return value.slice(1);
+  }
+  // A formula: the fixture can't compute it, and a number stands for one
+  if (value.startsWith("=")) {
+    return 0;
   }
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     const date = parseSheetDate(value)!;

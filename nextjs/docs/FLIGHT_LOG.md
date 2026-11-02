@@ -112,7 +112,11 @@ Members choose their own full name, so the list of matched names there shows eac
 4. Writes only the typed-in columns, plus `ID`, `Lähde` = `web`, an empty Tila and an empty Laskutusjakso, with `USER_ENTERED`: ISO dates and `HH:MM` times, which Sheets reads as a date and a time. Tila and Laskutusjakso are emptied because someone may have filled them down past the last flight. Names, remarks and other text get a leading apostrophe, so Sheets keeps them as typed and a remark can never become a formula. The formulas stay.
 5. Reads the tab back: each flight must be in its row with its ID, and every flight that was there before must still be there, unchanged. Sheets can't write "only if nothing changed", so a row inserted by hand at that very moment could shift the last flight into the row being written; this catches it and names the row.
 6. Records the rows in `flight_log_web_entries` and syncs.
-7. When the formula rows run out, it refuses and asks the member to tell the biller, who drags the formulas further down.
+7. When the formula rows run out, it continues them itself, as the biller would by dragging the last row down (`planFlightRows`, `extendFormulas`):
+   - It adds 100 rows at a time, or as many as the flights need, with Sheets' own copy-paste, so references move and formatting comes along.
+   - Only the cells of the last formula row that hold a formula are copied, never into the columns people or the site type into. Rows are added to the tab when it is too short.
+   - A tab with no formula row at all (all its rows deleted) gets the club's formulas from the template in its first new row, and the rest continue from that.
+   - Only a row someone has typed into, in the way of the new rows, still stops the save; the message names the row.
 
 **Saving twice is safe.** The form makes each leg's ID when the leg is added and sends it with every try. If the answer is lost (a dropped connection at the airfield, or a form left open while the site was updated), the form keeps what was typed and says the save didn't come through. Saving again finds the IDs: already recorded, it just confirms; in the sheet but not recorded, it finishes the record; in the sheet with other times, it refuses. A member can save or undo 20 times in 10 minutes, since each one makes several Sheets requests as the one service account.
 

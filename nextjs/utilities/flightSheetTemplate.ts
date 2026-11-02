@@ -118,8 +118,12 @@ export function letter(index: number): string {
 const col = (key: Column["key"]) => letter(LAYOUT.findIndex((c) => c.key === key));
 
 // The club's formulas. A row without a flight shows nothing in I and in the
-// running totals J and L, as in the club's sheet.
-function formulas(row: number): Partial<Record<Column["key"], TemplateCell>> {
+// running totals J and L, as in the club's sheet. `at` gives a column's
+// letter, or null when the sheet has no such column (that formula is left out).
+function formulasAt(
+  at: (key: Column["key"]) => string | null,
+  row: number
+): Partial<Record<Column["key"], TemplateCell>> {
   const [date, takeoff, landing, airborne, total, landings, landingsTotal] = [
     "date",
     "takeoff",
@@ -128,25 +132,52 @@ function formulas(row: number): Partial<Record<Column["key"], TemplateCell>> {
     "airframeTotal",
     "landings",
     "landingsTotal",
-  ].map((key) => col(key as Column["key"]));
+  ].map((key) => at(key as Column["key"]));
   const r = row;
   const p = row - 1;
-  return {
-    airborne: {
+  const cells: Partial<Record<Column["key"], TemplateCell>> = {};
+  if (airborne && takeoff && landing) {
+    cells.airborne = {
       formula: `IF(${landing}${r}-${takeoff}${r}=0,,${landing}${r}-${takeoff}${r})`,
       style: "formulaDuration",
-    },
-    airframeTotal: {
+    };
+  }
+  if (total && airborne) {
+    cells.airframeTotal = {
       formula: `IF(${total}${p}+${airborne}${r}=${total}${p},,${total}${p}+${airborne}${r})`,
       style: "formulaDuration",
-    },
-    landingsTotal: {
+    };
+  }
+  if (landingsTotal && landings) {
+    cells.landingsTotal = {
       formula: `IF(${landingsTotal}${p}+${landings}${r}=${landingsTotal}${p},,${landingsTotal}${p}+${landings}${r})`,
       style: "formulaNumber",
-    },
-    month: { formula: `IF(${date}${r}="","",MONTH(${date}${r}))`, style: "formulaNumber" },
-    year: { formula: `IF(${date}${r}="","",YEAR(${date}${r}))`, style: "formulaNumber" },
-  };
+    };
+  }
+  const month = at("month");
+  const year = at("year");
+  if (date && month) cells.month = { formula: `IF(${date}${r}="","",MONTH(${date}${r}))`, style: "formulaNumber" };
+  if (date && year) cells.year = { formula: `IF(${date}${r}="","",YEAR(${date}${r}))`, style: "formulaNumber" };
+  return cells;
+}
+
+const formulas = (row: number) => formulasAt(col, row);
+
+/**
+ * The club's formulas for one row of an existing tab, at that tab's own
+ * column positions, as typed into Sheets: for a tab that has no formula row
+ * left to continue (the flight rows were deleted, say).
+ */
+export function flightRowFormulaCells(
+  columns: Partial<Record<SheetColumn, number>>,
+  row: number
+): { row: number; column: number; value: string }[] {
+  const cells = formulasAt((key) => (key in columns && columns[key as SheetColumn] !== undefined ? letter(columns[key as SheetColumn]!) : null), row);
+  return Object.entries(cells).flatMap(([key, cell]) =>
+    cell?.formula && columns[key as SheetColumn] !== undefined
+      ? [{ row, column: columns[key as SheetColumn]!, value: `=${cell.formula}` }]
+      : []
+  );
 }
 
 export const TEMPLATE_FIRST_DATA_ROW = 3;

@@ -3,9 +3,13 @@ import {
   clearedFlightCells,
   findWritableRows,
   flightCells,
+  FORMULA_ROWS_TO_ADD,
   parseFlightSheet,
+  planFlightRows,
   SheetValues,
+  typedColumnIndexes,
 } from "@/utilities/flightSheetParser";
+import { flightRowFormulaCells } from "@/utilities/flightSheetTemplate";
 import {
   crossesMidnight,
   legTimeError,
@@ -111,6 +115,71 @@ describe("writing to the sheet", () => {
     const values = sheet(flight("a"));
     const parsed = parseFlightSheet(values);
     expect(findWritableRows(values, parsed, formulas(1))).toEqual([]);
+  });
+
+  test("enough pre-filled rows: write into them", () => {
+    const values = sheet(flight("a"), formulaRow(), formulaRow());
+    const parsed = parseFlightSheet(values);
+    expect(planFlightRows(values, parsed, formulas(3), 2)).toEqual({ kind: "write", rows: [4, 5] });
+  });
+
+  test("formulas run out: continue them from the last formula row, over empty rows", () => {
+    const values = sheet(flight("a"), formulaRow());
+    const parsed = parseFlightSheet(values);
+    // One pre-filled row left (4), three flights: continue row 4's formulas from row 5 on
+    expect(planFlightRows(values, parsed, formulas(2), 3)).toEqual({
+      kind: "extend",
+      sourceRow: 4,
+      firstRow: 5,
+      lastRow: 4 + FORMULA_ROWS_TO_ADD,
+    });
+    // None left: continue the last flight's own formulas
+    expect(planFlightRows(sheet(flight("a")), parseFlightSheet(sheet(flight("a"))), formulas(1), 1)).toEqual({
+      kind: "extend",
+      sourceRow: 3,
+      firstRow: 4,
+      lastRow: 3 + FORMULA_ROWS_TO_ADD,
+    });
+  });
+
+  test("a year of sample flights gets as many rows as it needs", () => {
+    const values = sheet();
+    expect(planFlightRows(values, parseFlightSheet(values), formulas(0), 250)).toMatchObject({
+      firstRow: 3,
+      lastRow: 252,
+    });
+  });
+
+  test("an emptied tab, no formula row anywhere: the first new row gets the club's formulas", () => {
+    const values = sheet();
+    const parsed = parseFlightSheet(values);
+    expect(planFlightRows(values, parsed, formulas(0), 1)).toEqual({
+      kind: "extend",
+      sourceRow: null,
+      firstRow: 3,
+      lastRow: 2 + FORMULA_ROWS_TO_ADD,
+    });
+    // At the tab's own columns: G takeoff, H landing, I airborne, J and L totals, K landings
+    expect(flightRowFormulaCells(parsed.columns, 3).map((cell) => [cell.column, cell.value])).toEqual([
+      [8, "=IF(H3-G3=0,,H3-G3)"],
+      [9, "=IF(J2+I3=J2,,J2+I3)"],
+      [11, "=IF(L2+K3=L2,,L2+K3)"],
+    ]);
+  });
+
+  test("formulas stop at a row someone typed into, and never go into typed columns", () => {
+    const typed = formulaRow();
+    typed[1] = "M.Meikäläinen";
+    const values = sheet(flight("a"), [], typed);
+    const parsed = parseFlightSheet(values);
+    // Only row 4 is free before the typed row 5: room for one flight, not two
+    expect(planFlightRows(values, parsed, formulas(1), 1)).toMatchObject({ kind: "extend", firstRow: 4, lastRow: 4 });
+    expect(planFlightRows(values, parsed, formulas(1), 2)).toEqual({ kind: "blocked", row: 5 });
+    // The formula copies skip every column people or the website type into
+    const skipped = typedColumnIndexes(parsed);
+    expect(skipped).toContain(parsed.columns.date!);
+    expect(skipped).toContain(parsed.columns.status!);
+    expect(skipped).not.toContain(parsed.columns.airborne!);
   });
 
   test("a flight's cells cover only the input columns", () => {
