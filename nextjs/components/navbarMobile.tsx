@@ -305,11 +305,10 @@ const NavbarMobile = (handleLogoutProp: {
                           {treasurerLink.label}
                         </Link>
                       )}
-                      <div className="block w-full py-2.5 px-8 text-base text-sred/95 hover:bg-sblue/40 hover:text-sred hover:pl-10 transition-all duration-200 border-l-2 border-transparent hover:border-sred backdrop-blur-sm">
-                        <Logout
-                          onHandleLogout={handleLogoutProp.handleLogout}
-                        />
-                      </div>
+                      <Logout
+                        onHandleLogout={handleLogoutProp.handleLogout}
+                        className="block w-full text-left py-2.5 px-8 text-base text-sred/95 hover:bg-sblue/40 hover:text-sred hover:pl-10 transition-all duration-200 border-l-2 border-transparent hover:border-sred backdrop-blur-sm cursor-pointer"
+                      />
                     </DisclosurePanel>
                   </div>
                 )}

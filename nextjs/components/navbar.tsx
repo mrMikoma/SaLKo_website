@@ -348,9 +348,10 @@ const Navbar = ({
                     </MenuItem>
                   )}
                   <MenuItem>
-                    <div className="block px-4 py-3 text-swhite font-semibold hover:bg-sblue/50 hover:text-sbluel transition-all duration-200">
-                      <Logout onHandleLogout={handleLogout} />
-                    </div>
+                    <Logout
+                      onHandleLogout={handleLogout}
+                      className="block w-full text-left px-4 py-3 text-swhite font-semibold hover:bg-sblue/50 hover:text-sbluel data-[focus]:bg-sblue/50 transition-all duration-200 cursor-pointer"
+                    />
                   </MenuItem>
                 </MenuItems>
               </div>
