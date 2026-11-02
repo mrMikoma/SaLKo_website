@@ -447,7 +447,8 @@ export type FlightIssueKind =
   | "undated_row"
   | "stray_status"
   | "copied_row"
-  | "billed_status";
+  | "billed_status"
+  | "formula_error";
 
 export interface FlightIssue {
   row: number;
@@ -627,6 +628,53 @@ export function findFlightIssues(
     }
   }
 
+  return issues;
+}
+
+// The columns that hold the club's formulas, in the sheet's order
+const FORMULA_COLUMNS: SheetColumn[] = ["airborne", "airframeTotal", "landingsTotal"];
+
+/**
+ * Flight rows whose formula columns show an error (#ERROR!, #REF!, #VALUE!…),
+ * as one issue per run of rows: a broken running total breaks every row
+ * below it. The website takes the airborne time from the times then, but the
+ * sheet's own times and totals are wrong until the formula is fixed.
+ */
+export function findFormulaErrorIssues(
+  flights: ParsedFlight[],
+  columns: Partial<Record<SheetColumn, number>>
+): FlightIssue[] {
+  const issues: FlightIssue[] = [];
+  let run: { first: number; last: number; error: string; columns: Set<SheetColumn> } | null = null;
+  const flush = () => {
+    if (!run) return;
+    const rows = run.first === run.last ? `Rivillä ${run.first}` : `Riveillä ${run.first}–${run.last}`;
+    const names = FORMULA_COLUMNS.filter((key) => run!.columns.has(key)).map((key) => SHEET_COLUMNS[key]);
+    issues.push({
+      row: run.first,
+      flightId: null,
+      kind: "formula_error",
+      message: `${rows} kaava näyttää virhettä ${run.error} (${names.join(", ")}). Korjaa kaava ylimmälle riville ja kopioi se alas. Sivusto laskee lentoajan lentoonlähtö- ja laskuajasta, mutta taulukon omat summat ovat väärin.`,
+    });
+    run = null;
+  };
+  for (const flight of flights) {
+    const broken = FORMULA_COLUMNS.flatMap((key) => {
+      const value = columns[key] === undefined ? undefined : flight.raw[columns[key]!];
+      return typeof value === "string" && value.trim().startsWith("#") ? [{ key, value: value.trim() }] : [];
+    });
+    if (broken.length === 0) {
+      flush();
+      continue;
+    }
+    if (!run || flight.row !== run.last + 1) {
+      flush();
+      run = { first: flight.row, last: flight.row, error: broken[0].value, columns: new Set() };
+    }
+    run.last = flight.row;
+    broken.forEach(({ key }) => run!.columns.add(key));
+  }
+  flush();
   return issues;
 }
 

@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   columnLetter,
   findFlightIssues,
+  findFormulaErrorIssues,
   findUndatedRowIssues,
   findWebEntryNameIssues,
   nameKey,
@@ -359,6 +360,23 @@ describe("rows that aren't read as flights", () => {
     expect(issues.map((issue) => `${issue.row}:${issue.kind}`)).toEqual(["4:stray_status", "8:stray_status"]);
     expect(issues[0].message).toContain("Riveillä 4–6");
     expect(issues[1].message).toContain("Rivillä 8");
+  });
+
+  test("broken formulas on flight rows are one issue per run of rows; the airborne time comes from the times", () => {
+    const parsed = parseFlightSheet(
+      sheet(
+        flightRow({ 8: "#ERROR!", 9: "#ERROR!", 11: "#ERROR!" }),
+        flightRow({ 8: "#ERROR!", 9: "#ERROR!", 11: "#ERROR!" }),
+        flightRow(),
+        flightRow({ 9: "#REF!" })
+      )
+    );
+    expect(parsed.flights[0].airborneMinutes).toBe(39);
+    const issues = findFormulaErrorIssues(parsed.flights, parsed.columns);
+    expect(issues.map((issue) => `${issue.row}:${issue.kind}`)).toEqual(["3:formula_error", "6:formula_error"]);
+    expect(issues[0].message).toContain("Riveillä 3–4 kaava näyttää virhettä #ERROR!");
+    expect(issues[0].message).toContain("Ilmassa oloaika, Kokonais ilmassaoloaika, Laskujen kokonaismäärä");
+    expect(issues[1].message).toContain("Rivillä 6 kaava näyttää virhettä #REF! (Kokonais ilmassaoloaika)");
   });
 
   test("formula rows and a lone page number are not reported", () => {

@@ -10,6 +10,7 @@ import {
   SheetValue,
   SheetValues,
 } from "@/utilities/flightSheetParser";
+import { FormulaSeparator, formulaSeparator } from "@/utilities/flightSheetTemplate";
 
 /**
  * Where the flight log lives. In production that is the club's Google Sheet;
@@ -48,6 +49,9 @@ export interface FlightSheet {
   // with their formatting and their references moved, never into
   // skipColumns. Adds rows to the tab when it is too short.
   extendFormulas(tab: string, sourceRow: number, firstRow: number, lastRow: number, skipColumns: number[]): Promise<void>;
+  // What separates a formula's arguments when the website types one in:
+  // Sheets reads it in the spreadsheet's locale, ";" in a Finnish one
+  formulaSeparator(): Promise<FormulaSeparator>;
   // Google's numeric id of each tab, for links into the sheet
   tabIds(): Promise<Map<string, number>>;
   // Link to a row, given the tab's id
@@ -158,6 +162,14 @@ class GoogleFlightSheet implements FlightSheet {
     });
   }
 
+  async formulaSeparator(): Promise<FormulaSeparator> {
+    const response = await this.sheets.spreadsheets.get({
+      spreadsheetId: this.spreadsheetId,
+      fields: "properties.locale",
+    });
+    return formulaSeparator(response.data.properties?.locale);
+  }
+
   async tabIds(): Promise<Map<string, number>> {
     const response = await this.sheets.spreadsheets.get({
       spreadsheetId: this.spreadsheetId,
@@ -252,6 +264,11 @@ class FixtureFlightSheet implements FlightSheet {
     }
   }
 
+  async formulaSeparator(): Promise<FormulaSeparator> {
+    // The fixture stands for the club's Finnish-locale sheet
+    return ";";
+  }
+
   async tabIds(): Promise<Map<string, number>> {
     return new Map();
   }
@@ -271,9 +288,11 @@ function parseLikeSheets(value: string | number): SheetValue {
   if (value.startsWith("'")) {
     return value.slice(1);
   }
-  // A formula: the fixture can't compute it, and a number stands for one
+  // A formula: the fixture can't compute it, and a number stands for one.
+  // A comma between arguments is a decimal comma to a Finnish sheet, which
+  // can't parse the formula and shows #ERROR!
   if (value.startsWith("=")) {
-    return 0;
+    return value.replace(/"[^"]*"/g, "").includes(",") ? "#ERROR!" : 0;
   }
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     const date = parseSheetDate(value)!;

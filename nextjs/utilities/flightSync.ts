@@ -12,6 +12,7 @@ import {
   findWebEntryNameIssues,
   type AliasOwner,
   type WebEntry,
+  findFormulaErrorIssues,
   findUndatedRowIssues,
   isBilledStatus,
   nameKey,
@@ -310,6 +311,7 @@ async function syncTab(
     ...findFlightIssues(parsed.flights, context),
     ...findWebEntryNameIssues(parsed.flights, context.webEntries, context.aliasOwners),
     ...findUndatedRowIssues(parsed.undatedRows),
+    ...findFormulaErrorIssues(parsed.flights, parsed.columns),
     ...idIssues,
     ...billedIssues,
   ].sort((a, b) => a.row - b.row);
