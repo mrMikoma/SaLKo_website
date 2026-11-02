@@ -9,6 +9,9 @@ import { configuredServiceAccount, describeSheetError } from "@/utilities/google
 import {
   FlightIssue,
   findFlightIssues,
+  findWebEntryNameIssues,
+  type AliasOwner,
+  type WebEntry,
   findUndatedRowIssues,
   isBilledStatus,
   nameKey,
@@ -140,6 +143,8 @@ const UPSERT_FLIGHTS = `
 interface SyncContext {
   purposes: Map<string, { isTraining: boolean }>;
   knownPilots: Set<string>;
+  webEntries: Map<string, WebEntry>;
+  aliasOwners: Map<string, AliasOwner>;
   tabIds: Map<string, number>;
   today: string;
 }
@@ -303,6 +308,7 @@ async function syncTab(
 
   const issues = [
     ...findFlightIssues(parsed.flights, context),
+    ...findWebEntryNameIssues(parsed.flights, context.webEntries, context.aliasOwners),
     ...findUndatedRowIssues(parsed.undatedRows),
     ...idIssues,
     ...billedIssues,
@@ -415,6 +421,12 @@ export async function syncFlightSheets(
           "SELECT registration, sheet_name, first_data_row FROM aircraft_sheets WHERE active ORDER BY registration"
         )
       ).rows;
+      const aliases = (
+        await client.query(
+          `SELECT a.name_key, a.user_id, u.full_name
+           FROM pilot_aliases a LEFT JOIN users u ON u.id = a.user_id`
+        )
+      ).rows;
       const context: SyncContext = {
         purposes: new Map(
           (await client.query("SELECT code, is_training FROM flight_purposes")).rows.map((row) => [
@@ -423,8 +435,18 @@ export async function syncFlightSheets(
           ])
         ),
         // Matched to a member, or marked as no member: either way decided
-        knownPilots: new Set(
-          (await client.query("SELECT name_key FROM pilot_aliases")).rows.map((row) => row.name_key)
+        knownPilots: new Set(aliases.map((row) => row.name_key)),
+        aliasOwners: new Map(
+          aliases.map((row) => [row.name_key, { userId: row.user_id, fullName: row.full_name }])
+        ),
+        webEntries: new Map(
+          (
+            await client.query(
+              `SELECT e.id, e.user_id, u.full_name FROM flight_log_web_entries e
+               JOIN users u ON u.id = e.user_id
+               WHERE e.undone_at IS NULL`
+            )
+          ).rows.map((row) => [row.id, { userId: row.user_id, fullName: row.full_name }])
         ),
         tabIds: await sheet.tabIds(),
         today: DateTime.now().setZone(SHEET_ZONE).toISODate()!,

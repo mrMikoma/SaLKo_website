@@ -94,7 +94,16 @@ A training flight without a student is not an issue: on a solo flight the studen
 - **As a student** the purpose must be a training one, since the student pays for those; choosing "Oppilaana" switches the legs to the first one.
 - **Footer:** total time, and an estimate for billed purposes from the per-minute price in `data/prices.json`. Billing itself comes later.
 
-**Sheet name.** The form writes the member's `pilot_aliases` name. A member without one gets the club's usual form, `M.Meikäläinen` from "Matti Meikäläinen" (`sheetNameFor`), or else the full name. It is saved as their alias once the flights are in the sheet, so they match at once and a failed save reserves nothing. Only a name that isn't in the sheet or in `pilot_aliases` yet is taken this way: an existing "M.Meikäläinen" may be another pilot, and taking it would give the member that pilot's flights and bills. When both names are in use, the form asks the member to have the biller match their name on `/admin/lennot`. Members choose their own full name, so the list of matched names there shows each member's email too.
+**Sheet name.** The form writes the member's `pilot_aliases` name. A member without one gets the club's usual form, `M.Meikäläinen` from "Matti Meikäläinen" (`sheetNameFor`), or else the full name. It is saved as their alias once the flights are in the sheet, so they match at once and a failed save reserves nothing. Only a name that isn't in the sheet or in `pilot_aliases` yet is taken this way: an existing "M.Meikäläinen" may be another pilot, and taking it would give the member that pilot's flights and bills. When both names are in use, the flight is still saved, never refused, under the one closest to being the member's:
+1. a name in the sheet that nobody has decided on;
+2. then one marked as no member;
+3. then one matched to another member.
+
+The name is not taken. The confirmation tells the member that the biller will match the name, and that the flight shows in their own flights after that. The biller sees it while checking the flight:
+- **An undecided name** is listed under "Lentäjien nimet" (`unknown_pilot`).
+- **A name marked as no member, or matched to someone else,** gives the flight a `web_entry_name` issue. It names the member who entered the flight, so the biller can match the name to them or correct the row (`findWebEntryNameIssues`).
+
+Members choose their own full name, so the list of matched names there shows each member's email too.
 
 **Writing** (`utilities/flightSheetWriter.ts`):
 1. A Postgres advisory lock per aircraft, so two members never get the same rows. A writer waits for it at most 15 seconds, and each Sheets request times out after 20, so a hung request can't queue everyone.
