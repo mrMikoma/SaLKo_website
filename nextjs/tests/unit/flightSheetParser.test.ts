@@ -3,6 +3,7 @@ import {
   columnLetter,
   findFlightIssues,
   findUndatedRowIssues,
+  findWebEntryNameIssues,
   nameKey,
   parseDuration,
   parseFlightSheet,
@@ -363,5 +364,54 @@ describe("rows that aren't read as flights", () => {
   test("formula rows and a lone page number are not reported", () => {
     const parsed = parseFlightSheet(sheet(flightRow(), formulaRow(), formulaRow({ 17: 412 })));
     expect(parsed.undatedRows).toEqual([]);
+  });
+});
+
+describe("flights entered on the site under a name decided for someone else", () => {
+  const MEMBER = { userId: "u-matti", fullName: "Matti Meikäläinen" };
+  // The member flew as PIC under M.Meikäläinen, and as a student under their full name
+  const flights = parseFlightSheet(
+    sheet(
+      flightRow({ 1: "M.Meikäläinen", 24: ID_A }),
+      flightRow({ 1: "T.Opettaja", 2: "Matti Meikäläinen", 12: "KOU", 24: ID_B })
+    )
+  ).flights;
+  const entered = new Map([
+    [ID_A, MEMBER],
+    [ID_B, MEMBER],
+  ]);
+  const issuesWith = (owners: [string, { userId: string | null; fullName: string | null }][], entries = entered) =>
+    findWebEntryNameIssues(
+      flights,
+      entries,
+      new Map(owners.map(([name, owner]) => [nameKey(name), owner]))
+    ).map((issue) => `${issue.row}:${issue.kind}: ${issue.message}`);
+
+  test("a name marked as no member, or matched to another member, is reported with who entered it", () => {
+    expect(
+      issuesWith([
+        ["M.Meikäläinen", { userId: null, fullName: null }],
+        ["Matti Meikäläinen", { userId: "u-maija", fullName: "Maija Meikäläinen" }],
+      ])
+    ).toEqual([
+      "3:web_entry_name: Matti Meikäläinen kirjasi lennon sivulla nimellä M.Meikäläinen, mutta nimi on merkitty ei-jäseneksi. Yhdistä nimi oikealle jäsenelle (Lentäjien nimet) tai korjaa rivin nimi.",
+      "4:web_entry_name: Matti Meikäläinen kirjasi lennon sivulla nimellä Matti Meikäläinen, mutta nimi on yhdistetty jäseneen Maija Meikäläinen. Yhdistä nimi oikealle jäsenelle (Lentäjien nimet) tai korjaa rivin nimi.",
+    ]);
+  });
+
+  test("nothing once the name is the member's, or while nobody has decided on it", () => {
+    expect(issuesWith([["M.Meikäläinen", { userId: "u-matti", fullName: "Matti Meikäläinen" }]])).toEqual([]);
+    // An undecided name is unknown_pilot's to report
+    expect(issuesWith([])).toEqual([]);
+  });
+
+  test("nothing for flights typed into the sheet, or once the biller corrected the name", () => {
+    const owners: [string, { userId: string | null; fullName: string | null }][] = [
+      ["M.Meikäläinen", { userId: null, fullName: null }],
+      ["T.Opettaja", { userId: "u-teacher", fullName: "Teppo Opettaja" }],
+    ];
+    expect(issuesWith(owners, new Map())).toEqual([]);
+    // Another member's flight, entered by this one: not one of the member's own names
+    expect(issuesWith(owners, new Map([[ID_B, { userId: "u-other", fullName: "Olli Muu" }]]))).toEqual([]);
   });
 });

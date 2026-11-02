@@ -92,7 +92,7 @@ const FlightEntryForm = ({ options, today, yesterday }: FlightEntryFormProps) =>
   const [otherPilot, setOtherPilot] = useState("");
   const [legs, setLegs] = useState<Leg[]>(() => [newLeg(undefined, 0)]);
   const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState<{ legs: SavedLeg[]; sheetName: string } | null>(null);
+  const [saved, setSaved] = useState<{ legs: SavedLeg[]; sheetName: string; nameMatched: boolean } | null>(null);
   const [isPending, startTransition] = useTransition();
 
   // Bring the confirmation into view after saving: the save button is at the
@@ -175,6 +175,7 @@ const FlightEntryForm = ({ options, today, yesterday }: FlightEntryFormProps) =>
       }
       setSaved({
         sheetName: result.result.sheetName,
+        nameMatched: result.result.nameMatched,
         legs: result.result.ids.map((id, i) => ({
           id,
           label: `${legs[i].departure}–${legs[i].arrival} ${normalizeClock(legs[i].takeoff)}–${normalizeClock(legs[i].landing)} ${legs[i].purposeCode}`,
@@ -216,6 +217,13 @@ const FlightEntryForm = ({ options, today, yesterday }: FlightEntryFormProps) =>
             {registration}, {DateTime.fromISO(flightDate).toFormat("d.M.yyyy")}. Nimesi
             taulukossa: <strong>{saved.sheetName}</strong>.
           </p>
+          {!saved.nameMatched && (
+            <p className="mt-3 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-900">
+              Nimi {saved.sheetName} on jo lentopäiväkirjassa, eikä sitä ole vielä yhdistetty sinuun.
+              Laskuttaja yhdistää sen tarkistaessaan lennon. Siihen asti lento ei näy Omissa
+              lennoissasi.
+            </p>
+          )}
         </div>
         <ul className="divide-y divide-gray-200 border-y border-gray-200">
           {saved.legs.map((leg) => (

@@ -1,5 +1,5 @@
 import { DateTime } from "luxon";
-import { MAX_LEG_MINUTES } from "@/utilities/flightFormInput";
+import { MAX_LEG_MINUTES, sheetNameFor } from "@/utilities/flightFormInput";
 
 /**
  * Parses an aircraft's flight log tab as the Google Sheets API returns it
@@ -434,6 +434,7 @@ export type FlightIssueKind =
   | "missing_field"
   | "unknown_purpose"
   | "unknown_pilot"
+  | "web_entry_name"
   | "time_order"
   | "duplicate"
   | "duplicate_id"
@@ -855,4 +856,52 @@ export function clearedFlightCells(
   return [...INPUT_COLUMNS, "source" as SheetColumn]
     .filter((key) => columns[key] !== undefined)
     .map((key) => ({ row, column: columns[key]!, value: "" }));
+}
+
+/** Who entered a flight on the site (flight_log_web_entries) */
+export interface WebEntry {
+  userId: string;
+  fullName: string | null;
+}
+
+/** Whose a name is in pilot_aliases: a member, or no member (userId null) */
+export interface AliasOwner {
+  userId: string | null;
+  fullName: string | null;
+}
+
+/**
+ * Flights a member entered on the site under their own log name when that
+ * name is decided for someone else: marked as no member, or matched to
+ * another member. logFlights never claims a name in use, so the flight is
+ * billed to whoever the name belongs to until the biller matches the name
+ * to the member or corrects the row. A name nobody has decided on yet is
+ * reported as unknown_pilot instead.
+ */
+export function findWebEntryNameIssues(
+  flights: ParsedFlight[],
+  entries: Map<string, WebEntry>,
+  owners: Map<string, AliasOwner>
+): FlightIssue[] {
+  const issues: FlightIssue[] = [];
+  for (const flight of flights) {
+    const entry = flight.id ? entries.get(flight.id) : undefined;
+    if (!entry?.fullName) continue;
+    // The names logFlights writes for this member
+    const own = new Set([sheetNameFor(entry.fullName), entry.fullName.trim()].filter(Boolean).map(nameKey));
+    for (const name of [flight.picName, flight.secondName]) {
+      if (!name || !own.has(nameKey(name))) continue;
+      const owner = owners.get(nameKey(name));
+      if (!owner || owner.userId === entry.userId) continue;
+      const whose =
+        owner.userId === null ? "merkitty ei-jäseneksi" : `yhdistetty jäseneen ${owner.fullName ?? "(nimetön)"}`;
+      issues.push({
+        row: flight.row,
+        flightId: flight.id,
+        kind: "web_entry_name",
+        message: `${entry.fullName} kirjasi lennon sivulla nimellä ${name}, mutta nimi on ${whose}. Yhdistä nimi oikealle jäsenelle (Lentäjien nimet) tai korjaa rivin nimi.`,
+      });
+    }
+  }
+  return issues;
 }
