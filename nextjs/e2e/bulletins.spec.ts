@@ -77,3 +77,23 @@ test("an empty title is refused", async ({ page }) => {
   await page.getByRole("button", { name: "Tallenna", exact: true }).click();
   await expect(page.getByText("Otsikko vaaditaan")).toBeVisible();
 });
+
+test("selected lines become a numbered list, and Enter continues it", async ({ page }) => {
+  await page.goto("/admin/bulletins");
+  await page.getByRole("button", { name: "+ Luo uusi tiedote" }).click();
+  const content = page.getByLabel("Sisältö *");
+  await content.fill("Ohjelma:\nKahvit\nKokous");
+  // As dragging over the two lines selects them
+  await content.evaluate((area: HTMLTextAreaElement) => area.setSelectionRange(area.value.indexOf("Kahvit"), area.value.length));
+  await page.getByRole("button", { name: "Numeroitu lista valituista riveistä" }).click();
+  await expect(content).toHaveValue("Ohjelma:\n1. Kahvit\n2. Kokous");
+
+  await content.press("End");
+  await content.press("Enter");
+  await content.pressSequentially("Sauna");
+  await expect(content).toHaveValue("Ohjelma:\n1. Kahvit\n2. Kokous\n3. Sauna");
+
+  // Typed line breaks stay in the preview; the list is a real one
+  await page.getByRole("button", { name: "Esikatselu" }).click();
+  await expect(page.locator("ol").filter({ hasText: "Kahvit" }).locator("li")).toHaveText(["Kahvit", "Kokous", "Sauna"]);
+});
