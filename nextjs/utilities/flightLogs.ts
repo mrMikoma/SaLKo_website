@@ -681,6 +681,9 @@ const paperCellsSchema = z.object({
   landing: z.string().max(8),
   landings: z.string().max(4),
   purpose: z.string().max(10),
+  fuel: z.string().max(10),
+  oil: z.string().max(10),
+  meter: z.string().max(12),
   remarks: z.string().max(300),
 });
 
@@ -789,9 +792,9 @@ const toSheetInput = (row: PaperRow, id: string) => ({
   landing: row.landing,
   landings: row.landings,
   purposeCode: row.purposeCode,
-  fuelLitres: null,
-  oilQuarts: null,
-  hourMeter: null,
+  fuelLitres: row.fuelLitres,
+  oilQuarts: row.oilQuarts,
+  hourMeter: row.hourMeter,
   remarks: row.remarks,
 });
 

@@ -19,6 +19,9 @@ export const PAPER_FIELDS = [
   "landing",
   "landings",
   "purpose",
+  "fuel",
+  "oil",
+  "meter",
   "remarks",
 ] as const;
 export type PaperField = (typeof PAPER_FIELDS)[number];
@@ -39,6 +42,11 @@ export interface PaperRow {
   landing: string;
   landings: number;
   purposeCode: string;
+  // Tankkaus in litres, Öljy in quarts, Tuntimittari: null when the paper
+  // leaves them empty
+  fuelLitres: number | null;
+  oilQuarts: number | null;
+  hourMeter: number | null;
   remarks: string | null;
 }
 
@@ -76,6 +84,17 @@ export function parsePaperDate(value: string, previous: string | null): string |
   const date = DateTime.fromObject({ year, month: Number(match[2]), day: Number(match[1]) });
   return date.isValid ? date.toISODate() : null;
 }
+
+// The sheet's ranges for these columns (NUMBER_RANGES in flightSheetParser)
+const DECIMAL_FIELDS = {
+  fuel: { label: "Tankkaus", max: 2000 },
+  oil: { label: "Öljy", max: 100 },
+  meter: { label: "Tuntimittari", max: 99_999.9 },
+} as const;
+
+/** "12,5" or "12.5" → 12.5; null when empty, NaN when it isn't a number */
+const decimalCell = (value: string): number | null =>
+  value.trim() === "" ? null : Number(value.trim().replace(",", "."));
 
 export interface ReadRow {
   index: number; // position in the grid
@@ -125,6 +144,16 @@ export function readPaperGrid(grid: PaperCells[], today: string): ReadRow[] {
     }
     const purposeCode = cells.purpose.trim().toUpperCase();
     if (!purposeCode) errors.push("Lennon tarkoitus puuttuu");
+    const decimals = Object.fromEntries(
+      (Object.keys(DECIMAL_FIELDS) as (keyof typeof DECIMAL_FIELDS)[]).map((field) => {
+        const value = decimalCell(cells[field]);
+        const { label, max } = DECIMAL_FIELDS[field];
+        if (value !== null && !(value >= 0 && value <= max)) {
+          errors.push(`${label} on luku väliltä 0–${max.toLocaleString("fi-FI")}`);
+        }
+        return [field, value];
+      })
+    ) as Record<keyof typeof DECIMAL_FIELDS, number | null>;
 
     read.push({
       index,
@@ -143,6 +172,9 @@ export function readPaperGrid(grid: PaperCells[], today: string): ReadRow[] {
               landing: landing!,
               landings,
               purposeCode,
+              fuelLitres: decimals.fuel,
+              oilQuarts: decimals.oil,
+              hourMeter: decimals.meter,
               remarks: cells.remarks.trim() || null,
             },
     });
@@ -187,6 +219,12 @@ export function describeDifferences(paper: PaperRow, sheet: PaperRow): string[] 
   compare("laskuja", paper.landings, sheet.landings);
   compare("tarkoitus", paper.purposeCode, sheet.purposeCode);
   compare("henkilöitä", paper.personsOnBoard, sheet.personsOnBoard);
+  // Only what the paper has: an empty cell keeps the sheet's value, as a
+  // remark does
+  const decimal = (value: number | null) => (value === null ? null : value.toLocaleString("fi-FI"));
+  if (paper.fuelLitres !== null) compare("tankkaus", decimal(paper.fuelLitres), decimal(sheet.fuelLitres));
+  if (paper.oilQuarts !== null) compare("öljy", decimal(paper.oilQuarts), decimal(sheet.oilQuarts));
+  if (paper.hourMeter !== null) compare("tuntimittari", decimal(paper.hourMeter), decimal(sheet.hourMeter));
   return found;
 }
 
@@ -197,7 +235,8 @@ export function describeDifferences(paper: PaperRow, sheet: PaperRow): string[] 
  * page, the same PIC first and then the closest takeoff, so a line doesn't
  * take another pilot's flight that was a closer fit for the next line. Each
  * sheet flight is used once. Remarks don't count as a difference: the
- * sheet's are kept.
+ * sheet's are kept. Fuel, oil and the hour meter count only when the paper
+ * has them.
  */
 export function matchPaperRows(rows: PaperRow[], existing: ExistingFlight[]): RowMatch[] {
   const pairs = rows.flatMap((paper, index) =>

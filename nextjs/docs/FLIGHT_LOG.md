@@ -144,14 +144,14 @@ On `/admin/lennot` (`MANAGE_FLIGHT_LOG`), the biller ticks the rows that match t
 ## Typing in a page of the paper book
 
 `/admin/lennot/tuonti` (`MANAGE_FLIGHT_LOG`, the **Kirjaa paperisivu** button on `/admin/lennot`) is a grid for one page of the journey log, typed or pasted from a spreadsheet as tab-separated rows (`utilities/paperPage.ts`):
-- **Grid:** dates as `14.6.2025`, `14.6.25` or `14.6.`; an empty date or a `"` mark repeats the line above. Times take the same shorthand as the member form. Enter and the arrow keys move between lines.
+- **Grid:** the book's columns in the sheet's order, from the date to the purpose, then Tankkaus (litres), Öljy (quarts), Tuntimittari and Huomiot. Dates as `14.6.2025`, `14.6.25` or `14.6.`; an empty date or a `"` mark repeats the line above. Times take the same shorthand as the member form, and the fuel, oil and meter take a decimal comma or point. Enter and the arrow keys move between lines.
 - **Totals:** the footer adds up the page. Typing the page's printed sum and landings shows whether they match.
 - **Tarkista sivu** syncs, then pairs each line with a flight already in the sheet: same day, takeoff within 15 minutes, or the same PIC with overlapping times. Each line is one of:
   - **Uusi**: not in the sheet, appended like a member's entry;
   - **Sama**: a pilot entered it already, and it is confirmed;
   - **Eroaa**: a pilot entered it with other details, listed as "lasku 11:03 → 11:05". By default the sheet row is corrected to the paper, which is the master. It can also be added as a separate flight, or skipped.
   - Lines already in billing are skipped. Flights in the sheet on the page's days that no line matched are listed under the grid: they are on the next page, or extra.
-- **Tallenna sivu taulukkoon** writes everything in one batch under the aircraft lock (`writePaperPage`). Every flight of the page gets Tila Tarkistettu and the page number. A correction rewrites only what the paper says (date, pilots, persons, route, times, landings, purpose, and the remark if the paper has one), so fuel, oil and the hour meter stay. Like a status change, it refuses the page if a matched row changed after the check.
+- **Tallenna sivu taulukkoon** writes everything in one batch under the aircraft lock (`writePaperPage`). Every flight of the page gets Tila Tarkistettu and the page number. A correction rewrites only what the paper says: date, pilots, persons, route, times, landings and purpose, and the fuel, oil, hour meter and remark when the paper has them. An empty one keeps what the pilot entered; a different one is a difference ("tankkaus 72 → 70,5"). Like a status change, it refuses the page if a matched row changed after the check.
 - **Review log:** each flight gets a line in `flight_status_changes` with a note such as "Paperisivu 47, korjattu: lasku 11:03 → 11:05". The service account writes the sheet, so the sheet's own history can't say who did it. On `/admin/lennot` the note shows on hover over who checked the flight.
 
 ## Billing

@@ -482,8 +482,8 @@ export async function getFlightsOnDates(
   if (dates.length === 0) return [];
   const response = await connectionPool.query(
     `SELECT id, sheet_row, flight_date, pic_name, second_name, persons_on_board, departure,
-            arrival, takeoff_at, landing_at, landings, purpose_code, remarks, source, status,
-            input_hash
+            arrival, takeoff_at, landing_at, landings, purpose_code, fuel_litres, oil_quarts,
+            hour_meter, remarks, source, status, input_hash
      FROM sheet_flights
      WHERE registration = $1 AND flight_date = ANY($2::date[]) AND missing_since IS NULL
      ORDER BY sheet_row`,
@@ -502,6 +502,10 @@ export async function getFlightsOnDates(
     landing: clock(row.landing_at),
     landings: row.landings ?? 0,
     purposeCode: row.purpose_code ?? "",
+    // NUMERIC columns come back as strings
+    fuelLitres: row.fuel_litres === null ? null : Number(row.fuel_litres),
+    oilQuarts: row.oil_quarts === null ? null : Number(row.oil_quarts),
+    hourMeter: row.hour_meter === null ? null : Number(row.hour_meter),
     remarks: row.remarks ?? null,
     source: row.source ?? null,
     status: row.status ?? null,
