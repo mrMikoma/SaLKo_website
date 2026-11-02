@@ -24,6 +24,9 @@ import {
   typedColumnIndexes,
 } from "@/utilities/flightSheetParser";
 import { inputHash } from "@/utilities/flightInputHash";
+import { logger } from "@/utilities/logger";
+
+const log = logger.child({ module: "flight-sheet-writer" });
 
 /**
  * Writes flights into an aircraft's tab of the flight log sheet. Only the
@@ -221,7 +224,7 @@ async function rowsForNewFlights(
   if (plan.kind === "extend") {
     let { sourceRow, firstRow } = plan;
     if (sourceRow === null) {
-      await sheet.writeCells(sheetName, flightRowFormulaCells(parsed.columns, firstRow), { parse: true });
+      await writeFormulaRow(sheet, sheetName, parsed, firstRow);
       sourceRow = firstRow;
       firstRow += 1;
     }
@@ -239,6 +242,27 @@ async function rowsForNewFlights(
     throw new FlightSheetWriteError("Kaavarivien jatkaminen taulukossa ei onnistunut. Yritä hetken päästä uudelleen.");
   }
   return plan.rows;
+}
+
+/**
+ * The club's formulas into one row of a tab that has none left. Sheets reads
+ * a formula sent through its API in the spreadsheet's locale, so the
+ * arguments are separated as that locale does (";" in Finland). The row is
+ * read back before anything is copied from it: if Sheets still couldn't parse
+ * it (#ERROR!), it is written again with the other separator, so a wrong
+ * guess never spreads a hundred rows of broken formulas.
+ */
+async function writeFormulaRow(sheet: FlightSheet, sheetName: string, parsed: ParsedSheet, row: number) {
+  const preferred = await sheet.formulaSeparator();
+  for (const separator of [preferred, preferred === ";" ? "," : ";"] as const) {
+    const cells = flightRowFormulaCells(parsed.columns, row, separator);
+    await sheet.writeCells(sheetName, cells, { parse: true });
+    const written = (await sheet.readTab(sheetName))[row - 1] ?? [];
+    const broken = cells.some((cell) => String(written[cell.column] ?? "").startsWith("#"));
+    if (!broken) return;
+  }
+  // The flight is still saved: a missing airborne time is the biller's to fix
+  log.warn("The sheet could not parse the formula row", { row });
 }
 
 /**

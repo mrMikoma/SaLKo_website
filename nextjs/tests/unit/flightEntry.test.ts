@@ -9,7 +9,7 @@ import {
   SheetValues,
   typedColumnIndexes,
 } from "@/utilities/flightSheetParser";
-import { flightRowFormulaCells } from "@/utilities/flightSheetTemplate";
+import { flightRowFormulaCells, formulaSeparator } from "@/utilities/flightSheetTemplate";
 import {
   crossesMidnight,
   legTimeError,
@@ -165,6 +165,21 @@ describe("writing to the sheet", () => {
       [9, "=IF(J2+I3=J2,,J2+I3)"],
       [11, "=IF(L2+K3=L2,,L2+K3)"],
     ]);
+    // Sheets reads them in the spreadsheet's locale: a Finnish sheet needs ";"
+    expect(flightRowFormulaCells(parsed.columns, 3, ";").map((cell) => cell.value)).toEqual([
+      "=IF(H3-G3=0;;H3-G3)",
+      "=IF(J2+I3=J2;;J2+I3)",
+      "=IF(L2+K3=L2;;L2+K3)",
+    ]);
+  });
+
+  test("formula argument separator follows the spreadsheet's locale", () => {
+    expect(formulaSeparator("fi_FI")).toBe(";");
+    expect(formulaSeparator("sv_SE")).toBe(";");
+    expect(formulaSeparator("en_US")).toBe(",");
+    expect(formulaSeparator("en_GB")).toBe(",");
+    expect(formulaSeparator(undefined)).toBe(",");
+    expect(formulaSeparator("not a locale")).toBe(",");
   });
 
   test("formulas stop at a row someone typed into, and never go into typed columns", () => {
