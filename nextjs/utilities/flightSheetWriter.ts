@@ -431,13 +431,18 @@ export async function writePaperPage(
     const rows = await rowsForNewFlights(sheet, sheetName, values, parsed, page.append.length, firstDataRow);
 
     const checked = { status: "Tarkistettu" as const, logPage: page.logPage };
-    // A correction rewrites what the paper says, and the remark only when the
-    // paper has one; the row keeps its ID, Lähde, fuel, oil and hour meter
+    // A correction rewrites what the paper says. The remark, fuel, oil and
+    // hour meter only when the paper has them, so a pilot's reading stays
+    // when the book leaves it out; the row keeps its ID and Lähde.
     const correctedColumns = (input: SheetFlightInput) =>
       new Set(
-        [...PAPER_COLUMNS, ...(input.remarks ? (["remarks"] as const) : [])].map(
-          (key) => columns[key]
-        )
+        [
+          ...PAPER_COLUMNS,
+          ...(input.remarks ? (["remarks"] as const) : []),
+          ...(input.fuelLitres !== null ? (["fuel"] as const) : []),
+          ...(input.oilQuarts !== null ? (["oil"] as const) : []),
+          ...(input.hourMeter !== null ? (["hourMeter"] as const) : []),
+        ].map((key) => columns[key])
       );
     const cells = [
       ...page.append.flatMap((input, i) => flightCells({ ...input, ...checked }, rows[i], columns)),

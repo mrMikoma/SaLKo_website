@@ -17,7 +17,7 @@ const TODAY = "2026-10-21";
 const paper = (row: Partial<PaperRow>): PaperRow => ({
   flightDate: "2026-06-14", picName: "M.Meikäläinen", secondName: null, personsOnBoard: 1,
   departure: "EFSA", arrival: "EFSA", takeoff: "10:05", landing: "10:45", landings: 1,
-  purposeCode: "HAR", remarks: null, ...row,
+  purposeCode: "HAR", fuelLitres: null, oilQuarts: null, hourMeter: null, remarks: null, ...row,
 });
 const inSheet = (id: string, row: Partial<PaperRow>): ExistingFlight => ({
   ...paper(row), id, sheetRow: 40, source: "web", status: null, inputHash: "h",
@@ -61,6 +61,21 @@ describe("reading a paper page", () => {
     expect(read.errors).toContain("Anna lentoonlähtö- ja laskuaika, esim. 14.05");
   });
 
+  test("fuel, oil and the hour meter, with a decimal comma or point", () => {
+    const [full, empty, wrong] = readPaperGrid(
+      [
+        line({ date: "14.6.2025", pic: "M.Meikäläinen", departure: "EFSA", arrival: "EFSA", takeoff: "10.05", landing: "10.45", purpose: "HAR", fuel: "40,5", oil: "1", meter: "1234.5" }),
+        line({ date: "14.6.2025", pic: "M.Meikäläinen", departure: "EFSA", arrival: "EFSA", takeoff: "11.05", landing: "11.45", purpose: "HAR" }),
+        line({ date: "14.6.2025", pic: "M.Meikäläinen", departure: "EFSA", arrival: "EFSA", takeoff: "12.05", landing: "12.45", purpose: "HAR", fuel: "40 l", oil: "-1" }),
+      ],
+      TODAY
+    );
+    expect(full.row).toMatchObject({ fuelLitres: 40.5, oilQuarts: 1, hourMeter: 1234.5 });
+    expect(empty.row).toMatchObject({ fuelLitres: null, oilQuarts: null, hourMeter: null });
+    expect(wrong.row).toBeNull();
+    expect(wrong.errors).toEqual(["Tankkaus on luku väliltä 0–2\u00a0000", "Öljy on luku väliltä 0–100"]);
+  });
+
   test("page totals", () => {
     expect(paperTotals([paper({}), null, paper({ takeoff: "11:00", landing: "11:30", landings: 4 })])).toEqual({
       minutes: 70,
@@ -89,6 +104,17 @@ describe("matching the page with the sheet", () => {
     expect(match.kind).toBe("differs");
     if (match.kind === "differs") {
       expect(match.differences).toEqual(["lähtö 10:05 → 10:07", "lasku 10:45 → 10:47"]);
+    }
+  });
+
+  test("fuel, oil and the hour meter differ only when the paper has them", () => {
+    const sheet = inSheet("a", { fuelLitres: 40, oilQuarts: null, hourMeter: 1234.5 });
+    // Empty on paper: the pilot's readings in the sheet stay
+    expect(matchPaperRows([paper({})], [sheet])[0].kind).toBe("same");
+    const [match] = matchPaperRows([paper({ fuelLitres: 42.5, oilQuarts: 1, hourMeter: 1234.5 })], [sheet]);
+    expect(match.kind).toBe("differs");
+    if (match.kind === "differs") {
+      expect(match.differences).toEqual(["tankkaus 40 → 42,5", "öljy – → 1"]);
     }
   });
 

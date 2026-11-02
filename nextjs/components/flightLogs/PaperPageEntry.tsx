@@ -47,6 +47,9 @@ const COLUMNS: {
   { field: "landing", label: "Lasku", width: "w-16", mode: "decimal" },
   { field: "landings", label: "Laskut", width: "w-12", mode: "decimal" },
   { field: "purpose", label: "Tarkoitus", width: "w-16" },
+  { field: "fuel", label: "Tankkaus (l)", width: "w-16", mode: "decimal" },
+  { field: "oil", label: "Öljy (qt)", width: "w-12", mode: "decimal" },
+  { field: "meter", label: "Tuntimittari", width: "w-20", mode: "decimal" },
   { field: "remarks", label: "Huomiot", width: "w-36" },
 ];
 
