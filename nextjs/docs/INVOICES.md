@@ -6,7 +6,7 @@ The website issues and sends the club's bills (laskut) by email: flight bills fr
 
 1. **Draft (Luonnos).** Drafts are made in one of two ways:
    - **Flight bills:** "Luo laskuluonnokset" on a closed period (`/admin/laskutus/[id]`) makes one draft per payer with something to pay. It leaves out payers already marked paid, and payers who have an invoice. The lines are the period's lines as billed (`flightInvoiceLines`): flights, minimum billing, free-hour credits and corrections.
-   - **Other charges:** `/admin/laskut/uusi` makes one draft per chosen member with the same lines. The lines come from the price list (`data/prices.json`, `invoicePresets`) or are typed in. Someone outside the member list, such as a hangar tenant, can be typed in as a recipient.
+   - **Other charges:** `/admin/laskut/uusi` makes one draft per chosen member with the same lines. The lines come from the price list (`/admin/hinnasto`, `invoicePresets`) or are typed in. Someone outside the member list, such as a hangar tenant, can be typed in as a recipient.
 
    A draft's recipient, title and message can be edited, and typed-in lines can be added or removed. A flight bill's period lines stay as billed. A draft can be deleted.
 2. **Sent (Avoin).** "Lähetä lasku", or "Lähetä kaikki luonnokset" on the list, does the following in one transaction per invoice:

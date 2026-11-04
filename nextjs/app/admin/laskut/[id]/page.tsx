@@ -7,6 +7,7 @@ import { hasPermission } from "@/utilities/roles";
 import { isBillingEnabled } from "@/utilities/features";
 import { getInvoice, getInvoiceSettings, InvoiceDelivery } from "@/utilities/invoiceData";
 import { invoicePresets } from "@/utilities/invoices";
+import { getPriceList } from "@/utilities/priceList";
 import { MAIL_PURPOSES, mailMode } from "@/utilities/mailConfig";
 import { formatDateTime } from "@/utilities/flightFormat";
 import InvoiceDocument, { InvoiceStatusBadge } from "@/components/invoices/InvoiceDocument";
@@ -46,7 +47,7 @@ export default async function InvoicePage({ params }: PageProps) {
   const id = Number((await params).id);
   const invoice = Number.isInteger(id) ? await getInvoice(id) : null;
   if (!invoice) notFound();
-  const settings = await getInvoiceSettings();
+  const [settings, prices] = await Promise.all([getInvoiceSettings(), getPriceList()]);
   const card = "bg-white rounded-lg shadow p-6 space-y-4";
 
   return (
@@ -96,7 +97,7 @@ export default async function InvoicePage({ params }: PageProps) {
                 {invoice.periodId && (
                   <p className="text-sm text-gray-600">Jakson lentorivit pysyvät sellaisina kuin ne laskutettiin.</p>
                 )}
-                <DraftLines invoice={invoice} presets={invoicePresets()} />
+                <DraftLines invoice={invoice} presets={invoicePresets(prices.items)} />
               </section>
             </>
           )}

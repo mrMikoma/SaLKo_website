@@ -14,6 +14,7 @@ import {
   referenceNumber,
   virtualBarcode,
 } from "@/utilities/invoices";
+import type { PriceItem } from "@/utilities/priceFormat";
 import type { BillLine } from "@/utilities/billing";
 
 describe("reference numbers", () => {
@@ -142,7 +143,21 @@ describe("lines", () => {
   });
 
   test("the price list gives ready-made lines with prices, leaving out free ones", () => {
-    const presets = invoicePresets();
+    let id = 0;
+    const item = (section: PriceItem["section"], name: string, priceCents: number | null, unit: string, extra: Partial<PriceItem> = {}): PriceItem => ({
+      id: ++id, section, code: null, name, description: "", priceCents, unit, note: "", sortOrder: id * 10, active: true, ...extra,
+    });
+    const presets = invoicePresets([
+      item("demo", "Kustannusjakoperusteinen lennätys", 24000, "€/h"),
+      item("membership", "Varsinainen jäsen", 6000, "€/vuosi"),
+      item("membership", "Kunniajäsen", 0, "€/vuosi"),
+      item("membership", "Piilotettu", 1000, "€/vuosi", { active: false }),
+      item("equipment", "Kalustomaksu", 35000, "€/kausi"),
+      item("hangar", "Vene", 40000, "€/talvi"),
+      item("training", "PPL-koulutus", 1300000, "€", { code: "PPL" }),
+      item("other", "Avain", null, "€"),
+      item("note", "Huomio", null, ""),
+    ]);
     expect(presets).toContainEqual({
       group: "Jäsenmaksut",
       description: "Jäsenmaksu, varsinainen jäsen",
@@ -153,5 +168,12 @@ describe("lines", () => {
     expect(presets.some((p) => p.description.includes("Kunniajäsen"))).toBe(false);
     expect(presets.find((p) => p.description === "Kustannusjakoperusteinen lennätys")?.unit).toBe("h");
     expect(presets.every((p) => p.unitCents > 0)).toBe(true);
+    // In the price list's section order: membership first, the demo flight last
+    expect(presets.map((p) => p.description)).toEqual([
+      "Jäsenmaksu, varsinainen jäsen",
+      "Kalustomaksu",
+      "Hallipaikka: Vene",
+      "Kustannusjakoperusteinen lennätys",
+    ]);
   });
 });

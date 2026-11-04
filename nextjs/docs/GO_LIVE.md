@@ -292,4 +292,6 @@ To stop sending, clear `MAIL_MODE` and redeploy. Messages are then stored but no
 
 The same as stage A, steps 1–4: merge `dev` → `main`, build, migrate if `postgres/migrations` has new files (dry run first), and deploy.
 
+**The release that brings the price list (migration 020):** the prices move from `data/prices.json` into the database and are edited on `/admin/hinnasto` from then on (`PRICE_LIST.md`). Run the migration before the deploy, as always: without it the price pages show no prices. After the deploy, check that `/kerho/hinnasto`, `/kerho/jasenyys` and `/koulutus` show the same prices as before, and tell the treasurer where prices are now changed.
+
 When a release changes the Postgres service in `docker-compose.prod.yaml`, the deploy recreates the database container: the site is down for the half a minute Postgres takes to start, and the data stays. Stage A does this once (step 4).

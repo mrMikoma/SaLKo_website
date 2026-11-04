@@ -260,62 +260,7 @@ export async function setPayerPaid(
  * Settings
  */
 
-// "186" or "186,50" € an hour → 18 650 cents
-const hourlyPriceField = z
-  .string()
-  .trim()
-  .regex(/^\d{1,4}([.,]\d{1,2})?$/, "Anna tuntihinta euroina, esim. 186,00")
-  .transform((value) => Math.round(Number(value.replace(",", ".")) * 100));
-
-const rateSchema = z.object({
-  registration: z.string().trim().min(1),
-  validFrom: z.iso.date("Anna päivä, josta alkaen hinta on voimassa"),
-  withFee: hourlyPriceField,
-  withoutFee: hourlyPriceField,
-  minimumLocalMinutes: z.number().int().min(0).max(120),
-});
-
-export async function saveRate(input: z.input<typeof rateSchema>): Promise<ActionResult> {
-  const access = await requireBillingAdmin();
-  if ("error" in access) return { status: "error", error: access.error };
-  const parsed = rateSchema.safeParse(input);
-  if (!parsed.success) return { status: "error", error: parsed.error.issues[0].message };
-  const { registration, validFrom, withFee, withoutFee, minimumLocalMinutes } = parsed.data;
-  return saving("rate", async () => {
-    await pool.query(
-      `INSERT INTO aircraft_rates (registration, valid_from, cents_per_hour_with_fee,
-         cents_per_hour_without_fee, minimum_local_minutes)
-       VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (registration, valid_from) DO UPDATE
-         SET cents_per_hour_with_fee = EXCLUDED.cents_per_hour_with_fee,
-             cents_per_hour_without_fee = EXCLUDED.cents_per_hour_without_fee,
-             minimum_local_minutes = EXCLUDED.minimum_local_minutes`,
-      [registration, validFrom, withFee, withoutFee, minimumLocalMinutes]
-    );
-    revalidateBilling();
-    return { status: "success", result: null };
-  });
-}
-
-const rateKeySchema = z.object({
-  registration: z.string().trim().min(1).max(20),
-  validFrom: z.iso.date(),
-});
-
-export async function deleteRate(registration: string, validFrom: string): Promise<ActionResult> {
-  const access = await requireBillingAdmin();
-  if ("error" in access) return { status: "error", error: access.error };
-  const parsed = rateKeySchema.safeParse({ registration, validFrom });
-  if (!parsed.success) return { status: "error", error: "Hintaa ei löytynyt" };
-  return saving("rate", async () => {
-    await pool.query("DELETE FROM aircraft_rates WHERE registration = $1 AND valid_from = $2", [
-      parsed.data.registration,
-      parsed.data.validFrom,
-    ]);
-    revalidateBilling();
-    return { status: "success", result: null };
-  });
-}
+// Aircraft prices are saved with the price list (utilities/priceListActions.ts)
 
 const feeSchema = z.object({
   userId: z.string().min(1),

@@ -39,11 +39,13 @@ const Navbar = ({
   const userName = user?.name || "";
   const isAdmin = user?.roles?.includes("admin") || false;
   // A treasurer's way into the admin site: billing, or the flight log
-  // before billing is on
-  const isTreasurer = !isAdmin && flightLog && hasPermission(user?.roles ?? [], "MANAGE_FLIGHT_LOG");
+  // before billing is on, or the price list before either
+  const isTreasurer = !isAdmin && hasPermission(user?.roles ?? [], "MANAGE_PRICES");
   const treasurerLink = billing
     ? { href: "/admin/laskutus", label: "Laskutus" }
-    : { href: "/admin/lennot", label: "Lentojen tarkistus" };
+    : flightLog
+      ? { href: "/admin/lennot", label: "Lentojen tarkistus" }
+      : { href: "/admin/hinnasto", label: "Hinnasto" };
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
   const { isFullscreenMode } = useNavbar();

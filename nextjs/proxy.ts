@@ -1,6 +1,7 @@
 import { auth } from "./auth";
 import { NextResponse } from "next/server";
 import { adminHome, canOpenAdminPath } from "./utilities/roles";
+import { isAdminSectionOn } from "./utilities/features";
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
@@ -28,7 +29,7 @@ export default auth((req) => {
     }
     const roles = session.user.roles ?? [];
     if (!canOpenAdminPath(roles, pathname)) {
-      return NextResponse.redirect(new URL(adminHome(roles) ?? "/", req.url));
+      return NextResponse.redirect(new URL(adminHome(roles, isAdminSectionOn) ?? "/", req.url));
     }
   }
 

@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import PageHero from "@/components/pageHero";
 import ContentSection from "@/components/contentSection";
 import SolidCard from "@/components/solidCard";
@@ -6,8 +8,9 @@ import CallToAction from "@/components/callToAction";
 import PlaneIcon from "@/components/icons/plane";
 import Image from "next/image";
 import Link from "next/link";
-import pricesData from "@/data/prices.json";
 import { pageMetadata } from "@/utilities/seo";
+import { getPriceList } from "@/utilities/priceList";
+import { formatEuros, PriceList } from "@/utilities/priceFormat";
 
 export const metadata = pageMetadata({
   title: "Lentokoulutus Savonlinnassa – PPL, LAPL, purjelento",
@@ -16,15 +19,15 @@ export const metadata = pageMetadata({
   path: "/koulutus",
 });
 
-const getPrice = (courseCode: string): string => {
-  const price =
-    pricesData.trainingPrices[
-      courseCode as keyof typeof pricesData.trainingPrices
-    ];
-  return price === "TBA" ? "Kysy tarjousta" : `alkaen ${price} €`;
+// A course's price from the price list, by its code there (PPL, LAPL…)
+const coursePrice = (prices: PriceList, courseCode: string): string => {
+  const course = prices.items.find((item) => item.section === "training" && item.code === courseCode);
+  return course?.priceCents != null ? `alkaen ${formatEuros(course.priceCents)} €` : "Kysy tarjousta";
 };
 
-export default function Page() {
+export default async function Page() {
+  const prices = await getPriceList();
+  const getPrice = (courseCode: string) => coursePrice(prices, courseCode);
   return (
     <div className="min-h-screen flex flex-col w-full">
       {/* Hero Section - Compact */}

@@ -1,9 +1,12 @@
-import pricesData from "@/data/prices.json";
+export const dynamic = "force-dynamic";
+
 import Link from "next/link";
 import PageHero from "@/components/pageHero";
 import ContentSection from "@/components/contentSection";
 import CallToAction from "@/components/callToAction";
 import { pageMetadata } from "@/utilities/seo";
+import { getPriceList } from "@/utilities/priceList";
+import { formatPrice, itemsIn } from "@/utilities/priceFormat";
 
 export const metadata = pageMetadata({
   title: "Jäsenyys – liity lentokerhoon",
@@ -12,7 +15,8 @@ export const metadata = pageMetadata({
   path: "/kerho/jasenyys",
 });
 
-export default function Page() {
+export default async function Page() {
+  const prices = await getPriceList();
   return (
     <div className="min-h-screen flex flex-col w-full">
       <PageHero
@@ -137,19 +141,19 @@ export default function Page() {
                   </tr>
                 </thead>
                 <tbody>
-                  {pricesData.membershipFees.map((fee, index) => (
+                  {itemsIn(prices, "membership").map((fee) => (
                     <tr
-                      key={index}
+                      key={fee.id}
                       className="border-b border-swhite/10 hover:bg-sblack/30 transition-colors"
                     >
                       <td className="py-2 px-1 text-swhite">
-                        <div className="font-medium">{fee.type}</div>
+                        <div className="font-medium">{fee.name}</div>
                         <div className="text-sm text-swhite/60">
                           {fee.description}
                         </div>
                       </td>
                       <td className="py-2 px-1 text-right text-swhite font-semibold whitespace-nowrap">
-                        {fee.price} {fee.unit}
+                        {formatPrice(fee)}
                       </td>
                     </tr>
                   ))}
