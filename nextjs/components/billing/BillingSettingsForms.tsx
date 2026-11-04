@@ -10,6 +10,7 @@ import {
   setPurposePayer,
 } from "@/utilities/billingActions";
 import type { BillingSettings } from "@/utilities/billingData";
+import { perMinuteText } from "@/utilities/billing";
 
 /**
  * The forms of /admin/laskutus/asetukset. Each saves on its own and refreshes
@@ -52,14 +53,18 @@ function useSave() {
 
 export const Rates = ({ aircraft, rates }: Pick<BillingSettings, "aircraft" | "rates">) => {
   const { save, isPending, errorText } = useSave();
-  const latest = rates.at(-1);
-  const blank = {
-    registration: aircraft[0] ?? "",
-    validFrom: "",
-    withFee: latest ? centsToEuros(latest.centsWithFee) : "",
-    withoutFee: latest ? centsToEuros(latest.centsWithoutFee) : "",
-    minimumLocalMinutes: latest?.minimumLocalMinutes ?? 30,
+  // A new price starts from the aircraft's latest one
+  const startingFrom = (registration: string) => {
+    const latest = rates.filter((r) => r.registration === registration).at(-1);
+    return {
+      registration,
+      validFrom: "",
+      withFee: latest ? centsToEuros(latest.centsPerHourWithFee) : "",
+      withoutFee: latest ? centsToEuros(latest.centsPerHourWithoutFee) : "",
+      minimumLocalMinutes: latest?.minimumLocalMinutes ?? 30,
+    };
   };
+  const blank = startingFrom(aircraft[0] ?? "");
   const [rate, setRate] = useState(blank);
 
   return (
@@ -80,8 +85,12 @@ export const Rates = ({ aircraft, rates }: Pick<BillingSettings, "aircraft" | "r
             <tr key={`${r.registration}-${r.validFrom}`}>
               <td className="py-2 pr-4">{r.registration}</td>
               <td className="py-2 pr-4 tabular-nums">{r.validFrom}</td>
-              <td className="py-2 pr-4 text-right tabular-nums">{centsToEuros(r.centsWithFee)} €/min</td>
-              <td className="py-2 pr-4 text-right tabular-nums">{centsToEuros(r.centsWithoutFee)} €/min</td>
+              {[r.centsPerHourWithFee, r.centsPerHourWithoutFee].map((cents, i) => (
+                <td key={i} className="py-2 pr-4 text-right tabular-nums">
+                  {centsToEuros(cents)} €/h
+                  <span className="block text-xs text-gray-500">{perMinuteText(cents)}</span>
+                </td>
+              ))}
               <td className="py-2 pr-4 text-right tabular-nums">
                 {r.minimumLocalMinutes > 0 ? `${r.minimumLocalMinutes} min` : "ei"}
               </td>
@@ -112,7 +121,7 @@ export const Rates = ({ aircraft, rates }: Pick<BillingSettings, "aircraft" | "r
           <select
             id="rate-aircraft"
             value={rate.registration}
-            onChange={(e) => setRate({ ...rate, registration: e.target.value })}
+            onChange={(e) => setRate(startingFrom(e.target.value))}
             className={inputClassName}
           >
             {aircraft.map((reg) => (
@@ -132,7 +141,7 @@ export const Rates = ({ aircraft, rates }: Pick<BillingSettings, "aircraft" | "r
           />
         </div>
         <div>
-          <label htmlFor="rate-with" className="block text-sm text-gray-700 mb-1">Kalustomaksulla €/min</label>
+          <label htmlFor="rate-with" className="block text-sm text-gray-700 mb-1">Kalustomaksulla €/h</label>
           <input
             id="rate-with"
             inputMode="decimal"
@@ -142,7 +151,7 @@ export const Rates = ({ aircraft, rates }: Pick<BillingSettings, "aircraft" | "r
           />
         </div>
         <div>
-          <label htmlFor="rate-without" className="block text-sm text-gray-700 mb-1">Muut €/min</label>
+          <label htmlFor="rate-without" className="block text-sm text-gray-700 mb-1">Muut €/h</label>
           <input
             id="rate-without"
             inputMode="decimal"

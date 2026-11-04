@@ -1,6 +1,6 @@
 import contacts from "@/data/contacts.json";
 import prices from "@/data/prices.json";
-import type { BillLine } from "@/utilities/billing";
+import { type BillLine, formatRate } from "@/utilities/billing";
 
 /**
  * Invoices: the Finnish reference number and virtual bank barcode, the
@@ -119,16 +119,28 @@ export function flightInvoiceLines(lines: BillLine[]): InvoiceLineInput[] {
     .map((line) => ({
       source: "flight",
       lineDate: line.flightDate,
-      description:
+      description: [
         line.kind === "flight"
           ? [line.registration, line.purposeCode, line.description].filter(Boolean).join(" ")
           : line.kind === "minimum"
             ? [line.registration, line.description].filter(Boolean).join(" ")
             : line.description,
+        // An hourly price that isn't whole cents a minute (100 €/h) is told in
+        // the text, since the unit price column holds cents per minute
+        line.kind !== "adjustment" && line.centsPerHour !== null && line.centsPerHour % 60 !== 0
+          ? `(${formatRate(line.centsPerHour)})`
+          : "",
+      ]
+        .filter(Boolean)
+        .join(" "),
       quantity: line.minutes,
       unit: "min",
-      // A correction is a difference, not minutes × a price
-      unitCents: line.kind === "adjustment" ? null : line.centsPerMinute,
+      // A correction is a difference, not minutes × a price; nor is a price
+      // that isn't whole cents a minute
+      unitCents:
+        line.kind === "adjustment" || line.centsPerHour === null || line.centsPerHour % 60 !== 0
+          ? null
+          : line.centsPerHour / 60,
       amountCents: line.amountCents,
     }));
 }

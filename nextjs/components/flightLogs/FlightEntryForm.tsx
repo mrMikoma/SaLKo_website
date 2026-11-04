@@ -13,6 +13,7 @@ import {
   overlappingLegs,
 } from "@/utilities/flightFormInput";
 import { formatMinutes } from "@/utilities/flightFormat";
+import { euros, minutesCost } from "@/utilities/billing";
 import type { FlightFormOptions } from "@/utilities/flightLogData";
 
 interface FlightEntryFormProps {
@@ -109,7 +110,7 @@ const FlightEntryForm = ({ options, today, yesterday }: FlightEntryFormProps) =>
   const updateLeg = (key: number, changes: Partial<Leg>) =>
     setLegs((current) => current.map((leg) => (leg.key === key ? { ...leg, ...changes } : leg)));
 
-  const rate = options.aircraft.find((a) => a.registration === registration)?.minuteRate ?? null;
+  const rate = options.aircraft.find((a) => a.registration === registration)?.centsPerHour ?? null;
   const billedCodes = new Set(options.purposes.filter((p) => p.billed).map((p) => p.code));
   const timeProblems = legs.map((leg) =>
     normalizeClock(leg.takeoff) && normalizeClock(leg.landing) ? legTimeError(leg.takeoff, leg.landing) : null
@@ -630,7 +631,7 @@ const FlightEntryForm = ({ options, today, yesterday }: FlightEntryFormProps) =>
           {rate !== null && billedMinutes > 0 && (
             <span className="text-gray-600">
               {" "}
-              · arvio {(billedMinutes * rate).toLocaleString("fi-FI", { style: "currency", currency: "EUR" })}
+              · arvio {euros(minutesCost(billedMinutes, rate))}
             </span>
           )}
         </p>

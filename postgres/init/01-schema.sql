@@ -224,11 +224,13 @@ CREATE TABLE IF NOT EXISTS aircraft_sheets (
   sheet_gid BIGINT,
   -- First flight row: row 1 has the headers and row 2 the opening totals
   first_data_row INT NOT NULL DEFAULT 3,
-  active BOOLEAN NOT NULL DEFAULT TRUE
+  active BOOLEAN NOT NULL DEFAULT TRUE,
+  -- Order in lists and the default choice: the club's main aircraft first
+  sort_order INT NOT NULL DEFAULT 100
 );
 
-INSERT INTO aircraft_sheets (registration, sheet_name)
-VALUES ('OH-CON', 'OH-CON Matkapäiväkirja')
+INSERT INTO aircraft_sheets (registration, sheet_name, sort_order)
+VALUES ('OH-CON', 'OH-CON Matkapäiväkirja', 10), ('OH-386', 'OH-386 Matkapäiväkirja', 20)
 ON CONFLICT (registration) DO NOTHING;
 
 -- Pilot names as written in the sheet ("M.Meikäläinen") matched to member accounts.
@@ -357,15 +359,16 @@ CREATE INDEX IF NOT EXISTS idx_flight_status_changes_flight
 CREATE TABLE IF NOT EXISTS aircraft_rates (
   registration TEXT NOT NULL,
   valid_from DATE NOT NULL,
-  cents_with_fee INT NOT NULL CHECK (cents_with_fee >= 0),
-  cents_without_fee INT NOT NULL CHECK (cents_without_fee >= 0),
+  -- Hourly prices, billed by the minute (minutes × price / 60, to the cent)
+  cents_per_hour_with_fee INT NOT NULL CHECK (cents_per_hour_with_fee >= 0),
+  cents_per_hour_without_fee INT NOT NULL CHECK (cents_per_hour_without_fee >= 0),
   minimum_local_minutes INT NOT NULL DEFAULT 0 CHECK (minimum_local_minutes >= 0),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (registration, valid_from)
 );
 
-INSERT INTO aircraft_rates (registration, valid_from, cents_with_fee, cents_without_fee, minimum_local_minutes)
-VALUES ('OH-CON', '2000-01-01', 310, 500, 30)
+INSERT INTO aircraft_rates (registration, valid_from, cents_per_hour_with_fee, cents_per_hour_without_fee, minimum_local_minutes)
+VALUES ('OH-CON', '2000-01-01', 18600, 30000, 30), ('OH-386', '2000-01-01', 10000, 20000, 30)
 ON CONFLICT DO NOTHING;
 
 -- Members who paid a season's equipment fee (kalustomaksu): they fly at the
@@ -429,7 +432,7 @@ CREATE TABLE IF NOT EXISTS billing_lines (
   purpose_code TEXT,
   minutes INT NOT NULL DEFAULT 0,
   landings INT NOT NULL DEFAULT 0,
-  cents_per_minute INT,
+  cents_per_hour INT, -- the hourly price the minutes were billed at
   amount_cents INT NOT NULL DEFAULT 0,
   description TEXT NOT NULL DEFAULT '',
   -- The flight as billed (sheet_flights.input_hash), to spot later changes
