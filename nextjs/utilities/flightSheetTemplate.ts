@@ -209,6 +209,30 @@ export function flightRowFormulaCells(
   );
 }
 
+export interface CellFormat {
+  column: number;
+  type: "DATE" | "TIME";
+  pattern: string;
+}
+
+/**
+ * The number formats of a flight row at a tab's own column positions, as the
+ * template has them: without them a row the website adds to a tab whose rows
+ * were deleted would show the date as 46113 and the times as 0,43.
+ */
+export function flightRowFormats(columns: Partial<Record<SheetColumn, number>>): CellFormat[] {
+  const formats: [SheetColumn, CellFormat["type"], string][] = [
+    ["date", "DATE", "d.m.yyyy"],
+    ["takeoff", "TIME", "hh:mm"],
+    ["landing", "TIME", "hh:mm"],
+    ["airborne", "TIME", "[h]:mm"],
+    ["airframeTotal", "TIME", "[h]:mm"],
+  ];
+  return formats.flatMap(([key, type, pattern]) =>
+    columns[key] === undefined ? [] : [{ column: columns[key]!, type, pattern }]
+  );
+}
+
 export const TEMPLATE_FIRST_DATA_ROW = 3;
 
 export function buildFlightLogTab(name: string, formulaRows = 1000): TemplateSheet {
