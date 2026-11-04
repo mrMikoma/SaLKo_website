@@ -103,12 +103,12 @@ The database connection is a `pg.Pool` singleton exported from `utilities/db.ts`
 
 **Every database change goes into both `postgres/init/` and `postgres/migrations/`, in the same PR.**
 
-- `postgres/init/` is the full current schema. It only runs when a database is created from scratch: the dev database on every dev deploy, or a new server. Edit the definitions in `01-schema.sql`, and add grants for new tables to `05-grant-app-permissions.sql`.
+- `postgres/init/` is the full current schema. It only runs when a database is created from scratch: the dev database on every dev deploy, or a new server. Edit the definitions in `01-schema.sql`, and add grants for new tables to `05-grant-app-permissions.sql`. Its last lines record the newest migration the schema includes (a `schema_migrations` row with checksum `init`): raise it to your migration's file name. `migrate.sh` skips the files up to it on such a database, so old migrations never run against a schema they weren't written for, and CI fails when the line is behind.
 - `postgres/migrations/NNN_description.sql` is the same change for databases that already exist, which in practice means prod. `.github/workflows/db-migrate.yaml` applies pending files in name order with `postgres/migrate.sh`. It runs on dev automatically when migrations reach the `dev` branch, and on prod only manually, from `main`, after approval. Run the prod migration right before deploying the code that needs it.
 
 Rules for migration files:
 - Name them `NNN_snake_case.sql` with the next free number. Never edit or rename a migration once it has run anywhere; `migrate.sh` compares checksums and stops. Fix mistakes with a new migration.
-- Make them idempotent (`IF NOT EXISTS`, `IF EXISTS`, `CREATE OR REPLACE`, a `DO` block for `CREATE TYPE`). A database created from `init/` already has every change, so each migration must be a no-op there. Compare the result against `init/` before opening the PR.
+- Make them idempotent (`IF NOT EXISTS`, `IF EXISTS`, `CREATE OR REPLACE`, a `DO` block for `CREATE TYPE`), and make sure the result matches `init/`: try it on a copy of the previous schema before opening the PR.
 - Leave out `BEGIN`/`COMMIT`: each file runs in one transaction with its `schema_migrations` row, so `CREATE INDEX CONCURRENTLY` is not possible.
 - Grant new tables to the app role with `GRANT ... TO :app_user;`, matching `05-grant-app-permissions.sql`. Default privileges leave out `DELETE`.
 - Don't `SELECT` member data, because the Actions logs are public.
