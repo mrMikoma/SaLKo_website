@@ -30,7 +30,8 @@ An invoice past its due date shows as **Erääntynyt**.
   - a link to the invoice on the site.
 
   Replies go to `laskutus@`, which the invoice also gives for questions.
-- **`/jasenalue/laskut`** lists a member's own sent invoices. Each one opens as a printable page with the same payment details. Drafts and other members' invoices give a 404. The member's flight log page links each period's bill to its invoice.
+- **`/jasenalue/laskut`** lists a member's own sent invoices. Each one opens as a printable page with the same payment details. Drafts and other members' invoices give a 404.
+- **The bank barcode** (pankkiviivakoodi) is printed under the payment details of the invoice page, for the member's and the admin's view alike (`components/invoices/BankBarcode.tsx`, `utilities/bankBarcode.ts`). It encodes the virtual barcode's 54 digits as Finance Finland's Bank Bar Code Guide specifies: Code 128 set C, a fixed Start C, 27 value pairs, a modulus 103 check character and Stop. It prints 105 × 12 mm, centred, with 20 mm of empty space on both sides and no text directly above or below it. On screen it shrinks to fit, too fine to scan there; printed it is read like any bank form. The email has the digits only, since mail clients don't reliably show drawn images. The member's flight log page links each period's bill to its invoice.
 
 The club's details on the invoice (name, address, business ID, IBAN, BIC) come from `data/contacts.json`, the same as the Yhteystiedot page. The payment term and an optional closing note, for example about late payment, are set on `/admin/laskutus/asetukset`.
 
@@ -45,7 +46,7 @@ The club's details on the invoice (name, address, business ID, IBAN, BIC) come f
 - `invoice_lines`: the lines. `source` is `flight` for a period's lines and `other` for typed-in ones.
 - `email_outbox.invoice_id`: the emails that sent each invoice.
 
-The reference number, the barcode and the price-list lines are pure functions in `utilities/invoices.ts`, with unit tests that check the banks' published example. `e2e/invoices.spec.ts` runs a membership fee from creation to paid, and `e2e/flight-billing.spec.ts` covers a period's invoice.
+The reference number, the barcode and the price-list lines are pure functions in `utilities/invoices.ts`, with unit tests that check the banks' published example; the printed barcode's tests use the guide's test invoices (`tests/unit/bankBarcode.test.ts`). `e2e/invoices.spec.ts` runs a membership fee from creation to paid, and `e2e/flight-billing.spec.ts` covers a period's invoice.
 
 ## Not yet
 
