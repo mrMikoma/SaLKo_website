@@ -9,7 +9,7 @@ import {
   SheetValues,
   typedColumnIndexes,
 } from "@/utilities/flightSheetParser";
-import { flightRowFormulaCells, formulaSeparator } from "@/utilities/flightSheetTemplate";
+import { flightRowFormats, flightRowFormulaCells, formulaSeparator } from "@/utilities/flightSheetTemplate";
 import {
   crossesMidnight,
   legTimeError,
@@ -170,6 +170,17 @@ describe("writing to the sheet", () => {
       "=IF(H3-G3=0;;H3-G3)",
       "=IF(J2+I3=J2;;J2+I3)",
       "=IF(L2+K3=L2;;L2+K3)",
+    ]);
+  });
+
+  test("the first new row of an emptied tab gets the template's date and time formats", () => {
+    const parsed = parseFlightSheet(sheet());
+    expect(flightRowFormats(parsed.columns)).toEqual([
+      { column: 0, type: "DATE", pattern: "d.m.yyyy" },
+      { column: 6, type: "TIME", pattern: "hh:mm" },
+      { column: 7, type: "TIME", pattern: "hh:mm" },
+      { column: 8, type: "TIME", pattern: "[h]:mm" },
+      { column: 9, type: "TIME", pattern: "[h]:mm" },
     ]);
   });
 

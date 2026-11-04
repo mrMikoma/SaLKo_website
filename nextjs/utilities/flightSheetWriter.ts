@@ -3,7 +3,7 @@ import "server-only";
 import { DateTime } from "luxon";
 import connectionPool from "@/utilities/db";
 import { type FlightSheet, getFlightSheet } from "@/utilities/flightSheetSource";
-import { flightRowFormulaCells } from "@/utilities/flightSheetTemplate";
+import { flightRowFormats, flightRowFormulaCells } from "@/utilities/flightSheetTemplate";
 import {
   checkedCells,
   clearedFlightCells,
@@ -250,9 +250,11 @@ async function rowsForNewFlights(
  * arguments are separated as that locale does (";" in Finland). The row is
  * read back before anything is copied from it: if Sheets still couldn't parse
  * it (#ERROR!), it is written again with the other separator, so a wrong
- * guess never spreads a hundred rows of broken formulas.
+ * guess never spreads a hundred rows of broken formulas. The row also gets
+ * the template's date and time formats, which the rows copied from it take.
  */
 async function writeFormulaRow(sheet: FlightSheet, sheetName: string, parsed: ParsedSheet, row: number) {
+  await sheet.formatRow(sheetName, row, flightRowFormats(parsed.columns));
   const preferred = await sheet.formulaSeparator();
   for (const separator of [preferred, preferred === ";" ? "," : ";"] as const) {
     const cells = flightRowFormulaCells(parsed.columns, row, separator);

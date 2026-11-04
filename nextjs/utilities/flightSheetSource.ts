@@ -10,7 +10,7 @@ import {
   SheetValue,
   SheetValues,
 } from "@/utilities/flightSheetParser";
-import { FormulaSeparator, formulaSeparator } from "@/utilities/flightSheetTemplate";
+import { CellFormat, FormulaSeparator, formulaSeparator } from "@/utilities/flightSheetTemplate";
 
 /**
  * Where the flight log lives. In production that is the club's Google Sheet;
@@ -45,10 +45,12 @@ export interface FlightSheet {
   // with formulas; index 0 is row 1
   readFormulas(tab: string, column: number): Promise<string[]>;
   // Continues the formulas of sourceRow into rows firstRow..lastRow, as
-  // dragging the row down in Sheets does: only the cells that hold a formula,
-  // with their formatting and their references moved, never into
+  // dragging the row down in Sheets does: the whole row's formatting, and
+  // the cells that hold a formula with their references moved, never into
   // skipColumns. Adds rows to the tab when it is too short.
   extendFormulas(tab: string, sourceRow: number, firstRow: number, lastRow: number, skipColumns: number[]): Promise<void>;
+  // Number formats for cells of one row (dates, times)
+  formatRow(tab: string, row: number, formats: CellFormat[]): Promise<void>;
   // What separates a formula's arguments when the website types one in:
   // Sheets reads it in the spreadsheet's locale, ";" in a Finnish one
   formulaSeparator(): Promise<FormulaSeparator>;
@@ -122,7 +124,7 @@ class GoogleFlightSheet implements FlightSheet {
     const [meta, source] = await Promise.all([
       this.sheets.spreadsheets.get({
         spreadsheetId: this.spreadsheetId,
-        fields: "sheets.properties(sheetId,title,gridProperties.rowCount)",
+        fields: "sheets.properties(sheetId,title,gridProperties(rowCount,columnCount))",
       }),
       this.sheets.spreadsheets.values.get({
         spreadsheetId: this.spreadsheetId,
@@ -145,6 +147,16 @@ class GoogleFlightSheet implements FlightSheet {
     if (lastRow > rowCount) {
       requests.push({ appendDimension: { sheetId, dimension: "ROWS", length: lastRow - rowCount } });
     }
+    // The row's formats first: rows added to a tab whose rows were deleted
+    // have none, and a date would show as 46113
+    requests.push({
+      copyPaste: {
+        source: { sheetId, startRowIndex: sourceRow - 1, endRowIndex: sourceRow, startColumnIndex: 0, endColumnIndex: properties.gridProperties?.columnCount ?? 26 },
+        destination: { sheetId, startRowIndex: firstRow - 1, endRowIndex: lastRow, startColumnIndex: 0, endColumnIndex: properties.gridProperties?.columnCount ?? 26 },
+        pasteType: "PASTE_FORMAT",
+        pasteOrientation: "NORMAL",
+      },
+    });
     // One source cell pasted over many rows repeats it, references moved
     for (const column of columns) {
       requests.push({
@@ -159,6 +171,30 @@ class GoogleFlightSheet implements FlightSheet {
     await this.sheets.spreadsheets.batchUpdate({
       spreadsheetId: this.spreadsheetId,
       requestBody: { requests },
+    });
+  }
+
+  async formatRow(tab: string, row: number, formats: CellFormat[]): Promise<void> {
+    if (formats.length === 0) return;
+    const meta = await this.sheets.spreadsheets.get({
+      spreadsheetId: this.spreadsheetId,
+      fields: "sheets.properties(sheetId,title)",
+    });
+    const sheetId = meta.data.sheets?.find((s) => s.properties?.title === tab)?.properties?.sheetId;
+    if (sheetId === undefined || sheetId === null) {
+      throw new Error(`Välilehteä ${tab} ei löydy taulukosta`);
+    }
+    await this.sheets.spreadsheets.batchUpdate({
+      spreadsheetId: this.spreadsheetId,
+      requestBody: {
+        requests: formats.map(({ column, type, pattern }) => ({
+          repeatCell: {
+            range: { sheetId, startRowIndex: row - 1, endRowIndex: row, startColumnIndex: column, endColumnIndex: column + 1 },
+            cell: { userEnteredFormat: { numberFormat: { type, pattern } } },
+            fields: "userEnteredFormat.numberFormat",
+          },
+        })),
+      },
     });
   }
 
@@ -262,6 +298,10 @@ class FixtureFlightSheet implements FlightSheet {
         target[column] = 0;
       });
     }
+  }
+
+  async formatRow(): Promise<void> {
+    // The fixture keeps values only
   }
 
   async formulaSeparator(): Promise<FormulaSeparator> {
