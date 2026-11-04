@@ -130,7 +130,7 @@ export async function getYearStats(year: number, requested: string | null): Prom
         `SELECT DISTINCT extract(year FROM flight_date)::int AS year FROM sheet_flights
          WHERE missing_since IS NULL ORDER BY 1 DESC`
       ),
-      connectionPool.query("SELECT registration FROM aircraft_sheets ORDER BY registration"),
+      connectionPool.query("SELECT registration FROM aircraft_sheets ORDER BY sort_order, registration"),
       connectionPool.query("SELECT code, name_fi FROM flight_purposes"),
       connectionPool.query("SELECT name_key, user_id FROM pilot_aliases"),
       connectionPool.query("SELECT id, coalesce(full_name, name, email) AS name FROM users"),

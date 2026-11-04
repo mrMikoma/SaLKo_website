@@ -478,7 +478,8 @@ export interface BillingCellUpdate {
   id: string;
   // The flight as billed; null skips the check (marking a payment)
   inputHash: string | null;
-  status: "Laskutettu" | "Ei laskuteta" | "Maksettu";
+  // Tarkistettu only to put a tab back when a later tab's write failed
+  status: "Laskutettu" | "Ei laskuteta" | "Maksettu" | "Tarkistettu";
   period?: string;
 }
 

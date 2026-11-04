@@ -89,7 +89,7 @@ describe("lines", () => {
     purposeCode: "HAR",
     minutes: 20,
     landings: 2,
-    centsPerMinute: 310,
+    centsPerHour: 18600,
     amountCents: 6200,
     description: "EFSA–EFSA 10:00–10:20",
     inputHash: "h",
@@ -101,7 +101,7 @@ describe("lines", () => {
       line({}),
       line({ kind: "minimum", minutes: 10, amountCents: 3100, description: "Minimilaskutus 30 min (lento 20 min)" }),
       line({ kind: "credit", minutes: -60, amountCents: -18600, description: "Hyvitys: vapaatunti, 60 min" }),
-      line({ kind: "adjustment", minutes: 5, centsPerMinute: null, amountCents: 1550, description: "Korjaus: x" }),
+      line({ kind: "adjustment", minutes: 5, centsPerHour: null, amountCents: 1550, description: "Korjaus: x" }),
       line({ kind: "unbilled", amountCents: 0 }),
     ]);
     expect(lines.map((l) => l.description)).toEqual([
@@ -113,6 +113,19 @@ describe("lines", () => {
     expect(lines[0]).toMatchObject({ source: "flight", quantity: 20, unit: "min", unitCents: 310, amountCents: 6200 });
     expect(lines[3].unitCents).toBeNull();
     expect(lines.reduce((sum, l) => sum + l.amountCents, 0)).toBe(6200 + 3100 - 18600 + 1550);
+  });
+
+  test("an hourly price that isn't whole cents a minute goes in the text", () => {
+    const [oh386] = flightInvoiceLines([
+      line({ registration: "OH-386", minutes: 27, centsPerHour: 10000, amountCents: 4500 }),
+    ]);
+    expect(oh386).toMatchObject({
+      description: "OH-386 HAR EFSA–EFSA 10:00–10:20 (100,00 €/h)",
+      quantity: 27,
+      unit: "min",
+      unitCents: null,
+      amountCents: 4500,
+    });
   });
 
   test("money and quantities are read the Finnish way", () => {

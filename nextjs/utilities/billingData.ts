@@ -52,7 +52,8 @@ export async function getBillingContext(): Promise<BillingContext> {
   const [purposes, rates, aliases, users, seasons, settings] = await Promise.all([
     connectionPool.query("SELECT code, name_fi, payer, is_training FROM flight_purposes"),
     connectionPool.query(
-      `SELECT registration, valid_from, cents_with_fee, cents_without_fee, minimum_local_minutes
+      `SELECT registration, valid_from, cents_per_hour_with_fee, cents_per_hour_without_fee,
+              minimum_local_minutes
        FROM aircraft_rates ORDER BY registration, valid_from`
     ),
     connectionPool.query("SELECT name_key, user_id FROM pilot_aliases"),
@@ -70,8 +71,8 @@ export async function getBillingContext(): Promise<BillingContext> {
     rates: rates.rows.map((row) => ({
       registration: row.registration,
       validFrom: day(row.valid_from),
-      centsWithFee: row.cents_with_fee,
-      centsWithoutFee: row.cents_without_fee,
+      centsPerHourWithFee: row.cents_per_hour_with_fee,
+      centsPerHourWithoutFee: row.cents_per_hour_without_fee,
       minimumLocalMinutes: row.minimum_local_minutes,
     })),
     aliases: new Map(aliases.rows.map((row) => [row.name_key, row.user_id])),
@@ -286,7 +287,7 @@ export interface PeriodView {
 
 const LINE_COLUMNS = `
   l.payer_key, l.kind, l.flight_id, l.registration, l.flight_date, l.purpose_code,
-  l.minutes, l.landings, l.cents_per_minute, l.amount_cents, l.description, l.input_hash`;
+  l.minutes, l.landings, l.cents_per_hour, l.amount_cents, l.description, l.input_hash`;
 const LINE_SELECT = `SELECT ${LINE_COLUMNS} FROM billing_lines l`;
 
 function toLine(row: Record<string, unknown>): BillLine {
@@ -298,7 +299,7 @@ function toLine(row: Record<string, unknown>): BillLine {
     purposeCode: (row.purpose_code as string) ?? null,
     minutes: row.minutes as number,
     landings: row.landings as number,
-    centsPerMinute: (row.cents_per_minute as number) ?? null,
+    centsPerHour: (row.cents_per_hour as number) ?? null,
     amountCents: row.amount_cents as number,
     description: row.description as string,
     inputHash: (row.input_hash as string) ?? null,
@@ -484,8 +485,8 @@ export interface BillingSettings {
   rates: {
     registration: string;
     validFrom: string;
-    centsWithFee: number;
-    centsWithoutFee: number;
+    centsPerHourWithFee: number;
+    centsPerHourWithoutFee: number;
     minimumLocalMinutes: number;
   }[];
   purposes: { code: string; name: string; payer: PayerType; isTraining: boolean }[];
@@ -497,7 +498,9 @@ export interface BillingSettings {
 export async function getBillingSettings(season: number): Promise<BillingSettings> {
   const [ctx, aircraft, purposes, members] = await Promise.all([
     getBillingContext(),
-    connectionPool.query("SELECT registration FROM aircraft_sheets WHERE active ORDER BY registration"),
+    connectionPool.query(
+      "SELECT registration FROM aircraft_sheets WHERE active ORDER BY sort_order, registration"
+    ),
     connectionPool.query(
       "SELECT code, name_fi, payer, is_training FROM flight_purposes WHERE active ORDER BY sort_order"
     ),

@@ -420,7 +420,7 @@ export async function syncFlightSheets(
       const sheet = getFlightSheet();
       const aircraft = (
         await client.query(
-          "SELECT registration, sheet_name, first_data_row FROM aircraft_sheets WHERE active ORDER BY registration"
+          "SELECT registration, sheet_name, first_data_row FROM aircraft_sheets WHERE active ORDER BY sort_order, registration"
         )
       ).rows;
       const aliases = (

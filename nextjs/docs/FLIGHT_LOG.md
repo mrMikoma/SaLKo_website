@@ -5,7 +5,7 @@ How the flight log works as of October 2026. `FLIGHT_LOG_PLAN.md` describes the 
 ## The model
 
 - **Master:** the aircraft's paper journey log (matkapäiväkirja).
-- **Digital copy:** the club's Google Sheet, one tab per aircraft (`OH-CON Matkapäiväkirja`). Pilots and the biller enter flights there, and members can also enter them on the website, which writes the rows into the sheet.
+- **Digital copy:** the club's Google Sheet, one tab per aircraft (`OH-CON Matkapäiväkirja`, `OH-386 Matkapäiväkirja`). Pilots and the biller enter flights there, and members can also enter them on the website, which writes the rows into the sheet.
 - **Website:** reads the sheet into `sheet_flights` and shows it. `sheet_flights` is a read-only copy. A flight is never edited in the database, only in the sheet. That keeps it one-way, with no two-way sync.
 
 The website owns what isn't in the sheet:
@@ -92,7 +92,7 @@ A training flight without a student is not an issue: on a solo flight the studen
 - **Legs:** "+ Seuraava lento samana päivänä" adds a leg that starts where the last one landed, with the same purpose. Times take `1405`, `14.05`, `14,05` or `14:05` (minutes always with two digits), and "Nyt" fills in the current Finnish time. Hour meter, fuel, oil and remarks are optional.
 - **Times are checked** in the form and again on the server (`legTimeError` in `utilities/flightFormInput.ts`): equal times, a landing in the future, legs of the day that overlap, and a leg over 8 hours are refused. A landing earlier than the takeoff is after midnight when the leg stays under 8 hours (23:30 → 00:20); otherwise it is a typo (14:30 → 14:10), which the sheet's formula would turn into negative time and billing into a credit.
 - **As a student** the purpose must be a training one, since the student pays for those; choosing "Oppilaana" switches the legs to the first one.
-- **Footer:** total time, and an estimate for billed purposes from the per-minute price in `data/prices.json`. Billing itself comes later.
+- **Footer:** total time, and an estimate for billed purposes at the aircraft's price with the equipment fee today (`aircraft_rates`).
 
 **Sheet name.** The form writes the member's `pilot_aliases` name. A member without one gets the club's usual form, `M.Meikäläinen` from "Matti Meikäläinen" (`sheetNameFor`), or else the full name. It is saved as their alias once the flights are in the sheet, so they match at once and a failed save reserves nothing. Only a name that isn't in the sheet or in `pilot_aliases` yet is taken this way: an existing "M.Meikäläinen" may be another pilot, and taking it would give the member that pilot's flights and bills. When both names are in use, the flight is still saved, never refused, under the one closest to being the member's:
 1. a name in the sheet that nobody has decided on;
@@ -165,11 +165,11 @@ On `/admin/lennot` (`MANAGE_FLIGHT_LOG`), the biller ticks the rows that match t
 
 A payer is a member through `pilot_aliases`. Several sheet names of one member make one bill. A name marked **Ei jäsen** is billed under that name. A name not decided on stops the period from closing.
 
-**Price** is the airborne minutes × the aircraft's per-minute price on the flight's date (`aircraft_rates`):
+**Price** is the aircraft's hourly price on the flight's date (`aircraft_rates`), billed by the minute: airborne minutes × price / 60, rounded to the cent on each line:
 - the lower price applies to members who paid that calendar year's equipment fee (`equipment_fee_seasons`), and to training flights, since students are exempt from the fee until their check flight;
 - everyone else pays the higher price.
 
-OH-CON starts at 3,10 / 5,00 €/min, as in `data/prices.json`. That file is the public price list and is edited separately.
+OH-CON starts at 186 / 300 €/h (3,10 / 5,00 €/min) and OH-386 at 100 / 200 €/h, both with a 30-minute minimum, as in `data/prices.json`. That file is the public price list and is edited separately. Prices are stored per hour because OH-386's aren't whole cents a minute: a 27-minute flight is 45,00 €, 13 minutes 21,67 €. Bills show a price per minute when it is whole cents ("3,10 €/min"), otherwise per hour ("100,00 €/h"), and an invoice line in the latter case gives the price in its text.
 
 **Minimum:** a lone local flight (same departure and arrival) shorter than the aircraft's minimum is billed the minimum (30 min for OH-CON), as a "Minimilaskutus" line. Consecutive flights by the same payer on the same day, and trips to another field, have no minimum, as in the price list.
 
@@ -245,7 +245,7 @@ Without the variable, Google is used when it's configured, and the fixture other
 
 Migration `007_flight_log_web_entries.sql` adds `flight_log_web_entries`, `008_flight_status_changes.sql` adds `flight_status_changes` and `sheet_flights.input_hash`, and `009_flight_review_notes.sql` adds `flight_status_changes.note`, and `010_billing.sql` the billing tables, and `011_aircraft_year_totals.sql` the earlier years' hours.
 
-The entry spec logs its flights on OH-TST, a test aircraft with a tab of its own in the fixture: undo works only on a tab's last row, and the other specs add rows to OH-CON's tab at the same time.
+The fixture also has an empty OH-386 tab, since the sync reads every active aircraft. The entry spec logs its flights on OH-TST, a test aircraft with a tab of its own in the fixture: undo works only on a tab's last row, and the other specs add rows to OH-CON's tab at the same time.
 
 ## Before switching it on for the real sheet
 
