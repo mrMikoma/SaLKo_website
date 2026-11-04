@@ -135,13 +135,13 @@ Session strategy is JWT with 30-day expiry. `trustHost: true` is required becaus
 
 `utilities/roles.ts` exports `ROLES`, `PERMISSIONS`, `hasPermission()`, `canManageBooking()`, and `canDeleteBooking()`. All server actions call `auth()` and `hasPermission()` before touching the DB. Never rely on client-side role checks for access control.
 
-Roles: `admin` has the whole admin site. `treasurer` (laskuttaja) has the flight log, billing and statistics (`VIEW_ALL_FLIGHTS`, `MANAGE_FLIGHT_LOG`, `MANAGE_BILLING`, `VIEW_STATISTICS`) and nothing else of `/admin`: `canOpenAdminPath()` decides what `proxy.ts` lets through and what the admin nav shows, and `adminHome()` is where a treasurer lands (`/admin/laskutus`). `validateRoles()` checks the roles an admin gives, and refuses a treasurer without `user` or `admin`. Give a new role its permissions here, and add it to `ASSIGNABLE_ROLES` for the user forms.
+Roles: `admin` has the whole admin site. `treasurer` (laskuttaja) has the flight log, billing, statistics and the price list (`VIEW_ALL_FLIGHTS`, `MANAGE_FLIGHT_LOG`, `MANAGE_BILLING`, `VIEW_STATISTICS`, `MANAGE_PRICES`) and nothing else of `/admin`: `canOpenAdminPath()` decides what `proxy.ts` lets through and what the admin nav shows, and `adminHome()` is where a treasurer lands: their first section that is switched on (`isAdminSectionOn()` in `utilities/features.ts`), so `/admin/hinnasto` where the flight log is off. `validateRoles()` checks the roles an admin gives, and refuses a treasurer without `user` or `admin`. Give a new role its permissions here, and add it to `ASSIGNABLE_ROLES` for the user forms.
 
 ### Data Flow Pattern
 
 - **Server actions** (`"use server"`) in `utilities/` handle all DB mutations and are called directly from client components.
 - **API routes** (`app/api/`) exist only for: METAR reads, Umami analytics proxy (forwards to internal `salko-umami:3000`), NextAuth, the booking `.ics` export (`api/varaukset/[id]/kalenteri`, see `nextjs/docs/BOOKINGS.md`), and `api/health`, which the monitoring's uptime probe calls (200 when the app and its database answer, 503 otherwise).
-- **Static content** (contacts, plane specs, prices, history) is kept in JSON files under `nextjs/data/` and imported at build time — not stored in the DB.
+- **Static content** (contacts, plane specs, history) is kept in JSON files under `nextjs/data/` and imported at build time — not stored in the DB. Prices are the exception: the price list is in the database (`price_items`, aircraft prices in `aircraft_rates`), edited on `/admin/hinnasto` by admins and the treasurer, and read by `/kerho/hinnasto`, `/kerho/jasenyys`, `/kerho/hallit`, `/koulutus` and the invoice presets (`utilities/priceList.ts`).
 - TanStack Query (`providers/QueryProvider.tsx`) is used on the client for data fetching that benefits from caching/refetching (e.g. bookings calendar).
 
 ### Umami Analytics

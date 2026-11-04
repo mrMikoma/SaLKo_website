@@ -7,6 +7,7 @@ import { hasPermission } from "@/utilities/roles";
 import { isBillingEnabled } from "@/utilities/features";
 import { getInvoiceRecipients } from "@/utilities/invoiceData";
 import { invoicePresets } from "@/utilities/invoices";
+import { getPriceList } from "@/utilities/priceList";
 import NewInvoiceForm from "@/components/invoices/NewInvoiceForm";
 
 export const metadata = {
@@ -21,7 +22,7 @@ export default async function NewInvoicePage() {
   if (!session?.user?.id || !hasPermission(session.user.roles, "MANAGE_BILLING")) {
     redirect("/");
   }
-  const recipients = await getInvoiceRecipients();
+  const [recipients, prices] = await Promise.all([getInvoiceRecipients(), getPriceList()]);
 
   return (
     <div className="space-y-6">
@@ -36,7 +37,7 @@ export default async function NewInvoicePage() {
           Lentolaskut tehdään laskutusjaksosta.
         </p>
       </div>
-      <NewInvoiceForm recipients={recipients} presets={invoicePresets()} />
+      <NewInvoiceForm recipients={recipients} presets={invoicePresets(prices.items)} />
     </div>
   );
 }

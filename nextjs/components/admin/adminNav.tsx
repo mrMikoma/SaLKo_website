@@ -28,6 +28,7 @@ const AdminNav = ({
         ]
       : []),
     ...(showFlightLog ? [{ href: "/admin/tilastot", label: "Tilastot" }] : []),
+    { href: "/admin/hinnasto", label: "Hinnasto" },
     { href: "/admin/bulletins", label: "Tiedotteet" },
     // A treasurer sees only their own sections
   ].filter((item) => canOpenAdminPath(roles, item.href));

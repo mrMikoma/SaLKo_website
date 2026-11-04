@@ -1,8 +1,28 @@
-import pricesData from "@/data/prices.json";
+export const dynamic = "force-dynamic";
+
 import Link from "next/link";
 import PageHero from "@/components/pageHero";
 import ContentSection from "@/components/contentSection";
 import { pageMetadata } from "@/utilities/seo";
+import { getPriceList } from "@/utilities/priceList";
+import {
+  AircraftPrice,
+  finnishDate,
+  formatEuros,
+  formatPrice,
+  itemsIn,
+  minutePrice,
+} from "@/utilities/priceFormat";
+
+// The free hour as the price list has always put it
+function freeHourNote(aircraft: AircraftPrice): string | null {
+  if (!aircraft.freeHour) return null;
+  const paid = aircraft.freeHour.paidMinutes / 60;
+  const free = aircraft.freeHour.freeMinutes / 60;
+  return `Aktiivilentäjien hyvitys: jokaisen ${String(paid).replace(".", ",")} maksetun lentotunnin jälkeen ${
+    free === 1 ? "yksi ilmainen lentotunti" : `${String(free).replace(".", ",")} ilmaista lentotuntia`
+  } (sama lentokausi)`;
+}
 
 export const metadata = pageMetadata({
   title: "Hinnasto – lentotunnit ja jäsenmaksut",
@@ -11,7 +31,9 @@ export const metadata = pageMetadata({
   path: "/kerho/hinnasto",
 });
 
-export default function Page() {
+export default async function Page() {
+  const prices = await getPriceList();
+  const equipmentFee = itemsIn(prices, "equipment")[0];
   return (
     <div className="min-h-screen flex flex-col w-full">
       <PageHero
@@ -24,9 +46,11 @@ export default function Page() {
         <div className="max-w-[1600px] mx-auto px-6 pb-12">
           <div className="max-w-4xl mx-auto">
             <div className="text-center">
-              <p className="text-xl md:text-2xl text-swhite/90 leading-relaxed">
-                Voimassa {pricesData.date} alkaen
-              </p>
+              {prices.validFrom && (
+                <p className="text-xl md:text-2xl text-swhite/90 leading-relaxed">
+                  Voimassa {finnishDate(prices.validFrom)} alkaen
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -50,19 +74,19 @@ export default function Page() {
                 </tr>
               </thead>
               <tbody>
-                {pricesData.membershipFees.map((fee, index) => (
+                {itemsIn(prices, "membership").map((fee) => (
                   <tr
-                    key={index}
+                    key={fee.id}
                     className="border-b border-swhite/10 hover:bg-sblack/30 transition-colors"
                   >
                     <td className="py-4 px-4 text-swhite font-medium">
-                      {fee.type}
+                      {fee.name}
                     </td>
                     <td className="py-4 px-4 text-swhite/70">
                       {fee.description}
                     </td>
                     <td className="py-4 px-4 text-right text-swhite font-semibold whitespace-nowrap">
-                      {fee.price} {fee.unit}
+                      {formatPrice(fee)}
                     </td>
                   </tr>
                 ))}
@@ -86,9 +110,6 @@ export default function Page() {
                     </th>
                     <th className="text-left py-4 px-4 text-sbluel font-semibold">
                       Malli
-                    </th>
-                    <th className="text-left py-4 px-4 text-sbluel font-semibold">
-                      Tyyppi
                     </th>
                     <th className="text-left py-4 px-4 text-sbluel font-semibold">
                       Huomiot
@@ -124,68 +145,50 @@ export default function Page() {
                   </tr>
                 </thead>
                 <tbody>
-                  {pricesData.aircraftRentalRates.map((aircraft, index) => {
-                    if (aircraft.isEquipmentFee) {
-                      return (
-                        <tr
-                          key={index}
-                          className="border-b border-sbluel/20 bg-sbluel/10"
-                        >
-                          <td
-                            colSpan={4}
-                            className="py-4 px-4 text-swhite font-semibold"
-                          >
-                            {aircraft.category}
-                            <div className="text-sm font-normal text-swhite/70 mt-1">
-                              {aircraft.description}
-                            </div>
-                          </td>
-                          <td
-                            colSpan={4}
-                            className="py-4 px-4 text-right text-swhite font-bold whitespace-nowrap"
-                          >
-                            {aircraft.price} {aircraft.unit}
-                          </td>
-                        </tr>
-                      );
-                    }
-                    const isOutOfService = aircraft.outOfService === true;
-                    return (
-                      <tr
-                        key={index}
-                        className={`border-b border-swhite/10 transition-colors ${
-                          isOutOfService
-                            ? "opacity-50"
-                            : "hover:bg-sblack/30"
-                        }`}
+                  {equipmentFee && (
+                    <tr className="border-b border-sbluel/20 bg-sbluel/10">
+                      <td colSpan={3} className="py-4 px-4 text-swhite font-semibold">
+                        {equipmentFee.name}
+                        <div className="text-sm font-normal text-swhite/70 mt-1">
+                          {equipmentFee.description}
+                        </div>
+                      </td>
+                      <td
+                        colSpan={4}
+                        className="py-4 px-4 text-right text-swhite font-bold whitespace-nowrap"
                       >
-                        <td className="py-4 px-4 text-swhite font-medium">
-                          {aircraft.registration}
-                        </td>
-                        <td className="py-4 px-4 text-swhite">
-                          {aircraft.model}
-                        </td>
-                        <td className="py-4 px-4 text-swhite/70 capitalize">
-                          {aircraft.type}
-                        </td>
-                        <td className="py-4 px-4 text-swhite/60 text-sm">
-                          {aircraft.notes || "-"}
-                        </td>
-                        <td className="py-4 px-4 text-right text-swhite font-semibold whitespace-nowrap">
-                          {aircraft.pricePerMinuteWithEquipmentFee}
-                        </td>
-                        <td className="py-4 px-4 text-right text-swhite font-semibold whitespace-nowrap">
-                          {aircraft.pricePerHourWithEquipmentFee}
-                        </td>
-                        <td className="py-4 px-4 text-right text-swhite/70 font-semibold whitespace-nowrap">
-                          {aircraft.pricePerMinuteWithoutEquipmentFee}
-                        </td>
-                        <td className="py-4 px-4 text-right text-swhite/70 font-semibold whitespace-nowrap">
-                          {aircraft.pricePerHourWithoutEquipmentFee}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                        {formatPrice(equipmentFee)}
+                      </td>
+                    </tr>
+                  )}
+                  {prices.aircraft.map((aircraft) => (
+                    <tr
+                      key={aircraft.registration}
+                      className="border-b border-swhite/10 transition-colors hover:bg-sblack/30"
+                    >
+                      <td className="py-4 px-4 text-swhite font-medium whitespace-nowrap">
+                        {aircraft.registration}
+                      </td>
+                      <td className="py-4 px-4 text-swhite">
+                        {aircraft.model ?? "–"}
+                      </td>
+                      <td className="py-4 px-4 text-swhite/60 text-sm">
+                        {freeHourNote(aircraft) ?? "-"}
+                      </td>
+                      <td className="py-4 px-4 text-right text-swhite font-semibold whitespace-nowrap">
+                        {minutePrice(aircraft.centsPerHourWithFee)}
+                      </td>
+                      <td className="py-4 px-4 text-right text-swhite font-semibold whitespace-nowrap">
+                        {formatEuros(aircraft.centsPerHourWithFee)}
+                      </td>
+                      <td className="py-4 px-4 text-right text-swhite/70 font-semibold whitespace-nowrap">
+                        {minutePrice(aircraft.centsPerHourWithoutFee)}
+                      </td>
+                      <td className="py-4 px-4 text-right text-swhite/70 font-semibold whitespace-nowrap">
+                        {formatEuros(aircraft.centsPerHourWithoutFee)}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -212,19 +215,19 @@ export default function Page() {
                   </tr>
                 </thead>
                 <tbody>
-                  {pricesData.demonstrationFlights.map((flight, index) => (
+                  {itemsIn(prices, "demo").map((flight) => (
                     <tr
-                      key={index}
+                      key={flight.id}
                       className="border-b border-swhite/10 hover:bg-sblack/30 transition-colors"
                     >
                       <td className="py-4 px-4 text-swhite font-medium">
-                        {flight.type}
+                        {flight.name}
                       </td>
                       <td className="py-4 px-4 text-swhite/70">
                         {flight.description}
                       </td>
                       <td className="py-4 px-4 text-right text-swhite font-semibold whitespace-nowrap">
-                        {flight.price} {flight.unit}
+                        {formatPrice(flight)}
                       </td>
                     </tr>
                   ))}
@@ -252,22 +255,22 @@ export default function Page() {
                   </tr>
                 </thead>
                 <tbody>
-                  {pricesData.hangarSpaces.map((space, index) => (
+                  {itemsIn(prices, "hangar").map((space) => (
                     <tr
-                      key={index}
+                      key={space.id}
                       className="border-b border-swhite/10 hover:bg-sblack/30 transition-colors"
                     >
                       <td className="py-4 px-4 text-swhite font-medium">
-                        {space.type}
+                        {space.name}
                       </td>
                       <td className="py-4 px-4 text-swhite/70">
                         {space.description}
                       </td>
                       <td className="py-4 px-4 text-right text-swhite font-semibold whitespace-nowrap">
-                        {space.price} {space.unit}
-                        {"additionalFee" in space && space.additionalFee && (
+                        {formatPrice(space)}
+                        {space.note && (
                           <div className="text-sm font-normal text-swhite/60 mt-0.5">
-                            {space.additionalFee}
+                            {space.note}
                           </div>
                         )}
                       </td>
@@ -294,16 +297,19 @@ export default function Page() {
                   </tr>
                 </thead>
                 <tbody>
-                  {pricesData.otherFees.map((fee, index) => (
+                  {itemsIn(prices, "other").map((fee) => (
                     <tr
-                      key={index}
+                      key={fee.id}
                       className="border-b border-swhite/10 hover:bg-sblack/30 transition-colors"
                     >
                       <td className="py-4 px-4 text-swhite font-medium">
-                        {fee.type}
+                        {fee.name}
+                        {fee.description && (
+                          <div className="text-sm font-normal text-swhite/70">{fee.description}</div>
+                        )}
                       </td>
                       <td className="py-4 px-4 text-right text-swhite font-semibold whitespace-nowrap">
-                        {fee.price} {fee.unit}
+                        {formatPrice(fee)}
                       </td>
                     </tr>
                   ))}
@@ -316,15 +322,15 @@ export default function Page() {
           <div className="glass rounded-lg p-8 border border-sbluel/20">
             <h2 className="text-2xl font-bold text-sbluel mb-6">Huomiot</h2>
             <div className="space-y-4">
-              {pricesData.disclaimers.map((disclaimer) => (
+              {itemsIn(prices, "note").map((note, index) => (
                 <div
-                  key={disclaimer.id}
+                  key={note.id}
                   className="text-swhite/80 leading-relaxed"
                 >
                   <span className="font-semibold text-sbluel">
-                    {disclaimer.id}*{" "}
+                    {index + 1}*{" "}
                   </span>
-                  <span className="whitespace-pre-line">{disclaimer.text}</span>
+                  <span className="whitespace-pre-line">{note.name}</span>
                 </div>
               ))}
             </div>

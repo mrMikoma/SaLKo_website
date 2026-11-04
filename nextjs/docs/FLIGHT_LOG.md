@@ -169,7 +169,7 @@ A payer is a member through `pilot_aliases`. Several sheet names of one member m
 - the lower price applies to members who paid that calendar year's equipment fee (`equipment_fee_seasons`), and to training flights, since students are exempt from the fee until their check flight;
 - everyone else pays the higher price.
 
-OH-CON starts at 186 / 300 €/h (3,10 / 5,00 €/min) and OH-386 at 100 / 200 €/h, both with a 30-minute minimum, as in `data/prices.json`. That file is the public price list and is edited separately. Prices are stored per hour because OH-386's aren't whole cents a minute: a 27-minute flight is 45,00 €, 13 minutes 21,67 €. Bills show a price per minute when it is whole cents ("3,10 €/min"), otherwise per hour ("100,00 €/h"), and an invoice line in the latter case gives the price in its text.
+OH-CON starts at 186 / 300 €/h (3,10 / 5,00 €/min) and OH-386 at 100 / 200 €/h, both with a 30-minute minimum. They are edited on `/admin/hinnasto` with the rest of the price list, and the public price page shows today's. Prices are stored per hour because OH-386's aren't whole cents a minute: a 27-minute flight is 45,00 €, 13 minutes 21,67 €. Bills show a price per minute when it is whole cents ("3,10 €/min"), otherwise per hour ("100,00 €/h"), and an invoice line in the latter case gives the price in its text.
 
 **Minimum:** a lone local flight (same departure and arrival) shorter than the aircraft's minimum is billed the minimum (30 min for OH-CON), as a "Minimilaskutus" line. Consecutive flights by the same payer on the same day, and trips to another field, have no minimum, as in the price list.
 
@@ -191,7 +191,7 @@ OH-CON starts at 186 / 300 €/h (3,10 / 5,00 €/min) and OH-386 at 100 / 200 �
 - printable summaries, one page per payer (`/admin/laskutus/[id]/tuloste`);
 - members see their closed periods, with lines and whether they are paid, on `/jasenalue/lentopaivakirja` (`VIEW_OWN_BILLING`), linked to their invoices on `/jasenalue/laskut`.
 
-**Settings** (`/admin/laskutus/asetukset`): prices per aircraft from a date, the equipment-fee members per season, the free hour, and who pays for each purpose.
+**Settings** (`/admin/laskutus/asetukset`): the equipment-fee members per season, the free hour, and who pays for each purpose. Prices per aircraft from a date are on `/admin/hinnasto`, with the rest of the price list.
 
 ## Statistics
 

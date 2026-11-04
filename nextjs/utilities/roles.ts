@@ -60,9 +60,12 @@ export const PERMISSIONS = {
   MANAGE_FLIGHT_LOG: ["admin", "treasurer"] as Role[],
 
   // Billing: members see what they were billed; admins and treasurers run
-  // the periods, mark payments and set the prices
+  // the periods and mark payments
   VIEW_OWN_BILLING: ["admin", "user"] as Role[],
   MANAGE_BILLING: ["admin", "treasurer"] as Role[],
+  // The price list (/admin/hinnasto): the public price page, the aircraft
+  // prices billing uses, and the invoice presets
+  MANAGE_PRICES: ["admin", "treasurer"] as Role[],
 
   // Flight statistics and the Traficom report
   VIEW_STATISTICS: ["admin", "treasurer"] as Role[],
@@ -174,13 +177,15 @@ export function validateRoles(roles: string[]): { roles: Role[] } | { error: str
 
 // The parts of the admin site that roles other than admin can open, by the
 // permission each needs. An admin opens all of /admin.
-// The first one a role has is where its admin site starts: for a treasurer
-// the flight log, which is on before billing is (utilities/features.ts).
+// The first one a role has, and that is switched on, is where its admin site
+// starts: for a treasurer the flight log, which is on before billing is, or
+// the price list, which is always on (utilities/features.ts).
 const ADMIN_SECTIONS: { path: string; permission: keyof typeof PERMISSIONS }[] = [
   { path: "/admin/lennot", permission: "VIEW_ALL_FLIGHTS" },
   { path: "/admin/laskutus", permission: "MANAGE_BILLING" },
   { path: "/admin/laskut", permission: "MANAGE_BILLING" },
   { path: "/admin/tilastot", permission: "VIEW_STATISTICS" },
+  { path: "/admin/hinnasto", permission: "MANAGE_PRICES" },
 ];
 
 /** Whether these roles may open a path under /admin */
@@ -193,8 +198,13 @@ export function canOpenAdminPath(roles: string[], pathname: string): boolean {
   );
 }
 
-/** Where the admin site starts for these roles, or null if they have none of it */
-export function adminHome(roles: string[]): string | null {
+/**
+ * Where the admin site starts for these roles, or null if they have none of
+ * it. `isOn` leaves out the sections whose feature is switched off.
+ */
+export function adminHome(roles: string[], isOn: (path: string) => boolean = () => true): string | null {
   if (hasPermission(roles, "ACCESS_ADMIN_SITE")) return "/admin";
-  return ADMIN_SECTIONS.find((section) => hasPermission(roles, section.permission))?.path ?? null;
+  return (
+    ADMIN_SECTIONS.find((section) => hasPermission(roles, section.permission) && isOn(section.path))?.path ?? null
+  );
 }
