@@ -7,6 +7,7 @@ import { InvoicePreset, lineAmount, parseEuros, parseQuantity } from "@/utilitie
 import { createInvoices, LineForm } from "@/utilities/invoiceActions";
 import type { InvoiceRecipient } from "@/utilities/invoiceData";
 import LineFields, { fieldClassName, labelClassName, primaryButton, secondaryButton } from "./LineFields";
+import { callAction } from "@/utilities/callAction";
 
 const card = "bg-white rounded-lg shadow p-6 space-y-4 text-gray-900";
 const amountOf = (line: LineForm) => lineAmount(parseQuantity(line.quantity) ?? 0, parseEuros(line.unitPrice) ?? 0);
@@ -51,13 +52,15 @@ const NewInvoiceForm = ({
     e.preventDefault();
     setError(null);
     startTransition(async () => {
-      const result = await createInvoices({
-        userIds: [...selected],
-        other: other.enabled ? { name: other.name, email: other.email, address: other.address } : null,
-        title,
-        message,
-        lines,
-      });
+      const result = await callAction(() =>
+        createInvoices({
+          userIds: [...selected],
+          other: other.enabled ? { name: other.name, email: other.email, address: other.address } : null,
+          title,
+          message,
+          lines,
+        })
+      );
       if (result.status === "error") {
         setError(result.error);
         return;

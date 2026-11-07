@@ -3,6 +3,7 @@
 import React, { useState, useTransition } from "react";
 import { createCredentialUser } from "@/utilities/adminUserActions";
 import { getRoleDisplayName, type Role } from "@/utilities/roles";
+import { callAction } from "@/utilities/callAction";
 
 
 interface CreateUserFormProps {
@@ -46,11 +47,11 @@ const CreateUserForm = ({
       return;
     }
     startTransition(async () => {
-      const result = await createCredentialUser(newUser);
-      if (result.success) {
+      const result = await callAction(() => createCredentialUser(newUser));
+      if (result.status === "success") {
         onSuccess();
       } else {
-        onError(result.error || "Käyttäjän luonti epäonnistui");
+        onError(result.error);
       }
     });
   };

@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
-import { useActionState } from "react";
-import { loginWithCredentials, loginWithGoogle } from "@/utilities/authActions";
+import { loginWithCredentials, loginWithGoogle, type LoginState } from "@/utilities/authActions";
+import { useFormAction } from "@/hooks/useFormAction";
 import { FcGoogle } from "react-icons/fc";
 
 // References:
@@ -9,9 +9,16 @@ import { FcGoogle } from "react-icons/fc";
 
 // redirectTo: the page to return to after logging in; the front page by default
 const Login = ({ redirectTo }: { redirectTo?: string }) => {
-  const [state, action, pending] = useActionState(
+  // A lost connection or a page from before a deploy is shown in the form,
+  // with the email kept like after a wrong password
+  const { state, action, pending } = useFormAction<LoginState | undefined>(
     loginWithCredentials,
-    undefined
+    undefined,
+    (message, _state, formData) => ({
+      status: "error",
+      errors: { general: [message] },
+      email: String(formData.get("email") ?? ""),
+    })
   );
 
   // Note: On successful login, NextAuth handles the redirect server-side

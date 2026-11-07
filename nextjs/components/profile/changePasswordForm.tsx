@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useState } from "react";
+import { useFormAction } from "@/hooks/useFormAction";
 import { signOut } from "next-auth/react";
 import {
   changePassword,
@@ -12,10 +13,12 @@ interface ChangePasswordFormProps {
 }
 
 const ChangePasswordForm = ({ onCancel }: ChangePasswordFormProps) => {
-  const [state, formAction, isPending] = useActionState<
-    ChangePasswordState,
-    FormData
-  >(changePassword, undefined);
+  // Through the form's action, so the password fields empty after each try
+  const { state, action: formAction, pending: isPending } = useFormAction<ChangePasswordState | undefined>(
+    changePassword,
+    undefined,
+    (message) => ({ status: "error", errors: { general: [message] } })
+  );
   const [showPasswords, setShowPasswords] = useState({
     current: false,
     new: false,

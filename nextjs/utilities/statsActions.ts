@@ -11,9 +11,7 @@ import { logger } from "@/utilities/logger";
 
 const log = logger.child({ module: "stats" });
 
-type ActionResult<T = null> =
-  | { status: "success"; result: T }
-  | { status: "error"; error: string };
+import type { ActionResult } from "@/utilities/actionResult";
 
 async function requireStatsEditor() {
   if (!isFlightLogEnabled()) {

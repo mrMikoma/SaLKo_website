@@ -24,6 +24,13 @@ ENV NEXT_PUBLIC_UMAMI_WEBSITE_ID=$NEXT_PUBLIC_UMAMI_WEBSITE_ID
 ARG ALLOW_INDEXING=false
 ENV ALLOW_INDEXING=$ALLOW_INDEXING
 
+# The image version, as Next's deployment ID: a page opened before a deploy
+# then reloads on its next link click instead of calling server actions and
+# loading scripts that are gone (docs/UX_ERROR_PLAN.md, F3). Empty for local
+# builds, which then have none.
+ARG NEXT_DEPLOYMENT_ID=
+ENV NEXT_DEPLOYMENT_ID=$NEXT_DEPLOYMENT_ID
+
 # Next.js collects completely anonymous telemetry data about general usage.
 # Learn more here: https://nextjs.org/telemetry
 # Uncomment the following line in case you want to disable telemetry during the build.

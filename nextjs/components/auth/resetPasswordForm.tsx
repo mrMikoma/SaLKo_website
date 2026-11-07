@@ -1,13 +1,17 @@
 "use client";
 
-import { useActionState } from "react";
-import { resetPasswordWithToken } from "@/utilities/passwordReset";
+import { resetPasswordWithToken, type ResetPasswordState } from "@/utilities/passwordReset";
+import { useFormAction } from "@/hooks/useFormAction";
 
 const inputClassName =
   "block w-full rounded-lg bg-white/95 px-4 py-2.5 text-base text-sblued border-2 border-sblue/30 focus:border-sred focus:ring-2 focus:ring-sred/20 focus:outline-none transition-all duration-200 shadow-md";
 
 const ResetPasswordForm = ({ token }: { token: string }) => {
-  const [state, action, pending] = useActionState(resetPasswordWithToken, undefined);
+  const { state, action, pending } = useFormAction<ResetPasswordState>(
+    resetPasswordWithToken,
+    undefined,
+    (message) => ({ status: "error", error: message })
+  );
 
   if (state?.status === "success") {
     return (

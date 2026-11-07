@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { deleteAircraftRate, saveAircraftRate } from "@/utilities/priceListActions";
 import type { AircraftRateRow } from "@/utilities/priceList";
 import { perMinuteText } from "@/utilities/billing";
+import { callAction } from "@/utilities/callAction";
 
 /**
  * Aircraft prices per hour from a date (aircraft_rates), on /admin/hinnasto.
@@ -28,7 +29,7 @@ function useSave() {
   const save = (action: () => Promise<Result>, onSuccess?: () => void, onError?: () => void) => {
     setError(null);
     startTransition(async () => {
-      const result = await action();
+      const result = await callAction(action);
       if (result.status === "error") {
         setError(result.error);
         onError?.();

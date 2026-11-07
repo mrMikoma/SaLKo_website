@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures";
 import { accounts } from "./accounts";
 
@@ -36,34 +37,45 @@ test.describe("admin", () => {
   });
 });
 
-test.describe("member", () => {
-  const user = accounts.user;
-  test.skip(!user, "no member account: set E2E_USER_* or use a local database");
-  test.use({ storageState: user?.storageState });
-
-  test("a save that loses its connection shows a Finnish error page", async ({ page, browserErrors }) => {
-    // On a phone the save button is far down the form, and the page keeps its
-    // scroll position
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto("/jasenalue/profiili");
-    await page.getByRole("button", { name: "Muokkaa tietoja" }).click();
-
-    // The save never reaches the server. Counted here: Playwright's `times`
-    // would also count page loads that fall through.
-    let left = 1;
-    await page.route("**/jasenalue/profiili", (route) => {
-      if (left === 0 || route.request().method() !== "POST") return route.fallback();
-      left -= 1;
-      return route.abort("connectionreset");
-    });
-    await page.getByRole("button", { name: "Tallenna muutokset" }).click();
-
-    await expect(page.getByRole("heading", { level: 1, name: "Yhteys katkesi" })).toBeVisible();
-    await expect(page.getByRole("alert").filter({ hasText: "Tarkista verkkoyhteys" })).toBeInViewport();
-    // The navbar stays, and trying again brings the page back
-    await expect(page.getByRole("banner").or(page.getByRole("navigation")).first()).toBeVisible();
-    await page.getByRole("button", { name: "Yritä uudelleen" }).click();
-    await expect(page.getByRole("button", { name: "Muokkaa tietoja" })).toBeVisible();
-    ignore(browserErrors, /ERR_CONNECTION_RESET|Failed to fetch|Failed to load resource/);
+// Starting a Google login is the one action left to throw to the error pages:
+// it leaves the site, so there is no form to keep (docs/UX_ERROR_PLAN.md).
+// Its POST is dropped once; Playwright's `times` would also count the page
+// loads that fall through.
+const dropNextAction = async (page: Page) => {
+  let left = 1;
+  await page.route("**/*", (route) => {
+    const request = route.request();
+    if (left === 0 || request.method() !== "POST" || !request.headers()["next-action"]) return route.fallback();
+    left -= 1;
+    return route.abort("connectionreset");
   });
+};
+
+test("a failure inside a page shows the error page under the navbar", async ({ page, browserErrors }) => {
+  await page.goto("/kalusto/varauskalenteri");
+  await page.getByRole("button", { name: "Kirjaudu sisään" }).click();
+  await dropNextAction(page);
+  await page.locator("#calendar-login").getByRole("button", { name: "Kirjaudu Google Workspacella" }).click();
+
+  await expect(page.getByRole("heading", { level: 1, name: "Yhteys katkesi" })).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: "Tarkista verkkoyhteys" })).toBeInViewport();
+  // The navbar stays, and trying again brings the page back
+  await expect(page.getByRole("button", { name: "Jäsenalue" })).toBeVisible();
+  await page.getByRole("button", { name: "Yritä uudelleen" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Varauskalenteri" })).toBeVisible();
+  ignore(browserErrors, /ERR_CONNECTION_RESET|Failed to fetch|Failed to load resource/);
+});
+
+test("a failure in the navbar shows the site-wide error page", async ({ page, browserErrors }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Jäsenalue" }).click();
+  await dropNextAction(page);
+  await page.getByRole("button", { name: "Kirjaudu Google Workspacella" }).click();
+
+  // The navbar is in the root layout, so global-error.tsx replaces the page
+  await expect(page.getByRole("heading", { level: 1, name: "Yhteys katkesi" })).toBeVisible();
+  await expect(page.getByText("Tarkista verkkoyhteys")).toBeVisible();
+  await page.getByRole("button", { name: "Yritä uudelleen" }).click();
+  await expect(page.getByRole("button", { name: "Jäsenalue" })).toBeVisible();
+  ignore(browserErrors, /ERR_CONNECTION_RESET|Failed to fetch|Failed to load resource/);
 });

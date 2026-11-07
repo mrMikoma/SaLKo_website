@@ -14,9 +14,7 @@ import { logger } from "@/utilities/logger";
 
 const log = logger.child({ module: "billing" });
 
-type ActionResult<T = null> =
-  | { status: "success"; result: T }
-  | { status: "error"; error: string };
+import type { ActionResult } from "@/utilities/actionResult";
 
 async function requireBillingAdmin() {
   if (!isBillingEnabled()) {
