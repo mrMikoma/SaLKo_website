@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useFormAction } from "@/hooks/useFormAction";
 import { updateProfile, UpdateProfileState } from "@/utilities/userManagement";
 import { UserData } from "@/utilities/definitions";
 
@@ -10,13 +10,15 @@ interface ProfileEditFormProps {
 }
 
 const ProfileEditForm = ({ user, onCancel }: ProfileEditFormProps) => {
-  const [state, formAction, isPending] = useActionState<
-    UpdateProfileState,
-    FormData
-  >(updateProfile, undefined);
+  // Submitted through onSubmit, so what was typed stays after a failed save
+  const { state, action, onSubmit, pending: isPending } = useFormAction<UpdateProfileState | undefined>(
+    updateProfile,
+    undefined,
+    (message) => ({ status: "error", errors: { general: [message] } })
+  );
 
   return (
-    <form action={formAction} className="space-y-5">
+    <form action={action} onSubmit={onSubmit} className="space-y-5">
       {state?.status === "success" && (
         <div className="glass border-2 border-success-green/50 bg-success-green/10 p-4 rounded-xl">
           <div className="flex items-start gap-3">

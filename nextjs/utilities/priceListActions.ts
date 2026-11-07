@@ -10,7 +10,7 @@ import { logger } from "@/utilities/logger";
 
 const log = logger.child({ module: "price-list" });
 
-type ActionResult<T = null> = { status: "success"; result: T } | { status: "error"; error: string };
+import type { ActionResult } from "@/utilities/actionResult";
 
 /**
  * The price list is edited by admins and the treasurer. Unlike billing it is

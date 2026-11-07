@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { retryEmail, sendTestEmail } from "@/utilities/mailActions";
+import { callAction } from "@/utilities/callAction";
 
 type Result = { status: "success"; result: { text: string } } | { status: "error"; error: string };
 
@@ -14,7 +15,7 @@ function useMailAction() {
   const run = (action: () => Promise<Result>) => {
     setMessage(null);
     startTransition(async () => {
-      const result = await action();
+      const result = await callAction(action);
       setMessage(
         result.status === "success"
           ? { ok: true, text: result.result.text }

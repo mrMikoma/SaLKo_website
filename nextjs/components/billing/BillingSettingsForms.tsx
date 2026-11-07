@@ -8,6 +8,7 @@ import {
   setPurposePayer,
 } from "@/utilities/billingActions";
 import type { BillingSettings } from "@/utilities/billingData";
+import { callAction } from "@/utilities/callAction";
 
 /**
  * The forms of /admin/laskutus/asetukset. Each saves on its own and refreshes
@@ -30,7 +31,7 @@ function useSave() {
   const save = (action: () => Promise<Result>, onSuccess?: () => void, onError?: () => void) => {
     setError(null);
     startTransition(async () => {
-      const result = await action();
+      const result = await callAction(action);
       if (result.status === "error") {
         setError(result.error);
         onError?.();

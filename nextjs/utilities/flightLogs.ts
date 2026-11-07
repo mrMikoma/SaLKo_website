@@ -45,9 +45,7 @@ import { logger } from "@/utilities/logger";
 
 const log = logger.child({ module: "flight-log" });
 
-type ActionResult<T = null> =
-  | { status: "success"; result: T }
-  | { status: "error"; error: string };
+import type { ActionResult } from "@/utilities/actionResult";
 
 const FLIGHT_LOG_DISABLED = "Lentopäiväkirja ei ole vielä käytössä";
 

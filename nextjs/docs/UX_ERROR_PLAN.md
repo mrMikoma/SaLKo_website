@@ -83,15 +83,23 @@ Each one is small and goes through CI. 1 and 2 matter most, because together the
   - `e2e/error-pages.spec.ts`: the 404 on a phone-sized screen, a missing invoice inside the admin layout, and a profile save that loses its connection showing the Finnish error page in view. PR 2 changes the last one: the form then shows the message itself.
 
 ### PR 2 `fix/action-failures` (F2, F3, F18, F19, F20)
-- `utilities/actionCall.ts` (client): `callAction(fn)` turns a thrown call into `{ status: "error", error }` with a Finnish message:
-  - `UnrecognizedActionError` (or "was not found on the server"): "Sivusto on päivittynyt. Lataa sivu uudelleen; täyttämäsi tiedot ovat vielä lomakkeella." It also offers a "Lataa uudelleen" button.
-  - `TypeError` (fetch failed): "Yhteys katkesi. Tarkista verkkoyhteys ja yritä uudelleen."
-  - anything else: "Tallennus epäonnistui. Yritä uudelleen."
-- It's the same as the `.catch()` in `FlightEntryForm` and `PriceListEditor`, in one place. Use it in the 18 components listed in F2.
-- In `useActionState` forms (login, profile, password, reset), wrap the action passed to `useActionState`, so the form keeps its values.
-- `BookingsError` goes through the same mapping, and a stale-version error shows "Lataa sivu uudelleen" instead of retrying.
-- `next.config.js`: `deploymentId: process.env.NEXT_DEPLOYMENT_ID`. The Dockerfile takes it as a build arg. `build-and-publish-dev.yaml` and `build-and-publish-prod.yaml` pass the image tag. After a deploy, the next link click then reloads the page instead of breaking. It touches workflows, so the merge needs the `workflow` scope, which the user's token has had since 2026-10-23.
-- `mailActions.ts`: try/catch with the module logger, like the other action files.
+- `utilities/callAction.ts` (browser): `callAction(() => action(…))` turns a call that throws into `{ status: "error", error, failure }`:
+  - `failure` is `failureKind()` from PR 1, and `error` is its Finnish text;
+  - Next's redirects pass through (`unstable_rethrow`);
+  - a page from before a deploy also raises the site-wide `OutdatedNotice` (in the root layout): "Sivusto on päivittynyt… Kopioi pitkät tekstit talteen ennen lataamista", with "Lataa sivu uudelleen".
+- Used in the 18 components of F2.
+  - The four `useActionState` forms go through `hooks/useFormAction.ts`. The profile form also submits through `onSubmit`, so what was typed stays after a failed save. The password forms keep React's reset of their fields.
+  - The booking hook also uses `callAction()`. A failed load is a `BookingsLoadError`; for an outdated page `BookingsError` offers a reload instead of a retry, and the query stops retrying.
+  - `FlightEntryForm`, `PriceListEditor`, `PilotMatching`, `FlightTable` and `PaperPageEntry` already had their own `.catch()` and are left as they were.
+- **One result shape (F18):** `utilities/actionResult.ts` has the one `ActionResult<T>` type. The bulletin and user actions answered `{ success }` and now answer `{ status }`; the reset link comes as `result.url`. The other action files' identical local types import it. The form states (`LoginState` and the others) stay as they are: they carry field errors.
+- **Deploy ID (F3):** the Dockerfile takes `NEXT_DEPLOYMENT_ID` as a build arg, and both image builds pass the image version, so after a deploy the next link click reloads the page. It touches workflows, so the merge needs the `workflow` scope.
+- `mailActions.ts`: try/catch with the module logger.
+- The one action still allowed to throw to the error pages is "Kirjaudu Google Workspacella": it leaves the site, so there is no form to keep. `e2e/error-pages.spec.ts` uses it to test both error pages.
+  - From the calendar's guest banner, inside the page, it shows `app/error.tsx` under the navbar.
+  - From the navbar, which is in the root layout, it shows `global-error.tsx`, which names the failure the same way.
+- Tests:
+  - `tests/unit/callAction.test.ts`.
+  - `e2e/action-failures.spec.ts`: the calendar from before a deploy; the profile and a bulletin losing their connection, with the typed text kept.
 
 ### PR 3 `fix/login-flows` (F4, F6, F7, F8, F12, F15, F17)
 - `app/auth/kirjaudu/page.tsx`: the login form as a page, with `?paluu=` (checked with `safeRedirect`) and "Kirjaudu sisään jatkaaksesi" when it came from a protected page. `app/auth/virhe/page.tsx` explains NextAuth's `?error=` in Finnish, with the login form under it:

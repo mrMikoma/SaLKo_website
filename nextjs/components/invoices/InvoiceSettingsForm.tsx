@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { saveInvoiceSettings } from "@/utilities/invoiceActions";
 import type { InvoiceSettings } from "@/utilities/invoiceData";
 import { fieldClassName, labelClassName, primaryButton } from "./LineFields";
+import { callAction } from "@/utilities/callAction";
 
 /** The payment term and the note at the end of every invoice */
 const InvoiceSettingsForm = ({ settings }: { settings: InvoiceSettings }) => {
@@ -20,7 +21,7 @@ const InvoiceSettingsForm = ({ settings }: { settings: InvoiceSettings }) => {
         e.preventDefault();
         setMessage(null);
         startTransition(async () => {
-          const result = await saveInvoiceSettings({ paymentTermDays: Number(days), footer });
+          const result = await callAction(() => saveInvoiceSettings({ paymentTermDays: Number(days), footer }));
           setMessage(result.status === "success" ? { ok: true, text: "Tallennettu." } : { ok: false, text: result.error });
           if (result.status === "success") router.refresh();
         });

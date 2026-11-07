@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { runFlightSync } from "@/utilities/flightLogs";
+import { callAction } from "@/utilities/callAction";
 
 interface SyncStatusProps {
   // Preformatted on the server, so the times are in Finnish time
@@ -34,7 +35,7 @@ const SyncStatus = ({
   const sync = () => {
     setMessage(null);
     startTransition(async () => {
-      const result = await runFlightSync();
+      const result = await callAction(() => runFlightSync());
       if (result.status === "success") {
         const { rowsChanged, idsAssigned } = result.result;
         setMessage({

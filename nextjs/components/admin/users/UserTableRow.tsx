@@ -11,9 +11,11 @@ import {
   createPasswordResetLink,
 } from "@/utilities/adminUserActions";
 import { getRoleDisplayName, type Role } from "@/utilities/roles";
+import type { ActionResult } from "@/utilities/actionResult";
 import RoleBadge from "./RoleBadge";
 import AuthProviderBadge from "./AuthProviderBadge";
 import EditUserForm from "./EditUserForm";
+import { callAction } from "@/utilities/callAction";
 
 const SYSTEM_GUEST_EMAIL = "vieras@savonlinnanlentokerho.fi";
 
@@ -53,17 +55,17 @@ const UserTableRow = ({ user, isSelf, assignableRoles, onSuccess, onError }: Use
     user.booking_count > 0 || user.bulletin_count > 0 || user.invoice_count > 0 || user.flight_entry_count > 0;
 
   const run = (
-    action: () => Promise<{ success: boolean; error?: string }>,
+    action: () => Promise<ActionResult>,
     successMessage: string,
     after?: () => void
   ) => {
     startTransition(async () => {
-      const result = await action();
-      if (result.success) {
+      const result = await callAction(action);
+      if (result.status === "success") {
         onSuccess(successMessage);
         after?.();
       } else {
-        onError(result.error || "Toiminto epäonnistui");
+        onError(result.error);
       }
     });
   };
@@ -104,11 +106,11 @@ const UserTableRow = ({ user, isSelf, assignableRoles, onSuccess, onError }: Use
 
   const handleResetLink = () => {
     startTransition(async () => {
-      const result = await createPasswordResetLink(user.id);
-      if (result.success && result.url) {
-        setResetLink(result.url);
+      const result = await callAction(() => createPasswordResetLink(user.id));
+      if (result.status === "success") {
+        setResetLink(result.result.url);
       } else {
-        onError(result.error || "Linkin luonti epäonnistui");
+        onError(result.error);
       }
     });
   };

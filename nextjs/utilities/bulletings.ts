@@ -5,6 +5,7 @@ import { hasPermission } from "@/utilities/roles";
 import { revalidatePath } from "next/cache";
 import { bulletinSchema, BulletinInput } from "@/schemas/bulletinSchema";
 import { logger } from "@/utilities/logger";
+import type { ActionResult } from "@/utilities/actionResult";
 
 const log = logger.child({ module: "bulletins" });
 
@@ -30,7 +31,6 @@ export interface AdminBulletin {
   author: string | null;
 }
 
-type ActionResult = { success: boolean; error?: string };
 
 const toIso = (value: Date | string | null) =>
   value === null ? null : new Date(value).toISOString();
@@ -129,12 +129,12 @@ export async function createBulletin(
   try {
     const user = await canManageBulletins();
     if (!user) {
-      return { success: false, error: "Ei oikeuksia" };
+      return { status: "error", error: "Ei oikeuksia" };
     }
 
     const parsed = bulletinSchema.safeParse(data);
     if (!parsed.success) {
-      return { success: false, error: parsed.error.issues[0].message };
+      return { status: "error", error: parsed.error.issues[0].message };
     }
 
     await connectionPool.query(
@@ -146,10 +146,10 @@ export async function createBulletin(
     );
 
     revalidateBulletinPages();
-    return { success: true };
+    return { status: "success", result: null };
   } catch (error) {
     log.error("Creating bulletin failed", { err: error });
-    return { success: false, error: "Tiedotteen luonti epäonnistui" };
+    return { status: "error", error: "Tiedotteen luonti epäonnistui" };
   }
 }
 
@@ -162,12 +162,12 @@ export async function updateBulletin(
 ): Promise<ActionResult> {
   try {
     if (!(await canManageBulletins())) {
-      return { success: false, error: "Ei oikeuksia" };
+      return { status: "error", error: "Ei oikeuksia" };
     }
 
     const parsed = bulletinSchema.safeParse(data);
     if (!parsed.success) {
-      return { success: false, error: parsed.error.issues[0].message };
+      return { status: "error", error: parsed.error.issues[0].message };
     }
 
     const response = await connectionPool.query(
@@ -175,14 +175,14 @@ export async function updateBulletin(
       [parsed.data.title, parsed.data.content, id]
     );
     if (response.rowCount === 0) {
-      return { success: false, error: "Tiedotetta ei löytynyt" };
+      return { status: "error", error: "Tiedotetta ei löytynyt" };
     }
 
     revalidateBulletinPages();
-    return { success: true };
+    return { status: "success", result: null };
   } catch (error) {
     log.error("Updating bulletin failed", { err: error });
-    return { success: false, error: "Tiedotteen päivitys epäonnistui" };
+    return { status: "error", error: "Tiedotteen päivitys epäonnistui" };
   }
 }
 
@@ -197,7 +197,7 @@ export async function setBulletinPublished(
 ): Promise<ActionResult> {
   try {
     if (!(await canManageBulletins())) {
-      return { success: false, error: "Ei oikeuksia" };
+      return { status: "error", error: "Ei oikeuksia" };
     }
 
     const response = await connectionPool.query(
@@ -208,14 +208,14 @@ export async function setBulletinPublished(
       [id]
     );
     if (response.rowCount === 0) {
-      return { success: false, error: "Tiedotetta ei löytynyt" };
+      return { status: "error", error: "Tiedotetta ei löytynyt" };
     }
 
     revalidateBulletinPages();
-    return { success: true };
+    return { status: "success", result: null };
   } catch (error) {
     log.error("Publishing bulletin failed", { err: error });
-    return { success: false, error: "Julkaisun muutos epäonnistui" };
+    return { status: "error", error: "Julkaisun muutos epäonnistui" };
   }
 }
 
@@ -225,18 +225,18 @@ export async function setBulletinPublished(
 export async function deleteBulletin(id: number): Promise<ActionResult> {
   try {
     if (!(await canManageBulletins())) {
-      return { success: false, error: "Ei oikeuksia" };
+      return { status: "error", error: "Ei oikeuksia" };
     }
 
     const response = await connectionPool.query("DELETE FROM bullets WHERE id = $1", [id]);
     if (response.rowCount === 0) {
-      return { success: false, error: "Tiedotetta ei löytynyt" };
+      return { status: "error", error: "Tiedotetta ei löytynyt" };
     }
 
     revalidateBulletinPages();
-    return { success: true };
+    return { status: "success", result: null };
   } catch (error) {
     log.error("Deleting bulletin failed", { err: error });
-    return { success: false, error: "Tiedotteen poisto epäonnistui" };
+    return { status: "error", error: "Tiedotteen poisto epäonnistui" };
   }
 }

@@ -20,6 +20,7 @@ import {
   toggleLineStyle,
   toggleWrap,
 } from "@/utilities/markdownEdit";
+import { callAction } from "@/utilities/callAction";
 
 interface BulletinTableProps {
   bulletins: AdminBulletin[];
@@ -273,13 +274,13 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
   const handleCreate = (publish: boolean) => {
     setError(null);
     startTransition(async () => {
-      const result = await createBulletin(newBulletin, publish);
-      if (result.success) {
+      const result = await callAction(() => createBulletin(newBulletin, publish));
+      if (result.status === "success") {
         showSuccess(publish ? "Tiedote julkaistu" : "Tiedote tallennettu luonnoksena");
         setShowCreateForm(false);
         setNewBulletin({ title: "", content: "" });
       } else {
-        setError(result.error || "Tiedotteen luonti epäonnistui");
+        setError(result.error);
       }
     });
   };
@@ -287,11 +288,11 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
   const handlePublish = (id: number, publish: boolean) => {
     setError(null);
     startTransition(async () => {
-      const result = await setBulletinPublished(id, publish);
-      if (result.success) {
+      const result = await callAction(() => setBulletinPublished(id, publish));
+      if (result.status === "success") {
         showSuccess(publish ? "Tiedote julkaistu" : "Tiedote palautettu luonnokseksi");
       } else {
-        setError(result.error || "Julkaisun muutos epäonnistui");
+        setError(result.error);
       }
     });
   };
@@ -306,12 +307,12 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
   const handleUpdate = (id: number) => {
     setError(null);
     startTransition(async () => {
-      const result = await updateBulletin(id, editedBulletin);
-      if (result.success) {
+      const result = await callAction(() => updateBulletin(id, editedBulletin));
+      if (result.status === "success") {
         showSuccess("Tiedote päivitetty onnistuneesti");
         setEditingId(null);
       } else {
-        setError(result.error || "Tiedotteen päivitys epäonnistui");
+        setError(result.error);
       }
     });
   };
@@ -319,11 +320,11 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
   const handleDelete = (id: number, title: string) => {
     if (!confirm(`Haluatko varmasti poistaa tiedotteen "${title}"?`)) return;
     startTransition(async () => {
-      const result = await deleteBulletin(id);
-      if (result.success) {
+      const result = await callAction(() => deleteBulletin(id));
+      if (result.status === "success") {
         showSuccess("Tiedote poistettu onnistuneesti");
       } else {
-        setError(result.error || "Tiedotteen poisto epäonnistui");
+        setError(result.error);
       }
     });
   };
