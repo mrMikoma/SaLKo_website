@@ -30,3 +30,13 @@ export const TOO_MANY_ATTEMPTS = "too_many_attempts";
 export class TooManyLoginAttempts extends CredentialsSignin {
   code = TOO_MANY_ATTEMPTS;
 }
+
+export const LOGIN_UNAVAILABLE = "unavailable";
+
+/**
+ * Thrown from authorize when the database fails: the login form then says
+ * the service is down instead of that the password was wrong
+ */
+export class LoginUnavailable extends CredentialsSignin {
+  code = LOGIN_UNAVAILABLE;
+}

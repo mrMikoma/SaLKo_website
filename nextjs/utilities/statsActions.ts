@@ -4,6 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import pool from "@/utilities/db";
 import { auth } from "@/auth";
+import { SESSION_ENDED } from "@/utilities/errorText";
 import { hasPermission } from "@/utilities/roles";
 import { isFlightLogEnabled } from "@/utilities/features";
 import { parseYearTable } from "@/utilities/flightStats";
@@ -18,7 +19,10 @@ async function requireStatsEditor() {
     return { error: "Tilastot eivät ole vielä käytössä" };
   }
   const session = await auth();
-  if (!session?.user?.id || !hasPermission(session.user.roles, "MANAGE_FLIGHT_LOG")) {
+  if (!session?.user?.id) {
+    return { error: SESSION_ENDED };
+  }
+  if (!hasPermission(session.user.roles, "MANAGE_FLIGHT_LOG")) {
     return { error: "Ei oikeuksia" };
   }
   return { user: session.user };

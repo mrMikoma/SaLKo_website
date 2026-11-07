@@ -4,6 +4,7 @@ import { AntdRegistry } from "@ant-design/nextjs-registry";
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
 import OutdatedNotice from "@/components/errors/OutdatedNotice";
+import SessionEndedNotice from "@/components/errors/SessionEndedNotice";
 import { Finlandica_Headline } from "next/font/google";
 import { auth } from "@/auth";
 import { QueryProvider } from "@/providers/QueryProvider";
@@ -82,6 +83,7 @@ const RootLayout = async ({ children }: React.PropsWithChildren) => {
                   {children}
                   <Footer />
                   <OutdatedNotice />
+                  <SessionEndedNotice />
                 </AntdRegistry>
               </main>
             </NavbarProvider>

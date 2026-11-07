@@ -5,7 +5,7 @@ import { AuthError } from "next-auth";
 import { LoginFormSchema } from "@/utilities/definitions";
 import { safeRedirect } from "@/utilities/safeRedirect";
 import { clientIp, waitText } from "@/utilities/rateLimit";
-import { loginBlockedFor, TOO_MANY_ATTEMPTS } from "@/utilities/loginLimits";
+import { LOGIN_UNAVAILABLE, loginBlockedFor, TOO_MANY_ATTEMPTS } from "@/utilities/loginLimits";
 import { headers } from "next/headers";
 import { logger } from "@/utilities/logger";
 
@@ -79,6 +79,18 @@ export async function loginWithCredentials(
           errors: {
             general: [
               `Liian monta epäonnistunutta kirjautumista. Yritä uudelleen ${waitText(wait)} kuluttua.`,
+            ],
+          },
+          status: "error",
+          email,
+        };
+      }
+      // The database failed (auth.ts): not a wrong password
+      if ((error as AuthError & { code?: string }).code === LOGIN_UNAVAILABLE) {
+        return {
+          errors: {
+            general: [
+              "Kirjautuminen ei juuri nyt onnistu palvelinhäiriön vuoksi. Yritä hetken kuluttua uudelleen.",
             ],
           },
           status: "error",

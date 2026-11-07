@@ -74,6 +74,10 @@ const Navbar = ({
   const handleLogout = () => {
     setLoggedOutSession(session);
   };
+  // signOut failed: still logged in, so the user shows again
+  const handleLogoutFailed = () => {
+    setLoggedOutSession(null);
+  };
 
   return (
     <div
@@ -99,6 +103,7 @@ const Navbar = ({
           {/* Mobile menu toggle button */}
           <NavbarMobile
             handleLogout={handleLogout}
+            handleLogoutFailed={handleLogoutFailed}
             flightLog={flightLog}
             billing={billing}
             pagesInReview={pagesInReview}
@@ -352,6 +357,7 @@ const Navbar = ({
                   <MenuItem>
                     <Logout
                       onHandleLogout={handleLogout}
+                      onLogoutFailed={handleLogoutFailed}
                       className="block w-full text-left px-4 py-3 text-swhite font-semibold hover:bg-sblue/50 hover:text-sbluel data-[focus]:bg-sblue/50 transition-all duration-200 cursor-pointer"
                     />
                   </MenuItem>
