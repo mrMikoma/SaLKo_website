@@ -145,8 +145,15 @@ Each one is small and goes through CI. 1 and 2 matter most, because together the
 - Tests: `e2e/background-sync.spec.ts` ages the sync runs, then checks the note, the page catching up by itself, and the run that followed.
 
 ### PR 6 `fix/guest-and-drafts` (F13, F21)
-- Guest "Varaus tallennettu": "Varausta ei voi muuttaa verkossa. Muutokset ja peruutukset: <contact from data/contacts.json>."
-- A `sessionStorage` draft for the bulletin editor, the flight entry form and the paper-page grid. It is cleared on save and restored with a note, "Palautettiin tallentamaton luonnos", plus a "Tyhjennä" link.
+- **Guest booking:** the "Varaus tallennettu" screen for a guest says "Vierasvarausta ei voi muuttaa eikä perua verkossa", with info@ (`data/contacts.json`) and a link to the contacts. No email, as decided.
+- **Drafts:** `hooks/useDraft.ts` keeps a long form's unsaved input in the tab's `sessionStorage` and puts it back after a reload, with `DraftNotice` ("Palautettiin tallentamaton luonnos", "Hylkää luonnos").
+  - Used in the bulletin editor (a new bulletin, and the one being edited, unless it is still as saved), in the flight entry form, and in the paper-page grid.
+  - The flight legs keep their IDs, so saving a restored entry that partly reached the sheet doesn't add flights twice.
+  - A draft goes when the form is saved, emptied or discarded.
+  - Logging out removes every draft (`clearAllDrafts()`), so the next person on a shared computer doesn't see them.
+- Tests:
+  - `e2e/drafts.spec.ts`: a bulletin and a flight entry come back after a reload, and discarding one sticks.
+  - `bookings.spec.ts` checks the guest text.
 
 ### Decisions (the user, 2026-11-07)
 1. **No email work for now.** No self-service password reset (F14) and no guest confirmation email (F13). The guest screen only gets the contact text, and "Unohtuiko salasana?" keeps pointing to the contacts.

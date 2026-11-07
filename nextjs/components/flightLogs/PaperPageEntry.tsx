@@ -1,7 +1,9 @@
 "use client";
 
-import { Fragment, useState, useTransition } from "react";
+import { Fragment, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
+import { useDraft } from "@/hooks/useDraft";
+import DraftNotice from "@/components/DraftNotice";
 import {
   emptyPaperCells,
   ExistingFlight,
@@ -55,6 +57,21 @@ const COLUMNS: {
 
 const STARTING_ROWS = 12;
 const blankGrid = () => Array.from({ length: STARTING_ROWS }, emptyPaperCells);
+
+// What a reload keeps of a page being typed in (useDraft): a page is many
+// minutes of copying from the paper book
+interface PageDraft {
+  registration: string;
+  logPage: string;
+  grid: PaperCells[];
+  printedTime: string;
+  printedLandings: string;
+}
+
+const isEmptyPage = (draft: PageDraft) =>
+  !draft.printedTime.trim() &&
+  !draft.printedLandings.trim() &&
+  draft.grid.every((row) => Object.values(row).every((cell) => !cell.trim()));
 const lists: Partial<Record<PaperField, string>> = {
   pic: "paper-pilots",
   second: "paper-pilots",
@@ -88,6 +105,23 @@ const PaperPageEntry = ({
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  const draftValue = useMemo<PageDraft>(
+    () => ({ registration, logPage, grid, printedTime, printedLandings }),
+    [registration, logPage, grid, printedTime, printedLandings]
+  );
+  const draft = useDraft<PageDraft>(
+    "paperisivu",
+    draftValue,
+    (kept) => {
+      if (aircraft.includes(kept.registration)) setRegistration(kept.registration);
+      setLogPage(kept.logPage);
+      setGrid(kept.grid);
+      setPrintedTime(kept.printedTime);
+      setPrintedLandings(kept.printedLandings);
+    },
+    isEmptyPage
+  );
 
   // A preview holds only for the grid it was made from
   const gridKey = JSON.stringify([registration, grid]);
@@ -216,6 +250,7 @@ const PaperPageEntry = ({
         return;
       }
       const { added, confirmed, corrected } = result.result;
+      draft.clear();
       setSaved(
         `${logPage ? `Sivu ${logPage}` : "Sivu"} tallennettu: ${added} uutta, ${confirmed} vahvistettu, ${corrected} korjattu.`,
       );
@@ -232,6 +267,18 @@ const PaperPageEntry = ({
 
   return (
     <div className="space-y-6 text-gray-900">
+      {draft.restored && (
+        <DraftNotice
+          onDiscard={() => {
+            draft.clear();
+            setGrid(blankGrid());
+            setLogPage("");
+            setPrintedTime("");
+            setPrintedLandings("");
+            setPreview(null);
+          }}
+        />
+      )}
       <datalist id="paper-pilots">
         {pilotNames.map((name) => (
           <option key={name} value={name} />

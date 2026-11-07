@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState, useTransition } from "react";
+import React, { useMemo, useRef, useState, useTransition } from "react";
 import ReactMarkdown from "react-markdown";
 import { DateTime } from "luxon";
 import {
@@ -21,6 +21,8 @@ import {
   toggleWrap,
 } from "@/utilities/markdownEdit";
 import { callAction } from "@/utilities/callAction";
+import { useDraft } from "@/hooks/useDraft";
+import DraftNotice from "@/components/DraftNotice";
 
 interface BulletinTableProps {
   bulletins: AdminBulletin[];
@@ -255,6 +257,9 @@ function MarkdownEditor({
 
 // ─── Main admin table ─────────────────────────────────────────────────────────
 
+const NO_TEXT = { title: "", content: "" };
+const NO_EDIT = { id: null as number | null, title: "", content: "" };
+
 const BulletinTable = ({ bulletins }: BulletinTableProps) => {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -264,6 +269,34 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
 
   const [newBulletin, setNewBulletin] = useState({ title: "", content: "" });
   const [editedBulletin, setEditedBulletin] = useState({ title: "", content: "" });
+
+  // What's being written survives a reload or a crash, in this tab only
+  const newDraft = useDraft(
+    "tiedote-uusi",
+    showCreateForm ? newBulletin : NO_TEXT,
+    (draft) => {
+      setNewBulletin(draft);
+      setShowCreateForm(true);
+    },
+    (draft) => !draft.title.trim() && !draft.content.trim()
+  );
+  const editValue = useMemo(
+    () => (editingId === null ? NO_EDIT : { id: editingId, ...editedBulletin }),
+    [editingId, editedBulletin]
+  );
+  const editDraft = useDraft(
+    "tiedote-muokkaus",
+    editValue,
+    (draft) => {
+      if (!bulletins.some((bulletin) => bulletin.id === draft.id)) return;
+      setEditingId(draft.id);
+      setEditedBulletin({ title: draft.title, content: draft.content });
+    },
+    // Nothing to keep while the text is as saved
+    (draft) =>
+      draft.id === null ||
+      bulletins.some((b) => b.id === draft.id && b.title === draft.title && b.content === draft.content)
+  );
 
   const showSuccess = (msg: string) => {
     setSuccess(msg);
@@ -277,6 +310,7 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
       const result = await callAction(() => createBulletin(newBulletin, publish));
       if (result.status === "success") {
         showSuccess(publish ? "Tiedote julkaistu" : "Tiedote tallennettu luonnoksena");
+        newDraft.clear();
         setShowCreateForm(false);
         setNewBulletin({ title: "", content: "" });
       } else {
@@ -310,6 +344,7 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
       const result = await callAction(() => updateBulletin(id, editedBulletin));
       if (result.status === "success") {
         showSuccess("Tiedote päivitetty onnistuneesti");
+        editDraft.clear();
         setEditingId(null);
       } else {
         setError(result.error);
@@ -367,6 +402,17 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
           </button>
         ) : (
           <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+            {newDraft.restored && (
+              <div className="mb-4">
+                <DraftNotice
+                  onDiscard={() => {
+                    newDraft.clear();
+                    setNewBulletin({ title: "", content: "" });
+                    setShowCreateForm(false);
+                  }}
+                />
+              </div>
+            )}
             <h3 className="text-lg font-semibold mb-4 text-gray-900">
               Luo uusi tiedote
             </h3>
@@ -450,6 +496,16 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
               >
                 {editingId === bulletin.id ? (
                   <div className="p-4 bg-gray-50">
+                    {editDraft.restored && (
+                      <div className="mb-4">
+                        <DraftNotice
+                          onDiscard={() => {
+                            editDraft.clear();
+                            setEditingId(null);
+                          }}
+                        />
+                      </div>
+                    )}
                     <h4 className="text-md font-semibold mb-4 text-gray-900">
                       Muokkaa tiedotetta
                     </h4>
