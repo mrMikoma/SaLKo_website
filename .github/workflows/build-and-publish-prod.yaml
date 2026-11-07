@@ -117,4 +117,4 @@ jobs:
           build-args: |
             NEXT_PUBLIC_UMAMI_WEBSITE_ID=${{ secrets.NEXT_PUBLIC_UMAMI_WEBSITE_ID }}
             ALLOW_INDEXING=true
-            NEXT_DEPLOYMENT_ID=${{ steps.image-version.outputs.new_version }}
+            DEPLOYMENT_VERSION=${{ steps.image-version.outputs.new_version }}
