@@ -58,7 +58,8 @@ export default async function FlightsAdminPage({ searchParams }: PageProps) {
     redirect("/");
   }
 
-  await ensureFreshSync();
+  // A stale copy is shown at once and synced in the background
+  const { refreshing } = await ensureFreshSync();
 
   const params = await searchParams;
   const aircraft = await getAircraftSheets();
@@ -122,6 +123,7 @@ export default async function FlightsAdminPage({ searchParams }: PageProps) {
         latestError={sync.latest?.status === "error" ? sync.latest.error : null}
         rowsRead={sync.lastSuccess?.rowsRead ?? null}
         issues={sync.lastSuccess?.issues ?? null}
+        refreshing={refreshing}
         {...sheetInfo()}
       />
 

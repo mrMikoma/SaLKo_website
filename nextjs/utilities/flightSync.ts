@@ -3,6 +3,7 @@ import "server-only";
 import { createHash, randomUUID } from "crypto";
 import { DateTime } from "luxon";
 import type { PoolClient } from "pg";
+import { after } from "next/server";
 import connectionPool from "@/utilities/db";
 import { FlightSheet, getFlightSheet, SheetCell } from "@/utilities/flightSheetSource";
 import { configuredServiceAccount, describeSheetError } from "@/utilities/googleSheetsSetup";
@@ -533,12 +534,16 @@ export async function syncFlightSheets(
 }
 
 /**
- * Syncs first when the copy is stale, so the pages show what the sheet has
- * now. A failing sheet doesn't break the pages: they show the last copy and
- * the error.
+ * Keeps the copy fresh for the pages. A stale copy is shown as it is and
+ * synced once the response has gone (after()), so the page doesn't wait
+ * seconds for Google: the actions that bill, check or change flights sync
+ * first themselves. Only an empty copy waits, since there would be nothing
+ * to show. A failing sheet doesn't break the pages: they show the last copy
+ * and the error. Answers whether a sync is going on, so the flight log page
+ * can say it's being updated.
  */
-export async function ensureFreshSync(): Promise<void> {
-  if (!connectionPool) return;
+export async function ensureFreshSync(): Promise<{ refreshing: boolean }> {
+  if (!connectionPool) return { refreshing: false };
 
   const latest = (
     await connectionPool.query(
@@ -553,10 +558,21 @@ export async function ensureFreshSync(): Promise<void> {
   const hasCopy = Boolean(latest?.has_copy);
   if (latest) {
     const age = Date.now() - new Date(latest.finished_at ?? latest.started_at).getTime();
-    if (latest.status === "success" && age < STALE_AFTER_MS) return;
-    if (latest.status === "error" && age < RETRY_AFTER_ERROR_MS) return;
-    if (latest.status === "running" && age < STALE_AFTER_MS && hasCopy) return;
+    if (latest.status === "success" && age < STALE_AFTER_MS) return { refreshing: false };
+    if (latest.status === "error" && age < RETRY_AFTER_ERROR_MS) return { refreshing: false };
+    if (latest.status === "running" && age < STALE_AFTER_MS && hasCopy) return { refreshing: true };
   }
 
-  await syncFlightSheets("automaattinen", { wait: !hasCopy });
+  if (!hasCopy) {
+    await syncFlightSheets("automaattinen", { wait: true });
+    return { refreshing: false };
+  }
+  after(async () => {
+    try {
+      await syncFlightSheets("automaattinen");
+    } catch (error) {
+      log.error("Syncing the flight sheets after a page load failed", { err: error });
+    }
+  });
+  return { refreshing: true };
 }
