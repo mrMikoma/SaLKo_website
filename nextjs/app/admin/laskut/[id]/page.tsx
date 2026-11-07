@@ -97,6 +97,11 @@ export default async function InvoicePage({ params }: PageProps) {
                 {invoice.periodId && (
                   <p className="text-sm text-gray-600">Jakson lentorivit pysyvät sellaisina kuin ne laskutettiin.</p>
                 )}
+                {prices.unavailable && (
+                  <p role="status" className="rounded-lg border border-orange-300 bg-orange-50 p-3 text-orange-900">
+                    Hinnaston valmiit rivit eivät juuri nyt lataudu. Rivit voi kirjoittaa käsin.
+                  </p>
+                )}
                 <DraftLines invoice={invoice} presets={invoicePresets(prices.items)} />
               </section>
             </>

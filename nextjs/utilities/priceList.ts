@@ -27,17 +27,17 @@ const toItem = (row: Record<string, unknown>): PriceItem => ({
   active: row.active as boolean,
 });
 
-const EMPTY: PriceList = { validFrom: null, items: [], aircraft: [] };
+const UNAVAILABLE: PriceList = { validFrom: null, items: [], aircraft: [], unavailable: true };
 
 /**
  * The price list as the public pages show it: the shown items, and each
  * active aircraft's price today with its minimum and free hour. Hidden
- * items too for the editor (`includeHidden`). An empty list without a
- * database, or when it fails: the pages then show no prices rather than an
- * error.
+ * items too for the editor (`includeHidden`). Without a database, or when it
+ * fails, an empty list marked `unavailable`: the pages then say the prices
+ * can't be shown right now (PricesUnavailable) rather than fail.
  */
 export async function getPriceList(options: { includeHidden?: boolean } = {}): Promise<PriceList> {
-  if (!connectionPool) return EMPTY;
+  if (!connectionPool) return UNAVAILABLE;
   try {
     const [items, aircraft, settings] = await Promise.all([
       connectionPool.query(
@@ -82,7 +82,7 @@ export async function getPriceList(options: { includeHidden?: boolean } = {}): P
     };
   } catch (error) {
     log.error("Reading the price list failed", { err: error });
-    return EMPTY;
+    return UNAVAILABLE;
   }
 }
 

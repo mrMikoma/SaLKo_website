@@ -43,6 +43,9 @@ export interface PriceList {
   validFrom: string | null; // YYYY-MM-DD
   items: PriceItem[];
   aircraft: AircraftPrice[];
+  // The database couldn't be read: the pages say so instead of showing
+  // empty tables, and the editor doesn't offer an empty list to fill in
+  unavailable?: boolean;
 }
 
 /** 6000 → "60", 1050 → "10,50", 900000 → "9 000" (Finnish, a no-break space) */

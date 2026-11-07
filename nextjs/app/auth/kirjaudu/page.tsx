@@ -22,7 +22,7 @@ const ERROR_TEXT: Record<string, string> = {
 };
 
 interface PageProps {
-  searchParams: Promise<{ paluu?: string; callbackUrl?: string; error?: string }>;
+  searchParams: Promise<{ paluu?: string; callbackUrl?: string; error?: string; hairio?: string }>;
 }
 
 /**
@@ -32,13 +32,18 @@ interface PageProps {
  * member goes on to that page.
  */
 export default async function Page({ searchParams }: PageProps) {
-  const { paluu, callbackUrl, error } = await searchParams;
+  const { paluu, callbackUrl, error, hairio } = await searchParams;
   const target = returnPath(paluu ?? callbackUrl);
 
   const session = await auth();
   if (session?.user?.id) redirect(target);
 
-  const notice = error ? (ERROR_TEXT[error] ?? "Kirjautuminen ei onnistunut. Yritä uudelleen.") : null;
+  // From proxy.ts while the database is down: the session couldn't be checked
+  const notice = hairio
+    ? "Palvelussa on häiriö, eikä jäsenalue juuri nyt avaudu. Yritä hetken kuluttua uudelleen; olet todennäköisesti yhä kirjautuneena."
+    : error
+      ? (ERROR_TEXT[error] ?? "Kirjautuminen ei onnistunut. Yritä uudelleen.")
+      : null;
 
   return (
     <div className="min-h-screen flex flex-col w-full">

@@ -4,10 +4,13 @@ import { adminHome, canOpenAdminPath } from "./utilities/roles";
 import { isAdminSectionOn } from "./utilities/features";
 
 // A visitor who isn't logged in goes to the login page, and from there on to
-// the page they asked for (app/auth/kirjaudu)
-const toLogin = (req: NextRequest) => {
+// the page they asked for (app/auth/kirjaudu). When the session couldn't be
+// checked because the database is down, the login page says so (?hairio=1)
+// rather than asking for a login that can't work either.
+const toLogin = (req: NextRequest, unavailable: boolean) => {
   const url = new URL("/auth/kirjaudu", req.url);
   url.searchParams.set("paluu", req.nextUrl.pathname + req.nextUrl.search);
+  if (unavailable) url.searchParams.set("hairio", "1");
   return NextResponse.redirect(url);
 };
 
@@ -32,7 +35,7 @@ export default auth((req) => {
 
   if (isProtectedRoute) {
     if (!session) {
-      return toLogin(req);
+      return toLogin(req, req.auth?.error === "unavailable");
     }
   }
 
@@ -40,7 +43,7 @@ export default auth((req) => {
   // (utilities/roles.ts). A member without either goes back to the front page.
   if (pathname.startsWith("/admin")) {
     if (!session) {
-      return toLogin(req);
+      return toLogin(req, req.auth?.error === "unavailable");
     }
     const roles = session.user.roles ?? [];
     if (!canOpenAdminPath(roles, pathname)) {

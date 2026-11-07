@@ -290,9 +290,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return null as any;
         }
       } catch (error) {
-        log.error("Session check failed; the session ends", { err: error });
-        // On database error, invalidate the session
-        return null as any;
+        // No user while the database is down, as before, but marked, so the
+        // layout and proxy.ts can say the service is down rather than make
+        // the member look logged out. The cookie stays: the session works
+        // again once the database answers.
+        // `user: undefined` must be there: on the server next-auth returns
+        // { user: token, ...thisSession }, so without the key the token
+        // itself, id and roles, would become the session's user.
+        log.error("Session check failed; no session until the database answers", { err: error });
+        return { expires: session.expires, user: undefined, error: "unavailable" } as typeof session;
       }
 
       return session;

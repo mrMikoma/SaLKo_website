@@ -8,6 +8,7 @@ import PageHero from "@/components/pageHero";
 import ContentSection from "@/components/contentSection";
 import contactsData from "@/data/contacts.json";
 import { pageMetadata } from "@/utilities/seo";
+import PricesUnavailable from "@/components/prices/PricesUnavailable";
 import { getPriceList } from "@/utilities/priceList";
 import { formatPrice, itemsIn } from "@/utilities/priceFormat";
 
@@ -71,31 +72,35 @@ export default async function Page() {
               halleissa voi säilyttää esimerkiksi veneitä, vesijettejä, autoja,
               moottoripyöriä ja matkailuvaunuja.
             </p>
-            <div className="glass rounded-xl border border-sbluel/30 overflow-hidden">
-              <table className="w-full text-left">
-                <caption className="sr-only">Hallipaikkojen hinnat</caption>
-                <thead className="text-sm text-swhite/70">
-                  <tr>
-                    <th scope="col" className="px-4 py-3 font-medium">Säilytettävä</th>
-                    <th scope="col" className="px-4 py-3 font-medium text-right">Hinta</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-sbluel/20">
-                  {itemsIn(prices, "hangar").map((space) => (
-                    <tr key={space.id}>
-                      <td className="px-4 py-3">
-                        <div className="text-swhite">{space.name}</div>
-                        <div className="text-sm text-swhite/70">{space.description}</div>
-                      </td>
-                      <td className="px-4 py-3 text-right whitespace-nowrap text-swhite">
-                        {formatPrice(space)}
-                        {space.note && <div className="text-sm text-swhite/70">{space.note}</div>}
-                      </td>
+            {prices.unavailable ? (
+              <PricesUnavailable />
+            ) : (
+              <div className="glass rounded-xl border border-sbluel/30 overflow-hidden">
+                <table className="w-full text-left">
+                  <caption className="sr-only">Hallipaikkojen hinnat</caption>
+                  <thead className="text-sm text-swhite/70">
+                    <tr>
+                      <th scope="col" className="px-4 py-3 font-medium">Säilytettävä</th>
+                      <th scope="col" className="px-4 py-3 font-medium text-right">Hinta</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-sbluel/20">
+                    {itemsIn(prices, "hangar").map((space) => (
+                      <tr key={space.id}>
+                        <td className="px-4 py-3">
+                          <div className="text-swhite">{space.name}</div>
+                          <div className="text-sm text-swhite/70">{space.description}</div>
+                        </td>
+                        <td className="px-4 py-3 text-right whitespace-nowrap text-swhite">
+                          {formatPrice(space)}
+                          {space.note && <div className="text-sm text-swhite/70">{space.note}</div>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
             <p>
               Kysy vapaita paikkoja sähköpostilla{" "}
               <a href={`mailto:${email}`} className="text-swhite underline underline-offset-4">

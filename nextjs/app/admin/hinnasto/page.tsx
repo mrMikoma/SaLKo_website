@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import ErrorPanel from "@/components/errors/ErrorPanel";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
@@ -32,6 +33,19 @@ export default async function PriceListPage() {
   const [list, rates] = await Promise.all([getPriceList({ includeHidden: true }), getAircraftRates()]);
 
   const card = "bg-white rounded-lg shadow p-6 space-y-4 text-gray-900";
+  // Without the list, editing it would look like filling in an empty price list
+  if (list.unavailable) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-3xl font-bold text-gray-900">Hinnasto</h1>
+        <div className="max-w-3xl">
+          <ErrorPanel tone="light" title="Hinnastoa ei saatu luettua">
+            <p>Tietokantaan ei juuri nyt saada yhteyttä, joten hintoja ei voi muokata. Yritä hetken kuluttua uudelleen.</p>
+          </ErrorPanel>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="space-y-6">
       <div>

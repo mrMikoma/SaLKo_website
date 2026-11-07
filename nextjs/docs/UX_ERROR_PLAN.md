@@ -119,9 +119,22 @@ Each one is small and goes through CI. 1 and 2 matter most, because together the
   - `smoke.spec.ts` now expects the login page.
 
 ### PR 4 `fix/outage-notices` (F9, F10, F16)
-- On a database error, the session callback returns a session with `error: "unavailable"` and no user. It still fails closed. The root layout shows a slim banner from it: "Palvelussa on häiriö: kirjautuminen ja varaukset eivät juuri nyt toimi. Yritä hetken kuluttua uudelleen." `proxy.ts` sends protected pages to the login page, which shows the same notice.
-- `getPriceList()` returns `unavailable: true` on failure. The price pages then show "Hinnat eivät juuri nyt lataudu. Kysy hintoja: info@…" instead of empty tables. The invoice presets show the same notice.
-- Pool `statement_timeout` (30 s) in `utilities/db.ts`. The sync and the billing close set their own longer limit first, where they need one. Check the longest real sync time before choosing the number.
+- **A member during an outage:** when the database can't be read, the session callback returns `{ user: undefined, error: "unavailable" }` (`Session.error` in `types/next-auth.d.ts`). The cookie stays.
+  - The root layout shows `OutageNotice`: "Palvelussa on häiriö. Kirjautuminen, jäsenalue ja tallennus eivät juuri nyt toimi… sinun ei tarvitse kirjautua uudelleen."
+  - `proxy.ts` sends member and admin pages to the login page with `&hairio=1`, which explains the outage instead of asking for a login that can't work either.
+  - Guests have no session to check, so they see the notices of the parts that fail: bulletins, the calendar, prices.
+  - ⚠️ `user: undefined` has to be there. On the server next-auth returns `{ user: token, ...session }`, so a session without the key would get the token, id and roles included, as its user, and the member would pass `proxy.ts`. It did in the first manual test.
+- **Prices:** `getPriceList()` marks a failed read `unavailable`.
+  - `/kerho/hinnasto`, `/kerho/jasenyys` and `/kerho/hallit` show `PricesUnavailable` ("Hinnat eivät juuri nyt lataudu…", with info@) instead of empty tables. `/koulutus` already says "Kysy tarjousta" for a missing price.
+  - `/admin/hinnasto` shows an error instead of an empty editor: an admin could take that for an empty price list and enter it again.
+  - The invoice forms say their presets didn't load.
+- **Queries:** `statement_timeout` 60 s and `query_timeout` 65 s in `utilities/db.ts`, above the longest lock wait the code sets itself (the flight sync's 30 s).
+- Tested by hand against a production build with the database at a closed port (no `.env`, since Next copies it into `.next/standalone`):
+  - the member's redirect with `hairio=1` and the banner;
+  - no banner for guests;
+  - the three price pages;
+  - a password login answered with the outage message from PR 3.
+- The e2e suite can't take the database down, so it only checks that nothing else changed.
 
 ### PR 5 `feature/loading-states` (F11)
 - `loading.tsx` with a light skeleton in `app/admin/` and `app/jasenalue/`. One file per segment is enough: the layouts and navs stay, and only the content shows a skeleton.
