@@ -24,12 +24,13 @@ ENV NEXT_PUBLIC_UMAMI_WEBSITE_ID=$NEXT_PUBLIC_UMAMI_WEBSITE_ID
 ARG ALLOW_INDEXING=false
 ENV ALLOW_INDEXING=$ALLOW_INDEXING
 
-# The image version, as Next's deployment ID: a page opened before a deploy
-# then reloads on its next link click instead of calling server actions and
-# loading scripts that are gone (docs/UX_ERROR_PLAN.md, F3). Empty for local
-# builds, which then have none.
-ARG NEXT_DEPLOYMENT_ID=
-ENV NEXT_DEPLOYMENT_ID=$NEXT_DEPLOYMENT_ID
+# The image version (v0.0.30), which next.config.js turns into Next's
+# deployment ID: a page opened before a deploy then reloads on its next link
+# click instead of calling server actions and loading scripts that are gone
+# (docs/UX_ERROR_PLAN.md, F3). Not NEXT_DEPLOYMENT_ID itself: Next takes that
+# as it is, and refuses the dots. Empty for local builds, which then have none.
+ARG DEPLOYMENT_VERSION=
+ENV DEPLOYMENT_VERSION=$DEPLOYMENT_VERSION
 
 # Next.js collects completely anonymous telemetry data about general usage.
 # Learn more here: https://nextjs.org/telemetry

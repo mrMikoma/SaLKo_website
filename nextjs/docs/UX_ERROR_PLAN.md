@@ -92,7 +92,7 @@ Each one is small and goes through CI. 1 and 2 matter most, because together the
   - The booking hook also uses `callAction()`. A failed load is a `BookingsLoadError`; for an outdated page `BookingsError` offers a reload instead of a retry, and the query stops retrying.
   - `FlightEntryForm`, `PriceListEditor`, `PilotMatching`, `FlightTable` and `PaperPageEntry` already had their own `.catch()` and are left as they were.
 - **One result shape (F18):** `utilities/actionResult.ts` has the one `ActionResult<T>` type. The bulletin and user actions answered `{ success }` and now answer `{ status }`; the reset link comes as `result.url`. The other action files' identical local types import it. The form states (`LoginState` and the others) stay as they are: they carry field errors.
-- **Deploy ID (F3):** the Dockerfile takes `NEXT_DEPLOYMENT_ID` as a build arg, and both image builds pass the image version, so after a deploy the next link click reloads the page. It touches workflows, so the merge needs the `workflow` scope.
+- **Deploy ID (F3):** the Dockerfile takes `DEPLOYMENT_VERSION` as a build arg, both image builds pass the image version, and `next.config.js` makes it Next's `deploymentId` (`v0.0.30` → `v0-0-30`: Next refuses dots, and takes `NEXT_DEPLOYMENT_ID` as it is). After a deploy, the next link click reloads the page. It touches workflows, so the merge needs the `workflow` scope.
 - `mailActions.ts`: try/catch with the module logger.
 - The one action still allowed to throw to the error pages is "Kirjaudu Google Workspacella": it leaves the site, so there is no form to keep. `e2e/error-pages.spec.ts` uses it to test both error pages.
   - From the calendar's guest banner, inside the page, it shows `app/error.tsx` under the navbar.
