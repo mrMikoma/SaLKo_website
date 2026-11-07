@@ -137,8 +137,12 @@ Each one is small and goes through CI. 1 and 2 matter most, because together the
 - The e2e suite can't take the database down, so it only checks that nothing else changed.
 
 ### PR 5 `feature/loading-states` (F11)
-- `loading.tsx` with a light skeleton in `app/admin/` and `app/jasenalue/`. One file per segment is enough: the layouts and navs stay, and only the content shows a skeleton.
-- `ensureFreshSync()`: when a copy exists, the page renders it at once and the stale sync runs after the response (`after()` from `next/server`). Only an empty copy still waits. `SyncStatus` already says when the copy was read, and it can add "päivitetään…" while a run is going.
+- **Background sync:** `ensureFreshSync()` no longer makes a page wait for the sheet. A stale copy is shown at once and synced after the response (`after()` from `next/server`). Only an empty copy still waits, since there would be nothing to show.
+  - The actions that bill, check or change flights sync first themselves (`wait: true`), so they never work from an old copy.
+  - It answers `{ refreshing }`. `/admin/lennot` passes that to `SyncStatus`, which says "Taulukkoa luetaan parhaillaan…" with "Päivitä nyt", and refreshes the page every 10 s until the sync is done. One refresh wasn't enough: a sync still running then, or one behind another sync's lock, left the note up for good, which the e2e test caught.
+- **Admin menu:** each link shows a faint bar while its page loads (`useLinkStatus`), so a click on a slow connection shows at once.
+- **No `loading.tsx`, on purpose.** A loading boundary makes the page stream, and a streamed response starts with status 200. `notFound()` (another member's invoice, a missing period) would then answer 200 with a noindex tag instead of 404, and `redirect()` would become a streamed one. With the sync off the critical path the pages are quick anyway.
+- Tests: `e2e/background-sync.spec.ts` ages the sync runs, then checks the note, the page catching up by itself, and the run that followed.
 
 ### PR 6 `fix/guest-and-drafts` (F13, F21)
 - Guest "Varaus tallennettu": "Varausta ei voi muuttaa verkossa. Muutokset ja peruutukset: <contact from data/contacts.json>."
