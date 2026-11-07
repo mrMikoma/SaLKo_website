@@ -37,6 +37,11 @@ export default async function NewInvoicePage() {
           Lentolaskut tehdään laskutusjaksosta.
         </p>
       </div>
+      {prices.unavailable && (
+        <p role="status" className="max-w-3xl rounded-lg border border-orange-300 bg-orange-50 p-3 text-orange-900">
+          Hinnaston valmiit rivit eivät juuri nyt lataudu. Rivit voi kirjoittaa käsin.
+        </p>
+      )}
       <NewInvoiceForm recipients={recipients} presets={invoicePresets(prices.items)} />
     </div>
   );

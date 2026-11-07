@@ -8,6 +8,9 @@ declare module "next-auth" {
       roles: string[];
       fullName: string;
     } & DefaultSession["user"];
+    // The database couldn't be read for the session (auth.ts): no user, and
+    // the site says the service is down instead of looking logged out
+    error?: "unavailable";
   }
 
   interface User extends DefaultUser {

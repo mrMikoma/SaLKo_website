@@ -14,6 +14,11 @@ const connectionPool = shouldCreatePool
       // When every connection is busy, fail the request after a while
       // instead of leaving it waiting with no end
       connectionTimeoutMillis: 15_000,
+      // Nor wait forever for a query stuck behind a lock (Postgres cancels it)
+      // or a database that stopped answering (the client gives up). Above the
+      // longest lock wait the code sets itself, the flight sync's 30 s.
+      statement_timeout: 60_000,
+      query_timeout: 65_000,
     })
   : null;
 
