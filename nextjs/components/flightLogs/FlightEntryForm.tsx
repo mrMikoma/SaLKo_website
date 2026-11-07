@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { DateTime } from "luxon";
 import { logFlights, undoFlight } from "@/utilities/flightLogs";
@@ -15,6 +15,8 @@ import {
 import { formatMinutes } from "@/utilities/flightFormat";
 import { euros, minutesCost } from "@/utilities/billing";
 import type { FlightFormOptions } from "@/utilities/flightLogData";
+import { useDraft } from "@/hooks/useDraft";
+import DraftNotice from "@/components/DraftNotice";
 
 interface FlightEntryFormProps {
   options: FlightFormOptions;
@@ -45,6 +47,24 @@ interface SavedLeg {
   id: string;
   label: string;
 }
+
+// What a reload keeps of an unsaved entry (useDraft). The legs keep their
+// IDs, so saving a restored entry that partly reached the sheet doesn't add
+// flights twice.
+interface EntryDraft {
+  registration: string;
+  flightDate: string;
+  role: "pic" | "student";
+  otherPilot: string;
+  legs: Leg[];
+}
+
+const isEmptyEntry = (draft: EntryDraft | null) =>
+  !draft ||
+  (!draft.otherPilot.trim() &&
+    draft.legs.every(
+      (leg) => !leg.takeoff && !leg.landing && !leg.remarks.trim() && !leg.fuel && !leg.oil && !leg.meter
+    ));
 
 const HOME = "EFSA";
 const inputClassName =
@@ -95,6 +115,32 @@ const FlightEntryForm = ({ options, today, yesterday }: FlightEntryFormProps) =>
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<{ legs: SavedLeg[]; sheetName: string; nameMatched: boolean } | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  // Kept in the tab until saved, so a reload or a lost page doesn't empty it
+  const draftValue = useMemo<EntryDraft | null>(
+    () => (saved ? null : { registration, flightDate, role, otherPilot, legs }),
+    [saved, registration, flightDate, role, otherPilot, legs]
+  );
+  const draft = useDraft<EntryDraft | null>(
+    "lento",
+    draftValue,
+    (kept) => {
+      if (!kept) return;
+      if (options.aircraft.some((a) => a.registration === kept.registration)) setRegistration(kept.registration);
+      setFlightDate(kept.flightDate);
+      setRole(kept.role);
+      setOtherPilot(kept.otherPilot);
+      setLegs(kept.legs);
+    },
+    isEmptyEntry
+  );
+  const discardDraft = () => {
+    draft.clear();
+    setFlightDate(today);
+    setRole("pic");
+    setOtherPilot("");
+    setLegs([newLeg(undefined, 0)]);
+  };
 
   // Bring the confirmation into view after saving: the save button is at the
   // bottom of a long form, so on a phone it would otherwise be off-screen
@@ -174,6 +220,7 @@ const FlightEntryForm = ({ options, today, yesterday }: FlightEntryFormProps) =>
         setError(result.error);
         return;
       }
+      draft.clear();
       setSaved({
         sheetName: result.result.sheetName,
         nameMatched: result.result.nameMatched,
@@ -280,6 +327,11 @@ const FlightEntryForm = ({ options, today, yesterday }: FlightEntryFormProps) =>
       }}
       className="bg-white rounded-xl shadow-lg text-gray-900"
     >
+      {draft.restored && (
+        <div className="p-4 sm:p-6 pb-0 sm:pb-0">
+          <DraftNotice onDiscard={discardDraft} />
+        </div>
+      )}
       <div className="p-4 sm:p-6 space-y-6">
         <datalist id="airfields">
           {options.airfields.map((field) => (

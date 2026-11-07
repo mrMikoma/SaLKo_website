@@ -1,6 +1,7 @@
 "use client";
 import { useState, type ButtonHTMLAttributes, type Ref } from "react";
 import { signOut } from "next-auth/react";
+import { clearAllDrafts } from "@/hooks/useDraft";
 
 type LogoutProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "onClick" | "type" | "children"> & {
   onHandleLogout: () => void;
@@ -31,6 +32,8 @@ const Logout = ({ onHandleLogout, onLogoutFailed, className, disabled, ...props 
       onClick={async () => {
         setPending(true);
         onHandleLogout();
+        // Unsaved drafts stay in the tab otherwise, for whoever uses it next
+        clearAllDrafts();
         try {
           await signOut({ redirectTo: "/" });
         } catch {
