@@ -4,6 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import pool from "@/utilities/db";
+import { SESSION_ENDED } from "@/utilities/errorText";
 import { hasPermission } from "@/utilities/roles";
 import { parsePriceInput } from "@/utilities/priceFormat";
 import { logger } from "@/utilities/logger";
@@ -18,7 +19,10 @@ import type { ActionResult } from "@/utilities/actionResult";
  */
 async function requirePriceAdmin() {
   const session = await auth();
-  if (!session?.user?.id || !hasPermission(session.user.roles, "MANAGE_PRICES")) {
+  if (!session?.user?.id) {
+    return { error: SESSION_ENDED };
+  }
+  if (!hasPermission(session.user.roles, "MANAGE_PRICES")) {
     return { error: "Ei oikeuksia hinnastoon" };
   }
   return { user: session.user };

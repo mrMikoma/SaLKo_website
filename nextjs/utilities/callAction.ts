@@ -1,5 +1,5 @@
 import { unstable_rethrow } from "next/navigation";
-import { FAILURE_TEXT, failureKind, type FailureKind } from "@/utilities/errorText";
+import { FAILURE_TEXT, failureKind, SESSION_ENDED, type FailureKind } from "@/utilities/errorText";
 
 /**
  * A server action call that didn't get an answer: the connection dropped,
@@ -10,19 +10,31 @@ export type ActionFailure = { status: "error"; error: string; failure: FailureKi
 
 // The site's notice for pages from before a deploy (OutdatedNotice) listens to this
 export const OUTDATED_EVENT = "salko:outdated";
+// …and its login link for an ended session (SessionEndedNotice) to this
+export const SESSION_ENDED_EVENT = "salko:session-ended";
+
+// An action's answer that says the session ended: an ActionResult, or a form
+// state with general errors (useFormAction)
+const saysSessionEnded = (answer: unknown) => {
+  if (!answer || typeof answer !== "object") return false;
+  const { error, errors } = answer as { error?: unknown; errors?: { general?: unknown } };
+  return error === SESSION_ENDED || (Array.isArray(errors?.general) && errors.general.includes(SESSION_ENDED));
+};
 
 /**
  * Calls a server action from the browser. When the call throws instead of
  * answering, this answers for it with a Finnish message instead of letting
  * the error reach the error page, so the form and what was typed stay. Next's
- * own redirects and not-founds pass through.
+ * own redirects and not-founds pass through. An answer that the session has
+ * ended brings up a login link, so the member can log in and save again.
  *
  *   const result = await callAction(() => saveThing(input));
  *   if (result.status === "error") setError(result.error);
  */
 export async function callAction<T>(call: () => Promise<T>): Promise<T | ActionFailure> {
+  let answer: T;
   try {
-    return await call();
+    answer = await call();
   } catch (error) {
     unstable_rethrow(error);
     const kind = failureKind(error);
@@ -35,6 +47,10 @@ export async function callAction<T>(call: () => Promise<T>): Promise<T | ActionF
     if (kind === "other") console.error("Server action call failed", error);
     return { status: "error", error: kind === "other" ? FAILURE_TEXT_SAVE : FAILURE_TEXT[kind], failure: kind };
   }
+  if (saysSessionEnded(answer) && typeof window !== "undefined") {
+    window.dispatchEvent(new Event(SESSION_ENDED_EVENT));
+  }
+  return answer;
 }
 
 // For a failed save the generic text is more exact as this

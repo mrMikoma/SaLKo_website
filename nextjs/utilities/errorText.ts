@@ -19,6 +19,11 @@ export const FAILURE_TEXT: Record<FailureKind, string> = {
   other: "Jotain meni pieleen. Yritä uudelleen hetken kuluttua.",
 };
 
+// What a server action answers when the session has ended (30 days, a
+// password change elsewhere, a deactivation): the browser shows a login link
+// for it (callAction(), SessionEndedNotice), and the form stays
+export const SESSION_ENDED = "Istuntosi on päättynyt. Kirjaudu sisään uudelleen.";
+
 /**
  * - outdated: the site was deployed after the page was opened, so its server
  *   actions or script chunks are gone (Next's UnrecognizedActionError, or a

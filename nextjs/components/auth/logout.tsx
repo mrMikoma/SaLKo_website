@@ -4,6 +4,8 @@ import { signOut } from "next-auth/react";
 
 type LogoutProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "onClick" | "type" | "children"> & {
   onHandleLogout: () => void;
+  // signOut failed (no connection): the navbar shows the user again
+  onLogoutFailed?: () => void;
   ref?: Ref<HTMLButtonElement>;
 };
 
@@ -17,7 +19,7 @@ type LogoutProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "onClick" | "ty
 // row beside the text only closed the menu, and logging out took several
 // tries. Other props (a Headless UI MenuItem's role, focus state and ref)
 // pass through to it.
-const Logout = ({ onHandleLogout, className, disabled, ...props }: LogoutProps) => {
+const Logout = ({ onHandleLogout, onLogoutFailed, className, disabled, ...props }: LogoutProps) => {
   const [pending, setPending] = useState(false);
 
   return (
@@ -29,7 +31,13 @@ const Logout = ({ onHandleLogout, className, disabled, ...props }: LogoutProps) 
       onClick={async () => {
         setPending(true);
         onHandleLogout();
-        await signOut({ redirectTo: "/" });
+        try {
+          await signOut({ redirectTo: "/" });
+        } catch {
+          // Still logged in: the button and the user come back
+          setPending(false);
+          onLogoutFailed?.();
+        }
       }}
     >
       Kirjaudu ulos

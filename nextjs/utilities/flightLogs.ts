@@ -6,6 +6,7 @@ import { DateTime } from "luxon";
 import { revalidatePath } from "next/cache";
 import pool from "@/utilities/db";
 import { auth } from "@/auth";
+import { SESSION_ENDED } from "@/utilities/errorText";
 import { hasPermission } from "@/utilities/roles";
 import { isFlightLogEnabled, isSampleFlightsEnabled } from "@/utilities/features";
 import { syncFlightSheets, SyncSummary } from "@/utilities/flightSync";
@@ -67,7 +68,10 @@ async function requireFlightLogAdmin() {
     return { error: FLIGHT_LOG_DISABLED };
   }
   const session = await auth();
-  if (!session?.user?.id || !hasPermission(session.user.roles, "MANAGE_FLIGHT_LOG")) {
+  if (!session?.user?.id) {
+    return { error: SESSION_ENDED };
+  }
+  if (!hasPermission(session.user.roles, "MANAGE_FLIGHT_LOG")) {
     return { error: "Ei oikeuksia lentopäiväkirjan hallintaan" };
   }
   return { user: session.user };
@@ -359,8 +363,11 @@ export async function logFlights(
     return { status: "error", error: FLIGHT_LOG_DISABLED };
   }
   const session = await auth();
-  if (!session?.user?.id || !hasPermission(session.user.roles, "LOG_OWN_FLIGHT")) {
-    return { status: "error", error: "Kirjaudu sisään kirjataksesi lentoja" };
+  if (!session?.user?.id) {
+    return { status: "error", error: SESSION_ENDED };
+  }
+  if (!hasPermission(session.user.roles, "LOG_OWN_FLIGHT")) {
+    return { status: "error", error: "Ei oikeuksia kirjata lentoja" };
   }
 
   const parsed = logFlightsSchema.safeParse(input);
@@ -531,8 +538,11 @@ export async function undoFlight(id: string): Promise<ActionResult> {
     return { status: "error", error: FLIGHT_LOG_DISABLED };
   }
   const session = await auth();
-  if (!session?.user?.id || !hasPermission(session.user.roles, "LOG_OWN_FLIGHT")) {
-    return { status: "error", error: "Kirjaudu sisään" };
+  if (!session?.user?.id) {
+    return { status: "error", error: SESSION_ENDED };
+  }
+  if (!hasPermission(session.user.roles, "LOG_OWN_FLIGHT")) {
+    return { status: "error", error: "Ei oikeuksia kirjata lentoja" };
   }
   if (!z.uuid().safeParse(id).success) {
     return { status: "error", error: "Lentoa ei löytynyt" };

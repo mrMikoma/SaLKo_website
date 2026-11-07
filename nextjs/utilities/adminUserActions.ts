@@ -4,6 +4,7 @@ import { createHash, randomBytes } from "crypto";
 import { z } from "zod";
 import { auth } from "@/auth";
 import pool from "@/utilities/db";
+import { SESSION_ENDED } from "@/utilities/errorText";
 import { hasPermission, PERMISSIONS, ROLES, validateRoles } from "@/utilities/roles";
 import { isFlightLogEnabled } from "@/utilities/features";
 import { PasswordSchema } from "@/utilities/definitions";
@@ -78,6 +79,15 @@ async function requirePermission(permission: keyof typeof PERMISSIONS) {
 }
 
 /**
+ * Why an action was refused: the session ended, or the account lacks the
+ * permission. Only called on the refusal path.
+ */
+async function refusal(): Promise<string> {
+  const session = await auth();
+  return session?.user?.id ? "Ei oikeuksia" : SESSION_ENDED;
+}
+
+/**
  * Loads the target of an admin action and refuses the actions nobody may do:
  * on the system guest account, (unless allowed) on your own account, and on
  * an anonymised account other than deleting it
@@ -110,7 +120,7 @@ async function loadTarget(
 export async function getAllUsers(searchQuery?: string): Promise<User[] | null> {
   try {
     if (!(await requirePermission("VIEW_USER_LIST"))) {
-      throw new Error("Ei oikeuksia");
+      throw new Error(await refusal());
     }
 
     const search = searchQuery?.trim();
@@ -140,7 +150,7 @@ export async function updateUserRoles(
   try {
     const actor = await requirePermission("CHANGE_USER_ROLE");
     if (!actor) {
-      return { status: "error", error: "Ei oikeuksia" };
+      return { status: "error", error: await refusal() };
     }
 
     if (actor.id === userId) {
@@ -183,7 +193,7 @@ export async function setUserActive(
   try {
     const actor = await requirePermission("DELETE_USER");
     if (!actor) {
-      return { status: "error", error: "Ei oikeuksia" };
+      return { status: "error", error: await refusal() };
     }
 
     const target = await loadTarget(userId, actor.id);
@@ -225,7 +235,7 @@ export async function anonymizeUser(userId: string): Promise<ActionResult> {
   try {
     const actor = await requirePermission("DELETE_USER");
     if (!actor) {
-      return { status: "error", error: "Ei oikeuksia" };
+      return { status: "error", error: await refusal() };
     }
 
     const target = await loadTarget(userId, actor.id);
@@ -268,7 +278,7 @@ export async function deleteUser(userId: string): Promise<ActionResult> {
   try {
     const actor = await requirePermission("DELETE_USER");
     if (!actor) {
-      return { status: "error", error: "Ei oikeuksia" };
+      return { status: "error", error: await refusal() };
     }
 
     const target = await loadTarget(userId, actor.id, { allowAnonymised: true });
@@ -305,7 +315,7 @@ export async function deleteUser(userId: string): Promise<ActionResult> {
 export async function getUserById(userId: string): Promise<User | null> {
   try {
     if (!(await requirePermission("VIEW_USER_LIST"))) {
-      throw new Error("Ei oikeuksia");
+      throw new Error(await refusal());
     }
 
     const result = await pool.query(`SELECT ${USER_COLUMNS} FROM users WHERE id = $1`, [
@@ -350,7 +360,7 @@ export async function createCredentialUser(formData: {
 }): Promise<ActionResult> {
   try {
     if (!(await requirePermission("CREATE_USER"))) {
-      return { status: "error", error: "Ei oikeuksia" };
+      return { status: "error", error: await refusal() };
     }
 
     const parsed = createUserSchema.safeParse(formData);
@@ -417,7 +427,7 @@ export async function createPasswordResetLink(
   try {
     const actor = await requirePermission("EDIT_USER");
     if (!actor) {
-      return { status: "error", error: "Ei oikeuksia" };
+      return { status: "error", error: await refusal() };
     }
 
     const target = await loadTarget(userId, actor.id, { allowSelf: true });
@@ -478,7 +488,7 @@ export async function updateUserInfo(
   try {
     const actor = await requirePermission("EDIT_USER");
     if (!actor) {
-      return { status: "error", error: "Ei oikeuksia" };
+      return { status: "error", error: await refusal() };
     }
 
     const parsed = userInfoSchema.safeParse(data);

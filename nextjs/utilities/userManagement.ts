@@ -1,5 +1,6 @@
 "use server";
 
+import { SESSION_ENDED } from "@/utilities/errorText";
 import { auth } from "@/auth";
 import pool from "@/utilities/db";
 import { z } from "zod";
@@ -49,7 +50,7 @@ export async function updateProfile(
     if (!session?.user?.id) {
       return {
         errors: {
-          general: ["Ei oikeuksia. Kirjaudu sisään."],
+          general: [SESSION_ENDED],
         },
         status: "error",
       };
@@ -153,7 +154,7 @@ export async function changePassword(
     if (!session?.user?.id) {
       return {
         errors: {
-          general: ["Ei oikeuksia. Kirjaudu sisään."],
+          general: [SESSION_ENDED],
         },
         status: "error",
       };

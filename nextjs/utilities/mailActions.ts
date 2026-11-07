@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import pool from "@/utilities/db";
 import { auth } from "@/auth";
+import { SESSION_ENDED } from "@/utilities/errorText";
 import { hasPermission } from "@/utilities/roles";
 import { isBillingEnabled } from "@/utilities/features";
 import { deliverEmails, DeliveryStatus, queueEmail } from "@/utilities/mail";
@@ -18,7 +19,10 @@ async function requireMailAdmin() {
     return { error: "Laskutus ei ole vielä käytössä" };
   }
   const session = await auth();
-  if (!session?.user?.id || !hasPermission(session.user.roles, "MANAGE_BILLING")) {
+  if (!session?.user?.id) {
+    return { error: SESSION_ENDED };
+  }
+  if (!hasPermission(session.user.roles, "MANAGE_BILLING")) {
     return { error: "Ei oikeuksia" };
   }
   return { user: session.user };

@@ -102,16 +102,21 @@ Each one is small and goes through CI. 1 and 2 matter most, because together the
   - `e2e/action-failures.spec.ts`: the calendar from before a deploy; the profile and a bulletin losing their connection, with the typed text kept.
 
 ### PR 3 `fix/login-flows` (F4, F6, F7, F8, F12, F15, F17)
-- `app/auth/kirjaudu/page.tsx`: the login form as a page, with `?paluu=` (checked with `safeRedirect`) and "Kirjaudu sisään jatkaaksesi" when it came from a protected page. `app/auth/virhe/page.tsx` explains NextAuth's `?error=` in Finnish, with the login form under it:
-  - `AccessDenied`: "Google-kirjautuminen toimii vain kerhon @savonlinnanlentokerho.fi-tunnuksilla. Jos tunnuksesi on poistettu käytöstä, ota yhteyttä ylläpitoon."
-  - `Configuration` / other: "Kirjautuminen ei juuri nyt onnistu."
-  - The routes sit next to the existing `/auth/uusi-salasana`, and `pages` in `auth.ts` points to them.
-- `authorize()`: a database error throws a `ServiceUnavailable` error (`code: "unavailable"`, like `TooManyLoginAttempts`). The form then says "Kirjautuminen ei juuri nyt onnistu palvelinhäiriön vuoksi. Yritä hetken kuluttua uudelleen."
-- `proxy.ts`: a logged-out visitor to `/jasenalue/*` or `/admin/*` goes to `/auth/kirjaudu?paluu=<path>`. A member who opens `/admin` still goes to the front page. Update `smoke.spec.ts`: it now expects the login page.
-- The navbar logins pass the current path and query as `redirectTo`.
-- `utilities/session.ts`: `requireSession()` returns one message when there is no session, "Istuntosi on päättynyt. Kirjaudu sisään uudelleen.", and keeps "Ei oikeuksia" for real permission refusals. `callAction()` recognises it and shows a login link that opens in a new tab, so the form isn't lost.
-- The reset success screen shows `<Login />` straight away.
-- `Logout`: on failure, `pending` goes back and the user is shown again.
+- **Login pages:** Auth.js's pages are now real.
+  - `/auth/kirjaudu` is the login as a page. It reads `?paluu=`, or Auth.js's `callbackUrl` (only its path is kept, `returnPath()` in `utilities/safeRedirect.ts`). It explains a Google login that was cancelled or failed (`?error=`), and sends a member who is already logged in straight on.
+  - `/auth/virhe` explains a refused login in Finnish, with the password login under it. `AccessDenied` is for an account outside the club's Workspace or a deactivated one; `Unavailable` means the database failed during a Google login, and the `signIn` callback redirects there instead of answering "not a club account".
+- **Outage at login:** a database error in `authorize()` throws `LoginUnavailable`, and the form says "Kirjautuminen ei juuri nyt onnistu palvelinhäiriön vuoksi…" instead of "wrong password". It isn't counted as a failed attempt.
+- **Back to the page:**
+  - `proxy.ts` sends a visitor who isn't logged in from `/jasenalue/*` or `/admin/*` to `/auth/kirjaudu?paluu=<path>`; a member who opens `/admin` still goes to the front page.
+  - Server action calls (POSTs with `Next-Action`) pass the proxy: each action checks the session itself, and a redirect handed the call a login page instead of an answer.
+  - The navbar logins return to the page they're on (its path; reading the query would make every static page render in the browser), except on the login pages.
+- **Ended session:** every action that finds no session answers `SESSION_ENDED`, "Istuntosi on päättynyt. Kirjaudu sisään uudelleen.". "Ei oikeuksia" now only means the account lacks the right (`refusal()` in the user and bulletin actions). `callAction()` recognises the answer and raises `SessionEndedNotice`, whose "Kirjaudu sisään" opens the login in a new tab, so the form stays.
+- After a password reset, the login form is right there and leads to the profile.
+- A logout that fails (no connection) brings the button and the user back instead of hiding the user.
+- Tests:
+  - `tests/unit/safeRedirect.test.ts` covers `returnPath()`.
+  - `e2e/login-flows.spec.ts`: from a member page through the login and back; the navbar login staying on the page; the `/auth/virhe` and `?error=` texts; a logged-in member passing the login page; and, with an account of its own, a save after the session ended.
+  - `smoke.spec.ts` now expects the login page.
 
 ### PR 4 `fix/outage-notices` (F9, F10, F16)
 - On a database error, the session callback returns a session with `error: "unavailable"` and no user. It still fails closed. The root layout shows a slim banner from it: "Palvelussa on häiriö: kirjautuminen ja varaukset eivät juuri nyt toimi. Yritä hetken kuluttua uudelleen." `proxy.ts` sends protected pages to the login page, which shows the same notice.
