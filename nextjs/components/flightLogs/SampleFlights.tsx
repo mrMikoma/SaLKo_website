@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { addSampleFlights } from "@/utilities/flightLogs";
+import { callAction } from "@/utilities/callAction";
 
 /**
  * Development only: fills an aircraft's tab with made-up flights, so the
@@ -17,7 +18,7 @@ const SampleFlights = ({ aircraft }: { aircraft: string[] }) => {
   const add = () => {
     setMessage(null);
     startTransition(async () => {
-      const result = await addSampleFlights(registration);
+      const result = await callAction(() => addSampleFlights(registration));
       setMessage(
         result.status === "success"
           ? { ok: true, text: `Lisätty ${result.result.added} esimerkkilentoa koneelle ${registration}.` }

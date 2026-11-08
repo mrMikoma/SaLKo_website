@@ -5,7 +5,6 @@ import connectionPool from "@/utilities/db";
 import { getFlightSheet } from "@/utilities/flightSheetSource";
 import { SHEET_ZONE } from "@/utilities/flightSheetParser";
 import type { ExistingFlight } from "@/utilities/paperPage";
-import pricesData from "@/data/prices.json";
 
 /**
  * Reads of the synced flight log for server components. The pages check the
@@ -161,7 +160,7 @@ function toFlight(
 
 export async function getAircraftSheets(): Promise<AircraftSheet[]> {
   const response = await connectionPool.query(
-    "SELECT registration, sheet_name FROM aircraft_sheets WHERE active ORDER BY registration"
+    "SELECT registration, sheet_name FROM aircraft_sheets WHERE active ORDER BY sort_order, registration"
   );
   return response.rows.map((row) => ({
     registration: row.registration,
@@ -388,7 +387,8 @@ export async function getMyFlights(userId: string): Promise<MyFlight[]> {
 }
 
 export interface FlightFormOptions {
-  aircraft: { registration: string; minuteRate: number | null }[];
+  // The hourly price with the equipment fee today, for the estimate on the form
+  aircraft: { registration: string; centsPerHour: number | null }[];
   purposes: { code: string; name: string; isTraining: boolean; billed: boolean }[];
   airfields: string[];
   // How the member is written in the sheet, if already known
@@ -398,20 +398,17 @@ export interface FlightFormOptions {
   lastAircraft: string | null;
 }
 
-// Per-minute price with the equipment fee, for the estimate on the form;
-// billing itself comes later and uses its own rates
-function minuteRate(registration: string): number | null {
-  const rate = pricesData.aircraftRentalRates.find(
-    (r) => "registration" in r && r.registration === registration
-  ) as { pricePerMinuteWithEquipmentFee?: string } | undefined;
-  const value = Number(rate?.pricePerMinuteWithEquipmentFee?.replace("~", "").replace(",", "."));
-  return Number.isFinite(value) && value > 0 ? value : null;
-}
-
 export async function getFlightFormOptions(userId: string): Promise<FlightFormOptions> {
   const [aircraft, purposes, airfields, alias, names, last] = await Promise.all([
     connectionPool.query(
-      "SELECT registration FROM aircraft_sheets WHERE active ORDER BY registration"
+      `SELECT a.registration, r.cents_per_hour_with_fee
+       FROM aircraft_sheets a
+       LEFT JOIN LATERAL (
+         SELECT cents_per_hour_with_fee FROM aircraft_rates
+         WHERE registration = a.registration AND valid_from <= CURRENT_DATE
+         ORDER BY valid_from DESC LIMIT 1
+       ) r ON TRUE
+       WHERE a.active ORDER BY a.sort_order, a.registration`
     ),
     connectionPool.query(
       "SELECT code, name_fi, is_training, payer FROM flight_purposes WHERE active ORDER BY sort_order"
@@ -455,7 +452,7 @@ export async function getFlightFormOptions(userId: string): Promise<FlightFormOp
   return {
     aircraft: aircraft.rows.map((row) => ({
       registration: row.registration,
-      minuteRate: minuteRate(row.registration),
+      centsPerHour: row.cents_per_hour_with_fee ?? null,
     })),
     purposes: purposes.rows.map((row) => ({
       code: row.code,
@@ -482,8 +479,8 @@ export async function getFlightsOnDates(
   if (dates.length === 0) return [];
   const response = await connectionPool.query(
     `SELECT id, sheet_row, flight_date, pic_name, second_name, persons_on_board, departure,
-            arrival, takeoff_at, landing_at, landings, purpose_code, remarks, source, status,
-            input_hash
+            arrival, takeoff_at, landing_at, landings, purpose_code, fuel_litres, oil_quarts,
+            hour_meter, remarks, source, status, input_hash
      FROM sheet_flights
      WHERE registration = $1 AND flight_date = ANY($2::date[]) AND missing_since IS NULL
      ORDER BY sheet_row`,
@@ -502,6 +499,10 @@ export async function getFlightsOnDates(
     landing: clock(row.landing_at),
     landings: row.landings ?? 0,
     purposeCode: row.purpose_code ?? "",
+    // NUMERIC columns come back as strings
+    fuelLitres: row.fuel_litres === null ? null : Number(row.fuel_litres),
+    oilQuarts: row.oil_quarts === null ? null : Number(row.oil_quarts),
+    hourMeter: row.hour_meter === null ? null : Number(row.hour_meter),
     remarks: row.remarks ?? null,
     source: row.source ?? null,
     status: row.status ?? null,

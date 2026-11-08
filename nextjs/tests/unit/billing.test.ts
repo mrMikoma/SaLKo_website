@@ -4,7 +4,10 @@ import {
   BillingFlight,
   BillingPurpose,
   billPeriod,
+  formatRate,
   freeMinutesIn,
+  minutesCost,
+  perMinuteText,
   PeriodInput,
   rateOn,
 } from "@/utilities/billing";
@@ -23,8 +26,11 @@ const purposes = new Map(
 const ctx = (changes: Partial<BillingContext> = {}): BillingContext => ({
   purposes,
   rates: [
-    { registration: "OH-CON", validFrom: "2000-01-01", centsWithFee: 310, centsWithoutFee: 500, minimumLocalMinutes: 30 },
-    { registration: "OH-CON", validFrom: "2026-07-01", centsWithFee: 330, centsWithoutFee: 520, minimumLocalMinutes: 30 },
+    // 3,10 / 5,00 €/min, then 3,30 / 5,20 €/min
+    { registration: "OH-CON", validFrom: "2000-01-01", centsPerHourWithFee: 18600, centsPerHourWithoutFee: 30000, minimumLocalMinutes: 30 },
+    { registration: "OH-CON", validFrom: "2026-07-01", centsPerHourWithFee: 19800, centsPerHourWithoutFee: 31200, minimumLocalMinutes: 30 },
+    // 100 / 200 €/h: not whole cents a minute
+    { registration: "OH-386", validFrom: "2000-01-01", centsPerHourWithFee: 10000, centsPerHourWithoutFee: 20000, minimumLocalMinutes: 30 },
   ],
   // M.Meikäläinen and K.Opettaja are members; V.Vieras is a known non-member
   aliases: new Map([
@@ -80,8 +86,29 @@ describe("who pays and how much", () => {
       flight({ picName: "V.Vieras", flightDate: "2026-07-01" }),
     ]);
     expect(result.payers[0]).toMatchObject({ key: "name:vvieras", name: "V.Vieras" });
-    expect(result.payers[0].lines.map((l) => l.centsPerMinute)).toEqual([500, 520]);
+    expect(result.payers[0].lines.map((l) => l.centsPerHour)).toEqual([30000, 31200]);
     expect(rateOn(ctx().rates, "OH-CON", "1999-12-31")).toBeNull();
+  });
+
+  test("an hourly price is billed by the minute, rounded to the cent per line", () => {
+    const result = bill([
+      flight({ registration: "OH-386", takeoff: "10:00", landing: "10:27", airborneMinutes: 27 }),
+      flight({ registration: "OH-386", departure: "EFJO", arrival: "EFSA", takeoff: "11:00", landing: "11:13", airborneMinutes: 13 }),
+    ]);
+    // 27 min at 100 €/h is 45,00 €; 13 min is 21,666… → 21,67 €
+    expect(result.payers[0].lines.map((l) => [l.minutes, l.centsPerHour, l.amountCents])).toEqual([
+      [27, 10000, 4500],
+      [13, 10000, 2167],
+    ]);
+    expect(minutesCost(-13, 10000)).toBe(-2167);
+    expect(minutesCost(27, 18600)).toBe(8370);
+  });
+
+  test("prices read as the price list writes them", () => {
+    expect(formatRate(18600)).toBe("3,10 €/min");
+    expect(formatRate(10000)).toBe("100,00 €/h");
+    expect(perMinuteText(18600)).toBe("3,10 €/min");
+    expect(perMinuteText(10000)).toBe("≈ 1,67 €/min");
   });
 
   test("training: the student pays the lower price, the PIC on a solo", () => {

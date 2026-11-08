@@ -5,6 +5,7 @@ import { DateTime } from "luxon";
 import { revalidatePath } from "next/cache";
 import pool from "@/utilities/db";
 import { auth } from "@/auth";
+import { SESSION_ENDED } from "@/utilities/errorText";
 import { hasPermission } from "@/utilities/roles";
 import { isBillingEnabled } from "@/utilities/features";
 import { syncFlightSheets } from "@/utilities/flightSync";
@@ -30,9 +31,7 @@ import { logger } from "@/utilities/logger";
 
 const log = logger.child({ module: "invoices" });
 
-type ActionResult<T = null> =
-  | { status: "success"; result: T }
-  | { status: "error"; error: string };
+import type { ActionResult } from "@/utilities/actionResult";
 
 type Db = { query: NonNullable<typeof pool>["query"] };
 
@@ -41,7 +40,10 @@ async function requireBillingAdmin() {
     return { error: "Laskutus ei ole vielä käytössä" };
   }
   const session = await auth();
-  if (!session?.user?.id || !hasPermission(session.user.roles, "MANAGE_BILLING")) {
+  if (!session?.user?.id) {
+    return { error: SESSION_ENDED };
+  }
+  if (!hasPermission(session.user.roles, "MANAGE_BILLING")) {
     return { error: "Ei oikeuksia laskutukseen" };
   }
   return { user: session.user };

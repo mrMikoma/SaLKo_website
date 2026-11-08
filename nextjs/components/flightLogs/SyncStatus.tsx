@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { runFlightSync } from "@/utilities/flightLogs";
+import { callAction } from "@/utilities/callAction";
 
 interface SyncStatusProps {
   // Preformatted on the server, so the times are in Finnish time
@@ -13,7 +14,13 @@ interface SyncStatusProps {
   sheetKind: "google" | "fixture" | null;
   spreadsheetUrl: string | null;
   serviceAccount: string | null;
+  // The copy was stale and is being synced after this page loaded
+  // (ensureFreshSync): the page shows the last copy meanwhile
+  refreshing?: boolean;
 }
+
+// How often to look for the synced copy; a sync usually takes a few seconds
+const REFRESH_EVERY_MS = 10_000;
 
 /**
  * When the copy was last synced from the sheet, and a button to sync now
@@ -26,15 +33,26 @@ const SyncStatus = ({
   sheetKind,
   spreadsheetUrl,
   serviceAccount,
+  refreshing = false,
 }: SyncStatusProps) => {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
 
+  // Show the fresh copy once the background sync has finished: refresh until
+  // the page no longer says a sync is going on. A refresh that finds the sync
+  // still running (a long one, or another one holding the lock) leaves
+  // `refreshing` as it was, so one timeout would stop there.
+  useEffect(() => {
+    if (!refreshing) return;
+    const timer = setInterval(() => router.refresh(), REFRESH_EVERY_MS);
+    return () => clearInterval(timer);
+  }, [refreshing, router]);
+
   const sync = () => {
     setMessage(null);
     startTransition(async () => {
-      const result = await runFlightSync();
+      const result = await callAction(() => runFlightSync());
       if (result.status === "success") {
         const { rowsChanged, idsAssigned } = result.result;
         setMessage({
@@ -81,6 +99,14 @@ const SyncStatus = ({
         {sheetKind === null && (
           <p className="text-sm text-gray-600">
             Google-taulukkoa ei ole määritetty (ohje: nextjs/docs/FLIGHT_LOG_SETUP.md).
+          </p>
+        )}
+        {refreshing && (
+          <p className="text-sm text-gray-700" role="status">
+            Taulukkoa luetaan parhaillaan; sivu näyttää uusimmat muutokset hetken kuluttua.{" "}
+            <button type="button" onClick={() => router.refresh()} className="text-sblue hover:underline">
+              Päivitä nyt
+            </button>
           </p>
         )}
         {latestError && (

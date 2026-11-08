@@ -54,6 +54,22 @@ jobs:
           docker logs salko-postgres
           exit 1
 
+      # init/ records the newest migration it includes, so migrate.sh doesn't
+      # replay the old ones on a database created from it (dev on every
+      # deploy). A migration added without raising that line would be skipped
+      # on such a database or replayed against a schema it wasn't written for.
+      - name: init/ includes every migration
+        working-directory: postgres
+        env:
+          APP_DB_USER: salko_app
+        run: |
+          out=$(./migrate.sh salko-postgres migrations --dry-run)
+          echo "$out"
+          if grep -q '^Pending:' <<<"$out"; then
+            echo "::error file=postgres/init/05-grant-app-permissions.sql::Raise the schema_migrations line at the end of init/05-grant-app-permissions.sql to the newest migration"
+            exit 1
+          fi
+
       - name: Set up Node.js
         uses: actions/setup-node@v7.1.0
         with:

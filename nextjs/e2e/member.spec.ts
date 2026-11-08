@@ -20,7 +20,7 @@ test("member menu has no admin link and logs out", async ({ page }) => {
   await expect(page.getByRole("menuitem", { name: "Omat tiedot" })).toBeVisible();
   await expect(page.getByRole("menuitem", { name: "Admin sivut" })).toHaveCount(0);
 
-  await page.getByRole("button", { name: "Kirjaudu ulos" }).click();
+  await page.getByRole("menuitem", { name: "Kirjaudu ulos" }).click();
   await expect(page.getByText("Et ole kirjautunut jäsenalueelle")).toBeVisible();
 });
 

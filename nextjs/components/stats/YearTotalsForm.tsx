@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { deleteYearTotal, saveYearTotals } from "@/utilities/statsActions";
+import { callAction } from "@/utilities/callAction";
 
 const EXAMPLE = "Vuosi\tOH-CON\tOH-SEE\n2003\t98:00\t164:00\n2002\t102:00\t279:00";
 
@@ -16,7 +17,7 @@ export const YearTotalsForm = () => {
   const save = () => {
     setMessage(null);
     startTransition(async () => {
-      const result = await saveYearTotals(text);
+      const result = await callAction(() => saveYearTotals(text));
       if (result.status === "error") {
         setMessage({ ok: false, text: result.error });
         return;

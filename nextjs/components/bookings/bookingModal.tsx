@@ -1,5 +1,6 @@
 "use client";
 
+import contacts from "@/data/contacts.json";
 import { useEffect, useState, memo, useMemo } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -443,6 +444,20 @@ const BookingModal = memo(
               isLoggedIn={isLoggedIn}
               seriesCount={saved.count}
             />
+            {/* Guests can only make bookings (docs/BOOKINGS.md): say where changes go */}
+            {!isLoggedIn && (
+              <p className="text-sm text-gray-700 border-t border-gray-200 pt-4">
+                Vierasvarausta ei voi muuttaa eikä perua verkossa. Muutokset ja peruutukset:{" "}
+                <a href={`mailto:${contacts.general.email}`} className="text-sblue underline underline-offset-2">
+                  {contacts.general.email}
+                </a>{" "}
+                tai{" "}
+                <a href="/yhteystiedot" className="text-sblue underline underline-offset-2">
+                  yhteystiedot
+                </a>
+                .
+              </p>
+            )}
           </div>
         </Modal>
       );

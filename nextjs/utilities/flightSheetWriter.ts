@@ -2,11 +2,11 @@ import "server-only";
 
 import { DateTime } from "luxon";
 import connectionPool from "@/utilities/db";
-import { getFlightSheet } from "@/utilities/flightSheetSource";
+import { type FlightSheet, getFlightSheet } from "@/utilities/flightSheetSource";
+import { flightRowFormats, flightRowFormulaCells } from "@/utilities/flightSheetTemplate";
 import {
   checkedCells,
   clearedFlightCells,
-  findWritableRows,
   flightCells,
   flightTimes,
   isBilledStatus,
@@ -16,16 +16,23 @@ import {
   ParsedSheet,
   parseFlightSheet,
   parseTimeOfDay,
+  planFlightRows,
   ReviewStatus,
   SHEET_ZONE,
   SheetFlightInput,
+  type SheetValues,
+  typedColumnIndexes,
 } from "@/utilities/flightSheetParser";
 import { inputHash } from "@/utilities/flightInputHash";
+import { logger } from "@/utilities/logger";
+
+const log = logger.child({ module: "flight-sheet-writer" });
 
 /**
  * Writes flights into an aircraft's tab of the flight log sheet. Only the
- * input columns are written, into the rows already pre-filled with the
- * formulas, so the sheet's running totals keep working. A Postgres advisory
+ * input columns are written, into the rows pre-filled with the formulas, so
+ * the sheet's running totals keep working; when those run out, the formulas
+ * are continued first. A Postgres advisory
  * lock per aircraft keeps two writers from picking the same rows.
  */
 
@@ -175,11 +182,7 @@ export async function appendFlightsToSheet(
       );
     }
 
-    const formulas = await sheet.readFormulas(sheetName, parsed.columns.airborne);
-    const rows = findWritableRows(values, parsed, formulas, firstDataRow);
-    if (rows.length < inputs.length) {
-      throw new FlightSheetWriteError(noRowsLeft(values, parsed, formulas, rows, firstDataRow));
-    }
+    const rows = await rowsForNewFlights(sheet, sheetName, values, parsed, inputs.length, firstDataRow);
 
     await sheet.writeCells(
       sheetName,
@@ -202,21 +205,66 @@ export async function appendFlightsToSheet(
 }
 
 /**
- * Why there aren't enough rows to write into: the formulas run out, or a row
- * after the last flight has something typed in it but no readable date
+ * The rows `count` new flights go into (planFlightRows). When the formula
+ * rows have run out, the formulas are continued first, as the biller would
+ * drag them down, so a flight is never refused for that. A tab with no
+ * formula row left gets the club's formulas in its first new row, and the
+ * rest continue from it.
  */
-function noRowsLeft(
-  values: Parameters<typeof findWritableRows>[0],
+async function rowsForNewFlights(
+  sheet: FlightSheet,
+  sheetName: string,
+  values: SheetValues,
   parsed: ParsedSheet,
-  formulas: string[],
-  rows: number[],
+  count: number,
   firstDataRow: number
-): string {
-  const next = (rows.at(-1) ?? parsed.flights.reduce((last, f) => Math.max(last, f.row), firstDataRow - 1)) + 1;
-  if (formulas[next - 1]?.startsWith("=") && (values[next - 1] ?? []).some((cell) => String(cell ?? "").trim())) {
-    return `Taulukon rivillä ${next} on tietoja mutta ei luettavaa päivämäärää, joten uutta lentoa ei kirjoiteta sen päälle. Pyydä laskuttajaa täydentämään tai tyhjentämään rivi.`;
+): Promise<number[]> {
+  const airborne = parsed.columns.airborne!;
+  let plan = planFlightRows(values, parsed, await sheet.readFormulas(sheetName, airborne), count, firstDataRow);
+  if (plan.kind === "extend") {
+    let { sourceRow, firstRow } = plan;
+    if (sourceRow === null) {
+      await writeFormulaRow(sheet, sheetName, parsed, firstRow);
+      sourceRow = firstRow;
+      firstRow += 1;
+    }
+    if (firstRow <= plan.lastRow) {
+      await sheet.extendFormulas(sheetName, sourceRow, firstRow, plan.lastRow, typedColumnIndexes(parsed));
+    }
+    plan = planFlightRows(values, parsed, await sheet.readFormulas(sheetName, airborne), count, firstDataRow);
   }
-  return "Lentopäiväkirjan valmiit kaavarivit ovat lopussa. Pyydä laskuttajaa jatkamaan kaavoja taulukossa.";
+  if (plan.kind === "blocked") {
+    throw new FlightSheetWriteError(
+      `Taulukon rivillä ${plan.row} on tietoja mutta ei luettavaa päivämäärää, joten uutta lentoa ei kirjoiteta sen päälle. Pyydä laskuttajaa täydentämään tai tyhjentämään rivi.`
+    );
+  }
+  if (plan.kind !== "write") {
+    throw new FlightSheetWriteError("Kaavarivien jatkaminen taulukossa ei onnistunut. Yritä hetken päästä uudelleen.");
+  }
+  return plan.rows;
+}
+
+/**
+ * The club's formulas into one row of a tab that has none left. Sheets reads
+ * a formula sent through its API in the spreadsheet's locale, so the
+ * arguments are separated as that locale does (";" in Finland). The row is
+ * read back before anything is copied from it: if Sheets still couldn't parse
+ * it (#ERROR!), it is written again with the other separator, so a wrong
+ * guess never spreads a hundred rows of broken formulas. The row also gets
+ * the template's date and time formats, which the rows copied from it take.
+ */
+async function writeFormulaRow(sheet: FlightSheet, sheetName: string, parsed: ParsedSheet, row: number) {
+  await sheet.formatRow(sheetName, row, flightRowFormats(parsed.columns));
+  const preferred = await sheet.formulaSeparator();
+  for (const separator of [preferred, preferred === ";" ? "," : ";"] as const) {
+    const cells = flightRowFormulaCells(parsed.columns, row, separator);
+    await sheet.writeCells(sheetName, cells, { parse: true });
+    const written = (await sheet.readTab(sheetName))[row - 1] ?? [];
+    const broken = cells.some((cell) => String(written[cell.column] ?? "").startsWith("#"));
+    if (!broken) return;
+  }
+  // The flight is still saved: a missing airborne time is the biller's to fix
+  log.warn("The sheet could not parse the formula row", { row });
 }
 
 /**
@@ -382,20 +430,21 @@ export async function writePaperPage(
       );
     }
 
-    const formulas = await sheet.readFormulas(sheetName, columns.airborne);
-    const rows = findWritableRows(values, parsed, formulas, firstDataRow);
-    if (rows.length < page.append.length) {
-      throw new FlightSheetWriteError(noRowsLeft(values, parsed, formulas, rows, firstDataRow));
-    }
+    const rows = await rowsForNewFlights(sheet, sheetName, values, parsed, page.append.length, firstDataRow);
 
     const checked = { status: "Tarkistettu" as const, logPage: page.logPage };
-    // A correction rewrites what the paper says, and the remark only when the
-    // paper has one; the row keeps its ID, Lähde, fuel, oil and hour meter
+    // A correction rewrites what the paper says. The remark, fuel, oil and
+    // hour meter only when the paper has them, so a pilot's reading stays
+    // when the book leaves it out; the row keeps its ID and Lähde.
     const correctedColumns = (input: SheetFlightInput) =>
       new Set(
-        [...PAPER_COLUMNS, ...(input.remarks ? (["remarks"] as const) : [])].map(
-          (key) => columns[key]
-        )
+        [
+          ...PAPER_COLUMNS,
+          ...(input.remarks ? (["remarks"] as const) : []),
+          ...(input.fuelLitres !== null ? (["fuel"] as const) : []),
+          ...(input.oilQuarts !== null ? (["oil"] as const) : []),
+          ...(input.hourMeter !== null ? (["hourMeter"] as const) : []),
+        ].map((key) => columns[key])
       );
     const cells = [
       ...page.append.flatMap((input, i) => flightCells({ ...input, ...checked }, rows[i], columns)),
@@ -431,7 +480,8 @@ export interface BillingCellUpdate {
   id: string;
   // The flight as billed; null skips the check (marking a payment)
   inputHash: string | null;
-  status: "Laskutettu" | "Ei laskuteta" | "Maksettu";
+  // Tarkistettu only to put a tab back when a later tab's write failed
+  status: "Laskutettu" | "Ei laskuteta" | "Maksettu" | "Tarkistettu";
   period?: string;
 }
 

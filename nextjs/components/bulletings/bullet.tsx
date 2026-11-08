@@ -5,10 +5,9 @@ import {
   DisclosurePanel,
 } from "@headlessui/react";
 import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { DateTime } from "luxon";
 import { Bulletin } from "@/utilities/bulletings";
-import { bulletinMarkdown } from "./bulletinMarkdown";
+import { bulletinMarkdown, bulletinRemarkPlugins } from "./bulletinMarkdown";
 
 interface BulletProps {
   item: Bulletin;
@@ -59,7 +58,7 @@ const Bullet = ({ item }: BulletProps) => {
             </div>
             <div className="text-base leading-relaxed [overflow-wrap:anywhere]">
               <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
+                remarkPlugins={bulletinRemarkPlugins}
                 components={bulletinMarkdown}
               >
                 {item.content}

@@ -27,9 +27,10 @@ for (const path of publicPages) {
 }
 
 for (const path of ["/jasenalue/profiili", "/jasenalue/lentopaivakirja", "/admin"]) {
-  test(`${path} redirects anonymous visitors to /`, async ({ page }) => {
+  test(`${path} sends anonymous visitors to the login page`, async ({ page }) => {
     await page.goto(path);
-    await expect(page).toHaveURL("/");
+    await expect(page).toHaveURL(`/auth/kirjaudu?paluu=${encodeURIComponent(path)}`);
+    await expect(page.getByRole("heading", { level: 1, name: "Kirjaudu sisään" })).toBeVisible();
   });
 }
 

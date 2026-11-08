@@ -3,12 +3,17 @@ import "server-only";
 import { createHash, randomUUID } from "crypto";
 import { DateTime } from "luxon";
 import type { PoolClient } from "pg";
+import { after } from "next/server";
 import connectionPool from "@/utilities/db";
 import { FlightSheet, getFlightSheet, SheetCell } from "@/utilities/flightSheetSource";
 import { configuredServiceAccount, describeSheetError } from "@/utilities/googleSheetsSetup";
 import {
   FlightIssue,
   findFlightIssues,
+  findWebEntryNameIssues,
+  type AliasOwner,
+  type WebEntry,
+  findFormulaErrorIssues,
   findUndatedRowIssues,
   isBilledStatus,
   nameKey,
@@ -140,6 +145,8 @@ const UPSERT_FLIGHTS = `
 interface SyncContext {
   purposes: Map<string, { isTraining: boolean }>;
   knownPilots: Set<string>;
+  webEntries: Map<string, WebEntry>;
+  aliasOwners: Map<string, AliasOwner>;
   tabIds: Map<string, number>;
   today: string;
 }
@@ -303,7 +310,9 @@ async function syncTab(
 
   const issues = [
     ...findFlightIssues(parsed.flights, context),
+    ...findWebEntryNameIssues(parsed.flights, context.webEntries, context.aliasOwners),
     ...findUndatedRowIssues(parsed.undatedRows),
+    ...findFormulaErrorIssues(parsed.flights, parsed.columns),
     ...idIssues,
     ...billedIssues,
   ].sort((a, b) => a.row - b.row);
@@ -412,7 +421,13 @@ export async function syncFlightSheets(
       const sheet = getFlightSheet();
       const aircraft = (
         await client.query(
-          "SELECT registration, sheet_name, first_data_row FROM aircraft_sheets WHERE active ORDER BY registration"
+          "SELECT registration, sheet_name, first_data_row FROM aircraft_sheets WHERE active ORDER BY sort_order, registration"
+        )
+      ).rows;
+      const aliases = (
+        await client.query(
+          `SELECT a.name_key, a.user_id, u.full_name
+           FROM pilot_aliases a LEFT JOIN users u ON u.id = a.user_id`
         )
       ).rows;
       const context: SyncContext = {
@@ -423,8 +438,18 @@ export async function syncFlightSheets(
           ])
         ),
         // Matched to a member, or marked as no member: either way decided
-        knownPilots: new Set(
-          (await client.query("SELECT name_key FROM pilot_aliases")).rows.map((row) => row.name_key)
+        knownPilots: new Set(aliases.map((row) => row.name_key)),
+        aliasOwners: new Map(
+          aliases.map((row) => [row.name_key, { userId: row.user_id, fullName: row.full_name }])
+        ),
+        webEntries: new Map(
+          (
+            await client.query(
+              `SELECT e.id, e.user_id, u.full_name FROM flight_log_web_entries e
+               JOIN users u ON u.id = e.user_id
+               WHERE e.undone_at IS NULL`
+            )
+          ).rows.map((row) => [row.id, { userId: row.user_id, fullName: row.full_name }])
         ),
         tabIds: await sheet.tabIds(),
         today: DateTime.now().setZone(SHEET_ZONE).toISODate()!,
@@ -509,12 +534,16 @@ export async function syncFlightSheets(
 }
 
 /**
- * Syncs first when the copy is stale, so the pages show what the sheet has
- * now. A failing sheet doesn't break the pages: they show the last copy and
- * the error.
+ * Keeps the copy fresh for the pages. A stale copy is shown as it is and
+ * synced once the response has gone (after()), so the page doesn't wait
+ * seconds for Google: the actions that bill, check or change flights sync
+ * first themselves. Only an empty copy waits, since there would be nothing
+ * to show. A failing sheet doesn't break the pages: they show the last copy
+ * and the error. Answers whether a sync is going on, so the flight log page
+ * can say it's being updated.
  */
-export async function ensureFreshSync(): Promise<void> {
-  if (!connectionPool) return;
+export async function ensureFreshSync(): Promise<{ refreshing: boolean }> {
+  if (!connectionPool) return { refreshing: false };
 
   const latest = (
     await connectionPool.query(
@@ -529,10 +558,21 @@ export async function ensureFreshSync(): Promise<void> {
   const hasCopy = Boolean(latest?.has_copy);
   if (latest) {
     const age = Date.now() - new Date(latest.finished_at ?? latest.started_at).getTime();
-    if (latest.status === "success" && age < STALE_AFTER_MS) return;
-    if (latest.status === "error" && age < RETRY_AFTER_ERROR_MS) return;
-    if (latest.status === "running" && age < STALE_AFTER_MS && hasCopy) return;
+    if (latest.status === "success" && age < STALE_AFTER_MS) return { refreshing: false };
+    if (latest.status === "error" && age < RETRY_AFTER_ERROR_MS) return { refreshing: false };
+    if (latest.status === "running" && age < STALE_AFTER_MS && hasCopy) return { refreshing: true };
   }
 
-  await syncFlightSheets("automaattinen", { wait: !hasCopy });
+  if (!hasCopy) {
+    await syncFlightSheets("automaattinen", { wait: true });
+    return { refreshing: false };
+  }
+  after(async () => {
+    try {
+      await syncFlightSheets("automaattinen");
+    } catch (error) {
+      log.error("Syncing the flight sheets after a page load failed", { err: error });
+    }
+  });
+  return { refreshing: true };
 }

@@ -199,7 +199,7 @@ What `dev` holds after stage A, from the code review in October 2026:
 
 - [ ] **Service account:** create the production one, `salko-lentopaivakirja`, with its own JSON key (`FLIGHT_LOG_SETUP.md`, steps 2–3). Never reuse the dev key.
 - [ ] **The real sheet:**
-  - add the website's four columns (ID, Lähde, Tila, Laskutusjakso) at the right edge of the `OH-CON Matkapäiväkirja` tab, whose name must stay exactly that;
+  - add the website's four columns (ID, Lähde, Tila, Laskutusjakso) at the right edge of the `OH-CON Matkapäiväkirja` and `OH-386 Matkapäiväkirja` tabs, whose names must stay exactly that. If OH-386 has no tab yet, make one from the template (`FLIGHT_LOG_SETUP.md`, "Another aircraft");
   - share the sheet with the service account as an editor;
   - check that File → Settings says Finland and Helsinki;
   - before the first sync, name a version (File → Version history → Name current version): the first sync writes an ID into every flight row, about 500 of them.
@@ -256,7 +256,7 @@ To switch it off again, clear the variable and redeploy. The data stays.
 - [ ] **Secrets:** add `MAIL_FROM`, `MAIL_REFRESH_TOKEN`, `MAIL_GMAIL_CLIENT_ID` and `MAIL_GMAIL_CLIENT_SECRET` to the `production` environment's secrets. Optionally add `MAIL_REDIRECT_TO`, for a dry run.
 - [ ] **Club details on invoices:** Yhteystiedot (`data/contacts.json`) has the right IBAN, BIC and business ID.
 - [ ] **On `/admin/laskutus/asetukset`,** right after switching on and before the first period (the page appears with `FEATURE_BILLING`):
-  - the prices: OH-CON 3,10 / 5,00 €/min, with a 30 min minimum;
+  - the prices: OH-CON 186 / 300 €/h (3,10 / 5,00 €/min) and OH-386 100 / 200 €/h, each with a 30 min minimum;
   - this season's equipment-fee payers;
   - the free hour;
   - who pays for each purpose;
@@ -291,5 +291,7 @@ To stop sending, clear `MAIL_MODE` and redeploy. Messages are then stored but no
 ## Every later release
 
 The same as stage A, steps 1–4: merge `dev` → `main`, build, migrate if `postgres/migrations` has new files (dry run first), and deploy.
+
+**The release that brings the price list (migration 020):** the prices move from `data/prices.json` into the database and are edited on `/admin/hinnasto` from then on (`PRICE_LIST.md`). Run the migration before the deploy, as always: without it the price pages show no prices. After the deploy, check that `/kerho/hinnasto`, `/kerho/jasenyys` and `/koulutus` show the same prices as before, and tell the treasurer where prices are now changed.
 
 When a release changes the Postgres service in `docker-compose.prod.yaml`, the deploy recreates the database container: the site is down for the half a minute Postgres takes to start, and the data stays. Stage A does this once (step 4).

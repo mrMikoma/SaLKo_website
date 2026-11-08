@@ -17,7 +17,6 @@ import {
   EquipmentFees,
   FreeHour,
   PurposePayers,
-  Rates,
 } from "@/components/billing/BillingSettingsForms";
 
 export const metadata = {
@@ -52,21 +51,13 @@ export default async function BillingSettingsPage({ searchParams }: PageProps) {
         <h1 className="text-3xl font-bold text-gray-900 mt-1">Laskutuksen asetukset</h1>
         <p className="text-gray-600 mt-2 max-w-3xl">
           Muutokset vaikuttavat avoimiin jaksoihin heti; suljettujen jaksojen laskut pysyvät
-          sellaisina kuin ne laskutettiin. Hinnasto-sivun hinnat ovat erikseen tiedostossa
-          data/prices.json.
+          sellaisina kuin ne laskutettiin. Koneiden tuntihinnat ja muut hinnat ovat{" "}
+          <Link href="/admin/hinnasto" className="text-sblue hover:underline">
+            Hinnastossa
+          </Link>
+          .
         </p>
       </div>
-
-      <section className={card}>
-        <h2 className="text-xl font-semibold">Minuuttihinnat</h2>
-        <p className="text-sm text-gray-600">
-          Lennon päivänä voimassa ollut hinta. Koululennot laskutetaan alemmalla hinnalla:
-          oppilaat on vapautettu kalustomaksusta tarkastuslentoon asti. Yksittäinen
-          paikallislento (lähtö- ja laskupaikka samat) laskutetaan vähintään minimin
-          mittaisena; saman lentäjän peräkkäisille lennoille ja matkalennoille minimiä ei ole.
-        </p>
-        <Rates aircraft={settings.aircraft} rates={settings.rates} />
-      </section>
 
       <section className={card}>
         <div className="flex flex-wrap items-center justify-between gap-4">

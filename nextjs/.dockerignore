@@ -1,0 +1,28 @@
+# What a local `docker build` must not copy into the image (the Dockerfile's
+# `COPY . .`). CI checks out none of these, so its images don't change.
+
+# Secrets: Next copies .env into .next/standalone, so a local build would ship it
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*-service-account*.json
+*.iam.gserviceaccount.com.json
+
+# Built or installed here: the image installs and builds its own (the deps
+# stage's node_modules would otherwise be overwritten with this machine's)
+node_modules
+.next
+*.tsbuildinfo
+next-env.d.ts
+
+# Test output and saved test sessions
+test-results
+playwright-report
+blob-report
+playwright/.auth
+.playwright-cli
+
+# The old site's dump has member data (data/ is otherwise needed)
+data/lentokerho.sql

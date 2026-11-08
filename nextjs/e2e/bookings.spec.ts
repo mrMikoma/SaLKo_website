@@ -185,6 +185,9 @@ test.describe("anonymous visitor", () => {
     const saved = page.getByRole("dialog", { name: "Varaus tallennettu" });
     await expect(saved.getByRole("link", { name: "Google-kalenteri" })).toBeVisible();
     await expect(saved.getByRole("link", { name: "Apple / Outlook (.ics)" })).toHaveCount(0);
+    // Guests can't change or cancel online: the screen says where to ask
+    await expect(saved.getByText("Vierasvarausta ei voi muuttaa eikä perua verkossa")).toBeVisible();
+    await expect(saved.getByRole("link", { name: "info@savonlinnanlentokerho.fi" })).toBeVisible();
     await closeSavedScreen(page);
 
     // Everyone sees what the booking is and who made it, not how to reach them

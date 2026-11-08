@@ -117,7 +117,9 @@ To cut the website off from a spreadsheet at once, remove the service account fr
 
 1. Write a tab for it, for example `bun run flight-sheet:template "OH-PDX Matkapäiväkirja" /tmp/oh-pdx.xlsx`.
 2. Bring it into the spreadsheet with **File → Import → Insert new sheet(s)**.
-3. Add the aircraft with a migration: `INSERT INTO aircraft_sheets (registration, sheet_name) VALUES ('OH-PDX', 'OH-PDX Matkapäiväkirja')`, in both `postgres/init/` and `postgres/migrations/`.
+3. Add the aircraft with a migration: `INSERT INTO aircraft_sheets (registration, sheet_name, sort_order) VALUES ('OH-PDX', 'OH-PDX Matkapäiväkirja', 30)`, in both `postgres/init/` and `postgres/migrations/`. `sort_order` is its place in the lists; OH-CON is 10 and OH-386 20. Give it a price on `/admin/laskutus/asetukset`, or in the migration as `019_hourly_rates_oh386.sql` does for OH-386.
+
+OH-386 was added this way (migration 019). Until its tab is in the spreadsheet, every sync reports "Taulukosta puuttuu välilehti", but the other tabs still sync.
 
 ## Production, later
 

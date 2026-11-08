@@ -10,6 +10,7 @@ import {
   SheetValue,
   SheetValues,
 } from "@/utilities/flightSheetParser";
+import { CellFormat, FormulaSeparator, formulaSeparator } from "@/utilities/flightSheetTemplate";
 
 /**
  * Where the flight log lives. In production that is the club's Google Sheet;
@@ -43,6 +44,16 @@ export interface FlightSheet {
   // One column as formulas ("=H5-G5"), to find the rows that are pre-filled
   // with formulas; index 0 is row 1
   readFormulas(tab: string, column: number): Promise<string[]>;
+  // Continues the formulas of sourceRow into rows firstRow..lastRow, as
+  // dragging the row down in Sheets does: the whole row's formatting, and
+  // the cells that hold a formula with their references moved, never into
+  // skipColumns. Adds rows to the tab when it is too short.
+  extendFormulas(tab: string, sourceRow: number, firstRow: number, lastRow: number, skipColumns: number[]): Promise<void>;
+  // Number formats for cells of one row (dates, times)
+  formatRow(tab: string, row: number, formats: CellFormat[]): Promise<void>;
+  // What separates a formula's arguments when the website types one in:
+  // Sheets reads it in the spreadsheet's locale, ";" in a Finnish one
+  formulaSeparator(): Promise<FormulaSeparator>;
   // Google's numeric id of each tab, for links into the sheet
   tabIds(): Promise<Map<string, number>>;
   // Link to a row, given the tab's id
@@ -101,6 +112,98 @@ class GoogleFlightSheet implements FlightSheet {
       valueRenderOption: "FORMULA",
     });
     return (response.data.values ?? []).map((row) => String(row?.[0] ?? ""));
+  }
+
+  async extendFormulas(
+    tab: string,
+    sourceRow: number,
+    firstRow: number,
+    lastRow: number,
+    skipColumns: number[]
+  ): Promise<void> {
+    const [meta, source] = await Promise.all([
+      this.sheets.spreadsheets.get({
+        spreadsheetId: this.spreadsheetId,
+        fields: "sheets.properties(sheetId,title,gridProperties(rowCount,columnCount))",
+      }),
+      this.sheets.spreadsheets.values.get({
+        spreadsheetId: this.spreadsheetId,
+        range: `${quoteTab(tab)}!${sourceRow}:${sourceRow}`,
+        valueRenderOption: "FORMULA",
+      }),
+    ]);
+    const properties = meta.data.sheets?.find((s) => s.properties?.title === tab)?.properties;
+    if (properties?.sheetId === undefined || properties.sheetId === null) {
+      throw new Error(`Välilehteä ${tab} ei löydy taulukosta`);
+    }
+    const sheetId = properties.sheetId;
+    const columns = (source.data.values?.[0] ?? []).flatMap((value, column) =>
+      typeof value === "string" && value.startsWith("=") && !skipColumns.includes(column) ? [column] : []
+    );
+    if (columns.length === 0) return;
+
+    const rowCount = properties.gridProperties?.rowCount ?? 0;
+    const requests: sheets_v4.Schema$Request[] = [];
+    if (lastRow > rowCount) {
+      requests.push({ appendDimension: { sheetId, dimension: "ROWS", length: lastRow - rowCount } });
+    }
+    // The row's formats first: rows added to a tab whose rows were deleted
+    // have none, and a date would show as 46113
+    requests.push({
+      copyPaste: {
+        source: { sheetId, startRowIndex: sourceRow - 1, endRowIndex: sourceRow, startColumnIndex: 0, endColumnIndex: properties.gridProperties?.columnCount ?? 26 },
+        destination: { sheetId, startRowIndex: firstRow - 1, endRowIndex: lastRow, startColumnIndex: 0, endColumnIndex: properties.gridProperties?.columnCount ?? 26 },
+        pasteType: "PASTE_FORMAT",
+        pasteOrientation: "NORMAL",
+      },
+    });
+    // One source cell pasted over many rows repeats it, references moved
+    for (const column of columns) {
+      requests.push({
+        copyPaste: {
+          source: { sheetId, startRowIndex: sourceRow - 1, endRowIndex: sourceRow, startColumnIndex: column, endColumnIndex: column + 1 },
+          destination: { sheetId, startRowIndex: firstRow - 1, endRowIndex: lastRow, startColumnIndex: column, endColumnIndex: column + 1 },
+          pasteType: "PASTE_NORMAL",
+          pasteOrientation: "NORMAL",
+        },
+      });
+    }
+    await this.sheets.spreadsheets.batchUpdate({
+      spreadsheetId: this.spreadsheetId,
+      requestBody: { requests },
+    });
+  }
+
+  async formatRow(tab: string, row: number, formats: CellFormat[]): Promise<void> {
+    if (formats.length === 0) return;
+    const meta = await this.sheets.spreadsheets.get({
+      spreadsheetId: this.spreadsheetId,
+      fields: "sheets.properties(sheetId,title)",
+    });
+    const sheetId = meta.data.sheets?.find((s) => s.properties?.title === tab)?.properties?.sheetId;
+    if (sheetId === undefined || sheetId === null) {
+      throw new Error(`Välilehteä ${tab} ei löydy taulukosta`);
+    }
+    await this.sheets.spreadsheets.batchUpdate({
+      spreadsheetId: this.spreadsheetId,
+      requestBody: {
+        requests: formats.map(({ column, type, pattern }) => ({
+          repeatCell: {
+            range: { sheetId, startRowIndex: row - 1, endRowIndex: row, startColumnIndex: column, endColumnIndex: column + 1 },
+            cell: { userEnteredFormat: { numberFormat: { type, pattern } } },
+            fields: "userEnteredFormat.numberFormat",
+          },
+        })),
+      },
+    });
+  }
+
+  async formulaSeparator(): Promise<FormulaSeparator> {
+    const response = await this.sheets.spreadsheets.get({
+      spreadsheetId: this.spreadsheetId,
+      fields: "properties.locale",
+    });
+    return formulaSeparator(response.data.properties?.locale);
   }
 
   async tabIds(): Promise<Map<string, number>> {
@@ -172,6 +275,40 @@ class FixtureFlightSheet implements FlightSheet {
     return values.map((row) => (typeof row[column] === "number" ? "=fixture" : ""));
   }
 
+  async extendFormulas(
+    tab: string,
+    sourceRow: number,
+    firstRow: number,
+    lastRow: number,
+    skipColumns: number[]
+  ): Promise<void> {
+    const values = this.tabs()[tab];
+    if (!values) {
+      throw new Error(`Välilehteä ${tab} ei löydy taulukosta`);
+    }
+    // A number outside the typed-in columns stands for a formula; the copies
+    // hold 0, as the pre-filled rows do
+    const source = values[sourceRow - 1] ?? [];
+    for (let row = firstRow; row <= lastRow; row++) {
+      while (values.length < row) values.push([]);
+      const target = values[row - 1];
+      source.forEach((value, column) => {
+        if (typeof value !== "number" || skipColumns.includes(column)) return;
+        while (target.length <= column) target.push("");
+        target[column] = 0;
+      });
+    }
+  }
+
+  async formatRow(): Promise<void> {
+    // The fixture keeps values only
+  }
+
+  async formulaSeparator(): Promise<FormulaSeparator> {
+    // The fixture stands for the club's Finnish-locale sheet
+    return ";";
+  }
+
   async tabIds(): Promise<Map<string, number>> {
     return new Map();
   }
@@ -190,6 +327,12 @@ function parseLikeSheets(value: string | number): SheetValue {
   }
   if (value.startsWith("'")) {
     return value.slice(1);
+  }
+  // A formula: the fixture can't compute it, and a number stands for one.
+  // A comma between arguments is a decimal comma to a Finnish sheet, which
+  // can't parse the formula and shows #ERROR!
+  if (value.startsWith("=")) {
+    return value.replace(/"[^"]*"/g, "").includes(",") ? "#ERROR!" : 0;
   }
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     const date = parseSheetDate(value)!;

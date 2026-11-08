@@ -1,34 +1,45 @@
 import Link from "next/link";
-import Backdrop from "@/components/backdrop";
-import SectionTitle from "../components/sectionTitle";
+import PageHero from "@/components/pageHero";
+import ErrorPanel, { primaryAction, secondaryAction } from "@/components/errors/ErrorPanel";
 
+export const metadata = {
+  title: "Sivua ei löytynyt",
+};
+
+/**
+ * A mistyped or old address, or something that was removed (an invoice, a
+ * bulletin). On every screen size, with ways on to the pages people look for.
+ */
 export default function NotFound() {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center w-screen">
-      <section className="max-w-screen relative">
-        <Backdrop name="olavinlinna" preload />
-        <div className="w-screen h-screen flex">
-          <div className="absolute inset-0 bg-black opacity-50 flex justify-center items-center"></div>
-          <div className="absolute inset-x-0 bottom-0 z-10 w-full h-full sm:h-5/6 flex flex-col justify-between">
-            <div className="flex flex-col justify-end">
-              <div className="text-sm sm:text-md lg:text-lg xl:text-xl text-white font-light text-center text-nowrap mt-10 hidden sm:block">
-                <SectionTitle
-                  pretitle="404"
-                  title="Tätä sivua ei vielä ole olemassa"
-                >
-                  Sivut ovat vielä työn alla
-                </SectionTitle>
-                <Link
-                  href="/"
-                  className="px-6 py-3 bg-white text-black hover:bg-gray-200 transition-colors rounded-md font-medium"
-                >
-                  Palaa etusivulle
-                </Link>
-              </div>
-            </div>
+    <div className="min-h-screen flex flex-col w-full">
+      <PageHero title="Sivua ei löytynyt" backgroundImage="olavinlinna" showScrollIndicator={false}>
+        <div className="max-w-[1600px] mx-auto px-6 pb-20 lg:pb-32">
+          <div className="max-w-3xl">
+            <ErrorPanel
+              tone="dark"
+              actions={
+                <>
+                  <Link href="/" className={primaryAction("dark")}>
+                    Etusivulle
+                  </Link>
+                  <Link href="/kalusto/varauskalenteri" className={secondaryAction("dark")}>
+                    Varauskalenteri
+                  </Link>
+                  <Link href="/yhteystiedot" className={secondaryAction("dark")}>
+                    Yhteystiedot
+                  </Link>
+                </>
+              }
+            >
+              <p>
+                Osoitteessa ei ole sivua. Se voi olla kirjoitettu väärin, tai sivu on siirretty tai
+                poistettu.
+              </p>
+            </ErrorPanel>
           </div>
         </div>
-      </section>
+      </PageHero>
     </div>
   );
 }

@@ -1,5 +1,10 @@
+// The image's version as Next's deployment ID (nextjs/Dockerfile), which may
+// only have letters, digits, hyphens and underscores: v0.0.30 → v0-0-30
+const deploymentVersion = process.env.DEPLOYMENT_VERSION?.replace(/[^A-Za-z0-9_-]/g, "-");
+
 module.exports = {
   output: "standalone",
+  deploymentId: deploymentVersion || undefined,
   allowedDevOrigins: ["10.10.0.*"],
   // Pin the project root to nextjs/ so a lockfile in a parent directory
   // (the repo root, or the main checkout above a .claude/worktrees/* tree)

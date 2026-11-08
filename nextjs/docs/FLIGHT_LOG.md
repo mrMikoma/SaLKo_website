@@ -5,7 +5,7 @@ How the flight log works as of October 2026. `FLIGHT_LOG_PLAN.md` describes the 
 ## The model
 
 - **Master:** the aircraft's paper journey log (matkapäiväkirja).
-- **Digital copy:** the club's Google Sheet, one tab per aircraft (`OH-CON Matkapäiväkirja`). Pilots and the biller enter flights there, and members can also enter them on the website, which writes the rows into the sheet.
+- **Digital copy:** the club's Google Sheet, one tab per aircraft (`OH-CON Matkapäiväkirja`, `OH-386 Matkapäiväkirja`). Pilots and the biller enter flights there, and members can also enter them on the website, which writes the rows into the sheet.
 - **Website:** reads the sheet into `sheet_flights` and shows it. `sheet_flights` is a read-only copy. A flight is never edited in the database, only in the sheet. That keeps it one-way, with no two-way sync.
 
 The website owns what isn't in the sheet:
@@ -47,7 +47,7 @@ The first three are set on `/admin/lennot` (below) or in the sheet. A row with o
    - Rows that only have Tila, Lähde or Laskutusjakso, such as a Tila filled down past the last flight, are reported as one issue per run of rows.
    - Dates are serial numbers, `1.4.2026` or `2026-04-01`; nothing else is guessed. A date in the future, before 2000, or more than a year before the row above is reported.
    - A cell that doesn't hold what its column should is read as empty and reported: an ID that isn't a UUID, a time that is a decimal (`14,05` is the number 14.05 to a Finnish sheet, not 14:05), or a number out of range, like a date that Sheets made of `1.5` in Öljy. Before, one such cell made the database refuse the whole sync.
-   - Ilmassa oloaika, Kokonais ilmassaoloaika and Laskujen kokonaismäärä hold formulas. A value too big for the database's integer columns (over 10 000 000 minutes or landings) is read as empty and reported; text there, such as a broken formula's `#REF!`, is read as empty without a report.
+   - Ilmassa oloaika, Kokonais ilmassaoloaika and Laskujen kokonaismäärä hold formulas. A value too big for the database's integer columns (over 10 000 000 minutes or landings) is read as empty and reported; text there, such as a broken formula's `#REF!`, is read as empty. On flight rows such errors are reported once per run of rows (`findFormulaErrorIssues`), since a broken running total breaks every row below it; the airborne time then comes from the times.
    - Times are Finnish wall-clock times. Durations are rounded to whole minutes; the sheet has float drift such as 12:32:59.
    - A landing earlier than the takeoff is after midnight. The club's Ilmassa oloaika formula (H−G) is negative for those, so the parser takes the minutes from the times instead, and the sync reports the row: the biller types the time in by hand, as the club always has, so the sheet's running totals stay right. An Ilmassa oloaika typed by hand that doesn't match the times is reported too.
 4. Gives every flight row an ID (`assignIds`). This is the only thing the sync writes to the sheet; the entry form below writes flights.
@@ -92,9 +92,18 @@ A training flight without a student is not an issue: on a solo flight the studen
 - **Legs:** "+ Seuraava lento samana päivänä" adds a leg that starts where the last one landed, with the same purpose. Times take `1405`, `14.05`, `14,05` or `14:05` (minutes always with two digits), and "Nyt" fills in the current Finnish time. Hour meter, fuel, oil and remarks are optional.
 - **Times are checked** in the form and again on the server (`legTimeError` in `utilities/flightFormInput.ts`): equal times, a landing in the future, legs of the day that overlap, and a leg over 8 hours are refused. A landing earlier than the takeoff is after midnight when the leg stays under 8 hours (23:30 → 00:20); otherwise it is a typo (14:30 → 14:10), which the sheet's formula would turn into negative time and billing into a credit.
 - **As a student** the purpose must be a training one, since the student pays for those; choosing "Oppilaana" switches the legs to the first one.
-- **Footer:** total time, and an estimate for billed purposes from the per-minute price in `data/prices.json`. Billing itself comes later.
+- **Footer:** total time, and an estimate for billed purposes at the aircraft's price with the equipment fee today (`aircraft_rates`).
 
-**Sheet name.** The form writes the member's `pilot_aliases` name. A member without one gets the club's usual form, `M.Meikäläinen` from "Matti Meikäläinen" (`sheetNameFor`), or else the full name. It is saved as their alias once the flights are in the sheet, so they match at once and a failed save reserves nothing. Only a name that isn't in the sheet or in `pilot_aliases` yet is taken this way: an existing "M.Meikäläinen" may be another pilot, and taking it would give the member that pilot's flights and bills. When both names are in use, the form asks the member to have the biller match their name on `/admin/lennot`. Members choose their own full name, so the list of matched names there shows each member's email too.
+**Sheet name.** The form writes the member's `pilot_aliases` name. A member without one gets the club's usual form, `M.Meikäläinen` from "Matti Meikäläinen" (`sheetNameFor`), or else the full name. It is saved as their alias once the flights are in the sheet, so they match at once and a failed save reserves nothing. Only a name that isn't in the sheet or in `pilot_aliases` yet is taken this way: an existing "M.Meikäläinen" may be another pilot, and taking it would give the member that pilot's flights and bills. When both names are in use, the flight is still saved, never refused, under the one closest to being the member's:
+1. a name in the sheet that nobody has decided on;
+2. then one marked as no member;
+3. then one matched to another member.
+
+The name is not taken. The confirmation tells the member that the biller will match the name, and that the flight shows in their own flights after that. The biller sees it while checking the flight:
+- **An undecided name** is listed under "Lentäjien nimet" (`unknown_pilot`).
+- **A name marked as no member, or matched to someone else,** gives the flight a `web_entry_name` issue. It names the member who entered the flight, so the biller can match the name to them or correct the row (`findWebEntryNameIssues`).
+
+Members choose their own full name, so the list of matched names there shows each member's email too.
 
 **Writing** (`utilities/flightSheetWriter.ts`):
 1. A Postgres advisory lock per aircraft, so two members never get the same rows. A writer waits for it at most 15 seconds, and each Sheets request times out after 20, so a hung request can't queue everyone.
@@ -103,7 +112,11 @@ A training flight without a student is not an issue: on a solo flight the studen
 4. Writes only the typed-in columns, plus `ID`, `Lähde` = `web`, an empty Tila and an empty Laskutusjakso, with `USER_ENTERED`: ISO dates and `HH:MM` times, which Sheets reads as a date and a time. Tila and Laskutusjakso are emptied because someone may have filled them down past the last flight. Names, remarks and other text get a leading apostrophe, so Sheets keeps them as typed and a remark can never become a formula. The formulas stay.
 5. Reads the tab back: each flight must be in its row with its ID, and every flight that was there before must still be there, unchanged. Sheets can't write "only if nothing changed", so a row inserted by hand at that very moment could shift the last flight into the row being written; this catches it and names the row.
 6. Records the rows in `flight_log_web_entries` and syncs.
-7. When the formula rows run out, it refuses and asks the member to tell the biller, who drags the formulas further down.
+7. When the formula rows run out, it continues them itself, as the biller would by dragging the last row down (`planFlightRows`, `extendFormulas`):
+   - It adds 100 rows at a time, or as many as the flights need, with Sheets' own copy-paste, so references move and formatting comes along.
+   - Only the cells of the last formula row that hold a formula are copied, never into the columns people or the site type into. Rows are added to the tab when it is too short.
+   - A tab with no formula row at all (all its rows deleted) gets the club's formulas from the template in its first new row, and the rest continue from that. Sheets reads a formula sent through its API in the spreadsheet's locale, so the arguments are separated as the locale does (`;` in a Finnish sheet, from `properties.locale`). The row is read back before it is copied, and written with the other separator if Sheets still shows `#ERROR!`. It also gets the template's date, time and duration formats, and every copy takes the source row's formats, so rows added to a tab whose rows were deleted don't show a date as 46113.
+   - Only a row someone has typed into, in the way of the new rows, still stops the save; the message names the row.
 
 **Saving twice is safe.** The form makes each leg's ID when the leg is added and sends it with every try. If the answer is lost (a dropped connection at the airfield, or a form left open while the site was updated), the form keeps what was typed and says the save didn't come through. Saving again finds the IDs: already recorded, it just confirms; in the sheet but not recorded, it finishes the record; in the sheet with other times, it refuses. A member can save or undo 20 times in 10 minutes, since each one makes several Sheets requests as the one service account.
 
@@ -131,14 +144,14 @@ On `/admin/lennot` (`MANAGE_FLIGHT_LOG`), the biller ticks the rows that match t
 ## Typing in a page of the paper book
 
 `/admin/lennot/tuonti` (`MANAGE_FLIGHT_LOG`, the **Kirjaa paperisivu** button on `/admin/lennot`) is a grid for one page of the journey log, typed or pasted from a spreadsheet as tab-separated rows (`utilities/paperPage.ts`):
-- **Grid:** dates as `14.6.2025`, `14.6.25` or `14.6.`; an empty date or a `"` mark repeats the line above. Times take the same shorthand as the member form. Enter and the arrow keys move between lines.
+- **Grid:** the book's columns in the sheet's order, from the date to the purpose, then Tankkaus (litres), Öljy (quarts), Tuntimittari and Huomiot. Dates as `14.6.2025`, `14.6.25` or `14.6.`; an empty date or a `"` mark repeats the line above. Times take the same shorthand as the member form, and the fuel, oil and meter take a decimal comma or point. Enter and the arrow keys move between lines.
 - **Totals:** the footer adds up the page. Typing the page's printed sum and landings shows whether they match.
 - **Tarkista sivu** syncs, then pairs each line with a flight already in the sheet: same day, takeoff within 15 minutes, or the same PIC with overlapping times. Each line is one of:
   - **Uusi**: not in the sheet, appended like a member's entry;
   - **Sama**: a pilot entered it already, and it is confirmed;
   - **Eroaa**: a pilot entered it with other details, listed as "lasku 11:03 → 11:05". By default the sheet row is corrected to the paper, which is the master. It can also be added as a separate flight, or skipped.
   - Lines already in billing are skipped. Flights in the sheet on the page's days that no line matched are listed under the grid: they are on the next page, or extra.
-- **Tallenna sivu taulukkoon** writes everything in one batch under the aircraft lock (`writePaperPage`). Every flight of the page gets Tila Tarkistettu and the page number. A correction rewrites only what the paper says (date, pilots, persons, route, times, landings, purpose, and the remark if the paper has one), so fuel, oil and the hour meter stay. Like a status change, it refuses the page if a matched row changed after the check.
+- **Tallenna sivu taulukkoon** writes everything in one batch under the aircraft lock (`writePaperPage`). Every flight of the page gets Tila Tarkistettu and the page number. A correction rewrites only what the paper says: date, pilots, persons, route, times, landings and purpose, and the fuel, oil, hour meter and remark when the paper has them. An empty one keeps what the pilot entered; a different one is a difference ("tankkaus 72 → 70,5"). Like a status change, it refuses the page if a matched row changed after the check.
 - **Review log:** each flight gets a line in `flight_status_changes` with a note such as "Paperisivu 47, korjattu: lasku 11:03 → 11:05". The service account writes the sheet, so the sheet's own history can't say who did it. On `/admin/lennot` the note shows on hover over who checked the flight.
 
 ## Billing
@@ -152,11 +165,11 @@ On `/admin/lennot` (`MANAGE_FLIGHT_LOG`), the biller ticks the rows that match t
 
 A payer is a member through `pilot_aliases`. Several sheet names of one member make one bill. A name marked **Ei jäsen** is billed under that name. A name not decided on stops the period from closing.
 
-**Price** is the airborne minutes × the aircraft's per-minute price on the flight's date (`aircraft_rates`):
+**Price** is the aircraft's hourly price on the flight's date (`aircraft_rates`), billed by the minute: airborne minutes × price / 60, rounded to the cent on each line:
 - the lower price applies to members who paid that calendar year's equipment fee (`equipment_fee_seasons`), and to training flights, since students are exempt from the fee until their check flight;
 - everyone else pays the higher price.
 
-OH-CON starts at 3,10 / 5,00 €/min, as in `data/prices.json`. That file is the public price list and is edited separately.
+OH-CON starts at 186 / 300 €/h (3,10 / 5,00 €/min) and OH-386 at 100 / 200 €/h, both with a 30-minute minimum. They are edited on `/admin/hinnasto` with the rest of the price list, and the public price page shows today's. Prices are stored per hour because OH-386's aren't whole cents a minute: a 27-minute flight is 45,00 €, 13 minutes 21,67 €. Bills show a price per minute when it is whole cents ("3,10 €/min"), otherwise per hour ("100,00 €/h"), and an invoice line in the latter case gives the price in its text.
 
 **Minimum:** a lone local flight (same departure and arrival) shorter than the aircraft's minimum is billed the minimum (30 min for OH-CON), as a "Minimilaskutus" line. Consecutive flights by the same payer on the same day, and trips to another field, have no minimum, as in the price list.
 
@@ -178,7 +191,7 @@ OH-CON starts at 3,10 / 5,00 €/min, as in `data/prices.json`. That file is the
 - printable summaries, one page per payer (`/admin/laskutus/[id]/tuloste`);
 - members see their closed periods, with lines and whether they are paid, on `/jasenalue/lentopaivakirja` (`VIEW_OWN_BILLING`), linked to their invoices on `/jasenalue/laskut`.
 
-**Settings** (`/admin/laskutus/asetukset`): prices per aircraft from a date, the equipment-fee members per season, the free hour, and who pays for each purpose.
+**Settings** (`/admin/laskutus/asetukset`): the equipment-fee members per season, the free hour, and who pays for each purpose. Prices per aircraft from a date are on `/admin/hinnasto`, with the rest of the price list.
 
 ## Statistics
 
@@ -232,7 +245,7 @@ Without the variable, Google is used when it's configured, and the fixture other
 
 Migration `007_flight_log_web_entries.sql` adds `flight_log_web_entries`, `008_flight_status_changes.sql` adds `flight_status_changes` and `sheet_flights.input_hash`, and `009_flight_review_notes.sql` adds `flight_status_changes.note`, and `010_billing.sql` the billing tables, and `011_aircraft_year_totals.sql` the earlier years' hours.
 
-The entry spec logs its flights on OH-TST, a test aircraft with a tab of its own in the fixture: undo works only on a tab's last row, and the other specs add rows to OH-CON's tab at the same time.
+The fixture also has an empty OH-386 tab, since the sync reads every active aircraft. The entry spec logs its flights on OH-TST, a test aircraft with a tab of its own in the fixture: undo works only on a tab's last row, and the other specs add rows to OH-CON's tab at the same time.
 
 ## Before switching it on for the real sheet
 

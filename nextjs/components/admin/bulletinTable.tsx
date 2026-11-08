@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useRef, useState, useTransition } from "react";
+import React, { useMemo, useRef, useState, useTransition } from "react";
 import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { DateTime } from "luxon";
 import {
   AdminBulletin,
@@ -11,7 +10,19 @@ import {
   setBulletinPublished,
   deleteBulletin,
 } from "@/utilities/bulletings";
-import { bulletinMarkdown } from "@/components/bulletings/bulletinMarkdown";
+import { bulletinMarkdown, bulletinRemarkPlugins } from "@/components/bulletings/bulletinMarkdown";
+import {
+  continueList,
+  insertLink,
+  insertRule,
+  LineStyle,
+  TextEdit,
+  toggleLineStyle,
+  toggleWrap,
+} from "@/utilities/markdownEdit";
+import { callAction } from "@/utilities/callAction";
+import { useDraft } from "@/hooks/useDraft";
+import DraftNotice from "@/components/DraftNotice";
 
 interface BulletinTableProps {
   bulletins: AdminBulletin[];
@@ -42,6 +53,35 @@ interface MarkdownEditorProps {
   minRows?: number;
 }
 
+function ToolButton({
+  label,
+  disabled,
+  onClick,
+  className = "",
+  children,
+}: {
+  label: string;
+  disabled: boolean;
+  onClick: () => void;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      disabled={disabled}
+      // Keeps the text selected while the button is pressed
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={onClick}
+      className={`px-2 py-1 text-sm rounded hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed font-mono text-gray-700 transition-colors ${className}`}
+    >
+      {children}
+    </button>
+  );
+}
+
 function MarkdownEditor({
   id,
   value,
@@ -53,137 +93,117 @@ function MarkdownEditor({
   const ref = useRef<HTMLTextAreaElement>(null);
   const [preview, setPreview] = useState(false);
 
-  const wrap = (before: string, after: string, fallback: string) => {
+  // Applies an edit as if typed, so the browser's undo (Ctrl+Z) still works;
+  // setting the value from React would clear its history
+  const apply = (edit: TextEdit | null) => {
     const ta = ref.current;
-    if (!ta) return;
-    const s = ta.selectionStart;
-    const e = ta.selectionEnd;
-    const sel = value.slice(s, e) || fallback;
-    const next = value.slice(0, s) + before + sel + after + value.slice(e);
-    onChange(next);
+    if (!ta || !edit) return;
+    ta.focus();
+    ta.setSelectionRange(edit.from, edit.to);
+    let done = true;
+    if (edit.insert) done = document.execCommand("insertText", false, edit.insert);
+    else if (edit.from !== edit.to) done = document.execCommand("delete");
+    if (!done) {
+      onChange(ta.value.slice(0, edit.from) + edit.insert + ta.value.slice(edit.to));
+    }
     setTimeout(() => {
       ta.focus();
-      const cur = s + before.length + sel.length + after.length;
-      ta.setSelectionRange(cur, cur);
+      ta.setSelectionRange(edit.selectStart, edit.selectEnd);
     }, 0);
   };
-
-  const prependLine = (prefix: string) => {
+  const selection = (): [string, number, number] | null => {
     const ta = ref.current;
-    if (!ta) return;
-    const s = ta.selectionStart;
-    const lineStart = value.lastIndexOf("\n", s - 1) + 1;
-    // Toggle: if line already starts with prefix, remove it
-    if (value.slice(lineStart).startsWith(prefix)) {
-      const next = value.slice(0, lineStart) + value.slice(lineStart + prefix.length);
-      onChange(next);
-    } else {
-      const next = value.slice(0, lineStart) + prefix + value.slice(lineStart);
-      onChange(next);
+    return ta ? [ta.value, ta.selectionStart, ta.selectionEnd] : null;
+  };
+  const lineStyle = (style: LineStyle) => {
+    const at = selection();
+    if (at) apply(toggleLineStyle(...at, style));
+  };
+  const wrap = (marker: string, placeholderText: string) => {
+    const at = selection();
+    if (at) apply(toggleWrap(...at, marker, placeholderText));
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const ta = e.currentTarget;
+    const shortcut = (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey;
+    if (shortcut && e.key.toLowerCase() === "b") {
+      e.preventDefault();
+      wrap("**", "lihavoitu teksti");
+    } else if (shortcut && e.key.toLowerCase() === "i") {
+      e.preventDefault();
+      wrap("*", "kursivoitu teksti");
+    } else if (
+      e.key === "Enter" &&
+      !e.shiftKey &&
+      !e.ctrlKey &&
+      !e.metaKey &&
+      !e.altKey &&
+      !e.nativeEvent.isComposing &&
+      ta.selectionStart === ta.selectionEnd
+    ) {
+      const edit = continueList(ta.value, ta.selectionStart);
+      if (edit) {
+        e.preventDefault();
+        apply(edit);
+      }
     }
-    setTimeout(() => ta.focus(), 0);
   };
 
-  const insertHr = () => {
-    const ta = ref.current;
-    if (!ta) return;
-    const s = ta.selectionStart;
-    const pre = value.slice(0, s);
-    const needsNewline = pre.length > 0 && !pre.endsWith("\n");
-    const insert = (needsNewline ? "\n" : "") + "---\n";
-    onChange(pre + insert + value.slice(s));
-    setTimeout(() => ta.focus(), 0);
-  };
-
-  const btnClass =
-    "px-2 py-1 text-sm rounded hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed font-mono text-gray-700 transition-colors";
   const dividerClass = "w-px h-5 bg-gray-300 mx-1";
+  const off = disabled || preview;
 
   return (
     <div className="border border-gray-300 rounded-lg overflow-hidden">
       {/* Toolbar */}
       <div className="flex items-center flex-wrap gap-0.5 bg-gray-50 px-2 py-1.5 border-b border-gray-300">
-        <button
-          type="button"
-          title="Lihavointi"
-          disabled={disabled || preview}
-          onClick={() => wrap("**", "**", "lihavoitu teksti")}
-          className={`${btnClass} font-bold`}
-        >
+        <ToolButton label="Lihavointi (Ctrl+B)" disabled={off} onClick={() => wrap("**", "lihavoitu teksti")} className="font-bold">
           B
-        </button>
-        <button
-          type="button"
-          title="Kursivointi"
-          disabled={disabled || preview}
-          onClick={() => wrap("*", "*", "kursivoitu teksti")}
-          className={`${btnClass} italic`}
-        >
+        </ToolButton>
+        <ToolButton label="Kursivointi (Ctrl+I)" disabled={off} onClick={() => wrap("*", "kursivoitu teksti")} className="italic">
           I
-        </button>
+        </ToolButton>
 
         <div className={dividerClass} />
 
-        <button
-          type="button"
-          title="Otsikko (H2)"
-          disabled={disabled || preview}
-          onClick={() => prependLine("## ")}
-          className={btnClass}
-        >
+        <ToolButton label="Otsikko (H2)" disabled={off} onClick={() => lineStyle("h2")}>
           H2
-        </button>
-        <button
-          type="button"
-          title="Alaotsikko (H3)"
-          disabled={disabled || preview}
-          onClick={() => prependLine("### ")}
-          className={btnClass}
-        >
+        </ToolButton>
+        <ToolButton label="Alaotsikko (H3)" disabled={off} onClick={() => lineStyle("h3")}>
           H3
-        </button>
+        </ToolButton>
 
         <div className={dividerClass} />
 
-        <button
-          type="button"
-          title="Luettelomerkki"
-          disabled={disabled || preview}
-          onClick={() => prependLine("- ")}
-          className={btnClass}
-        >
+        <ToolButton label="Luettelo valituista riveistä" disabled={off} onClick={() => lineStyle("bullet")}>
           •≡
-        </button>
-        <button
-          type="button"
-          title="Numeroitu lista"
-          disabled={disabled || preview}
-          onClick={() => prependLine("1. ")}
-          className={btnClass}
-        >
+        </ToolButton>
+        <ToolButton label="Numeroitu lista valituista riveistä" disabled={off} onClick={() => lineStyle("numbered")}>
           1.
-        </button>
+        </ToolButton>
 
         <div className={dividerClass} />
 
-        <button
-          type="button"
-          title="Vaakaviiva"
-          disabled={disabled || preview}
-          onClick={insertHr}
-          className={btnClass}
+        <ToolButton
+          label="Vaakaviiva"
+          disabled={off}
+          onClick={() => {
+            const at = selection();
+            if (at) apply(insertRule(at[0], at[1]));
+          }}
         >
           —
-        </button>
-        <button
-          type="button"
-          title="Linkki"
-          disabled={disabled || preview}
-          onClick={() => wrap("[", "](https://)", "linkin teksti")}
-          className={btnClass}
+        </ToolButton>
+        <ToolButton
+          label="Linkki"
+          disabled={off}
+          onClick={() => {
+            const at = selection();
+            if (at) apply(insertLink(...at));
+          }}
         >
           🔗
-        </button>
+        </ToolButton>
 
         <div className="flex-1" />
 
@@ -206,7 +226,7 @@ function MarkdownEditor({
         // As members will see it on the site
         <div className="min-h-[200px] px-6 py-4 bg-sblued text-swhite/90 text-base leading-relaxed [overflow-wrap:anywhere]">
           {value.trim() ? (
-            <ReactMarkdown remarkPlugins={[remarkGfm]} components={bulletinMarkdown}>
+            <ReactMarkdown remarkPlugins={bulletinRemarkPlugins} components={bulletinMarkdown}>
               {value}
             </ReactMarkdown>
           ) : (
@@ -219,6 +239,7 @@ function MarkdownEditor({
           ref={ref}
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          onKeyDown={onKeyDown}
           disabled={disabled}
           placeholder={placeholder}
           rows={minRows}
@@ -226,14 +247,18 @@ function MarkdownEditor({
         />
       )}
 
-      <div className="px-3 py-1.5 bg-gray-50 border-t border-gray-200 text-xs text-gray-400">
-        Tukee Markdown-muotoilua · **lihavoitu** · *kursiivi* · ## Otsikko · - Lista
+      <div className="px-3 py-1.5 bg-gray-50 border-t border-gray-200 text-xs text-gray-500">
+        Valitse rivit ja paina •≡ tai 1., niin niistä tulee lista. Enter jatkaa listaa,
+        tyhjällä rivillä lista päättyy. Rivinvaihdot näkyvät tiedotteessa sellaisinaan.
       </div>
     </div>
   );
 }
 
 // ─── Main admin table ─────────────────────────────────────────────────────────
+
+const NO_TEXT = { title: "", content: "" };
+const NO_EDIT = { id: null as number | null, title: "", content: "" };
 
 const BulletinTable = ({ bulletins }: BulletinTableProps) => {
   const [isPending, startTransition] = useTransition();
@@ -245,6 +270,34 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
   const [newBulletin, setNewBulletin] = useState({ title: "", content: "" });
   const [editedBulletin, setEditedBulletin] = useState({ title: "", content: "" });
 
+  // What's being written survives a reload or a crash, in this tab only
+  const newDraft = useDraft(
+    "tiedote-uusi",
+    showCreateForm ? newBulletin : NO_TEXT,
+    (draft) => {
+      setNewBulletin(draft);
+      setShowCreateForm(true);
+    },
+    (draft) => !draft.title.trim() && !draft.content.trim()
+  );
+  const editValue = useMemo(
+    () => (editingId === null ? NO_EDIT : { id: editingId, ...editedBulletin }),
+    [editingId, editedBulletin]
+  );
+  const editDraft = useDraft(
+    "tiedote-muokkaus",
+    editValue,
+    (draft) => {
+      if (!bulletins.some((bulletin) => bulletin.id === draft.id)) return;
+      setEditingId(draft.id);
+      setEditedBulletin({ title: draft.title, content: draft.content });
+    },
+    // Nothing to keep while the text is as saved
+    (draft) =>
+      draft.id === null ||
+      bulletins.some((b) => b.id === draft.id && b.title === draft.title && b.content === draft.content)
+  );
+
   const showSuccess = (msg: string) => {
     setSuccess(msg);
     setTimeout(() => setSuccess(null), 3000);
@@ -254,13 +307,14 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
   const handleCreate = (publish: boolean) => {
     setError(null);
     startTransition(async () => {
-      const result = await createBulletin(newBulletin, publish);
-      if (result.success) {
+      const result = await callAction(() => createBulletin(newBulletin, publish));
+      if (result.status === "success") {
         showSuccess(publish ? "Tiedote julkaistu" : "Tiedote tallennettu luonnoksena");
+        newDraft.clear();
         setShowCreateForm(false);
         setNewBulletin({ title: "", content: "" });
       } else {
-        setError(result.error || "Tiedotteen luonti epäonnistui");
+        setError(result.error);
       }
     });
   };
@@ -268,11 +322,11 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
   const handlePublish = (id: number, publish: boolean) => {
     setError(null);
     startTransition(async () => {
-      const result = await setBulletinPublished(id, publish);
-      if (result.success) {
+      const result = await callAction(() => setBulletinPublished(id, publish));
+      if (result.status === "success") {
         showSuccess(publish ? "Tiedote julkaistu" : "Tiedote palautettu luonnokseksi");
       } else {
-        setError(result.error || "Julkaisun muutos epäonnistui");
+        setError(result.error);
       }
     });
   };
@@ -287,12 +341,13 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
   const handleUpdate = (id: number) => {
     setError(null);
     startTransition(async () => {
-      const result = await updateBulletin(id, editedBulletin);
-      if (result.success) {
+      const result = await callAction(() => updateBulletin(id, editedBulletin));
+      if (result.status === "success") {
         showSuccess("Tiedote päivitetty onnistuneesti");
+        editDraft.clear();
         setEditingId(null);
       } else {
-        setError(result.error || "Tiedotteen päivitys epäonnistui");
+        setError(result.error);
       }
     });
   };
@@ -300,11 +355,11 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
   const handleDelete = (id: number, title: string) => {
     if (!confirm(`Haluatko varmasti poistaa tiedotteen "${title}"?`)) return;
     startTransition(async () => {
-      const result = await deleteBulletin(id);
-      if (result.success) {
+      const result = await callAction(() => deleteBulletin(id));
+      if (result.status === "success") {
         showSuccess("Tiedote poistettu onnistuneesti");
       } else {
-        setError(result.error || "Tiedotteen poisto epäonnistui");
+        setError(result.error);
       }
     });
   };
@@ -347,6 +402,17 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
           </button>
         ) : (
           <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+            {newDraft.restored && (
+              <div className="mb-4">
+                <DraftNotice
+                  onDiscard={() => {
+                    newDraft.clear();
+                    setNewBulletin({ title: "", content: "" });
+                    setShowCreateForm(false);
+                  }}
+                />
+              </div>
+            )}
             <h3 className="text-lg font-semibold mb-4 text-gray-900">
               Luo uusi tiedote
             </h3>
@@ -430,6 +496,16 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
               >
                 {editingId === bulletin.id ? (
                   <div className="p-4 bg-gray-50">
+                    {editDraft.restored && (
+                      <div className="mb-4">
+                        <DraftNotice
+                          onDiscard={() => {
+                            editDraft.clear();
+                            setEditingId(null);
+                          }}
+                        />
+                      </div>
+                    )}
                     <h4 className="text-md font-semibold mb-4 text-gray-900">
                       Muokkaa tiedotetta
                     </h4>
@@ -536,7 +612,7 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
                       </div>
                     </div>
                     <div className="text-gray-700 mt-3 border-t border-gray-100 pt-3 text-sm leading-relaxed [overflow-wrap:anywhere] [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mb-1 [&_strong]:font-bold [&_h2]:text-base [&_h2]:font-bold [&_h2]:mt-3 [&_h2]:mb-1 [&_h3]:text-sm [&_h3]:font-semibold [&_a]:text-sblue [&_a]:underline [&_p]:mb-2 [&_hr]:border-gray-300 [&_hr]:my-2">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      <ReactMarkdown remarkPlugins={bulletinRemarkPlugins}>
                         {bulletin.content}
                       </ReactMarkdown>
                     </div>

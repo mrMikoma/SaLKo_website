@@ -1,22 +1,30 @@
 "use client";
 
-import { useActionState } from "react";
-import { resetPasswordWithToken } from "@/utilities/passwordReset";
+import { resetPasswordWithToken, type ResetPasswordState } from "@/utilities/passwordReset";
+import { useFormAction } from "@/hooks/useFormAction";
+import Login from "@/components/auth/login";
 
 const inputClassName =
   "block w-full rounded-lg bg-white/95 px-4 py-2.5 text-base text-sblued border-2 border-sblue/30 focus:border-sred focus:ring-2 focus:ring-sred/20 focus:outline-none transition-all duration-200 shadow-md";
 
 const ResetPasswordForm = ({ token }: { token: string }) => {
-  const [state, action, pending] = useActionState(resetPasswordWithToken, undefined);
+  const { state, action, pending } = useFormAction<ResetPasswordState>(
+    resetPasswordWithToken,
+    undefined,
+    (message) => ({ status: "error", error: message })
+  );
 
   if (state?.status === "success") {
     return (
-      <div className="space-y-3 text-swhite" role="status">
-        <p className="text-xl font-semibold">Salasana vaihdettu</p>
-        <p>
-          Voit nyt kirjautua sisään uudella salasanalla sivun yläreunan
-          Jäsenalue-valikosta.
-        </p>
+      <div className="space-y-3 text-swhite">
+        <div role="status" className="space-y-1">
+          <p className="text-xl font-semibold">Salasana vaihdettu</p>
+          <p>Kirjaudu sisään uudella salasanalla.</p>
+        </div>
+        {/* Right here, rather than behind the navbar's menu (on a phone the hamburger) */}
+        <div className="glass rounded-2xl border-2 border-sred/30 shadow-2xl">
+          <Login redirectTo="/jasenalue/profiili" />
+        </div>
       </div>
     );
   }

@@ -50,7 +50,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         ]),
       ]
     : [
-        ["Jakso", "Maksaja", "Sähköposti", "Rivi", "Päivä", "Kone", "Tarkoitus", "Selite", "Minuutit", "€/min", "Summa €"],
+        ["Jakso", "Maksaja", "Sähköposti", "Rivi", "Päivä", "Kone", "Tarkoitus", "Selite", "Minuutit", "Tuntihinta €", "Summa €"],
         ...bill.payers.flatMap((payer) =>
           payer.lines.map((line) => [
             period.name,
@@ -62,7 +62,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
             line.purposeCode,
             line.description,
             line.minutes,
-            line.centsPerMinute === null ? null : csvMoney(line.centsPerMinute),
+            line.centsPerHour === null ? null : csvMoney(line.centsPerHour),
             csvMoney(line.amountCents),
           ])
         ),

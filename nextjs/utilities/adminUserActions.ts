@@ -4,12 +4,14 @@ import { createHash, randomBytes } from "crypto";
 import { z } from "zod";
 import { auth } from "@/auth";
 import pool from "@/utilities/db";
+import { SESSION_ENDED } from "@/utilities/errorText";
 import { hasPermission, PERMISSIONS, ROLES, validateRoles } from "@/utilities/roles";
 import { isFlightLogEnabled } from "@/utilities/features";
 import { PasswordSchema } from "@/utilities/definitions";
 import { revalidatePath } from "next/cache";
 import * as bcrypt from "bcrypt";
 import { logger } from "@/utilities/logger";
+import type { ActionResult } from "@/utilities/actionResult";
 
 const log = logger.child({ module: "admin-users" });
 
@@ -40,7 +42,6 @@ export interface User {
   flight_entry_count: number;
 }
 
-type ActionResult = { success: boolean; error?: string };
 
 const SYSTEM_GUEST_EMAIL = "vieras@savonlinnanlentokerho.fi";
 const RESET_LINK_HOURS = 24;
@@ -78,6 +79,15 @@ async function requirePermission(permission: keyof typeof PERMISSIONS) {
 }
 
 /**
+ * Why an action was refused: the session ended, or the account lacks the
+ * permission. Only called on the refusal path.
+ */
+async function refusal(): Promise<string> {
+  const session = await auth();
+  return session?.user?.id ? "Ei oikeuksia" : SESSION_ENDED;
+}
+
+/**
  * Loads the target of an admin action and refuses the actions nobody may do:
  * on the system guest account, (unless allowed) on your own account, and on
  * an anonymised account other than deleting it
@@ -110,7 +120,7 @@ async function loadTarget(
 export async function getAllUsers(searchQuery?: string): Promise<User[] | null> {
   try {
     if (!(await requirePermission("VIEW_USER_LIST"))) {
-      throw new Error("Ei oikeuksia");
+      throw new Error(await refusal());
     }
 
     const search = searchQuery?.trim();
@@ -140,35 +150,35 @@ export async function updateUserRoles(
   try {
     const actor = await requirePermission("CHANGE_USER_ROLE");
     if (!actor) {
-      return { success: false, error: "Ei oikeuksia" };
+      return { status: "error", error: await refusal() };
     }
 
     if (actor.id === userId) {
-      return { success: false, error: "Et voi muuttaa omaa rooliasi" };
+      return { status: "error", error: "Et voi muuttaa omaa rooliasi" };
     }
 
     const checked = validateRoles(newRoles);
     if ("error" in checked) {
-      return { success: false, error: checked.error };
+      return { status: "error", error: checked.error };
     }
     const inactive = refuseInactiveRoles(checked.roles);
     if (inactive) {
-      return { success: false, error: inactive };
+      return { status: "error", error: inactive };
     }
     const filteredRoles = checked.roles;
 
     const target = await loadTarget(userId, actor.id);
     if ("error" in target) {
-      return { success: false, error: target.error };
+      return { status: "error", error: target.error };
     }
 
     await pool.query("UPDATE users SET roles = $1 WHERE id = $2", [filteredRoles, userId]);
 
     revalidatePath("/admin/users");
-    return { success: true };
+    return { status: "success", result: null };
   } catch (error) {
     log.error("Updating user roles failed", { err: error });
-    return { success: false, error: "Roolien päivitys epäonnistui" };
+    return { status: "error", error: "Roolien päivitys epäonnistui" };
   }
 }
 
@@ -183,12 +193,12 @@ export async function setUserActive(
   try {
     const actor = await requirePermission("DELETE_USER");
     if (!actor) {
-      return { success: false, error: "Ei oikeuksia" };
+      return { status: "error", error: await refusal() };
     }
 
     const target = await loadTarget(userId, actor.id);
     if ("error" in target) {
-      return { success: false, error: target.error };
+      return { status: "error", error: target.error };
     }
 
     await pool.query(
@@ -209,10 +219,10 @@ export async function setUserActive(
 
     revalidatePath("/admin/users");
     revalidatePath("/admin");
-    return { success: true };
+    return { status: "success", result: null };
   } catch (error) {
     log.error("Changing user status failed", { err: error });
-    return { success: false, error: "Käyttäjän tilan muutos epäonnistui" };
+    return { status: "error", error: "Käyttäjän tilan muutos epäonnistui" };
   }
 }
 
@@ -225,12 +235,12 @@ export async function anonymizeUser(userId: string): Promise<ActionResult> {
   try {
     const actor = await requirePermission("DELETE_USER");
     if (!actor) {
-      return { success: false, error: "Ei oikeuksia" };
+      return { status: "error", error: await refusal() };
     }
 
     const target = await loadTarget(userId, actor.id);
     if ("error" in target) {
-      return { success: false, error: target.error };
+      return { status: "error", error: target.error };
     }
 
     await pool.query(
@@ -252,10 +262,10 @@ export async function anonymizeUser(userId: string): Promise<ActionResult> {
 
     revalidatePath("/admin/users");
     revalidatePath("/admin");
-    return { success: true };
+    return { status: "success", result: null };
   } catch (error) {
     log.error("Anonymizing user failed", { err: error });
-    return { success: false, error: "Anonymisointi epäonnistui" };
+    return { status: "error", error: "Anonymisointi epäonnistui" };
   }
 }
 
@@ -268,18 +278,18 @@ export async function deleteUser(userId: string): Promise<ActionResult> {
   try {
     const actor = await requirePermission("DELETE_USER");
     if (!actor) {
-      return { success: false, error: "Ei oikeuksia" };
+      return { status: "error", error: await refusal() };
     }
 
     const target = await loadTarget(userId, actor.id, { allowAnonymised: true });
     if ("error" in target) {
-      return { success: false, error: target.error };
+      return { status: "error", error: target.error };
     }
 
     const { booking_count, bulletin_count, invoice_count, flight_entry_count } = target.user;
     if (booking_count > 0 || bulletin_count > 0 || invoice_count > 0 || flight_entry_count > 0) {
       return {
-        success: false,
+        status: "error",
         error: `Käyttäjällä on historiaa: ${booking_count} varausta, ${bulletin_count} tiedotetta, ${invoice_count} laskua ja ${flight_entry_count} kirjattua lentoa. Poista käyttäjä käytöstä tai anonymisoi hänet.`,
       };
     }
@@ -292,10 +302,10 @@ export async function deleteUser(userId: string): Promise<ActionResult> {
 
     revalidatePath("/admin/users");
     revalidatePath("/admin");
-    return { success: true };
+    return { status: "success", result: null };
   } catch (error) {
     log.error("Deleting user failed", { err: error });
-    return { success: false, error: "Käyttäjän poisto epäonnistui" };
+    return { status: "error", error: "Käyttäjän poisto epäonnistui" };
   }
 }
 
@@ -305,7 +315,7 @@ export async function deleteUser(userId: string): Promise<ActionResult> {
 export async function getUserById(userId: string): Promise<User | null> {
   try {
     if (!(await requirePermission("VIEW_USER_LIST"))) {
-      throw new Error("Ei oikeuksia");
+      throw new Error(await refusal());
     }
 
     const result = await pool.query(`SELECT ${USER_COLUMNS} FROM users WHERE id = $1`, [
@@ -350,22 +360,22 @@ export async function createCredentialUser(formData: {
 }): Promise<ActionResult> {
   try {
     if (!(await requirePermission("CREATE_USER"))) {
-      return { success: false, error: "Ei oikeuksia" };
+      return { status: "error", error: await refusal() };
     }
 
     const parsed = createUserSchema.safeParse(formData);
     if (!parsed.success) {
-      return { success: false, error: parsed.error.issues[0].message };
+      return { status: "error", error: parsed.error.issues[0].message };
     }
     const { email, name, full_name } = parsed.data;
 
     const checked = validateRoles(parsed.data.roles);
     if ("error" in checked) {
-      return { success: false, error: checked.error };
+      return { status: "error", error: checked.error };
     }
     const inactive = refuseInactiveRoles(checked.roles);
     if (inactive) {
-      return { success: false, error: inactive };
+      return { status: "error", error: inactive };
     }
     const filteredRoles = checked.roles;
 
@@ -376,7 +386,7 @@ export async function createCredentialUser(formData: {
     if (!isGuestOnly || parsed.data.password) {
       const password = PasswordSchema.safeParse(parsed.data.password ?? "");
       if (!password.success) {
-        return { success: false, error: password.error.issues[0].message };
+        return { status: "error", error: password.error.issues[0].message };
       }
       hashedPassword = await bcrypt.hash(password.data, 10);
     }
@@ -387,7 +397,7 @@ export async function createCredentialUser(formData: {
     );
     if (existingUser.rows.length > 0) {
       return {
-        success: false,
+        status: "error",
         error: "Käyttäjä tällä sähköpostilla on jo olemassa",
       };
     }
@@ -399,10 +409,10 @@ export async function createCredentialUser(formData: {
     );
 
     revalidatePath("/admin/users");
-    return { success: true };
+    return { status: "success", result: null };
   } catch (error) {
     log.error("Creating user failed", { err: error });
-    return { success: false, error: "Käyttäjän luonti epäonnistui" };
+    return { status: "error", error: "Käyttäjän luonti epäonnistui" };
   }
 }
 
@@ -413,25 +423,25 @@ export async function createCredentialUser(formData: {
  */
 export async function createPasswordResetLink(
   userId: string
-): Promise<ActionResult & { url?: string }> {
+): Promise<ActionResult<{ url: string }>> {
   try {
     const actor = await requirePermission("EDIT_USER");
     if (!actor) {
-      return { success: false, error: "Ei oikeuksia" };
+      return { status: "error", error: await refusal() };
     }
 
     const target = await loadTarget(userId, actor.id, { allowSelf: true });
     if ("error" in target) {
-      return { success: false, error: target.error };
+      return { status: "error", error: target.error };
     }
     if (target.user.auth_provider !== "credentials") {
       return {
-        success: false,
+        status: "error",
         error: "Google-käyttäjät kirjautuvat Google-tilillä, heillä ei ole salasanaa",
       };
     }
     if (target.user.deactivated_at) {
-      return { success: false, error: "Käyttäjä on poistettu käytöstä" };
+      return { status: "error", error: "Käyttäjä on poistettu käytöstä" };
     }
 
     const token = randomBytes(32).toString("base64url");
@@ -445,10 +455,10 @@ export async function createPasswordResetLink(
 
     const base = process.env.NEXTAUTH_URL || "http://localhost:3000";
     const url = new URL(`/auth/uusi-salasana?token=${token}`, base).toString();
-    return { success: true, url };
+    return { status: "success", result: { url } };
   } catch (error) {
     log.error("Creating password reset link failed", { err: error });
-    return { success: false, error: "Linkin luonti epäonnistui" };
+    return { status: "error", error: "Linkin luonti epäonnistui" };
   }
 }
 
@@ -478,17 +488,17 @@ export async function updateUserInfo(
   try {
     const actor = await requirePermission("EDIT_USER");
     if (!actor) {
-      return { success: false, error: "Ei oikeuksia" };
+      return { status: "error", error: await refusal() };
     }
 
     const parsed = userInfoSchema.safeParse(data);
     if (!parsed.success) {
-      return { success: false, error: parsed.error.issues[0].message };
+      return { status: "error", error: parsed.error.issues[0].message };
     }
 
     const target = await loadTarget(userId, actor.id, { allowSelf: true });
     if ("error" in target) {
-      return { success: false, error: target.error };
+      return { status: "error", error: target.error };
     }
 
     const { name, full_name, phone, address, city, postal_code } = parsed.data;
@@ -503,7 +513,7 @@ export async function updateUserInfo(
         [email, userId]
       );
       if (existingUser.rows.length > 0) {
-        return { success: false, error: "Sähköpostiosoite on jo käytössä" };
+        return { status: "error", error: "Sähköpostiosoite on jo käytössä" };
       }
     }
 
@@ -515,9 +525,9 @@ export async function updateUserInfo(
     );
 
     revalidatePath("/admin/users");
-    return { success: true };
+    return { status: "success", result: null };
   } catch (error) {
     log.error("Updating user info failed", { err: error });
-    return { success: false, error: "Käyttäjän tietojen päivitys epäonnistui" };
+    return { status: "error", error: "Käyttäjän tietojen päivitys epäonnistui" };
   }
 }

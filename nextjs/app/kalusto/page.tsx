@@ -8,9 +8,13 @@ import { pageMetadata } from "@/utilities/seo";
 export const metadata = pageMetadata({
   title: "Kalusto – kerhon lentokoneet ja purjekoneet",
   description:
-    "Savonlinnan Lentokerhon kalusto: Cessna 172, Piper Cub, moottoripurjekone Fournier RF-5 ja kolme purjekonetta. Tekniset tiedot ja kuvat.",
+    "Savonlinnan Lentokerhon kalusto: Cessna 172, moottoripurjekone Fournier RF-5, kolme purjekonetta ja kunnostettava Piper Cub. Tekniset tiedot ja kuvat.",
   path: "/kalusto",
 });
+
+// Planes in the order they are shown in each section
+const pick = (registrations: string[]) =>
+  registrations.map((registration) => planesData.find((plane) => plane.registeration === registration)!);
 
 const Page = () => {
   return (
@@ -24,26 +28,20 @@ const Page = () => {
         <div className="space-y-12 max-w-7xl mx-auto py-12 px-6 w-full">
           {/* Aircraft Categories */}
           <div className="space-y-8">
-            {/* Motor Aircraft */}
+            {/* Powered aircraft in use: the Cessna and the motor glider */}
             <div>
               <h2 className="text-2xl md:text-3xl font-bold text-sred mb-6 text-center">
-                Moottorilentokoneemme
+                Moottorikoneemme
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {planesData
-                  .filter(
-                    (plane: any) =>
-                      plane.registeration === "OH-CON" ||
-                      plane.registeration === "OH-PDX",
-                  )
-                  .map((plane: any, index: number) => (
-                    <PlanePreviewCard
-                      key={plane.registeration}
-                      plane={plane}
-                      type="motor"
-                      preload={index === 0}
-                    />
-                  ))}
+                {pick(["OH-CON", "OH-386"]).map((plane, index) => (
+                  <PlanePreviewCard
+                    key={plane.registeration}
+                    plane={plane}
+                    type="motor"
+                    preload={index === 0}
+                  />
+                ))}
               </div>
             </div>
 
@@ -52,22 +50,30 @@ const Page = () => {
               <h2 className="text-2xl md:text-3xl font-bold text-sred my-6 text-center">
                 Purjelentokoneemme
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {planesData
-                  .filter(
-                    (plane: any) =>
-                      plane.registeration === "OH-386" ||
-                      plane.registeration === "OH-816" ||
-                      plane.registeration === "OH-829" ||
-                      plane.registeration === "OH-475",
-                  )
-                  .map((plane: any) => (
-                    <PlanePreviewCard
-                      key={plane.registeration}
-                      plane={plane}
-                      type="glider"
-                    />
-                  ))}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {pick(["OH-816", "OH-829", "OH-475"]).map((plane) => (
+                  <PlanePreviewCard
+                    key={plane.registeration}
+                    plane={plane}
+                    type="glider"
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* The Cub waits for restoration and isn't flown */}
+            <div>
+              <h2 className="text-2xl md:text-3xl font-bold text-sred my-6 text-center">
+                Kunnostettavana
+              </h2>
+              <div className="grid grid-cols-1 md:w-1/2 md:mx-auto">
+                {pick(["OH-PDX"]).map((plane) => (
+                  <PlanePreviewCard
+                    key={plane.registeration}
+                    plane={plane}
+                    type="motor"
+                  />
+                ))}
               </div>
             </div>
           </div>

@@ -12,6 +12,10 @@
 # runs in one transaction together with its schema_migrations row, so a failed
 # migration leaves nothing behind. A changed checksum on an applied file stops
 # the run before anything is applied.
+#
+# A database created from postgres/init/ has a row whose checksum is "init":
+# the newest migration that schema already includes. Files up to it are
+# skipped, not replayed; only later ones run.
 set -euo pipefail
 
 container=${1:?usage: migrate.sh <container> <migrations-dir> [--dry-run]}
@@ -41,9 +45,16 @@ for f in "${files[@]}"; do
 done
 
 declare -A applied=()
+baseline=0
 if [ "$(db -Atc "SELECT to_regclass('public.schema_migrations') IS NOT NULL")" = "t" ]; then
   while read -r name sum; do
-    [ -n "$name" ] && applied[$name]=$sum
+    [ -n "$name" ] || continue
+    if [ "$sum" = "init" ]; then
+      number=$((10#${name%%_*}))
+      if [ "$number" -gt "$baseline" ]; then baseline=$number; fi
+    else
+      applied[$name]=$sum
+    fi
   done < <(db -Atc "SELECT filename || ' ' || checksum FROM schema_migrations")
 elif [ "$dry_run" = false ]; then
   db -q <<SQL
@@ -62,7 +73,9 @@ changed=()
 for f in "${files[@]}"; do
   name=$(basename "$f")
   sum=$(sha256sum "$f" | cut -d' ' -f1)
-  if [ -z "${applied[$name]:-}" ]; then
+  if [ -z "${applied[$name]:-}" ] && [ $((10#${name%%_*})) -le "$baseline" ]; then
+    continue # in the schema init/ created
+  elif [ -z "${applied[$name]:-}" ]; then
     pending+=("$f")
   elif [ "${applied[$name]}" != "$sum" ]; then
     changed+=("$name")
@@ -71,6 +84,9 @@ done
 
 echo "Database: $container"
 echo "Applied:  $(( ${#files[@]} - ${#pending[@]} )) of ${#files[@]}"
+if [ "$baseline" -gt 0 ]; then
+  printf "Created from init/, which includes %03d and earlier\n" "$baseline"
+fi
 for f in "${pending[@]}"; do echo "Pending:  $(basename "$f")"; done
 
 if [ ${#changed[@]} -gt 0 ]; then

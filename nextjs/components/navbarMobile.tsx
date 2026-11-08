@@ -21,6 +21,7 @@ import Logout from "@/components/auth/logout";
 
 const NavbarMobile = (handleLogoutProp: {
   handleLogout: () => void;
+  handleLogoutFailed: () => void;
   flightLog: boolean;
   billing: boolean;
   pagesInReview: boolean;
@@ -31,14 +32,13 @@ const NavbarMobile = (handleLogoutProp: {
   const authenticated = Boolean(session?.user);
   const isAdmin = session?.user?.roles?.includes("admin") || false;
   // A treasurer's way into the admin site: billing, or the flight log
-  // before billing is on
-  const isTreasurer =
-    !isAdmin &&
-    handleLogoutProp.flightLog &&
-    hasPermission(session?.user?.roles ?? [], "MANAGE_FLIGHT_LOG");
+  // before billing is on, or the price list before either
+  const isTreasurer = !isAdmin && hasPermission(session?.user?.roles ?? [], "MANAGE_PRICES");
   const treasurerLink = handleLogoutProp.billing
     ? { href: "/admin/laskutus", label: "Laskutus" }
-    : { href: "/admin/lennot", label: "Lentojen tarkistus" };
+    : handleLogoutProp.flightLog
+      ? { href: "/admin/lennot", label: "Lentojen tarkistus" }
+      : { href: "/admin/hinnasto", label: "Hinnasto" };
 
   // Toggle menu visibility
   const handleToggle = () => {
@@ -305,11 +305,11 @@ const NavbarMobile = (handleLogoutProp: {
                           {treasurerLink.label}
                         </Link>
                       )}
-                      <div className="block w-full py-2.5 px-8 text-base text-sred/95 hover:bg-sblue/40 hover:text-sred hover:pl-10 transition-all duration-200 border-l-2 border-transparent hover:border-sred backdrop-blur-sm">
-                        <Logout
-                          onHandleLogout={handleLogoutProp.handleLogout}
-                        />
-                      </div>
+                      <Logout
+                        onHandleLogout={handleLogoutProp.handleLogout}
+                        onLogoutFailed={handleLogoutProp.handleLogoutFailed}
+                        className="block w-full text-left py-2.5 px-8 text-base text-sred/95 hover:bg-sblue/40 hover:text-sred hover:pl-10 transition-all duration-200 border-l-2 border-transparent hover:border-sred backdrop-blur-sm cursor-pointer"
+                      />
                     </DisclosurePanel>
                   </div>
                 )}

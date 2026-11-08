@@ -49,7 +49,7 @@ async function loggedInContext(browser: Browser, email: string, password: string
   return { context, page };
 }
 
-// Whether the session still opens the member area (it redirects to / otherwise)
+// Whether the session still opens the member area (it redirects to the login page otherwise)
 async function sessionWorks(page: Page) {
   await page.goto("/jasenalue/profiili");
   return new URL(page.url()).pathname === "/jasenalue/profiili";
