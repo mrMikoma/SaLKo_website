@@ -306,7 +306,9 @@ What `dev` holds after A2:
 
 ### Release
 
-1. **Merge** `dev` → `main`. The push starts **Ansible Provision** only if `infra/ansible/` changed; this release doesn't change it, so there is nothing to wait for.
+1. **Merge** `dev` → `main`. The push starts **Ansible Provision** by itself, with no approval, because its workflow file changed (the homelab runner). The dry run of 2026-11-08 showed it upgrades `docker-ce` and `docker-ce-cli` 29.9.2 → 29.9.3, `docker-compose-plugin` 5.6.1 → 5.7.0, `libsqlite3-0` and a new kernel (6.8.0-149). **Docker restarts, and with it every container, for a minute or two**; the kernel takes effect at the next Sunday 04:30 reboot.
+   - Merge when a short outage is fine, and wait until the run is green before step 2. Check SSH: `ssh -o PasswordAuthentication=no salko@savonlinnanlentokerho.fi true`.
+   - Check that `docker ps` on salko0 shows everything up, or open the public pages (stage A's loop).
 2. **Terraform** runs on the push to `main`. Its plan should show the DKIM record added, the hcloud provider bump, and nothing else. **Approve** the apply. Then press **Aloita todennus** for `savonlinnanlentokerho.fi` in the Admin console (Apps → Google Workspace → Gmail → Sähköpostin todennus), once `dig +short TXT google._domainkey.savonlinnanlentokerho.fi @1.1.1.1` prints the key.
 3. **Build the prod image:** Actions → **Build and Publish Production** → branch `main`. Note the version.
 4. **Migrate**, right before the deploy: **Database Migrations** → `main`, `prod`, dry run first, then for real. **Approve**. Without 020 the price pages show no prices.
