@@ -1,6 +1,6 @@
 # The monitoring server: Prometheus (metrics), Loki (logs), Grafana,
-# Alertmanager (alert emails) and the gateway that agents push to. It keeps no
-# ties to the app host: it can run on salko0 next to the apps, as now, or on
+# Alertmanager (alerts to the alert relay) and the gateway that agents push
+# to. It keeps no ties to the app host: it can run on salko0 next to the apps, as now, or on
 # any other host in the private network.
 # deploy-monitoring.yaml puts it on vars.MONITORING_SERVER_IP, or on
 # vars.SERVER_IP_SALKO0 when that is unset. Each app host runs the agent
@@ -94,11 +94,14 @@ services:
       - loki
       - alertmanager
 
-  # Sends Prometheus' alerts by email (monitoring/alertmanager/alertmanager.yml).
+  # Sends Prometheus' alerts to the alert relay, which emails them
+  # (monitoring/alertmanager/alertmanager.yml).
   # Not published: Grafana shows its alerts and silences (Alerting).
   alertmanager:
     image: prom/alertmanager:v0.34.2
     container_name: ${NAME_PREFIX}-alertmanager
+    # nobody, plus the deploy user's group to read the relay token (0640)
+    user: "65534:${ALERTMANAGER_GID:-65534}"
     command:
       - "--config.file=/etc/alertmanager/alertmanager.yml"
       - "--storage.path=/alertmanager"
@@ -109,6 +112,7 @@ services:
       - "--web.route-prefix=/"
     volumes:
       - ./monitoring/alertmanager:/etc/alertmanager:ro
+      - ${MONITORING_DATA_DIR:-/home/salko/monitoring}/relay/token:/run/secrets/alert-relay-token:ro
       # Silences and what has been sent; created from the image, owned by its user
       - alertmanager-data:/alertmanager
     networks:

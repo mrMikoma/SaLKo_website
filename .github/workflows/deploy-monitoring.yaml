@@ -19,7 +19,7 @@ on:
   workflow_dispatch:
     inputs:
       send_test_alert:
-        description: 'Send a test alert email to admin@savonlinnanlentokerho.fi after the deploy'
+        description: 'Send a test alert (an email to admin@savonlinnanlentokerho.fi via the alert relay) after the deploy'
         type: boolean
         default: false
 
@@ -173,6 +173,7 @@ jobs:
       - name: Deploy the monitoring server
         env:
           GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
+          ALERT_RELAY_TOKEN: ${{ secrets.ALERT_RELAY_TOKEN }}
         run: |
           # On its own host the server publishes the gateway and Grafana on
           # the private address; next to the apps it publishes nothing outside
@@ -182,6 +183,7 @@ jobs:
             printf 'export NAME_PREFIX=%q\n' "$NAME_PREFIX"
             printf 'export MONITORING_BIND_ADDR=%q\n' "$bind"
             printf 'export GRAFANA_ADMIN_PASSWORD=%q\n' "$GRAFANA_ADMIN_PASSWORD"
+            printf 'export ALERT_RELAY_TOKEN=%q\n' "$ALERT_RELAY_TOKEN"
             echo 'bash monitoring/scripts/deploy-server.sh </dev/null'
           } | ssh -i ~/.ssh/id_ed25519 "salko@$MONITORING_HOST" bash -s
 
@@ -233,9 +235,9 @@ jobs:
             exit 1
           EOF
 
-      # Proves the whole way to the inbox: Alertmanager, Google's SMTP relay
-      # (which must accept this host's IP) and the email itself
-      - name: Send a test alert email
+      # Proves the whole way to the inbox: Alertmanager, the alert relay
+      # (alerts.vanttula.fi) and the email itself
+      - name: Send a test alert
         if: ${{ inputs.send_test_alert }}
         run: |
           ssh -i ~/.ssh/id_ed25519 "salko@$MONITORING_HOST" "NAME_PREFIX=$NAME_PREFIX bash monitoring/scripts/send-test-alert.sh </dev/null"
@@ -252,7 +254,7 @@ jobs:
             echo "- **Deployment Status:** \`${{ job.status }}\`"
             echo ""
             echo "### Services"
-            echo "- Server: Prometheus (with the alert rules), Loki, Grafana, Alertmanager (alert emails to admin@savonlinnanlentokerho.fi), the blackbox exporter (uptime probes), the push gateway"
+            echo "- Server: Prometheus (with the alert rules), Loki, Grafana, Alertmanager (alerts to the alert relay, which emails admin@savonlinnanlentokerho.fi), the blackbox exporter (uptime probes), the push gateway"
             echo "- Agent: Grafana Alloy (logs and metrics), Node Exporter, cAdvisor, Postgres Exporters, pgAdmin, Umami"
             echo ""
             echo "**Workflow:** ${{ github.workflow }}"

@@ -179,7 +179,7 @@ What `dev` holds after stage A, from the code review in October 2026:
 - [ ] Grafana, pgAdmin and Umami open from the club networks.
   - pgAdmin now asks for the database password: it no longer stores the production one.
 - [ ] Grafana opens on **SaLKo Overview**: Website UP, App & database OK, Database (prod) UP, Monitoring agent REPORTING, and no critical alerts.
-- [ ] **Alert emails:** set up the SMTP relay in the Google Admin console for salko0's public IPv4 address ("Alert emails" in `monitoring/README.md`, steps 1–4). Then run **Deploy Monitoring Stack** from `main` with **Send a test alert email** ticked. Its last step passes, and admin@savonlinnanlentokerho.fi gets `[SaLKo WARNING] Test alert from the monitoring deploy`, then its `RESOLVED` five minutes later.
+- [ ] **Alerts:** the alert relay is set up for SaLKo (`monitoring/README.md`, "Alerts", Setup steps 1–3: the member and client in the relay's Bitwarden secrets, the admin address's verification link, the Gmail filter) and the GitHub secret `ALERT_RELAY_TOKEN` exists. Then run **Deploy Monitoring Stack** from `main` with **Send a test alert** ticked. Its last step passes, and admin@savonlinnanlentokerho.fi gets `[salko] Test alert from the monitoring deploy`, then its `Ratkesi` five minutes later. Within about 15 minutes of that deploy the relay has also heard the Watchdog (the monthly test mail lists `salko-monitoring` as `kunnossa`).
 - [ ] In Grafana → Explore → Prometheus, `up{host="salko0"}` is 1 for `node-exporter`, `cadvisor`, `postgres` (dev and prod), `traefik` and `alloy`. The Postgres and Traefik ones never were before.
 - [ ] Umami shows new page views after the release, and its Postgres connection works (no errors in its log).
 - [ ] The site's pages answer through Cloudflare (stage A's check). Anything that used the server's public IP directly no longer reaches ports 80 and 443.
@@ -191,7 +191,7 @@ What `dev` holds after stage A, from the code review in October 2026:
 - **Google login says `redirect_uri_mismatch`:** the Google OAuth client is missing `https://savonlinnanlentokerho.fi/api/auth/callback/google` under Authorized redirect URIs (it was there on 2026-10-31). Add it in Google Cloud Console → Credentials; no deploy needed.
 - **Admin tools unreachable:** Traefik isn't on `salko_monitoring`. Run **Deploy Monitoring Stack**, then **Deploy Traefik**.
 - **Monitoring shows no data, or the deploy's last check fails:** see Troubleshooting in `monitoring/README.md` (Alloy's log, the gateway's password).
-- **The test alert email fails:** the run prints Google's answer. A refused relay means the Admin console's SMTP relay doesn't list salko0's public IP, or the change hasn't taken effect yet. Alerts still show in Grafana meanwhile.
+- **The test alert fails:** the run prints Alertmanager's error. A 401 means the GitHub secret `ALERT_RELAY_TOKEN` doesn't match the SHA-256 in the relay's `ALERT_RELAY_CLIENTS`; a 502 means the relay couldn't mail the admin address (not verified in Cloudflare yet). Alerts still show in Grafana meanwhile (`monitoring/README.md`, "Alerts").
 - **Umami can't reach its database:** run the prod deploy again (step 5). It sets the role's password from `/home/salko/.umami-db-password` and Umami's URL together. Once the role has the new password, the old one no longer works for it.
 
 ## Stage B: flight log
