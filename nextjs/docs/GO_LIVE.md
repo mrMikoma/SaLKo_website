@@ -6,6 +6,7 @@ How everything waiting in `dev` reaches savonlinnanlentokerho.fi, in three stage
 |---|---|---|
 | **A. Release** | Next.js and Bun security updates, the booking permission fix and new calendar, admin user tools, bulletin drafts, server maintenance and SSH hardening, the SPF and DMARC records; the code of B and C too, switched off | merge `dev` → `main` (#47), migrate, deploy |
 | **A2. Security fixes** | login, password and session hardening, the server and monitoring changes, the Cloudflare-only firewall, search visibility and `www.` → apex (see below) | merge `dev` → `main`, migrate (017, 018), deploy, then Monitoring and Traefik |
+| **A3. Fixes and the price list** | error pages and calmer failures, the new login pages, the METAR fix, the price list in the database (`/admin/hinnasto`), dependency updates, the DKIM record; flight log, billing and mail still off (see below) | merge `dev` → `main`, migrate (019, 020), deploy, then Monitoring, cronjobs |
 | **B. Flight log** | the club's real sheet, members logging flights, the treasurer checking them, statistics | production variable `FEATURE_FLIGHT_LOG=true`, redeploy |
 | **C. Billing and email** | prices, billing periods, invoices on the site and by email | production variables `FEATURE_BILLING=true` and `MAIL_MODE=send`, redeploy |
 
@@ -287,6 +288,47 @@ A dry run's invoices get real numbers but never reach members, so use `redirect`
 - [ ] Tell members that bills now come by email from the club's mail account, and that replies go to the treasurer.
 
 To stop sending, clear `MAIL_MODE` and redeploy. Messages are then stored but not sent. Clearing `FEATURE_BILLING` hides billing again; nothing is deleted.
+
+## Stage A3: fixes and the price list
+
+What `dev` holds after A2:
+- **For members and visitors:** error pages in Finnish, failed actions that keep what was typed, drafts that survive a reload, `/auth/kirjaudu` and `/auth/virhe` for logins, outage notices, loading states, the new METAR widget, and the METAR fix for the first day of a 30-day month.
+- **Price list:** the prices come from the database and are edited on `/admin/hinnasto` by admins and the treasurer (`PRICE_LIST.md`, migration 020).
+- **Hidden in production:** the flight log, billing, invoices and mail stay off. Migration 019 adds OH-386 and its rates and renames the rate columns; only the hidden billing code reads them.
+- **Dependencies:** hcloud 1.70.2 (Terraform), Grafana 12.4.14 and nginx 1.31.8 (monitoring), pgAdmin 9.19, googleapis 188, ESLint 10, dotenv 18.
+- **DNS:** the DKIM record. Mail stays off, so nothing changes for members.
+
+### Before
+
+- [ ] Production variables `FEATURE_FLIGHT_LOG`, `FEATURE_BILLING` and `MAIL_MODE` are still unset (Settings → Environments → production, and repository variables).
+- [ ] **The day before:** a dry run of Ansible: Actions → **Ansible Provision** → branch `dev`, "Dry run" ticked. Read the package list of `apt upgrade: dist`: an upgrade of `docker-ce` or `containerd.io` restarts Docker in step 1.
+- [ ] **Database Migrations** dry run, branch `main` after the merge (or `dev` before): `prod`, "Dry run" ticked. It must list only `019_hourly_rates_oh386.sql` and `020_price_list.sql` as pending.
+
+### Release
+
+1. **Merge** `dev` → `main`. The push starts **Ansible Provision** only if `infra/ansible/` changed; this release doesn't change it, so there is nothing to wait for.
+2. **Terraform** runs on the push to `main`. Its plan should show the DKIM record added, the hcloud provider bump, and nothing else. **Approve** the apply. Then press **Aloita todennus** for `savonlinnanlentokerho.fi` in the Admin console (Apps → Google Workspace → Gmail → Sähköpostin todennus), once `dig +short TXT google._domainkey.savonlinnanlentokerho.fi @1.1.1.1` prints the key.
+3. **Build the prod image:** Actions → **Build and Publish Production** → branch `main`. Note the version.
+4. **Migrate**, right before the deploy: **Database Migrations** → `main`, `prod`, dry run first, then for real. **Approve**. Without 020 the price pages show no prices.
+5. **Deploy:** **Deploy production from main branch** → `main`, the version from step 3. **Approve**. Open tabs break once on this first deploy, and then never again on later ones (the deployment id).
+6. **Monitoring:** **Deploy Monitoring Stack** from `main`. **Approve**. It brings Grafana 12.4.14 and nginx 1.31.8.
+7. **Cronjobs:** **Deploy Background Cronjobs** → `main`. **Approve**. It brings the METAR fix.
+
+### Check
+
+- [ ] The public pages answer 200 through Cloudflare (the loop in stage A's "Check").
+- [ ] `/kerho/hinnasto`, `/kerho/jasenyys`, `/kerho/hallit` and `/koulutus` show the same prices as before the release.
+- [ ] `/admin/hinnasto` opens for an admin; the admin menu has no Lennot, Laskutus, Laskut or Tilastot.
+- [ ] Logging in works with Google and with a password; a wrong password says so, and `/auth/kirjaudu?paluu=/kalusto` returns to `/kalusto`.
+- [ ] The METAR widget shows a current report.
+- [ ] Grafana's **SaLKo Overview** is all green.
+- [ ] `dig +short TXT google._domainkey.savonlinnanlentokerho.fi @1.1.1.1` prints the key, and Aloita todennus succeeded.
+- [ ] Tell the treasurer that prices are now changed on `/admin/hinnasto`.
+
+### If it goes wrong
+
+- **Price pages are empty:** migration 020 didn't run. Run step 4.
+- **Everything else:** run **Deploy production from main branch** again with the previous image version (the one the deploy replaced; v0.0.22 was A2's). The old image still runs on the migrated database: 020 only adds a table, and 019 renames columns of `aircraft_rates` and `billing_lines` that only the billing code reads, which is off in production.
 
 ## Every later release
 
