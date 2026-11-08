@@ -22,7 +22,7 @@ const STATUS: Record<OutboxMessage["status"], { label: string; tone: string }> =
   held: { label: "Ei lähetetty", tone: "bg-amber-100 text-amber-900" },
 };
 
-const KIND: Record<string, string> = { test: "Testiviesti", invoice: "Lasku" };
+const KIND: Record<string, string> = { test: "Testiviesti", invoice: "Lasku", bulletin: "Tiedote" };
 
 /** What the website has sent, or tried to send, newest first */
 export default async function OutboxPage() {

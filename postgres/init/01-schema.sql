@@ -22,7 +22,9 @@ CREATE TABLE
     -- Sessions that logged in before this end (nextjs/auth.ts)
     sessions_revoked_at TIMESTAMPTZ,
     -- Goes up when the sessions are revoked; a session with another number ends
-    session_version INTEGER NOT NULL DEFAULT 0
+    session_version INTEGER NOT NULL DEFAULT 0,
+    -- The member's choice: bulletins by email (nextjs/utilities/bulletinMail.ts)
+    bulletin_emails BOOLEAN NOT NULL DEFAULT TRUE
   );
 
 -- Create bullets table
@@ -38,6 +40,7 @@ CREATE TABLE
     -- public sees, set the first time the bulletin is published
     status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published')),
     published_at TIMESTAMPTZ,
+    emailed_at TIMESTAMPTZ, -- when it was first sent to the members by email
     FOREIGN KEY (user_id) REFERENCES users (id)
   );
 
@@ -597,8 +600,10 @@ CREATE TABLE IF NOT EXISTS email_outbox (
   sent_at TIMESTAMPTZ,
   invoice_id INT REFERENCES invoices (id) ON DELETE SET NULL, -- the invoice it sends
   -- MAIL_MODE when it was stored; it is only sent in that mode
-  queued_mode TEXT CHECK (queued_mode IN ('off', 'redirect', 'send'))
+  queued_mode TEXT CHECK (queued_mode IN ('off', 'redirect', 'send')),
+  bulletin_id INT REFERENCES bullets (id) ON DELETE SET NULL -- the bulletin it sends
 );
 
 CREATE INDEX IF NOT EXISTS idx_email_outbox_created ON email_outbox (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_email_outbox_invoice ON email_outbox (invoice_id);
+CREATE INDEX IF NOT EXISTS idx_email_outbox_bulletin ON email_outbox (bulletin_id);

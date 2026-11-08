@@ -38,14 +38,15 @@ export interface OutgoingEmail {
   html?: string | null;
   createdBy?: string | null;
   invoiceId?: number | null; // the invoice it sends
+  bulletinId?: number | null; // the bulletin it sends
 }
 
 /** Stores a message to send, with the current MAIL_MODE; deliverEmails sends it */
 export async function queueEmail(db: Queryable, email: OutgoingEmail): Promise<number> {
   const purpose = MAIL_PURPOSES[email.purpose];
   const response = await db.query(
-    `INSERT INTO email_outbox (from_name, reply_to, kind, to_address, to_name, subject, body_text, body_html, created_by, invoice_id, queued_mode)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
+    `INSERT INTO email_outbox (from_name, reply_to, kind, to_address, to_name, subject, body_text, body_html, created_by, invoice_id, bulletin_id, queued_mode)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
     [
       purpose.name,
       purpose.replyTo,
@@ -57,6 +58,7 @@ export async function queueEmail(db: Queryable, email: OutgoingEmail): Promise<n
       email.html ?? null,
       email.createdBy ?? null,
       email.invoiceId ?? null,
+      email.bulletinId ?? null,
       mailMode(),
     ]
   );

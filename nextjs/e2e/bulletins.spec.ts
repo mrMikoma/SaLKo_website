@@ -97,3 +97,9 @@ test("selected lines become a numbered list, and Enter continues it", async ({ p
   await page.getByRole("button", { name: "Esikatselu" }).click();
   await expect(page.locator("ol").filter({ hasText: "Kahvit" }).locator("li")).toHaveText(["Kahvit", "Kokous", "Sauna"]);
 });
+
+test("a bulletin cannot be emailed while mail is off", async ({ page }) => {
+  // Mail is off in tests (MAIL_MODE unset)
+  await page.goto("/admin/bulletins");
+  await expect(page.getByText("Tiedotteita ei voi vielä lähettää sähköpostina")).toBeVisible();
+});

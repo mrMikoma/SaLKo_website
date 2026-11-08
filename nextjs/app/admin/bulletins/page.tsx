@@ -4,6 +4,8 @@ import { hasPermission } from "@/utilities/roles";
 import { redirect } from "next/navigation";
 import { fetchAllBulletinsForAdmin } from "@/utilities/bulletings";
 import BulletinTable from "@/components/admin/bulletinTable";
+import { countBulletinRecipients } from "@/utilities/bulletinMail";
+import { getMailOverview } from "@/utilities/mailData";
 
 export default async function BulletinsPage() {
   const session = await auth();
@@ -16,6 +18,13 @@ export default async function BulletinsPage() {
   }
 
   const { result: bulletins } = await fetchAllBulletinsForAdmin();
+  const mailOverview = getMailOverview();
+  const canEmail = mailOverview.mode !== "off" && mailOverview.configured;
+  const mail = {
+    canSend: canEmail,
+    recipients: canEmail ? await countBulletinRecipients().catch(() => null) : null,
+    redirectTo: mailOverview.mode === "redirect" ? mailOverview.redirectTo : null,
+  };
   const published = bulletins.filter((b) => b.status === "published").length;
 
   return (
@@ -44,7 +53,7 @@ export default async function BulletinsPage() {
             </span>
           </div>
         </div>
-        <BulletinTable bulletins={bulletins} />
+        <BulletinTable bulletins={bulletins} mail={mail} />
       </div>
     </div>
   );
