@@ -102,6 +102,14 @@ On `/admin/laskutus/viestit`, press **Lähetä testiviesti itselleni**. It goes 
 - replying goes to `laskutus@`;
 - SPF, DKIM and DMARC pass (step 1).
 
+## Bulletins by email
+
+An admin can send a published bulletin from `/admin/bulletins` ("Lähetä sähköpostina"). It goes from the `info` purpose (sender "Savonlinnan Lentokerho", replies to info@) to the active users with the role `user` or `admin` who have not switched off "Kerhon tiedotteet sähköpostiin" on their profile (`users.bulletin_emails`, on by default). Every message ends with a link to the bulletin and to the profile page.
+
+- The button is disabled while `MAIL_MODE` is off or the mail account is not set up, so nothing is sent from prod until mail is switched on.
+- Each message is stored in `email_outbox` with `kind = 'bulletin'` and `bulletin_id`. Pressing the button again only reaches the members who have not got it (also after a partly failed send); `bullets.emailed_at` shows that it was sent.
+- In the dev environment (`MAIL_MODE=redirect`) every message goes to `MAIL_REDIRECT_TO`, one per member: check the count in the confirmation first.
+
 ## Troubleshooting
 
 | Message on the site | Fix |

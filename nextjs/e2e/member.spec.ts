@@ -28,3 +28,18 @@ test("/admin redirects members to /", async ({ page }) => {
   await page.goto("/admin");
   await expect(page).toHaveURL("/");
 });
+
+test("the choice of bulletin emails is kept", async ({ page }) => {
+  await page.goto("/jasenalue/profiili");
+  const box = page.getByRole("checkbox", { name: /Kerhon tiedotteet sähköpostiin/ });
+  const before = await box.isChecked();
+  try {
+    await box.setChecked(!before);
+    await expect(box).toBeEnabled();
+    await page.reload();
+    await expect(box).toBeChecked({ checked: !before });
+  } finally {
+    await box.setChecked(before);
+    await expect(box).toBeEnabled();
+  }
+});
