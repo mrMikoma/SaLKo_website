@@ -13,6 +13,7 @@ import {
   failedLoginsByEmail,
   failedLoginsByIp,
   loginBlockedFor,
+  LoginUnavailable,
   TooManyLoginAttempts,
 } from "./utilities/loginLimits";
 
@@ -130,8 +131,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             sessionVersion: user.session_version,
           };
         } catch (error) {
+          // Not counted as a failed attempt: the password may well be right
           log.error("Password login failed with an error", { err: error });
-          return null;
+          throw new LoginUnavailable();
         }
       },
     }),
@@ -191,8 +193,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             log.info("Google login succeeded", { userId: result.rows[0].id });
           }
         } catch (error) {
+          // A redirect instead of false, which would read as "not a club account"
           log.error("Google login failed with an error", { err: error });
-          return false;
+          return "/auth/virhe?error=Unavailable";
         }
       }
       return true;
@@ -287,18 +290,27 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return null as any;
         }
       } catch (error) {
-        log.error("Session check failed; the session ends", { err: error });
-        // On database error, invalidate the session
-        return null as any;
+        // No user while the database is down, as before, but marked, so the
+        // layout and proxy.ts can say the service is down rather than make
+        // the member look logged out. The cookie stays: the session works
+        // again once the database answers.
+        // `user: undefined` must be there: on the server next-auth returns
+        // { user: token, ...thisSession }, so without the key the token
+        // itself, id and roles, would become the session's user.
+        log.error("Session check failed; no session until the database answers", { err: error });
+        return { expires: session.expires, user: undefined, error: "unavailable" } as typeof session;
       }
 
       return session;
     },
   },
 
+  // Where Auth.js sends a refused or failed login: app/auth/kirjaudu (with
+  // ?error= for a Google login that was cancelled or failed) and app/auth/virhe
+  // (?error=AccessDenied for an account the signIn callback refuses)
   pages: {
-    signIn: "/auth/login", // Custom login page
-    error: "/auth/error",
+    signIn: "/auth/kirjaudu",
+    error: "/auth/virhe",
   },
 
   session: {

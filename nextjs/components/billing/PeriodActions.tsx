@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { closeBillingPeriod, deleteBillingPeriod, setPayerPaid } from "@/utilities/billingActions";
 import { euros } from "@/utilities/billing";
+import { callAction } from "@/utilities/callAction";
 
 /** Closing or removing an open period */
 export const OpenPeriodActions = ({
@@ -29,7 +30,7 @@ export const OpenPeriodActions = ({
     }
     setMessage(null);
     startTransition(async () => {
-      const result = await closeBillingPeriod(periodId);
+      const result = await callAction(() => closeBillingPeriod(periodId));
       if (result.status === "error") {
         setMessage({ ok: false, text: result.error });
         return;
@@ -45,7 +46,7 @@ export const OpenPeriodActions = ({
   const remove = () => {
     if (!window.confirm(`Poistetaanko avoin jakso ${name}? Lentoihin ei kosketa.`)) return;
     startTransition(async () => {
-      const result = await deleteBillingPeriod(periodId);
+      const result = await callAction(() => deleteBillingPeriod(periodId));
       if (result.status === "error") {
         setMessage({ ok: false, text: result.error });
         return;
@@ -102,7 +103,7 @@ export const PaidToggle = ({
   const toggle = (paid: boolean) => {
     setError(null);
     startTransition(async () => {
-      const result = await setPayerPaid(periodId, payerKey, paid);
+      const result = await callAction(() => setPayerPaid(periodId, payerKey, paid));
       if (result.status === "error") {
         setError(result.error);
         return;

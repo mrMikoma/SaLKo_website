@@ -115,11 +115,37 @@ export function letter(index: number): string {
   return letters;
 }
 
+// What separates a formula's arguments: "," in an English-locale sheet, ";"
+// where the decimal separator is a comma, as in Finland
+export type FormulaSeparator = "," | ";";
+
+/**
+ * The argument separator Sheets expects for a spreadsheet locale ("fi_FI",
+ * "en_US"): ";" when the locale writes decimals with a comma, as Sheets
+ * itself does. "," when the locale is unknown.
+ */
+export function formulaSeparator(locale: string | null | undefined): FormulaSeparator {
+  if (!locale) return ",";
+  try {
+    const decimal = new Intl.NumberFormat(locale.replace(/_/g, "-"))
+      .formatToParts(1.5)
+      .find((part) => part.type === "decimal")?.value;
+    return decimal === "," ? ";" : ",";
+  } catch {
+    return ",";
+  }
+}
+
 const col = (key: Column["key"]) => letter(LAYOUT.findIndex((c) => c.key === key));
 
 // The club's formulas. A row without a flight shows nothing in I and in the
-// running totals J and L, as in the club's sheet.
-function formulas(row: number): Partial<Record<Column["key"], TemplateCell>> {
+// running totals J and L, as in the club's sheet. `at` gives a column's
+// letter, or null when the sheet has no such column (that formula is left out).
+function formulasAt(
+  at: (key: Column["key"]) => string | null,
+  row: number,
+  sep: FormulaSeparator = ","
+): Partial<Record<Column["key"], TemplateCell>> {
   const [date, takeoff, landing, airborne, total, landings, landingsTotal] = [
     "date",
     "takeoff",
@@ -128,25 +154,83 @@ function formulas(row: number): Partial<Record<Column["key"], TemplateCell>> {
     "airframeTotal",
     "landings",
     "landingsTotal",
-  ].map((key) => col(key as Column["key"]));
+  ].map((key) => at(key as Column["key"]));
   const r = row;
   const p = row - 1;
-  return {
-    airborne: {
-      formula: `IF(${landing}${r}-${takeoff}${r}=0,,${landing}${r}-${takeoff}${r})`,
+  const cells: Partial<Record<Column["key"], TemplateCell>> = {};
+  if (airborne && takeoff && landing) {
+    cells.airborne = {
+      formula: `IF(${landing}${r}-${takeoff}${r}=0${sep}${sep}${landing}${r}-${takeoff}${r})`,
       style: "formulaDuration",
-    },
-    airframeTotal: {
-      formula: `IF(${total}${p}+${airborne}${r}=${total}${p},,${total}${p}+${airborne}${r})`,
+    };
+  }
+  if (total && airborne) {
+    cells.airframeTotal = {
+      formula: `IF(${total}${p}+${airborne}${r}=${total}${p}${sep}${sep}${total}${p}+${airborne}${r})`,
       style: "formulaDuration",
-    },
-    landingsTotal: {
-      formula: `IF(${landingsTotal}${p}+${landings}${r}=${landingsTotal}${p},,${landingsTotal}${p}+${landings}${r})`,
+    };
+  }
+  if (landingsTotal && landings) {
+    cells.landingsTotal = {
+      formula: `IF(${landingsTotal}${p}+${landings}${r}=${landingsTotal}${p}${sep}${sep}${landingsTotal}${p}+${landings}${r})`,
       style: "formulaNumber",
-    },
-    month: { formula: `IF(${date}${r}="","",MONTH(${date}${r}))`, style: "formulaNumber" },
-    year: { formula: `IF(${date}${r}="","",YEAR(${date}${r}))`, style: "formulaNumber" },
-  };
+    };
+  }
+  const month = at("month");
+  const year = at("year");
+  if (date && month) cells.month = { formula: `IF(${date}${r}=""${sep}""${sep}MONTH(${date}${r}))`, style: "formulaNumber" };
+  if (date && year) cells.year = { formula: `IF(${date}${r}=""${sep}""${sep}YEAR(${date}${r}))`, style: "formulaNumber" };
+  return cells;
+}
+
+const formulas = (row: number) => formulasAt(col, row);
+
+/**
+ * The club's formulas for one row of an existing tab, at that tab's own
+ * column positions, as typed into Sheets: for a tab that has no formula row
+ * left to continue (the flight rows were deleted, say). Sheets reads a
+ * formula sent through its API in the spreadsheet's locale, so a Finnish
+ * sheet needs ";" between the arguments (formulaSeparator).
+ */
+export function flightRowFormulaCells(
+  columns: Partial<Record<SheetColumn, number>>,
+  row: number,
+  separator: FormulaSeparator = ","
+): { row: number; column: number; value: string }[] {
+  const cells = formulasAt(
+    (key) => (key in columns && columns[key as SheetColumn] !== undefined ? letter(columns[key as SheetColumn]!) : null),
+    row,
+    separator
+  );
+  return Object.entries(cells).flatMap(([key, cell]) =>
+    cell?.formula && columns[key as SheetColumn] !== undefined
+      ? [{ row, column: columns[key as SheetColumn]!, value: `=${cell.formula}` }]
+      : []
+  );
+}
+
+export interface CellFormat {
+  column: number;
+  type: "DATE" | "TIME";
+  pattern: string;
+}
+
+/**
+ * The number formats of a flight row at a tab's own column positions, as the
+ * template has them: without them a row the website adds to a tab whose rows
+ * were deleted would show the date as 46113 and the times as 0,43.
+ */
+export function flightRowFormats(columns: Partial<Record<SheetColumn, number>>): CellFormat[] {
+  const formats: [SheetColumn, CellFormat["type"], string][] = [
+    ["date", "DATE", "d.m.yyyy"],
+    ["takeoff", "TIME", "hh:mm"],
+    ["landing", "TIME", "hh:mm"],
+    ["airborne", "TIME", "[h]:mm"],
+    ["airframeTotal", "TIME", "[h]:mm"],
+  ];
+  return formats.flatMap(([key, type, pattern]) =>
+    columns[key] === undefined ? [] : [{ column: columns[key]!, type, pattern }]
+  );
 }
 
 export const TEMPLATE_FIRST_DATA_ROW = 3;

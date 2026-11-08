@@ -62,19 +62,39 @@ test.afterAll(async () => {
   await query("DELETE FROM aircraft_sheets WHERE registration = 'OH-TST'");
 });
 
-test("won't take a name that is already in the log", async ({ page }) => {
-  // Both of the admin's names belong to pilots who aren't matched to anyone
+test("logs under a name that is already in the log, without taking it", async ({ page }) => {
+  // Both of the admin's names are marked as no member: they may be someone else's
   await query(
     `INSERT INTO pilot_aliases (name_key, name, user_id)
      VALUES ('eadmin', 'E.admin', NULL), ('e2eadmin', 'E2E admin', NULL)`
   );
   await page.goto("/jasenalue/lentopaivakirja/uusi");
+  await page.getByRole("button", { name: "OH-TST" }).click();
   await page.getByLabel("Lentopäivä").fill(flightDate);
   await page.getByLabel("Lentoonlähtö", { exact: true }).fill("10.00");
   await page.getByLabel("Lasku", { exact: true }).fill("10.30");
   await page.getByRole("button", { name: "Tallenna lento" }).click();
-  await expect(page.getByText(/ei ole yhdistetty sinuun/)).toBeVisible();
-  await expect(page.getByText("Tallennettu lentopäiväkirjaan")).toHaveCount(0);
+
+  // Saved under the name, and the member is told the biller will match it
+  const saved = page.getByRole("status");
+  await expect(saved.getByText("Tallennettu lentopäiväkirjaan")).toBeVisible();
+  await expect(saved.getByText(/Nimi E\.admin on jo lentopäiväkirjassa, eikä sitä ole vielä yhdistetty sinuun/)).toBeVisible();
+  // The name stays as it was
+  const aliases = await query("SELECT user_id FROM pilot_aliases WHERE name_key = 'eadmin'");
+  expect(aliases).toEqual([{ user_id: null }]);
+  // The biller sees whose flight it is
+  const issues = await query(
+    `SELECT message FROM sheet_flight_issues WHERE kind = 'web_entry_name' AND flight_id IN (
+       SELECT id FROM flight_log_web_entries WHERE user_id = (SELECT id FROM users WHERE email = $1))`,
+    [accounts.admin!.email]
+  );
+  expect(issues.map((row) => row.message)).toEqual([
+    "E2E admin kirjasi lennon sivulla nimellä E.admin, mutta nimi on merkitty ei-jäseneksi. Yhdistä nimi oikealle jäsenelle (Lentäjien nimet) tai korjaa rivin nimi.",
+  ]);
+
+  // Undone, so the next test starts from an empty tab
+  await page.getByRole("button", { name: "Kumoa viimeisin" }).click();
+  await expect(page.getByRole("button", { name: "Tallenna lento" })).toBeVisible();
   await cleanUp();
 });
 

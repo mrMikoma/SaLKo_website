@@ -15,7 +15,7 @@ Public, indexable pages: `/`, `/koulutus`, `/esittelylennot`, `/kalusto`, `/kalu
 
 ## Checklist for a public page
 
-Text is Finnish and written for people first. Facts (prices, planes, contacts) come from `data/*.json`, not invented copy.
+Text is Finnish and written for people first. Facts (planes, contacts) come from `data/*.json`, and prices from the price list (`utilities/priceList.ts`), not invented copy.
 
 1. **Metadata.** `export const metadata = pageMetadata({ title, description, path })` from `utilities/seo.ts`; `[planes]` returns it from `generateMetadata`. Don't hand-write `openGraph`: Next merges metadata **shallowly**, so a page without it shares the layout's title and description, and a page with a partial one loses `siteName`, `locale` and the image. The helper sets all of it, and Next copies it into the `twitter:` tags.
    - `title`: the layout's template adds ` | SaLKo`, so keep the whole title at or under 60 characters. Start with what people search for, e.g. "Lentokoulutus Savonlinnassa – PPL, LAPL, purjelento". `app/page.tsx` sits in the layout's own segment, which the template doesn't reach, so it passes `absoluteTitle: true` and a complete title.

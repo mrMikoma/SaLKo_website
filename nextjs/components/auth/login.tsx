@@ -1,17 +1,30 @@
 "use client";
 import Link from "next/link";
-import { useActionState } from "react";
-import { loginWithCredentials, loginWithGoogle } from "@/utilities/authActions";
+import { usePathname } from "next/navigation";
+import { loginWithCredentials, loginWithGoogle, type LoginState } from "@/utilities/authActions";
+import { useFormAction } from "@/hooks/useFormAction";
 import { FcGoogle } from "react-icons/fc";
 
 // References:
 // - https://nextjs.org/docs/app/building-your-application/authentication
 
-// redirectTo: the page to return to after logging in; the front page by default
+// redirectTo: the page to return to after logging in. By default the page the
+// login is on (the navbar's login), except the login pages themselves, which
+// lead to the front page. The query isn't kept there: reading it would make
+// every static page render in the browser (useSearchParams).
 const Login = ({ redirectTo }: { redirectTo?: string }) => {
-  const [state, action, pending] = useActionState(
+  const pathname = usePathname();
+  const target = redirectTo ?? (pathname.startsWith("/auth/") ? undefined : pathname);
+  // A lost connection or a page from before a deploy is shown in the form,
+  // with the email kept like after a wrong password
+  const { state, action, pending } = useFormAction<LoginState | undefined>(
     loginWithCredentials,
-    undefined
+    undefined,
+    (message, _state, formData) => ({
+      status: "error",
+      errors: { general: [message] },
+      email: String(formData.get("email") ?? ""),
+    })
   );
 
   // Note: On successful login, NextAuth handles the redirect server-side
@@ -29,7 +42,7 @@ const Login = ({ redirectTo }: { redirectTo?: string }) => {
 
       <div className="mt-8 sm:mx-auto w-full max-w-md">
         <form action={action} className="space-y-5">
-          {redirectTo && <input type="hidden" name="redirectTo" value={redirectTo} />}
+          {target && <input type="hidden" name="redirectTo" value={target} />}
           <div>
             <label
               htmlFor="email"
@@ -128,7 +141,7 @@ const Login = ({ redirectTo }: { redirectTo?: string }) => {
 
           <div className="mt-6">
             <form action={loginWithGoogle}>
-              {redirectTo && <input type="hidden" name="redirectTo" value={redirectTo} />}
+              {target && <input type="hidden" name="redirectTo" value={target} />}
               <button
                 type="submit"
                 className="flex w-full items-center justify-center gap-3 rounded-lg bg-white px-4 py-3 text-sm font-bold text-sblued shadow-xl hover:shadow-2xl hover:-translate-y-0.5 border-2 border-sblue/30 hover:border-sbluel transition-all duration-300"

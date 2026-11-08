@@ -23,6 +23,7 @@ import LineFields, {
   primaryButton,
   secondaryButton,
 } from "./LineFields";
+import { callAction } from "@/utilities/callAction";
 
 type Result = { status: "success"; result?: unknown } | { status: "error"; error: string };
 
@@ -35,7 +36,7 @@ function useInvoiceAction() {
     new Promise<boolean>((resolve) => {
       setMessage(null);
       startTransition(async () => {
-        const result = await action();
+        const result = await callAction(action);
         if (result.status === "error") {
           setMessage({ ok: false, text: result.error });
           resolve(false);

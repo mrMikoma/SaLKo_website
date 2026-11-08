@@ -4,30 +4,28 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import pool from "@/utilities/db";
 import { auth } from "@/auth";
+import { SESSION_ENDED } from "@/utilities/errorText";
 import { hasPermission } from "@/utilities/roles";
 import { isBillingEnabled } from "@/utilities/features";
 import { syncFlightSheets } from "@/utilities/flightSync";
 import { computeOpenPeriod, getBillingPeriod } from "@/utilities/billingData";
-import { writePayerPaid } from "@/utilities/billingPayments";
-import {
-  BillingCellUpdate,
-  FlightSheetWriteError,
-  writeBillingCells,
-} from "@/utilities/flightSheetWriter";
+import { writeBillingCellsToTabs, writePayerPaid } from "@/utilities/billingPayments";
+import { BillingCellUpdate, FlightSheetWriteError } from "@/utilities/flightSheetWriter";
 import { logger } from "@/utilities/logger";
 
 const log = logger.child({ module: "billing" });
 
-type ActionResult<T = null> =
-  | { status: "success"; result: T }
-  | { status: "error"; error: string };
+import type { ActionResult } from "@/utilities/actionResult";
 
 async function requireBillingAdmin() {
   if (!isBillingEnabled()) {
     return { error: "Laskutus ei ole vielä käytössä" };
   }
   const session = await auth();
-  if (!session?.user?.id || !hasPermission(session.user.roles, "MANAGE_BILLING")) {
+  if (!session?.user?.id) {
+    return { error: SESSION_ENDED };
+  }
+  if (!hasPermission(session.user.roles, "MANAGE_BILLING")) {
     return { error: "Ei oikeuksia laskutukseen" };
   }
   return { user: session.user };
@@ -170,7 +168,7 @@ export async function closeBillingPeriod(
     purpose_code: line.purposeCode,
     minutes: line.minutes,
     landings: line.landings,
-    cents_per_minute: line.centsPerMinute,
+    cents_per_hour: line.centsPerHour,
     amount_cents: line.amountCents,
     description: line.description,
     input_hash: line.inputHash,
@@ -199,25 +197,22 @@ export async function closeBillingPeriod(
     );
     await client.query(
       `INSERT INTO billing_lines (period_id, payer_key, kind, flight_id, registration, flight_date,
-         purpose_code, minutes, landings, cents_per_minute, amount_cents, description, input_hash)
+         purpose_code, minutes, landings, cents_per_hour, amount_cents, description, input_hash)
        SELECT $1, l.payer_key, l.kind, l.flight_id, l.registration, l.flight_date, l.purpose_code,
-              l.minutes, l.landings, l.cents_per_minute, l.amount_cents, l.description, l.input_hash
+              l.minutes, l.landings, l.cents_per_hour, l.amount_cents, l.description, l.input_hash
        FROM jsonb_to_recordset($2::jsonb) AS l(payer_key text, kind text, flight_id uuid,
          registration text, flight_date date, purpose_code text, minutes int, landings int,
-         cents_per_minute int, amount_cents int, description text, input_hash text)`,
+         cents_per_hour int, amount_cents int, description text, input_hash text)`,
       [id, JSON.stringify(lines)]
     );
     await client.query(
       "UPDATE billing_periods SET closed_at = NOW(), closed_by = $2 WHERE id = $1",
       [id, access.user.id]
     );
-    // One write per aircraft tab. Only OH-CON has a tab today; with several,
-    // a failure on a later tab would leave the earlier ones marked
-    // Laskutettu with nothing stored, and those flights would then count as
-    // billed by hand. Undo the earlier writes here before adding a tab.
-    for (const [registration, cells] of updates) {
-      await writeBillingCells(registration, cells, ["Tarkistettu"]);
-    }
+    // One write per aircraft tab. If a later tab fails, the earlier ones are
+    // put back to Tarkistettu: marked Laskutettu with nothing stored, those
+    // flights would count as billed by hand.
+    await writeBillingCellsToTabs(updates, ["Tarkistettu"], { status: "Tarkistettu", period: "" });
     await client.query("COMMIT");
   } catch (error) {
     await client.query("ROLLBACK").catch(() => undefined);
@@ -267,60 +262,7 @@ export async function setPayerPaid(
  * Settings
  */
 
-// "3,10" or "3.10" € → 310 cents
-const euroField = z
-  .string()
-  .trim()
-  .regex(/^\d{1,3}([.,]\d{1,2})?$/, "Anna hinta euroina, esim. 3,10")
-  .transform((value) => Math.round(Number(value.replace(",", ".")) * 100));
-
-const rateSchema = z.object({
-  registration: z.string().trim().min(1),
-  validFrom: z.iso.date("Anna päivä, josta alkaen hinta on voimassa"),
-  withFee: euroField,
-  withoutFee: euroField,
-  minimumLocalMinutes: z.number().int().min(0).max(120),
-});
-
-export async function saveRate(input: z.input<typeof rateSchema>): Promise<ActionResult> {
-  const access = await requireBillingAdmin();
-  if ("error" in access) return { status: "error", error: access.error };
-  const parsed = rateSchema.safeParse(input);
-  if (!parsed.success) return { status: "error", error: parsed.error.issues[0].message };
-  const { registration, validFrom, withFee, withoutFee, minimumLocalMinutes } = parsed.data;
-  return saving("rate", async () => {
-    await pool.query(
-      `INSERT INTO aircraft_rates (registration, valid_from, cents_with_fee, cents_without_fee, minimum_local_minutes)
-       VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (registration, valid_from) DO UPDATE
-         SET cents_with_fee = EXCLUDED.cents_with_fee, cents_without_fee = EXCLUDED.cents_without_fee,
-             minimum_local_minutes = EXCLUDED.minimum_local_minutes`,
-      [registration, validFrom, withFee, withoutFee, minimumLocalMinutes]
-    );
-    revalidateBilling();
-    return { status: "success", result: null };
-  });
-}
-
-const rateKeySchema = z.object({
-  registration: z.string().trim().min(1).max(20),
-  validFrom: z.iso.date(),
-});
-
-export async function deleteRate(registration: string, validFrom: string): Promise<ActionResult> {
-  const access = await requireBillingAdmin();
-  if ("error" in access) return { status: "error", error: access.error };
-  const parsed = rateKeySchema.safeParse({ registration, validFrom });
-  if (!parsed.success) return { status: "error", error: "Hintaa ei löytynyt" };
-  return saving("rate", async () => {
-    await pool.query("DELETE FROM aircraft_rates WHERE registration = $1 AND valid_from = $2", [
-      parsed.data.registration,
-      parsed.data.validFrom,
-    ]);
-    revalidateBilling();
-    return { status: "success", result: null };
-  });
-}
+// Aircraft prices are saved with the price list (utilities/priceListActions.ts)
 
 const feeSchema = z.object({
   userId: z.string().min(1),

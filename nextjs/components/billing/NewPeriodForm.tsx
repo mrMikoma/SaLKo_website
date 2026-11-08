@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createBillingPeriod } from "@/utilities/billingActions";
+import { callAction } from "@/utilities/callAction";
 
 interface NewPeriodFormProps {
   // The month after the latest period, or this month
@@ -21,7 +22,7 @@ const NewPeriodForm = ({ suggestion }: NewPeriodFormProps) => {
   const create = () => {
     setError(null);
     startTransition(async () => {
-      const result = await createBillingPeriod(period);
+      const result = await callAction(() => createBillingPeriod(period));
       if (result.status === "error") {
         setError(result.error);
         return;

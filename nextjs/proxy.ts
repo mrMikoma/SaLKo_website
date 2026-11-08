@@ -1,9 +1,28 @@
 import { auth } from "./auth";
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { adminHome, canOpenAdminPath } from "./utilities/roles";
+import { isAdminSectionOn } from "./utilities/features";
+
+// A visitor who isn't logged in goes to the login page, and from there on to
+// the page they asked for (app/auth/kirjaudu). When the session couldn't be
+// checked because the database is down, the login page says so (?hairio=1)
+// rather than asking for a login that can't work either.
+const toLogin = (req: NextRequest, unavailable: boolean) => {
+  const url = new URL("/auth/kirjaudu", req.url);
+  url.searchParams.set("paluu", req.nextUrl.pathname + req.nextUrl.search);
+  if (unavailable) url.searchParams.set("hairio", "1");
+  return NextResponse.redirect(url);
+};
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
+  // Server action calls (POSTs with a Next-Action header) go through: each
+  // action checks the session itself and answers in words the page shows
+  // ("Istuntosi on päättynyt…"), where a redirect would hand the call a login
+  // page instead of an answer. Page loads with the header are still guarded.
+  if (req.method === "POST" && req.headers.has("next-action")) {
+    return NextResponse.next();
+  }
   // A session the session callback refused (a deactivated user, or one from
   // before a password change) still arrives as a bare session without an id
   const session = req.auth?.user?.id ? req.auth : null;
@@ -16,19 +35,19 @@ export default auth((req) => {
 
   if (isProtectedRoute) {
     if (!session) {
-      return NextResponse.redirect(new URL(`/`, req.url));
+      return toLogin(req, req.auth?.error === "unavailable");
     }
   }
 
   // The admin site: all of it for admins, their own sections for treasurers
-  // (utilities/roles.ts). Anyone else goes back to the front page.
+  // (utilities/roles.ts). A member without either goes back to the front page.
   if (pathname.startsWith("/admin")) {
     if (!session) {
-      return NextResponse.redirect(new URL(`/`, req.url));
+      return toLogin(req, req.auth?.error === "unavailable");
     }
     const roles = session.user.roles ?? [];
     if (!canOpenAdminPath(roles, pathname)) {
-      return NextResponse.redirect(new URL(adminHome(roles) ?? "/", req.url));
+      return NextResponse.redirect(new URL(adminHome(roles, isAdminSectionOn) ?? "/", req.url));
     }
   }
 

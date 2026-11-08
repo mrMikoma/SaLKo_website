@@ -6,6 +6,7 @@ How everything waiting in `dev` reaches savonlinnanlentokerho.fi, in three stage
 |---|---|---|
 | **A. Release** | Next.js and Bun security updates, the booking permission fix and new calendar, admin user tools, bulletin drafts, server maintenance and SSH hardening, the SPF and DMARC records; the code of B and C too, switched off | merge `dev` → `main` (#47), migrate, deploy |
 | **A2. Security fixes** | login, password and session hardening, the server and monitoring changes, the Cloudflare-only firewall, search visibility and `www.` → apex (see below) | merge `dev` → `main`, migrate (017, 018), deploy, then Monitoring and Traefik |
+| **A3. Fixes and the price list** | error pages and calmer failures, the new login pages, the METAR fix, the price list in the database (`/admin/hinnasto`), dependency updates, the DKIM record; flight log, billing and mail still off (see below) | merge `dev` → `main`, migrate (019, 020), deploy, then Monitoring, cronjobs |
 | **B. Flight log** | the club's real sheet, members logging flights, the treasurer checking them, statistics | production variable `FEATURE_FLIGHT_LOG=true`, redeploy |
 | **C. Billing and email** | prices, billing periods, invoices on the site and by email | production variables `FEATURE_BILLING=true` and `MAIL_MODE=send`, redeploy |
 
@@ -174,7 +175,7 @@ What `dev` holds after stage A, from the code review in October 2026:
 ### Check
 
 - [ ] Logging in works with Google and with a password, and a member logged in on savonlinnanlentokerho.fi before the release still is. Start the Google login from https://savonlinnanlentokerho.fi: it must end there, logged in.
-- [ ] `www.` redirects, keeping the path: `curl -sI https://www.savonlinnanlentokerho.fi/kalusto | grep -iE '^(HTTP|location)'` shows `301` and `location: https://savonlinnanlentokerho.fi/kalusto`.
+- [ ] `www.` redirects, keeping the path: `curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' https://www.savonlinnanlentokerho.fi/kalusto` shows `301 https://savonlinnanlentokerho.fi/kalusto`. Use a GET as above: `curl -I` sends HEAD, which gets a 308 like every method but GET.
 - [ ] Grafana, pgAdmin and Umami open from the club networks.
   - pgAdmin now asks for the database password: it no longer stores the production one.
 - [ ] Grafana opens on **SaLKo Overview**: Website UP, App & database OK, Database (prod) UP, Monitoring agent REPORTING, and no critical alerts.
@@ -199,7 +200,7 @@ What `dev` holds after stage A, from the code review in October 2026:
 
 - [ ] **Service account:** create the production one, `salko-lentopaivakirja`, with its own JSON key (`FLIGHT_LOG_SETUP.md`, steps 2–3). Never reuse the dev key.
 - [ ] **The real sheet:**
-  - add the website's four columns (ID, Lähde, Tila, Laskutusjakso) at the right edge of the `OH-CON Matkapäiväkirja` tab, whose name must stay exactly that;
+  - add the website's four columns (ID, Lähde, Tila, Laskutusjakso) at the right edge of the `OH-CON Matkapäiväkirja` and `OH-386 Matkapäiväkirja` tabs, whose names must stay exactly that. If OH-386 has no tab yet, make one from the template (`FLIGHT_LOG_SETUP.md`, "Another aircraft");
   - share the sheet with the service account as an editor;
   - check that File → Settings says Finland and Helsinki;
   - before the first sync, name a version (File → Version history → Name current version): the first sync writes an ID into every flight row, about 500 of them.
@@ -256,7 +257,7 @@ To switch it off again, clear the variable and redeploy. The data stays.
 - [ ] **Secrets:** add `MAIL_FROM`, `MAIL_REFRESH_TOKEN`, `MAIL_GMAIL_CLIENT_ID` and `MAIL_GMAIL_CLIENT_SECRET` to the `production` environment's secrets. Optionally add `MAIL_REDIRECT_TO`, for a dry run.
 - [ ] **Club details on invoices:** Yhteystiedot (`data/contacts.json`) has the right IBAN, BIC and business ID.
 - [ ] **On `/admin/laskutus/asetukset`,** right after switching on and before the first period (the page appears with `FEATURE_BILLING`):
-  - the prices: OH-CON 3,10 / 5,00 €/min, with a 30 min minimum;
+  - the prices: OH-CON 186 / 300 €/h (3,10 / 5,00 €/min) and OH-386 100 / 200 €/h, each with a 30 min minimum;
   - this season's equipment-fee payers;
   - the free hour;
   - who pays for each purpose;
@@ -288,8 +289,53 @@ A dry run's invoices get real numbers but never reach members, so use `redirect`
 
 To stop sending, clear `MAIL_MODE` and redeploy. Messages are then stored but not sent. Clearing `FEATURE_BILLING` hides billing again; nothing is deleted.
 
+## Stage A3: fixes and the price list
+
+What `dev` holds after A2:
+- **For members and visitors:** error pages in Finnish, failed actions that keep what was typed, drafts that survive a reload, `/auth/kirjaudu` and `/auth/virhe` for logins, outage notices, loading states, the new METAR widget, and the METAR fix for the first day of a 30-day month.
+- **Price list:** the prices come from the database and are edited on `/admin/hinnasto` by admins and the treasurer (`PRICE_LIST.md`, migration 020).
+- **Hidden in production:** the flight log, billing, invoices and mail stay off. Migration 019 adds OH-386 and its rates and renames the rate columns; only the hidden billing code reads them.
+- **Dependencies:** hcloud 1.70.2 (Terraform), Grafana 12.4.14 and nginx 1.31.8 (monitoring), pgAdmin 9.19, googleapis 188, ESLint 10, dotenv 18.
+- **DNS:** the DKIM record. Mail stays off, so nothing changes for members.
+
+### Before
+
+- [ ] Production variables `FEATURE_FLIGHT_LOG`, `FEATURE_BILLING` and `MAIL_MODE` are still unset (Settings → Environments → production, and repository variables).
+- [ ] **The day before:** a dry run of Ansible: Actions → **Ansible Provision** → branch `dev`, "Dry run" ticked. Read the package list of `apt upgrade: dist`: an upgrade of `docker-ce` or `containerd.io` restarts Docker in step 1.
+- [ ] **Database Migrations** dry run, branch `main` after the merge (or `dev` before): `prod`, "Dry run" ticked. It must list only `019_hourly_rates_oh386.sql` and `020_price_list.sql` as pending.
+
+### Release
+
+1. **Merge** `dev` → `main`. The push starts **Ansible Provision** by itself, with no approval, because its workflow file changed (the homelab runner). The dry run of 2026-11-08 showed it upgrades `docker-ce` and `docker-ce-cli` 29.9.2 → 29.9.3, `docker-compose-plugin` 5.6.1 → 5.7.0, `libsqlite3-0` and a new kernel (6.8.0-149). **Docker restarts, and with it every container, for a minute or two**; the kernel takes effect at the next Sunday 04:30 reboot.
+   - Merge when a short outage is fine, and wait until the run is green before step 2. Check SSH: `ssh -o PasswordAuthentication=no salko@savonlinnanlentokerho.fi true`.
+   - Check that `docker ps` on salko0 shows everything up, or open the public pages (stage A's loop).
+2. **Terraform** runs on the push to `main`. Its plan should show the DKIM record added, the hcloud provider bump, and nothing else. **Approve** the apply. Then press **Aloita todennus** for `savonlinnanlentokerho.fi` in the Admin console (Apps → Google Workspace → Gmail → Sähköpostin todennus), once `dig +short TXT google._domainkey.savonlinnanlentokerho.fi @1.1.1.1` prints the key.
+3. **Build the prod image:** Actions → **Build and Publish Production** → branch `main`. Note the version.
+4. **Migrate**, right before the deploy: **Database Migrations** → `main`, `prod`, dry run first, then for real. **Approve**. Without 020 the price pages show no prices.
+5. **Deploy:** **Deploy production from main branch** → `main`, the version from step 3. **Approve**. Open tabs break once on this first deploy, and then never again on later ones (the deployment id).
+6. **Monitoring:** **Deploy Monitoring Stack** from `main`. **Approve**. It brings Grafana 12.4.14 and nginx 1.31.8.
+7. **Cronjobs:** **Deploy Background Cronjobs** → `main`. **Approve**. It brings the METAR fix.
+
+### Check
+
+- [ ] The public pages answer 200 through Cloudflare (the loop in stage A's "Check").
+- [ ] `/kerho/hinnasto`, `/kerho/jasenyys`, `/kerho/hallit` and `/koulutus` show the same prices as before the release.
+- [ ] `/admin/hinnasto` opens for an admin; the admin menu has no Lennot, Laskutus, Laskut or Tilastot.
+- [ ] Logging in works with Google and with a password; a wrong password says so, and `/auth/kirjaudu?paluu=/kalusto` returns to `/kalusto`.
+- [ ] The METAR widget shows a current report.
+- [ ] Grafana's **SaLKo Overview** is all green.
+- [ ] `dig +short TXT google._domainkey.savonlinnanlentokerho.fi @1.1.1.1` prints the key, and Aloita todennus succeeded.
+- [ ] Tell the treasurer that prices are now changed on `/admin/hinnasto`.
+
+### If it goes wrong
+
+- **Price pages are empty:** migration 020 didn't run. Run step 4.
+- **Everything else:** run **Deploy production from main branch** again with the previous image version (the one the deploy replaced; v0.0.22 was A2's). The old image still runs on the migrated database: 020 only adds a table, and 019 renames columns of `aircraft_rates` and `billing_lines` that only the billing code reads, which is off in production.
+
 ## Every later release
 
 The same as stage A, steps 1–4: merge `dev` → `main`, build, migrate if `postgres/migrations` has new files (dry run first), and deploy.
+
+**The release that brings the price list (migration 020):** the prices move from `data/prices.json` into the database and are edited on `/admin/hinnasto` from then on (`PRICE_LIST.md`). Run the migration before the deploy, as always: without it the price pages show no prices. After the deploy, check that `/kerho/hinnasto`, `/kerho/jasenyys` and `/koulutus` show the same prices as before, and tell the treasurer where prices are now changed.
 
 When a release changes the Postgres service in `docker-compose.prod.yaml`, the deploy recreates the database container: the site is down for the half a minute Postgres takes to start, and the data stays. Stage A does this once (step 4).

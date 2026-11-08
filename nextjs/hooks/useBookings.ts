@@ -12,6 +12,20 @@ import {
   BookingResult,
 } from "@/utilities/bookings";
 import type { BookingInput, GuestContactInput } from "@/schemas/bookingSchema";
+import { callAction, isActionFailure } from "@/utilities/callAction";
+import type { FailureKind } from "@/utilities/errorText";
+
+/**
+ * Loading the bookings failed. The message is Finnish; `failure` says why
+ * when the call itself failed (a lost connection, a page from before a
+ * deploy, which only a reload fixes).
+ */
+export class BookingsLoadError extends Error {
+  constructor(message: string, readonly failure: FailureKind | null) {
+    super(message);
+    this.name = "BookingsLoadError";
+  }
+}
 
 export interface SaveBookingRequest {
   booking: BookingType;
@@ -32,17 +46,20 @@ const fetchBookingsForDates = async (dates: string[]): Promise<BookingType[]> =>
   if (dates.length === 0) return [];
 
   const sortedDates = [...dates].sort();
-  const response = await fetchBookingsForDateRange(
-    [...BOOKABLE_PLANES],
-    sortedDates[0],
-    sortedDates[sortedDates.length - 1]
+  const response = await callAction(() =>
+    fetchBookingsForDateRange(
+      [...BOOKABLE_PLANES],
+      sortedDates[0],
+      sortedDates[sortedDates.length - 1]
+    )
   );
 
   if (response.status === "success") {
     return response.result;
   }
-  throw new Error(
-    response.status === "error" ? response.error : "Varausten haku epäonnistui"
+  throw new BookingsLoadError(
+    response.status === "error" ? response.error : "Varausten haku epäonnistui",
+    isActionFailure(response) ? response.failure : null
   );
 };
 
@@ -93,7 +110,9 @@ export const useBookings = ({
       dates.every((d) => DateTime.fromISO(d).isValid),
     staleTime: 1000 * 60 * 5, // 5 minutes
     gcTime: 1000 * 60 * 30, // 30 minutes
-    retry: 2,
+    // Fetching again can't help a page from before a deploy
+    retry: (failureCount, error) =>
+      !(error instanceof BookingsLoadError && error.failure === "outdated") && failureCount < 2,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
@@ -110,16 +129,17 @@ export const useBookings = ({
       const input = toBookingInput(booking);
       const options = { allowOverlap };
 
+      // A call that throws answers as an error, which the modal shows
       if (booking.id >= 0) {
-        return updateBooking(booking.id, input, options);
+        return callAction(() => updateBooking(booking.id, input, options));
       }
       if (guestContact) {
-        return addGuestBooking(input, guestContact, options);
+        return callAction(() => addGuestBooking(input, guestContact, options));
       }
       if (repeatEndDate) {
-        return addRepeatingBookings(input, repeatEndDate, options);
+        return callAction(() => addRepeatingBookings(input, repeatEndDate, options));
       }
-      return addBooking(input, options);
+      return callAction(() => addBooking(input, options));
     },
     onSuccess: (outcome) => {
       if (outcome.status === "success") {
@@ -136,7 +156,7 @@ export const useBookings = ({
       id: number;
       deleteFollowing?: boolean;
     }) => {
-      const response = await removeBooking(id, deleteFollowing);
+      const response = await callAction(() => removeBooking(id, deleteFollowing));
       if (response.status !== "success") {
         throw new Error(
           response.status === "error"

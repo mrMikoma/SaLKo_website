@@ -1,4 +1,4 @@
-import { BillLine, euros, LineKind } from "@/utilities/billing";
+import { BillLine, euros, formatRate, LineKind } from "@/utilities/billing";
 import { formatFullDate, formatMinutes } from "@/utilities/flightFormat";
 
 const KIND_LABEL: Record<LineKind, string> = {
@@ -23,7 +23,7 @@ const BillLines = ({ lines, totalCents }: { lines: BillLine[]; totalCents?: numb
         <th scope="col" className="px-2 py-1 font-medium">Tarkoitus</th>
         <th scope="col" className="px-2 py-1 font-medium">Selite</th>
         <th scope="col" className="px-2 py-1 font-medium text-right">Aika</th>
-        <th scope="col" className="px-2 py-1 font-medium text-right hidden sm:table-cell">€/min</th>
+        <th scope="col" className="px-2 py-1 font-medium text-right hidden sm:table-cell">Hinta</th>
         <th scope="col" className="px-2 py-1 font-medium text-right">Summa</th>
       </tr>
     </thead>
@@ -43,7 +43,7 @@ const BillLines = ({ lines, totalCents }: { lines: BillLine[]; totalCents?: numb
           </td>
           <td className="px-2 py-1 text-right tabular-nums">{signedMinutes(line.minutes)}</td>
           <td className="px-2 py-1 text-right tabular-nums hidden sm:table-cell">
-            {line.centsPerMinute !== null ? (line.centsPerMinute / 100).toFixed(2).replace(".", ",") : ""}
+            {line.centsPerHour !== null ? formatRate(line.centsPerHour) : ""}
           </td>
           <td className="px-2 py-1 text-right tabular-nums">{euros(line.amountCents)}</td>
         </tr>

@@ -1,5 +1,5 @@
 import { DateTime } from "luxon";
-import { MAX_LEG_MINUTES } from "@/utilities/flightFormInput";
+import { MAX_LEG_MINUTES, sheetNameFor } from "@/utilities/flightFormInput";
 
 /**
  * Parses an aircraft's flight log tab as the Google Sheets API returns it
@@ -434,6 +434,7 @@ export type FlightIssueKind =
   | "missing_field"
   | "unknown_purpose"
   | "unknown_pilot"
+  | "web_entry_name"
   | "time_order"
   | "duplicate"
   | "duplicate_id"
@@ -446,7 +447,8 @@ export type FlightIssueKind =
   | "undated_row"
   | "stray_status"
   | "copied_row"
-  | "billed_status";
+  | "billed_status"
+  | "formula_error";
 
 export interface FlightIssue {
   row: number;
@@ -629,6 +631,53 @@ export function findFlightIssues(
   return issues;
 }
 
+// The columns that hold the club's formulas, in the sheet's order
+const FORMULA_COLUMNS: SheetColumn[] = ["airborne", "airframeTotal", "landingsTotal"];
+
+/**
+ * Flight rows whose formula columns show an error (#ERROR!, #REF!, #VALUE!…),
+ * as one issue per run of rows: a broken running total breaks every row
+ * below it. The website takes the airborne time from the times then, but the
+ * sheet's own times and totals are wrong until the formula is fixed.
+ */
+export function findFormulaErrorIssues(
+  flights: ParsedFlight[],
+  columns: Partial<Record<SheetColumn, number>>
+): FlightIssue[] {
+  const issues: FlightIssue[] = [];
+  let run: { first: number; last: number; error: string; columns: Set<SheetColumn> } | null = null;
+  const flush = () => {
+    if (!run) return;
+    const rows = run.first === run.last ? `Rivillä ${run.first}` : `Riveillä ${run.first}–${run.last}`;
+    const names = FORMULA_COLUMNS.filter((key) => run!.columns.has(key)).map((key) => SHEET_COLUMNS[key]);
+    issues.push({
+      row: run.first,
+      flightId: null,
+      kind: "formula_error",
+      message: `${rows} kaava näyttää virhettä ${run.error} (${names.join(", ")}). Korjaa kaava ylimmälle riville ja kopioi se alas. Sivusto laskee lentoajan lentoonlähtö- ja laskuajasta, mutta taulukon omat summat ovat väärin.`,
+    });
+    run = null;
+  };
+  for (const flight of flights) {
+    const broken = FORMULA_COLUMNS.flatMap((key) => {
+      const value = columns[key] === undefined ? undefined : flight.raw[columns[key]!];
+      return typeof value === "string" && value.trim().startsWith("#") ? [{ key, value: value.trim() }] : [];
+    });
+    if (broken.length === 0) {
+      flush();
+      continue;
+    }
+    if (!run || flight.row !== run.last + 1) {
+      flush();
+      run = { first: flight.row, last: flight.row, error: broken[0].value, columns: new Set() };
+    }
+    run.last = flight.row;
+    broken.forEach(({ key }) => run!.columns.add(key));
+  }
+  flush();
+  return issues;
+}
+
 /**
  * Rows that aren't read as flights although something is in them. A typed
  * row without a readable date is one issue each. Rows that only have the
@@ -703,6 +752,24 @@ const INPUT_COLUMNS: SheetColumn[] = [
 // The website's own columns, apart from ID
 const WEBSITE_COLUMNS: SheetColumn[] = ["source", "status", "billingPeriod"];
 
+const lastFlightRow = (parsed: ParsedSheet, firstDataRow: number) =>
+  parsed.flights.reduce((last, flight) => Math.max(last, flight.row), firstDataRow - 1);
+
+/** Whether someone has typed into a row: any of the columns people type into */
+function typedInto(cells: SheetValue[] | undefined, parsed: ParsedSheet): boolean {
+  return INPUT_COLUMNS.some((key) => {
+    const index = parsed.columns[key];
+    return index !== undefined && !isBlank((cells ?? [])[index]);
+  });
+}
+
+/** The columns people or the website type into, which formulas never go into */
+export function typedColumnIndexes(parsed: ParsedSheet): number[] {
+  return [...INPUT_COLUMNS, ...WEBSITE_COLUMNS].flatMap((key) =>
+    parsed.columns[key] === undefined ? [] : [parsed.columns[key]!]
+  );
+}
+
 /**
  * Rows a new flight can go into: the rows after the last flight that are
  * pre-filled with the formulas (formulas[i] is row i + 1 of the airborne-time
@@ -715,23 +782,59 @@ export function findWritableRows(
   formulas: string[],
   firstDataRow = 3
 ): number[] {
-  const lastFlightRow = parsed.flights.reduce(
-    (last, flight) => Math.max(last, flight.row),
-    firstDataRow - 1
-  );
-
   const rows: number[] = [];
-  for (let row = lastFlightRow + 1; row <= formulas.length; row++) {
+  for (let row = lastFlightRow(parsed, firstDataRow) + 1; row <= formulas.length; row++) {
     if (!formulas[row - 1]?.startsWith("=")) break;
-    const cells = values[row - 1] ?? [];
-    const typedInto = INPUT_COLUMNS.some((key) => {
-      const index = parsed.columns[key];
-      return index !== undefined && !isBlank(cells[index]);
-    });
-    if (typedInto) break;
+    if (typedInto(values[row - 1], parsed)) break;
     rows.push(row);
   }
   return rows;
+}
+
+// Formula rows added at a time when they run out, as the biller would drag
+// them down, so that the next saves find rows ready
+export const FORMULA_ROWS_TO_ADD = 100;
+
+export type FlightRowPlan =
+  | { kind: "write"; rows: number[] }
+  // Continue the formulas of sourceRow into firstRow..lastRow; sourceRow is
+  // null when the tab has no formula row to continue
+  | { kind: "extend"; sourceRow: number | null; firstRow: number; lastRow: number }
+  // A row someone has typed into is in the way
+  | { kind: "blocked"; row: number };
+
+/**
+ * Where `count` new flights go: the pre-filled formula rows after the last
+ * flight (findWritableRows), when there are enough. When they run out, the
+ * formulas are continued below them, as dragging the last formula row down
+ * in Sheets does, rather than refusing the flight: that is what the biller
+ * would do. Only empty rows get formulas, and a row someone has typed into
+ * stops it, so nothing typed is ever written over.
+ */
+export function planFlightRows(
+  values: SheetValues,
+  parsed: ParsedSheet,
+  formulas: string[],
+  count: number,
+  firstDataRow = 3
+): FlightRowPlan {
+  const rows = findWritableRows(values, parsed, formulas, firstDataRow);
+  if (rows.length >= count) return { kind: "write", rows };
+
+  const firstRow = (rows.at(-1) ?? lastFlightRow(parsed, firstDataRow)) + 1;
+  const wanted = Math.max(count - rows.length, FORMULA_ROWS_TO_ADD);
+  let lastRow = firstRow - 1;
+  while (lastRow - firstRow + 1 < wanted && !typedInto(values[lastRow], parsed)) lastRow++;
+  if (lastRow - firstRow + 1 < count - rows.length) return { kind: "blocked", row: lastRow + 1 };
+
+  let sourceRow: number | null = null;
+  for (let row = Math.min(firstRow - 1, formulas.length); row >= firstDataRow; row--) {
+    if (formulas[row - 1]?.startsWith("=")) {
+      sourceRow = row;
+      break;
+    }
+  }
+  return { kind: "extend", sourceRow, firstRow, lastRow };
 }
 
 export interface SheetFlightInput {
@@ -855,4 +958,52 @@ export function clearedFlightCells(
   return [...INPUT_COLUMNS, "source" as SheetColumn]
     .filter((key) => columns[key] !== undefined)
     .map((key) => ({ row, column: columns[key]!, value: "" }));
+}
+
+/** Who entered a flight on the site (flight_log_web_entries) */
+export interface WebEntry {
+  userId: string;
+  fullName: string | null;
+}
+
+/** Whose a name is in pilot_aliases: a member, or no member (userId null) */
+export interface AliasOwner {
+  userId: string | null;
+  fullName: string | null;
+}
+
+/**
+ * Flights a member entered on the site under their own log name when that
+ * name is decided for someone else: marked as no member, or matched to
+ * another member. logFlights never claims a name in use, so the flight is
+ * billed to whoever the name belongs to until the biller matches the name
+ * to the member or corrects the row. A name nobody has decided on yet is
+ * reported as unknown_pilot instead.
+ */
+export function findWebEntryNameIssues(
+  flights: ParsedFlight[],
+  entries: Map<string, WebEntry>,
+  owners: Map<string, AliasOwner>
+): FlightIssue[] {
+  const issues: FlightIssue[] = [];
+  for (const flight of flights) {
+    const entry = flight.id ? entries.get(flight.id) : undefined;
+    if (!entry?.fullName) continue;
+    // The names logFlights writes for this member
+    const own = new Set([sheetNameFor(entry.fullName), entry.fullName.trim()].filter(Boolean).map(nameKey));
+    for (const name of [flight.picName, flight.secondName]) {
+      if (!name || !own.has(nameKey(name))) continue;
+      const owner = owners.get(nameKey(name));
+      if (!owner || owner.userId === entry.userId) continue;
+      const whose =
+        owner.userId === null ? "merkitty ei-jäseneksi" : `yhdistetty jäseneen ${owner.fullName ?? "(nimetön)"}`;
+      issues.push({
+        row: flight.row,
+        flightId: flight.id,
+        kind: "web_entry_name",
+        message: `${entry.fullName} kirjasi lennon sivulla nimellä ${name}, mutta nimi on ${whose}. Yhdistä nimi oikealle jäsenelle (Lentäjien nimet) tai korjaa rivin nimi.`,
+      });
+    }
+  }
+  return issues;
 }

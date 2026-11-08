@@ -40,9 +40,9 @@ const cleanUp = () =>
 test.beforeAll(cleanUp);
 test.afterAll(cleanUp);
 
-// T. Testaaja on 18.4.2026 in the fixture: rows 12 and 13
+// T. Testaaja on 18.4.2026 in the fixture: rows 12 and 13, row 13 with 72 l of fuel
 const ROW_12 = "18.4.2026\tT. Testaaja\t\t1\tEFSA\tEFVR\t08.45\t09.20\t1\tMAT";
-const ROW_13 = (landing: string) => `18.4.2026\tT. Testaaja\t\t1\tEFVR\tEFSA\t10.30\t${landing}\t1\tMAT`;
+const ROW_13 = (landing: string) => `18.4.2026\tT. Testaaja\t\t1\tEFVR\tEFSA\t10.30\t${landing}\t1\tMAT\t72`;
 
 // A day in January–May 2025 and a half hour between 6 and 20 that earlier
 // runs are unlikely to have used
@@ -74,8 +74,8 @@ test("types a paper page, matching what pilots already entered", async ({ page }
   await page.getByLabel("Sivunumero").fill("9001");
   await pastePage(page, [
     ROW_12,
-    // Ditto marks for the date, the pilot and the purpose
-    '"\t"\t\t1\tEFVR\tEFSA\t10.30\t11.05\t1\t"',
+    // Ditto marks for the date, the pilot and the purpose; other fuel
+    '"\t"\t\t1\tEFVR\tEFSA\t10.30\t11.05\t1\t"\t70,5',
     `${newDate}\tP. Paperi\t\t1\tEFSA\tEFSA\t${takeoff}\t${landing}\t3\tHAR`,
   ]);
   await expect(page.getByLabel("Rivi 2: Päivä")).toHaveValue('"');
@@ -92,7 +92,7 @@ test("types a paper page, matching what pilots already entered", async ({ page }
   await page.getByRole("button", { name: "Tarkista sivu" }).click();
   await expect(page.getByText("Sama (rivi 12)")).toBeVisible();
   await expect(page.getByText("Eroaa (rivi 13)")).toBeVisible();
-  await expect(page.getByText("lasku 11:03 → 11:05")).toBeVisible();
+  await expect(page.getByText("lasku 11:03 → 11:05 · tankkaus 72 → 70,5")).toBeVisible();
   await expect(page.getByLabel("Rivi 2: mitä tehdään")).toHaveValue("correct");
   await expect(page.getByText("Uusi", { exact: true })).toBeVisible();
 
@@ -108,7 +108,7 @@ test("types a paper page, matching what pilots already entered", async ({ page }
   const row13 = page.getByRole("row").filter({ has: page.getByLabel("Valitse rivi 13", { exact: true }) });
   await expect(row13).toContainText("10.30–11.05");
   await expect(row13).toContainText("Tarkistettu");
-  await expect(row13.getByText("Paperisivu 9001, korjattu: lasku 11:03 → 11:05")).toBeVisible();
+  await expect(row13.getByText("Paperisivu 9001, korjattu: lasku 11:03 → 11:05, tankkaus 72 → 70,5")).toBeVisible();
 
   // Put row 13 back; row 12, on the same day, is not on that page
   await page.goto("/admin/lennot/tuonti");

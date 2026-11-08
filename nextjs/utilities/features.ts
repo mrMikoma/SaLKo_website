@@ -27,6 +27,14 @@ export function isBillingEnabled(): boolean {
 
 // Development only: the button on /admin/lennot that fills an aircraft's tab
 // with made-up flights (utilities/sampleFlights.ts). Off in production.
+/** Whether an admin section is switched on: the flight log and billing aren't everywhere */
+export function isAdminSectionOn(path: string): boolean {
+  if (path === "/admin/lennot" || path.startsWith("/admin/lennot/")) return isFlightLogEnabled();
+  if (path === "/admin/tilastot" || path.startsWith("/admin/tilastot/")) return isFlightLogEnabled();
+  if (/^\/admin\/laskut(us)?(\/|$)/.test(path)) return isBillingEnabled();
+  return true;
+}
+
 export function isSampleFlightsEnabled(): boolean {
   return isEnabled(process.env.FLIGHT_LOG_SAMPLE_DATA)
 }

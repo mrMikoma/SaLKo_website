@@ -1,9 +1,13 @@
-import pricesData from "@/data/prices.json";
+export const dynamic = "force-dynamic";
+
 import Link from "next/link";
 import PageHero from "@/components/pageHero";
 import ContentSection from "@/components/contentSection";
 import CallToAction from "@/components/callToAction";
 import { pageMetadata } from "@/utilities/seo";
+import PricesUnavailable from "@/components/prices/PricesUnavailable";
+import { getPriceList } from "@/utilities/priceList";
+import { formatPrice, itemsIn } from "@/utilities/priceFormat";
 
 export const metadata = pageMetadata({
   title: "Jäsenyys – liity lentokerhoon",
@@ -12,7 +16,8 @@ export const metadata = pageMetadata({
   path: "/kerho/jasenyys",
 });
 
-export default function Page() {
+export default async function Page() {
+  const prices = await getPriceList();
   return (
     <div className="min-h-screen flex flex-col w-full">
       <PageHero
@@ -124,38 +129,42 @@ export default function Page() {
             <h2 className="text-xl md:text-2xl font-bold text-sred mb-4 w-full">
               Jäsenyydet
             </h2>
-            <div className="overflow-x-auto w-full max-w-3xl">
-              <table className="w-full text-md">
-                <thead>
-                  <tr className="border-b border-sbluel/30">
-                    <th className="text-left py-2 px-1 text-sbluel font-semibold">
-                      Jäsentyyppi
-                    </th>
-                    <th className="text-right py-2 px-1 text-sbluel font-semibold">
-                      Jäsenmaksu
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pricesData.membershipFees.map((fee, index) => (
-                    <tr
-                      key={index}
-                      className="border-b border-swhite/10 hover:bg-sblack/30 transition-colors"
-                    >
-                      <td className="py-2 px-1 text-swhite">
-                        <div className="font-medium">{fee.type}</div>
-                        <div className="text-sm text-swhite/60">
-                          {fee.description}
-                        </div>
-                      </td>
-                      <td className="py-2 px-1 text-right text-swhite font-semibold whitespace-nowrap">
-                        {fee.price} {fee.unit}
-                      </td>
+            {prices.unavailable ? (
+              <PricesUnavailable />
+            ) : (
+              <div className="overflow-x-auto w-full max-w-3xl">
+                <table className="w-full text-md">
+                  <thead>
+                    <tr className="border-b border-sbluel/30">
+                      <th className="text-left py-2 px-1 text-sbluel font-semibold">
+                        Jäsentyyppi
+                      </th>
+                      <th className="text-right py-2 px-1 text-sbluel font-semibold">
+                        Jäsenmaksu
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {itemsIn(prices, "membership").map((fee) => (
+                      <tr
+                        key={fee.id}
+                        className="border-b border-swhite/10 hover:bg-sblack/30 transition-colors"
+                      >
+                        <td className="py-2 px-1 text-swhite">
+                          <div className="font-medium">{fee.name}</div>
+                          <div className="text-sm text-swhite/60">
+                            {fee.description}
+                          </div>
+                        </td>
+                        <td className="py-2 px-1 text-right text-swhite font-semibold whitespace-nowrap">
+                          {formatPrice(fee)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
           {/* How to Join */}

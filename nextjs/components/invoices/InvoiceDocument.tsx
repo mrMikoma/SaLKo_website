@@ -8,6 +8,7 @@ import {
   ISSUER,
   virtualBarcode,
 } from "@/utilities/invoices";
+import BankBarcode from "@/components/invoices/BankBarcode";
 
 const STATUS: Record<InvoiceStatus | "overdue", { label: string; tone: string }> = {
   draft: { label: "Luonnos", tone: "bg-gray-200 text-gray-800" },
@@ -166,6 +167,7 @@ const InvoiceDocument = ({
             </div>
           )}
           <p className="mt-3 text-sm text-gray-700">Käytä maksaessa viitenumeroa.</p>
+          {barcode && <BankBarcode digits={barcode} />}
         </section>
       )}
 

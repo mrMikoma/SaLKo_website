@@ -29,8 +29,10 @@ export interface BillingPurpose {
 export interface BillingRate {
   registration: string;
   validFrom: string; // YYYY-MM-DD
-  centsWithFee: number;
-  centsWithoutFee: number;
+  // Hourly prices, billed by the minute: 18 600 is 3,10 €/min, and 10 000
+  // (100 €/h) a price that isn't whole cents per minute
+  centsPerHourWithFee: number;
+  centsPerHourWithoutFee: number;
   minimumLocalMinutes: number;
 }
 
@@ -87,7 +89,7 @@ export interface BillLine {
   purposeCode: string | null;
   minutes: number;
   landings: number;
-  centsPerMinute: number | null;
+  centsPerHour: number | null;
   amountCents: number;
   description: string;
   inputHash: string | null;
@@ -133,6 +135,27 @@ export interface PeriodInput {
 
 export const euros = (cents: number): string =>
   (cents / 100).toLocaleString("fi-FI", { style: "currency", currency: "EUR" });
+
+/** Minutes at an hourly price, rounded to the cent: 27 min at 100 €/h is 45,00 € */
+export const minutesCost = (minutes: number, centsPerHour: number): number =>
+  Math.sign(minutes) * Math.round((Math.abs(minutes) * centsPerHour) / 60);
+
+/** An hourly price per minute: "3,10 €/min", or "≈ 1,67 €/min" when not whole cents */
+export function perMinuteText(centsPerHour: number): string {
+  const text = `${(centsPerHour / 6000).toFixed(2).replace(".", ",")} €/min`;
+  return centsPerHour % 60 === 0 ? text : `≈ ${text}`;
+}
+
+/**
+ * A price as the price list writes it: per minute when that is whole cents
+ * ("3,10 €/min"), otherwise per hour ("100,00 €/h")
+ */
+export function formatRate(centsPerHour: number): string {
+  const decimals = (value: number) => value.toFixed(2).replace(".", ",");
+  return centsPerHour % 60 === 0
+    ? `${decimals(centsPerHour / 6000)} €/min`
+    : `${decimals(centsPerHour / 100)} €/h`;
+}
 
 export const year = (date: string) => Number(date.slice(0, 4));
 
@@ -213,11 +236,16 @@ function flightAmount(flight: BillingFlight, ctx: BillingContext) {
   if (payer.kind !== "payer") return { payer, cents: 0, minutes: 0 };
   const rate = rateOn(ctx.rates, flight.registration, flight.flightDate);
   if (!rate || flight.airborneMinutes === null) return { payer, cents: 0, minutes: 0 };
-  const perMinute =
+  const perHour =
     payer.purpose.isTraining || hasFee(ctx, payer.userId, flight.flightDate)
-      ? rate.centsWithFee
-      : rate.centsWithoutFee;
-  return { payer, perMinute, minutes: flight.airborneMinutes, cents: flight.airborneMinutes * perMinute };
+      ? rate.centsPerHourWithFee
+      : rate.centsPerHourWithoutFee;
+  return {
+    payer,
+    perHour,
+    minutes: flight.airborneMinutes,
+    cents: minutesCost(flight.airborneMinutes, perHour),
+  };
 }
 
 /**
@@ -270,7 +298,7 @@ export function billPeriod(input: PeriodInput, ctx: BillingContext): PeriodBill 
     purposeCode: flight.purposeCode,
     minutes: 0,
     landings: 0,
-    centsPerMinute: null,
+    centsPerHour: null,
     amountCents: 0,
     description: label(flight),
     inputHash: flight.inputHash,
@@ -344,15 +372,15 @@ export function billPeriod(input: PeriodInput, ctx: BillingContext): PeriodBill 
     }
 
     const withFee = payer.purpose.isTraining || hasFee(ctx, payer.userId, flight.flightDate);
-    const perMinute = withFee ? rate.centsWithFee : rate.centsWithoutFee;
+    const perHour = withFee ? rate.centsPerHourWithFee : rate.centsPerHourWithoutFee;
     const bill = payerBill(payer.key, payer.name, payer.userId);
     const minutes = flight.airborneMinutes;
     bill.lines.push(
       flightLine(flight, "flight", {
         minutes,
         landings: flight.landings ?? 0,
-        centsPerMinute: perMinute,
-        amountCents: minutes * perMinute,
+        centsPerHour: perHour,
+        amountCents: minutesCost(minutes, perHour),
       })
     );
     bill.flights++;
@@ -365,8 +393,8 @@ export function billPeriod(input: PeriodInput, ctx: BillingContext): PeriodBill 
       bill.lines.push(
         flightLine(flight, "minimum", {
           minutes: extra,
-          centsPerMinute: perMinute,
-          amountCents: extra * perMinute,
+          centsPerHour: perHour,
+          amountCents: minutesCost(extra, perHour),
           description: `Minimilaskutus ${rate.minimumLocalMinutes} min (lento ${minutes} min)`,
         })
       );
@@ -381,8 +409,8 @@ export function billPeriod(input: PeriodInput, ctx: BillingContext): PeriodBill 
         bill.lines.push(
           flightLine(flight, "credit", {
             minutes: -free,
-            centsPerMinute: perMinute,
-            amountCents: -free * perMinute,
+            centsPerHour: perHour,
+            amountCents: minutesCost(-free, perHour),
             description: `Hyvitys: vapaatunti, ${free} min`,
           })
         );
@@ -427,7 +455,7 @@ export function billPeriod(input: PeriodInput, ctx: BillingContext): PeriodBill 
         purposeCode: flight?.purposeCode ?? null,
         minutes: after.minutes - before.minutes,
         landings: 0,
-        centsPerMinute: null,
+        centsPerHour: null,
         amountCents: diff,
         description: flight
           ? `Korjaus: ${label(flight)}, laskutettu ${before.minutes} min, nyt ${after.minutes} min`

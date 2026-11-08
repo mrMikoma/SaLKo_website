@@ -11,6 +11,37 @@ import { logger } from "@/utilities/logger";
 const log = logger.child({ module: "billing" });
 
 /**
+ * writeBillingCells for several aircraft tabs. Each tab is one write, but
+ * the tabs are separate requests: when a later tab is refused or fails, the
+ * tabs already written are put back with `undo`, so the sheet never shows a
+ * period half closed or a bill half paid. The error is thrown on.
+ */
+export async function writeBillingCellsToTabs(
+  updates: Map<string, BillingCellUpdate[]>,
+  allowedFrom: string[],
+  undo: Pick<BillingCellUpdate, "status" | "period">
+): Promise<void> {
+  const written: [string, BillingCellUpdate[]][] = [];
+  try {
+    for (const [registration, cells] of updates) {
+      await writeBillingCells(registration, cells, allowedFrom);
+      written.push([registration, cells]);
+    }
+  } catch (error) {
+    for (const [registration, cells] of written.reverse()) {
+      await writeBillingCells(
+        registration,
+        cells.map((cell) => ({ id: cell.id, inputHash: null, ...undo })),
+        [...new Set(cells.map((cell) => cell.status))]
+      ).catch((undoError) =>
+        log.error("Putting a tab back after a failed billing write failed", { err: undoError, registration })
+      );
+    }
+    throw error;
+  }
+}
+
+/**
  * Marks a closed period's bill to one payer paid, or not: billing_payers,
  * the payer's invoice, and Maksettu (or back to Laskutettu) for their
  * flights in the sheet. The database is committed only after the sheet
@@ -54,9 +85,9 @@ export async function writePayerPaid(
        WHERE period_id = $1 AND payer_key = $2 AND status IN ('open', 'paid')`,
       [periodId, payerKey, paid, userId]
     );
-    for (const [registration, cells] of updates) {
-      await writeBillingCells(registration, cells, ["Laskutettu", "Maksettu"]);
-    }
+    await writeBillingCellsToTabs(updates, ["Laskutettu", "Maksettu"], {
+      status: paid ? "Laskutettu" : "Maksettu",
+    });
     await client.query("COMMIT");
     return null;
   } catch (error) {

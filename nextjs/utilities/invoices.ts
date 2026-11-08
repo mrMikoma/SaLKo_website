@@ -1,6 +1,6 @@
 import contacts from "@/data/contacts.json";
-import prices from "@/data/prices.json";
-import type { BillLine } from "@/utilities/billing";
+import { type BillLine, formatRate } from "@/utilities/billing";
+import type { PriceItem, PriceSection } from "@/utilities/priceFormat";
 
 /**
  * Invoices: the Finnish reference number and virtual bank barcode, the
@@ -119,16 +119,28 @@ export function flightInvoiceLines(lines: BillLine[]): InvoiceLineInput[] {
     .map((line) => ({
       source: "flight",
       lineDate: line.flightDate,
-      description:
+      description: [
         line.kind === "flight"
           ? [line.registration, line.purposeCode, line.description].filter(Boolean).join(" ")
           : line.kind === "minimum"
             ? [line.registration, line.description].filter(Boolean).join(" ")
             : line.description,
+        // An hourly price that isn't whole cents a minute (100 €/h) is told in
+        // the text, since the unit price column holds cents per minute
+        line.kind !== "adjustment" && line.centsPerHour !== null && line.centsPerHour % 60 !== 0
+          ? `(${formatRate(line.centsPerHour)})`
+          : "",
+      ]
+        .filter(Boolean)
+        .join(" "),
       quantity: line.minutes,
       unit: "min",
-      // A correction is a difference, not minutes × a price
-      unitCents: line.kind === "adjustment" ? null : line.centsPerMinute,
+      // A correction is a difference, not minutes × a price; nor is a price
+      // that isn't whole cents a minute
+      unitCents:
+        line.kind === "adjustment" || line.centsPerHour === null || line.centsPerHour % 60 !== 0
+          ? null
+          : line.centsPerHour / 60,
       amountCents: line.amountCents,
     }));
 }
@@ -160,29 +172,31 @@ export interface InvoicePreset {
   unitCents: number;
 }
 
-// A price-list price in whole euros or with decimals; "-", "TBA" and "~1.67" aren't
-const priceCents = (price: string) =>
-  /^\d+([.,]\d{1,2})?$/.test(price.trim()) ? Math.round(Number(price.replace(",", ".")) * 100) : null;
 const unitOf = (unit: string) => (unit.trim() === "€/h" ? "h" : "kpl");
 
-/** Ready-made lines from the price list (data/prices.json); free items left out */
-export function invoicePresets(): InvoicePreset[] {
-  const presets: InvoicePreset[] = [];
-  const add = (group: string, description: string, price: string, unit: string) => {
-    const cents = priceCents(price);
-    if (cents) presets.push({ group, description, unit: unitOf(unit), unitCents: cents });
-  };
-  for (const fee of prices.membershipFees) {
-    add("Jäsenmaksut", `Jäsenmaksu, ${fee.type.toLowerCase()}`, fee.price, fee.unit);
-  }
-  for (const rate of prices.aircraftRentalRates) {
-    if ("isEquipmentFee" in rate && rate.isEquipmentFee) add("Kalustomaksu", rate.category, rate.price, rate.unit);
-  }
-  for (const space of prices.hangarSpaces) {
-    add("Hallipaikat", `Hallipaikka: ${space.type}`, space.price, space.unit);
-  }
-  for (const fee of [...prices.demonstrationFlights, ...prices.otherFees]) {
-    add("Muut", fee.type, fee.price, fee.unit);
-  }
-  return presets;
+// Which price-list sections become ready-made invoice lines, and how
+const PRESET_GROUPS: Partial<Record<PriceSection, { group: string; describe: (item: PriceItem) => string }>> = {
+  membership: { group: "Jäsenmaksut", describe: (item) => `Jäsenmaksu, ${item.name.toLowerCase()}` },
+  equipment: { group: "Kalustomaksu", describe: (item) => item.name },
+  hangar: { group: "Hallipaikat", describe: (item) => `Hallipaikka: ${item.name}` },
+  demo: { group: "Muut", describe: (item) => item.name },
+  other: { group: "Muut", describe: (item) => item.name },
+};
+
+/**
+ * Ready-made lines from the price list (/admin/hinnasto), in its order.
+ * Free items, hidden ones and ones without a price are left out, as are
+ * courses and the notes.
+ */
+export function invoicePresets(items: PriceItem[]): InvoicePreset[] {
+  const order = Object.keys(PRESET_GROUPS);
+  return items
+    .filter((item) => item.active && PRESET_GROUPS[item.section] && item.priceCents)
+    .sort((a, b) => order.indexOf(a.section) - order.indexOf(b.section) || a.sortOrder - b.sortOrder)
+    .map((item) => ({
+      group: PRESET_GROUPS[item.section]!.group,
+      description: PRESET_GROUPS[item.section]!.describe(item),
+      unit: unitOf(item.unit),
+      unitCents: item.priceCents!,
+    }));
 }

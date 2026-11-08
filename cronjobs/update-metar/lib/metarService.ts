@@ -68,6 +68,17 @@ export async function storeMETARInDB(
   `;
 
   try {
+    // A row dated in the future would make every real observation look older
+    // and stop the updates; a wrongly parsed date stored one on 1 Nov 2026. The
+    // limit is a JS Date, so it is written the same way observation_time is.
+    const future = await connectionPool.query(
+      `DELETE FROM metar_data WHERE station_code = $1 AND observation_time > $2;`,
+      [stationCode, new Date(Date.now() + 60 * 60 * 1000)]
+    );
+    if (future.rowCount) {
+      console.log(`Removed ${future.rowCount} METAR record(s) dated in the future`);
+    }
+
     const checkResult = await connectionPool.query(checkQuery, [stationCode]);
 
     if (checkResult.rows.length > 0) {

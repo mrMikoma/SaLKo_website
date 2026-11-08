@@ -34,7 +34,7 @@ Aviation Weather API → Background Service → PostgreSQL → Server Action →
 
 4. **Server Actions** (`utilities/metarActions.ts`)
 
-   - Provides `getLatestMETAR()` for client components
+   - Provides `getRecentMETARs()` for the widget: the latest raw report and the 12 hours before it
    - Handles errors gracefully
 
 5. **Update Scripts**
@@ -124,15 +124,31 @@ CRON_SECRET=your-secret-key-here  # Optional, for API route security
 
 ### Frontend Component
 
-The WeatherWidget component automatically fetches data from the database:
+The WeatherWidget component fetches the reports through the server action once a minute:
 
 ```tsx
 import WeatherWidget from "@/components/weatherWidget";
 
 export default function Page() {
-  return <WeatherWidget />;
+  return <WeatherWidget />; // compact, as on the home page
+  // <WeatherWidget variant="full" /> as on /kerho/kentta
 }
 ```
+
+The widget decodes `raw_metar` itself with `utilities/metarDecode.ts`, which has unit tests in `tests/unit/metarDecode.test.ts`. It doesn't use the display strings the cronjob stores, because they drop CAVOK, the cloud layers, CB and the weather groups. It shows the report the way aviation weather services do:
+
+- **The header:** the observation time in Finnish time and UTC, the report's age, and the flight category. The category is VFR, MVFR, IFR or LIFR, by the FAA's ceiling and visibility limits, as on aviationweather.gov. It always shows as a coloured dot beside the name, never the colour alone. A notice appears when the latest report is over 75 minutes old.
+- **The raw METAR, then its groups in aviation units:**
+  - wind in degrees true and knots (m/s beside it), with gusts and the direction range;
+  - visibility and RVR;
+  - weather (`-SHRA` as "heikkoja sadekuuroja");
+  - every cloud layer, with CB and TCU;
+  - the ceiling, temperature and dew point, QNH;
+  - recent weather and the trend (NOSIG, BECMG, TEMPO).
+
+  Groups the widget doesn't decode, such as a runway state group, are shown as written.
+- **Runway 12/30 wind** (`utilities/runwayWind.ts`): head- or tailwind and crosswind for both ends, from the runway's true bearings in the AIP (125.66° and 305.69°), since METAR winds are true too. It also gives the largest crosswind within a reported direction range. The compact widget has one line for the end with more headwind; the full one draws the runway on a compass, with the wind arrow and the direction range.
+- **Full widget only:** a 12-hour chart of the mean wind and gusts, with the direction as arrows along the top, and every report in a table. The chart and category colours were checked for contrast and colour blindness on the widget's background; see `components/weather/colors.ts`.
 
 ### Manual Trigger
 
@@ -227,10 +243,10 @@ psql $DATABASE_CONNECTION_STRING -c "SELECT * FROM metar_data ORDER BY fetched_a
 ### Server Action
 
 ```typescript
-import { getLatestMETAR } from "@/utilities/metarActions";
+import { getRecentMETARs } from "@/utilities/metarActions";
 
-const response = await getLatestMETAR();
-// Returns: { success: boolean, data?: {...}, error?: string }
+const response = await getRecentMETARs();
+// Returns: { success: boolean, observations: { raw, observedAt }[], error?: string }, newest first
 ```
 
 ### Service Functions

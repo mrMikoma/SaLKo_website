@@ -14,6 +14,7 @@ import {
   referenceNumber,
   virtualBarcode,
 } from "@/utilities/invoices";
+import type { PriceItem } from "@/utilities/priceFormat";
 import type { BillLine } from "@/utilities/billing";
 
 describe("reference numbers", () => {
@@ -89,7 +90,7 @@ describe("lines", () => {
     purposeCode: "HAR",
     minutes: 20,
     landings: 2,
-    centsPerMinute: 310,
+    centsPerHour: 18600,
     amountCents: 6200,
     description: "EFSA–EFSA 10:00–10:20",
     inputHash: "h",
@@ -101,7 +102,7 @@ describe("lines", () => {
       line({}),
       line({ kind: "minimum", minutes: 10, amountCents: 3100, description: "Minimilaskutus 30 min (lento 20 min)" }),
       line({ kind: "credit", minutes: -60, amountCents: -18600, description: "Hyvitys: vapaatunti, 60 min" }),
-      line({ kind: "adjustment", minutes: 5, centsPerMinute: null, amountCents: 1550, description: "Korjaus: x" }),
+      line({ kind: "adjustment", minutes: 5, centsPerHour: null, amountCents: 1550, description: "Korjaus: x" }),
       line({ kind: "unbilled", amountCents: 0 }),
     ]);
     expect(lines.map((l) => l.description)).toEqual([
@@ -113,6 +114,19 @@ describe("lines", () => {
     expect(lines[0]).toMatchObject({ source: "flight", quantity: 20, unit: "min", unitCents: 310, amountCents: 6200 });
     expect(lines[3].unitCents).toBeNull();
     expect(lines.reduce((sum, l) => sum + l.amountCents, 0)).toBe(6200 + 3100 - 18600 + 1550);
+  });
+
+  test("an hourly price that isn't whole cents a minute goes in the text", () => {
+    const [oh386] = flightInvoiceLines([
+      line({ registration: "OH-386", minutes: 27, centsPerHour: 10000, amountCents: 4500 }),
+    ]);
+    expect(oh386).toMatchObject({
+      description: "OH-386 HAR EFSA–EFSA 10:00–10:20 (100,00 €/h)",
+      quantity: 27,
+      unit: "min",
+      unitCents: null,
+      amountCents: 4500,
+    });
   });
 
   test("money and quantities are read the Finnish way", () => {
@@ -129,7 +143,21 @@ describe("lines", () => {
   });
 
   test("the price list gives ready-made lines with prices, leaving out free ones", () => {
-    const presets = invoicePresets();
+    let id = 0;
+    const item = (section: PriceItem["section"], name: string, priceCents: number | null, unit: string, extra: Partial<PriceItem> = {}): PriceItem => ({
+      id: ++id, section, code: null, name, description: "", priceCents, unit, note: "", sortOrder: id * 10, active: true, ...extra,
+    });
+    const presets = invoicePresets([
+      item("demo", "Kustannusjakoperusteinen lennätys", 24000, "€/h"),
+      item("membership", "Varsinainen jäsen", 6000, "€/vuosi"),
+      item("membership", "Kunniajäsen", 0, "€/vuosi"),
+      item("membership", "Piilotettu", 1000, "€/vuosi", { active: false }),
+      item("equipment", "Kalustomaksu", 35000, "€/kausi"),
+      item("hangar", "Vene", 40000, "€/talvi"),
+      item("training", "PPL-koulutus", 1300000, "€", { code: "PPL" }),
+      item("other", "Avain", null, "€"),
+      item("note", "Huomio", null, ""),
+    ]);
     expect(presets).toContainEqual({
       group: "Jäsenmaksut",
       description: "Jäsenmaksu, varsinainen jäsen",
@@ -140,5 +168,12 @@ describe("lines", () => {
     expect(presets.some((p) => p.description.includes("Kunniajäsen"))).toBe(false);
     expect(presets.find((p) => p.description === "Kustannusjakoperusteinen lennätys")?.unit).toBe("h");
     expect(presets.every((p) => p.unitCents > 0)).toBe(true);
+    // In the price list's section order: membership first, the demo flight last
+    expect(presets.map((p) => p.description)).toEqual([
+      "Jäsenmaksu, varsinainen jäsen",
+      "Kalustomaksu",
+      "Hallipaikka: Vene",
+      "Kustannusjakoperusteinen lennätys",
+    ]);
   });
 });

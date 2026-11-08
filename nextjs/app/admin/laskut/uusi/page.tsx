@@ -7,6 +7,7 @@ import { hasPermission } from "@/utilities/roles";
 import { isBillingEnabled } from "@/utilities/features";
 import { getInvoiceRecipients } from "@/utilities/invoiceData";
 import { invoicePresets } from "@/utilities/invoices";
+import { getPriceList } from "@/utilities/priceList";
 import NewInvoiceForm from "@/components/invoices/NewInvoiceForm";
 
 export const metadata = {
@@ -21,7 +22,7 @@ export default async function NewInvoicePage() {
   if (!session?.user?.id || !hasPermission(session.user.roles, "MANAGE_BILLING")) {
     redirect("/");
   }
-  const recipients = await getInvoiceRecipients();
+  const [recipients, prices] = await Promise.all([getInvoiceRecipients(), getPriceList()]);
 
   return (
     <div className="space-y-6">
@@ -36,7 +37,12 @@ export default async function NewInvoicePage() {
           Lentolaskut tehdään laskutusjaksosta.
         </p>
       </div>
-      <NewInvoiceForm recipients={recipients} presets={invoicePresets()} />
+      {prices.unavailable && (
+        <p role="status" className="max-w-3xl rounded-lg border border-orange-300 bg-orange-50 p-3 text-orange-900">
+          Hinnaston valmiit rivit eivät juuri nyt lataudu. Rivit voi kirjoittaa käsin.
+        </p>
+      )}
+      <NewInvoiceForm recipients={recipients} presets={invoicePresets(prices.items)} />
     </div>
   );
 }

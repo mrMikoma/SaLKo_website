@@ -6,6 +6,7 @@ import { DateTime } from "luxon";
 import { revalidatePath } from "next/cache";
 import pool from "@/utilities/db";
 import { auth } from "@/auth";
+import { SESSION_ENDED } from "@/utilities/errorText";
 import { hasPermission } from "@/utilities/roles";
 import { isFlightLogEnabled, isSampleFlightsEnabled } from "@/utilities/features";
 import { syncFlightSheets, SyncSummary } from "@/utilities/flightSync";
@@ -45,9 +46,7 @@ import { logger } from "@/utilities/logger";
 
 const log = logger.child({ module: "flight-log" });
 
-type ActionResult<T = null> =
-  | { status: "success"; result: T }
-  | { status: "error"; error: string };
+import type { ActionResult } from "@/utilities/actionResult";
 
 const FLIGHT_LOG_DISABLED = "Lentopäiväkirja ei ole vielä käytössä";
 
@@ -69,7 +68,10 @@ async function requireFlightLogAdmin() {
     return { error: FLIGHT_LOG_DISABLED };
   }
   const session = await auth();
-  if (!session?.user?.id || !hasPermission(session.user.roles, "MANAGE_FLIGHT_LOG")) {
+  if (!session?.user?.id) {
+    return { error: SESSION_ENDED };
+  }
+  if (!hasPermission(session.user.roles, "MANAGE_FLIGHT_LOG")) {
     return { error: "Ei oikeuksia lentopäiväkirjan hallintaan" };
   }
   return { user: session.user };
@@ -296,35 +298,50 @@ const logFlightsSchema = z.object({
 export type LogFlightsInput = z.input<typeof logFlightsSchema>;
 
 /**
- * How the member is written in the flight log. Their matched sheet name if
- * they have one; otherwise "M.Meikäläinen" from their full name, or the full name,
- * whichever nobody uses yet. A name already in the sheet or in pilot_aliases is
- * never taken here: it may be another pilot's, and matching it would hand them
- * that pilot's flights and bills. The admin matches those on /admin/lennot.
- * A new name is matched to the member (claimSheetName) only once their flights
- * are in the sheet, so a save that fails doesn't reserve a name.
+ * How the member is written in the flight log: their matched sheet name if
+ * they have one, otherwise "M.Meikäläinen" from their full name, or the full
+ * name.
+ *
+ * A name nobody uses yet becomes theirs (`claim`), but only once their flights
+ * are in the sheet (claimSheetName), so a save that fails doesn't reserve a
+ * name. A name already in the sheet or in pilot_aliases is never claimed here:
+ * it may be another pilot's, and matching it would hand the member that
+ * pilot's flights and bills. The flight still goes in under it, so a member is
+ * never stopped from logging. The biller matches the name while checking the
+ * flight; the sync points it out (unknown_pilot, or web_entry_name when the
+ * name is decided for someone else).
  */
 async function memberSheetName(
   userId: string,
   fullName: string
-): Promise<{ name: string; isNew: boolean } | null> {
+): Promise<{ name: string; claim: boolean; matched: boolean } | null> {
   const existing = await pool.query(
     "SELECT name FROM pilot_aliases WHERE user_id = $1 ORDER BY updated_at DESC LIMIT 1",
     [userId]
   );
-  if (existing.rows.length > 0) return { name: existing.rows[0].name, isNew: false };
+  if (existing.rows.length > 0) return { name: existing.rows[0].name, claim: false, matched: true };
 
-  for (const candidate of [sheetNameFor(fullName), fullName.trim()]) {
-    if (!candidate) continue;
-    const taken = await pool.query(
-      `SELECT 1 FROM pilot_aliases WHERE name_key = $1
-       UNION ALL SELECT 1 FROM sheet_flights WHERE pic_key = $1 OR second_key = $1
-       LIMIT 1`,
-      [nameKey(candidate)]
-    );
-    if (taken.rows.length === 0) return { name: candidate, isNew: true };
+  const candidates = [...new Set([sheetNameFor(fullName), fullName.trim()].filter(Boolean))];
+  // How far a name is from being the member's: 1 in the sheet but nobody's
+  // yet, 2 marked as no member, 3 matched to another member
+  let fallback: { name: string; rank: number } | null = null;
+  for (const candidate of candidates) {
+    const key = nameKey(candidate);
+    const alias = await pool.query("SELECT user_id FROM pilot_aliases WHERE name_key = $1", [key]);
+    let rank: number;
+    if (alias.rows.length > 0) {
+      rank = alias.rows[0].user_id === null ? 2 : 3;
+    } else {
+      const inSheet = await pool.query(
+        "SELECT 1 FROM sheet_flights WHERE pic_key = $1 OR second_key = $1 LIMIT 1",
+        [key]
+      );
+      if (inSheet.rows.length === 0) return { name: candidate, claim: true, matched: true };
+      rank = 1;
+    }
+    if (!fallback || rank < fallback.rank) fallback = { name: candidate, rank };
   }
-  return null;
+  return fallback ? { name: fallback.name, claim: false, matched: false } : null;
 }
 
 async function claimSheetName(userId: string, name: string): Promise<void> {
@@ -341,13 +358,16 @@ async function claimSheetName(userId: string, name: string): Promise<void> {
  */
 export async function logFlights(
   input: LogFlightsInput
-): Promise<ActionResult<{ ids: string[]; sheetName: string }>> {
+): Promise<ActionResult<{ ids: string[]; sheetName: string; nameMatched: boolean }>> {
   if (!isFlightLogEnabled()) {
     return { status: "error", error: FLIGHT_LOG_DISABLED };
   }
   const session = await auth();
-  if (!session?.user?.id || !hasPermission(session.user.roles, "LOG_OWN_FLIGHT")) {
-    return { status: "error", error: "Kirjaudu sisään kirjataksesi lentoja" };
+  if (!session?.user?.id) {
+    return { status: "error", error: SESSION_ENDED };
+  }
+  if (!hasPermission(session.user.roles, "LOG_OWN_FLIGHT")) {
+    return { status: "error", error: "Ei oikeuksia kirjata lentoja" };
   }
 
   const parsed = logFlightsSchema.safeParse(input);
@@ -404,7 +424,8 @@ export async function logFlights(
 
   let inputs: SheetFlightInput[] = [];
   let sheetName: string | null = null;
-  let newSheetName = false;
+  let claimName = false;
+  let nameMatched = false;
   try {
     const purposes = await pool.query(
       "SELECT code, is_training FROM flight_purposes WHERE active"
@@ -430,14 +451,11 @@ export async function logFlights(
       session.user.fullName || session.user.name || ""
     );
     if (!member) {
-      return {
-        status: "error",
-        error:
-          "Nimesi on jo lentopäiväkirjassa, mutta sitä ei ole yhdistetty sinuun. Pyydä laskuttajaa yhdistämään nimesi, niin voit kirjata lentoja.",
-      };
+      return { status: "error", error: "Lisää nimesi profiiliin, niin voit kirjata lentoja." };
     }
     sheetName = member.name;
-    newSheetName = member.isNew;
+    claimName = member.claim;
+    nameMatched = member.matched;
 
     // Saved already: the answer to an earlier try was lost on the way
     const saved = await pool.query(
@@ -448,7 +466,7 @@ export async function logFlights(
       return { status: "error", error: "Lomake on vanhentunut. Lataa sivu uudelleen." };
     }
     if (saved.rows.length === ids.length) {
-      return { status: "success", result: { ids, sheetName } };
+      return { status: "success", result: { ids, sheetName, nameMatched } };
     }
     if (saved.rows.length > 0) {
       return {
@@ -490,7 +508,7 @@ export async function logFlights(
   // The flights are in the sheet now. Saving again finds them there by their
   // IDs and only finishes this step.
   try {
-    if (newSheetName) await claimSheetName(session.user.id, sheetName);
+    if (claimName) await claimSheetName(session.user.id, sheetName);
     await pool.query(
       `INSERT INTO flight_log_web_entries (id, user_id, registration)
        SELECT unnest($1::uuid[]), $2, $3
@@ -508,7 +526,7 @@ export async function logFlights(
   await syncFlightSheets(session.user.fullName || "jäsen", { wait: true });
   revalidatePath("/jasenalue/lentopaivakirja");
   revalidatePath("/admin/lennot");
-  return { status: "success", result: { ids: inputs.map((i) => i.id), sheetName } };
+  return { status: "success", result: { ids: inputs.map((i) => i.id), sheetName, nameMatched } };
 }
 
 /**
@@ -520,8 +538,11 @@ export async function undoFlight(id: string): Promise<ActionResult> {
     return { status: "error", error: FLIGHT_LOG_DISABLED };
   }
   const session = await auth();
-  if (!session?.user?.id || !hasPermission(session.user.roles, "LOG_OWN_FLIGHT")) {
-    return { status: "error", error: "Kirjaudu sisään" };
+  if (!session?.user?.id) {
+    return { status: "error", error: SESSION_ENDED };
+  }
+  if (!hasPermission(session.user.roles, "LOG_OWN_FLIGHT")) {
+    return { status: "error", error: "Ei oikeuksia kirjata lentoja" };
   }
   if (!z.uuid().safeParse(id).success) {
     return { status: "error", error: "Lentoa ei löytynyt" };
@@ -668,6 +689,9 @@ const paperCellsSchema = z.object({
   landing: z.string().max(8),
   landings: z.string().max(4),
   purpose: z.string().max(10),
+  fuel: z.string().max(10),
+  oil: z.string().max(10),
+  meter: z.string().max(12),
   remarks: z.string().max(300),
 });
 
@@ -776,9 +800,9 @@ const toSheetInput = (row: PaperRow, id: string) => ({
   landing: row.landing,
   landings: row.landings,
   purposeCode: row.purposeCode,
-  fuelLitres: null,
-  oilQuarts: null,
-  hourMeter: null,
+  fuelLitres: row.fuelLitres,
+  oilQuarts: row.oilQuarts,
+  hourMeter: row.hourMeter,
   remarks: row.remarks,
 });
 

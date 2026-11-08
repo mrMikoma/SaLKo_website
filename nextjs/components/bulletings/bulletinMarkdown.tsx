@@ -1,4 +1,12 @@
-import type { Components } from "react-markdown";
+import type { Components, Options } from "react-markdown";
+import remarkBreaks from "remark-breaks";
+import remarkGfm from "remark-gfm";
+
+/**
+ * GitHub-style Markdown, where a line break typed in the editor is also one
+ * on the page: club bulletins are written line by line, not as paragraphs.
+ */
+export const bulletinRemarkPlugins: Options["remarkPlugins"] = [remarkGfm, remarkBreaks];
 
 /**
  * How bulletin Markdown looks on the site's dark background. The admin

@@ -38,7 +38,7 @@ bun run test:e2e --project=setup                # only (re)create the e2e accoun
 
 Playwright e2e tests live in `nextjs/e2e/` (config: `nextjs/playwright.config.ts`). Unit tests for pure helpers live in `nextjs/tests/unit/` and run with `bun run test:unit` (bun's test runner). `.github/workflows/test.yaml` runs lint, the type check, the unit tests and the e2e suite on every PR to `dev` or `main` that touches `nextjs/` or `postgres/`. In CI the suite runs against a production build served by `.next/standalone/server.js`, as in the Docker image, and a Postgres built from `postgres/init/`.
 
-- `smoke.spec.ts` checks that every public page renders an `h1`, that protected routes redirect anonymous visitors to `/`, and that the login dialog opens.
+- `smoke.spec.ts` checks that every public page renders an `h1`, that protected routes send anonymous visitors to the login page, and that the login dialog opens.
 - Every test fails on an uncaught page error or a `console.error` (auto fixture in `e2e/fixtures.ts`), so import `test`/`expect` from `./fixtures`, not from `@playwright/test`.
 - `auth.setup.ts` creates three credentials accounts in the local database, `e2e-user@salko.invalid` (member), `e2e-admin@salko.invalid` (admin) and `e2e-treasurer@salko.invalid` (member and treasurer), all with password `E2e-local-pass1!`. It logs in as each and saves the sessions to `nextjs/playwright/.auth/{user,admin,treasurer}.json` for `member.spec.ts`, `admin.spec.ts`, `treasurer.spec.ts` and the flight-log specs. It only writes to a database on localhost or a Docker bridge address (172.16.0.0/12). For any other database, set `E2E_USER_EMAIL`/`E2E_USER_PASSWORD`, `E2E_ADMIN_EMAIL`/`E2E_ADMIN_PASSWORD` and `E2E_TREASURER_EMAIL`/`E2E_TREASURER_PASSWORD` in `nextjs/.env` to existing accounts, or those specs are skipped.
 - A dev server already listening on :3000 is reused. In a worktree, when another checkout's server owns :3000, run `PORT=3001 NEXTAUTH_URL=http://localhost:3001 bun run test:e2e` so the tests hit this tree's code. Without `NEXTAUTH_URL`, NextAuth builds `proxy.ts`'s redirects from the `.env` value, `http://localhost:3000`, and the redirect tests fail with `ERR_CONNECTION_REFUSED`.
@@ -103,12 +103,12 @@ The database connection is a `pg.Pool` singleton exported from `utilities/db.ts`
 
 **Every database change goes into both `postgres/init/` and `postgres/migrations/`, in the same PR.**
 
-- `postgres/init/` is the full current schema. It only runs when a database is created from scratch: the dev database on every dev deploy, or a new server. Edit the definitions in `01-schema.sql`, and add grants for new tables to `05-grant-app-permissions.sql`.
+- `postgres/init/` is the full current schema. It only runs when a database is created from scratch: the dev database on every dev deploy, or a new server. Edit the definitions in `01-schema.sql`, and add grants for new tables to `05-grant-app-permissions.sql`. Its last lines record the newest migration the schema includes (a `schema_migrations` row with checksum `init`): raise it to your migration's file name. `migrate.sh` skips the files up to it on such a database, so old migrations never run against a schema they weren't written for, and CI fails when the line is behind.
 - `postgres/migrations/NNN_description.sql` is the same change for databases that already exist, which in practice means prod. `.github/workflows/db-migrate.yaml` applies pending files in name order with `postgres/migrate.sh`. It runs on dev automatically when migrations reach the `dev` branch, and on prod only manually, from `main`, after approval. Run the prod migration right before deploying the code that needs it.
 
 Rules for migration files:
 - Name them `NNN_snake_case.sql` with the next free number. Never edit or rename a migration once it has run anywhere; `migrate.sh` compares checksums and stops. Fix mistakes with a new migration.
-- Make them idempotent (`IF NOT EXISTS`, `IF EXISTS`, `CREATE OR REPLACE`, a `DO` block for `CREATE TYPE`). A database created from `init/` already has every change, so each migration must be a no-op there. Compare the result against `init/` before opening the PR.
+- Make them idempotent (`IF NOT EXISTS`, `IF EXISTS`, `CREATE OR REPLACE`, a `DO` block for `CREATE TYPE`), and make sure the result matches `init/`: try it on a copy of the previous schema before opening the PR.
 - Leave out `BEGIN`/`COMMIT`: each file runs in one transaction with its `schema_migrations` row, so `CREATE INDEX CONCURRENTLY` is not possible.
 - Grant new tables to the app role with `GRANT ... TO :app_user;`, matching `05-grant-app-permissions.sql`. Default privileges leave out `DELETE`.
 - Don't `SELECT` member data, because the Actions logs are public.
@@ -135,13 +135,13 @@ Session strategy is JWT with 30-day expiry. `trustHost: true` is required becaus
 
 `utilities/roles.ts` exports `ROLES`, `PERMISSIONS`, `hasPermission()`, `canManageBooking()`, and `canDeleteBooking()`. All server actions call `auth()` and `hasPermission()` before touching the DB. Never rely on client-side role checks for access control.
 
-Roles: `admin` has the whole admin site. `treasurer` (laskuttaja) has the flight log, billing and statistics (`VIEW_ALL_FLIGHTS`, `MANAGE_FLIGHT_LOG`, `MANAGE_BILLING`, `VIEW_STATISTICS`) and nothing else of `/admin`: `canOpenAdminPath()` decides what `proxy.ts` lets through and what the admin nav shows, and `adminHome()` is where a treasurer lands (`/admin/laskutus`). `validateRoles()` checks the roles an admin gives, and refuses a treasurer without `user` or `admin`. Give a new role its permissions here, and add it to `ASSIGNABLE_ROLES` for the user forms.
+Roles: `admin` has the whole admin site. `treasurer` (laskuttaja) has the flight log, billing, statistics and the price list (`VIEW_ALL_FLIGHTS`, `MANAGE_FLIGHT_LOG`, `MANAGE_BILLING`, `VIEW_STATISTICS`, `MANAGE_PRICES`) and nothing else of `/admin`: `canOpenAdminPath()` decides what `proxy.ts` lets through and what the admin nav shows, and `adminHome()` is where a treasurer lands: their first section that is switched on (`isAdminSectionOn()` in `utilities/features.ts`), so `/admin/hinnasto` where the flight log is off. `validateRoles()` checks the roles an admin gives, and refuses a treasurer without `user` or `admin`. Give a new role its permissions here, and add it to `ASSIGNABLE_ROLES` for the user forms.
 
 ### Data Flow Pattern
 
 - **Server actions** (`"use server"`) in `utilities/` handle all DB mutations and are called directly from client components.
 - **API routes** (`app/api/`) exist only for: METAR reads, Umami analytics proxy (forwards to internal `salko-umami:3000`), NextAuth, the booking `.ics` export (`api/varaukset/[id]/kalenteri`, see `nextjs/docs/BOOKINGS.md`), and `api/health`, which the monitoring's uptime probe calls (200 when the app and its database answer, 503 otherwise).
-- **Static content** (contacts, plane specs, prices, history) is kept in JSON files under `nextjs/data/` and imported at build time — not stored in the DB.
+- **Static content** (contacts, plane specs, history) is kept in JSON files under `nextjs/data/` and imported at build time — not stored in the DB. Prices are the exception: the price list is in the database (`price_items`, aircraft prices in `aircraft_rates`), edited on `/admin/hinnasto` by admins and the treasurer, and read by `/kerho/hinnasto`, `/kerho/jasenyys`, `/kerho/hallit`, `/koulutus` and the invoice presets (`utilities/priceList.ts`).
 - TanStack Query (`providers/QueryProvider.tsx`) is used on the client for data fetching that benefits from caching/refetching (e.g. bookings calendar).
 
 ### Umami Analytics
@@ -174,7 +174,7 @@ Copy `nextjs/.env.example` to `nextjs/.env` (Claude's hooks block editing `.env`
 
 ## Deployment
 
-CI/CD runs on GitHub Actions. Build jobs run on GitHub-hosted runners; jobs that touch the server create a temporary self-hosted runner in Hetzner Cloud (`create-runner` / `delete-runner`). `main` is production and `dev` is the development environment. Changes reach either one only through a PR and these workflows, never by hand on the server.
+CI/CD runs on GitHub Actions. Build jobs run on GitHub-hosted runners. Jobs that touch the server need a runner that reaches salko0's private address (`vars.SERVER_IP_SALKO0`, 10.1.2.2), and `create-runner` picks one: the self-hosted runner labelled `homelab`, which reaches it over a VPN, when that runner is online and idle, otherwise a temporary runner in Hetzner Cloud, which `delete-runner` removes. The repository variable `USE_HOMELAB_RUNNER=false` always takes Hetzner. `main` is production and `dev` is the development environment. Changes reach either one only through a PR and these workflows, never by hand on the server.
 
 - `build-and-publish-dev.yaml` runs on pushes to `dev` that touch `nextjs/`, pushes the image to GHCR and starts `deploy-app-dev.yaml` from the same branch (`workflow_dispatch`), so changes to the dev deploy take effect on `dev` without waiting for `main`.
 - `build-and-publish-prod.yaml` (manual, refuses any branch but `main`) builds the prod image; `deploy-app-prod.yaml` (manual, from `main`) runs `docker compose pull && up` on the server. The production environment's variables `FEATURE_FLIGHT_LOG`, `FEATURE_BILLING` and `MAIL_MODE` switch the flight log, billing and email on at deploy; the release steps are in `nextjs/docs/GO_LIVE.md`.

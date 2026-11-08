@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { DateTime } from "luxon";
 import { logFlights, undoFlight } from "@/utilities/flightLogs";
@@ -13,7 +13,10 @@ import {
   overlappingLegs,
 } from "@/utilities/flightFormInput";
 import { formatMinutes } from "@/utilities/flightFormat";
+import { euros, minutesCost } from "@/utilities/billing";
 import type { FlightFormOptions } from "@/utilities/flightLogData";
+import { useDraft } from "@/hooks/useDraft";
+import DraftNotice from "@/components/DraftNotice";
 
 interface FlightEntryFormProps {
   options: FlightFormOptions;
@@ -44,6 +47,24 @@ interface SavedLeg {
   id: string;
   label: string;
 }
+
+// What a reload keeps of an unsaved entry (useDraft). The legs keep their
+// IDs, so saving a restored entry that partly reached the sheet doesn't add
+// flights twice.
+interface EntryDraft {
+  registration: string;
+  flightDate: string;
+  role: "pic" | "student";
+  otherPilot: string;
+  legs: Leg[];
+}
+
+const isEmptyEntry = (draft: EntryDraft | null) =>
+  !draft ||
+  (!draft.otherPilot.trim() &&
+    draft.legs.every(
+      (leg) => !leg.takeoff && !leg.landing && !leg.remarks.trim() && !leg.fuel && !leg.oil && !leg.meter
+    ));
 
 const HOME = "EFSA";
 const inputClassName =
@@ -92,8 +113,34 @@ const FlightEntryForm = ({ options, today, yesterday }: FlightEntryFormProps) =>
   const [otherPilot, setOtherPilot] = useState("");
   const [legs, setLegs] = useState<Leg[]>(() => [newLeg(undefined, 0)]);
   const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState<{ legs: SavedLeg[]; sheetName: string } | null>(null);
+  const [saved, setSaved] = useState<{ legs: SavedLeg[]; sheetName: string; nameMatched: boolean } | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  // Kept in the tab until saved, so a reload or a lost page doesn't empty it
+  const draftValue = useMemo<EntryDraft | null>(
+    () => (saved ? null : { registration, flightDate, role, otherPilot, legs }),
+    [saved, registration, flightDate, role, otherPilot, legs]
+  );
+  const draft = useDraft<EntryDraft | null>(
+    "lento",
+    draftValue,
+    (kept) => {
+      if (!kept) return;
+      if (options.aircraft.some((a) => a.registration === kept.registration)) setRegistration(kept.registration);
+      setFlightDate(kept.flightDate);
+      setRole(kept.role);
+      setOtherPilot(kept.otherPilot);
+      setLegs(kept.legs);
+    },
+    isEmptyEntry
+  );
+  const discardDraft = () => {
+    draft.clear();
+    setFlightDate(today);
+    setRole("pic");
+    setOtherPilot("");
+    setLegs([newLeg(undefined, 0)]);
+  };
 
   // Bring the confirmation into view after saving: the save button is at the
   // bottom of a long form, so on a phone it would otherwise be off-screen
@@ -109,7 +156,7 @@ const FlightEntryForm = ({ options, today, yesterday }: FlightEntryFormProps) =>
   const updateLeg = (key: number, changes: Partial<Leg>) =>
     setLegs((current) => current.map((leg) => (leg.key === key ? { ...leg, ...changes } : leg)));
 
-  const rate = options.aircraft.find((a) => a.registration === registration)?.minuteRate ?? null;
+  const rate = options.aircraft.find((a) => a.registration === registration)?.centsPerHour ?? null;
   const billedCodes = new Set(options.purposes.filter((p) => p.billed).map((p) => p.code));
   const timeProblems = legs.map((leg) =>
     normalizeClock(leg.takeoff) && normalizeClock(leg.landing) ? legTimeError(leg.takeoff, leg.landing) : null
@@ -173,8 +220,10 @@ const FlightEntryForm = ({ options, today, yesterday }: FlightEntryFormProps) =>
         setError(result.error);
         return;
       }
+      draft.clear();
       setSaved({
         sheetName: result.result.sheetName,
+        nameMatched: result.result.nameMatched,
         legs: result.result.ids.map((id, i) => ({
           id,
           label: `${legs[i].departure}–${legs[i].arrival} ${normalizeClock(legs[i].takeoff)}–${normalizeClock(legs[i].landing)} ${legs[i].purposeCode}`,
@@ -216,6 +265,13 @@ const FlightEntryForm = ({ options, today, yesterday }: FlightEntryFormProps) =>
             {registration}, {DateTime.fromISO(flightDate).toFormat("d.M.yyyy")}. Nimesi
             taulukossa: <strong>{saved.sheetName}</strong>.
           </p>
+          {!saved.nameMatched && (
+            <p className="mt-3 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-900">
+              Nimi {saved.sheetName} on jo lentopäiväkirjassa, eikä sitä ole vielä yhdistetty sinuun.
+              Laskuttaja yhdistää sen tarkistaessaan lennon. Siihen asti lento ei näy Omissa
+              lennoissasi.
+            </p>
+          )}
         </div>
         <ul className="divide-y divide-gray-200 border-y border-gray-200">
           {saved.legs.map((leg) => (
@@ -271,6 +327,11 @@ const FlightEntryForm = ({ options, today, yesterday }: FlightEntryFormProps) =>
       }}
       className="bg-white rounded-xl shadow-lg text-gray-900"
     >
+      {draft.restored && (
+        <div className="p-4 sm:p-6 pb-0 sm:pb-0">
+          <DraftNotice onDiscard={discardDraft} />
+        </div>
+      )}
       <div className="p-4 sm:p-6 space-y-6">
         <datalist id="airfields">
           {options.airfields.map((field) => (
@@ -622,7 +683,7 @@ const FlightEntryForm = ({ options, today, yesterday }: FlightEntryFormProps) =>
           {rate !== null && billedMinutes > 0 && (
             <span className="text-gray-600">
               {" "}
-              · arvio {(billedMinutes * rate).toLocaleString("fi-FI", { style: "currency", currency: "EUR" })}
+              · arvio {euros(minutesCost(billedMinutes, rate))}
             </span>
           )}
         </p>

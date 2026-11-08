@@ -2,6 +2,7 @@
 
 import React, { useState, useTransition } from "react";
 import { User, updateUserInfo } from "@/utilities/adminUserActions";
+import { callAction } from "@/utilities/callAction";
 
 interface EditUserFormProps {
   user: User;
@@ -43,11 +44,11 @@ const EditUserForm = ({ user, onSuccess, onCancel, onError }: EditUserFormProps)
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     startTransition(async () => {
-      const result = await updateUserInfo(user.id, edited);
-      if (result.success) {
+      const result = await callAction(() => updateUserInfo(user.id, edited));
+      if (result.status === "success") {
         onSuccess();
       } else {
-        onError(result.error || "Tietojen päivitys epäonnistui");
+        onError(result.error);
       }
     });
   };
