@@ -65,14 +65,26 @@ resource "cloudflare_dns_record" "dev" {
 # Mail. The club's mail is Google Workspace; its MX record was added by hand.
 # SPF and DMARC tell receivers that the domain's mail comes only from Google,
 # so the bills the website sends (nextjs/docs/MAIL_SETUP.md) aren't taken for
-# spam. The DKIM key (google._domainkey) comes from the Google Admin console
-# and is added here once generated.
+# spam. The DKIM key (google._domainkey) comes from the Google Admin console.
 
 resource "cloudflare_dns_record" "spf" {
   zone_id = var.cloudflare_zone_id
   comment = "SPF: the domain's mail is sent only through Google Workspace"
   content = "\"v=spf1 include:_spf.google.com ~all\""
   name    = "@"
+  type    = "TXT"
+  ttl     = 1
+}
+
+# DKIM: the key Google signs the domain's mail with (Admin console → Gmail →
+# Authenticate email, prefix "google", 2048 bit). A TXT string is at most 255
+# characters, so the key is in two quoted parts. After this is live, press
+# "Start authentication" in the Admin console.
+resource "cloudflare_dns_record" "dkim" {
+  zone_id = var.cloudflare_zone_id
+  comment = "DKIM: Google Workspace signs the domain's mail"
+  content = "\"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtSbl+WrTUMIsIVN7B0gjnfrblUqEWXPEZrEf2gY+lIY/HIO9ZezZcEf2/j1C1Ok/hKYwjlY1sXMXB7UEbmOzGgMXpxkwNR3jFUQYKmDQH/aWaF4DDub2S1xh75nqqNILI/WpaRNbY65pSxeRc2VhSL19XRZ/GvPfew9TV7X4irV1rErDVtiYBAnXzspPFInjE\" \"gmlRa9X7OyNmXHtQwyLQY4SNZhillQsyiTCtQKPcIdNrjfmErjavfK2+v+fIoAYihtfzR0ngt8SmHKIjLgPlIAu54MTL08GYZHb6GWo2AOZxc4ljv4oOniKtX2b1ciHFwoPF9wbJDADMNzrxBhIcQIDAQAB\""
+  name    = "google._domainkey"
   type    = "TXT"
   ttl     = 1
 }
