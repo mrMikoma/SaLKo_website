@@ -4,6 +4,8 @@
 # file and monitoring/. Reads from the environment:
 #
 #   GRAFANA_ADMIN_PASSWORD   Grafana's admin password (required)
+#   ALERT_RELAY_TOKEN        the alert relay client token of Alertmanager
+#                            (required; GitHub secret, see monitoring/README.md)
 #   MONITORING_BIND_ADDR     the private address to publish the gateway (:3101)
 #                            and Grafana (:3000) on; 127.0.0.1 when the agents
 #                            are on this host
@@ -18,6 +20,7 @@ set -euo pipefail
 cd "$HOME"
 
 : "${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD is not set}"
+: "${ALERT_RELAY_TOKEN:?ALERT_RELAY_TOKEN is not set (GitHub secret, monitoring/README.md \"Alerts\")}"
 NAME_PREFIX="${NAME_PREFIX:-salko}"
 MONITORING_BIND_ADDR="${MONITORING_BIND_ADDR:-127.0.0.1}"
 MONITORING_PUSH_USER="${MONITORING_PUSH_USER:-agent}"
@@ -39,9 +42,17 @@ hash=$(openssl passwd -apr1 -stdin < "$password_file")
 printf '%s:%s\n' "$MONITORING_PUSH_USER" "$hash" > "$MONITORING_DATA_DIR/gateway/htpasswd"
 chmod 644 "$MONITORING_DATA_DIR/gateway/htpasswd"
 
+# Alertmanager's token for the alert relay. The container runs as uid 65534
+# with this user's group (ALERTMANAGER_GID), so the file can be 0640 instead
+# of readable by everyone.
+mkdir -p "$MONITORING_DATA_DIR/relay"
+(umask 027 && printf '%s' "$ALERT_RELAY_TOKEN" > "$MONITORING_DATA_DIR/relay/token")
+chmod 640 "$MONITORING_DATA_DIR/relay/token"
+
 (
   umask 077
   {
+    printf 'ALERTMANAGER_GID=%s\n' "$(id -g)"
     printf 'NAME_PREFIX=%s\n' "$NAME_PREFIX"
     printf 'GRAFANA_ADMIN_PASSWORD=%s\n' "$GRAFANA_ADMIN_PASSWORD"
     printf 'MONITORING_BIND_ADDR=%s\n' "$MONITORING_BIND_ADDR"
