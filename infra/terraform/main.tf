@@ -83,7 +83,7 @@ resource "cloudflare_dns_record" "spf" {
 resource "cloudflare_dns_record" "dkim" {
   zone_id = var.cloudflare_zone_id
   comment = "DKIM: Google Workspace signs the domain's mail"
-  content = "\"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtSbl+WrTUMIsIVN7B0gjnfrblUqEWXPEZrEf2gY+lIY/HIO9ZezZcEf2/j1C1Ok/hKYwjlY1sXMXB7UEbmOzGgMXpxkwNR3jFUQYKmDQH/aWaF4DDub2S1xh75nqqNILI/WpaRNbY65pSxeRc2VhSL19XRZ/GvPfew9TV7X4irV1rErDVtiYBAnXzspPFInjE\" \"gmlRa9X7OyNmXHtQwyLQY4SNZhillQsyiTCtQKPcIdNrjfmErjavfK2+v+fIoAYihtfzR0ngt8SmHKIjLgPlIAu54MTL08GYZHb6GWo2AOZxc4ljv4oOniKtX2b1ciHFwoPF9wbJDADMNzrxBhIcQIDAQAB\""
+  content = "\"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0j94ycbcA0Ina0DbVhB4J/HrUNZrxk5U6dgS1Tt5jgPkTXHqAf7AQri9NQmnq2rkKlL5PJA2ZcfN8KYUUsr9svkF8a3HsafRuvFm4Sw25sK1P8rbulnLFDPmWAUpV4twt70ZhZNLbfueCBcq473ZmjGSG54ct2P7cfXNfbvwQxwrMwBkpNb5OI8UI/+Yvskxk\" \"IfZ6f3Z45BbCa96kL5mDfAoinMRPm9JnfMwTctAFB8yyfLn/2stBgAokvrOzKV4lL8ZJ+HwdbaAB0vFxcizmv9/qWDHj4vmXMs10rIIe4doT6P+bUl46yIDQLp6s7wgRox3dEx7gh6+iyeE71/WiQIDAQAB\""
   name    = "google._domainkey"
   type    = "TXT"
   ttl     = 1
