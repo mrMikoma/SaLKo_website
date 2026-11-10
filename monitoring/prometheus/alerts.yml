@@ -1,6 +1,7 @@
 # Alert rules, evaluated by Prometheus. They show as firing alerts on the
 # SaLKo Overview dashboard (Grafana's home page) and under Alerting in Grafana,
-# and Alertmanager emails them (monitoring/alertmanager/alertmanager.yml).
+# and Alertmanager sends them to the alert relay, which emails them
+# (monitoring/alertmanager/alertmanager.yml).
 # severity: critical = the public site or its data is hurt now, a reminder
 # every 4 hours; warning = look at it soon, a reminder every 12 hours.
 groups:
@@ -177,12 +178,26 @@ groups:
           summary: "{{ $labels.job }} ({{ $labels.instance }}) cannot be scraped"
           description: "Its metrics are missing from the dashboards."
 
-      # Shows in Grafana: by email it can't get through, by definition
-      - alert: AlertEmailsFailing
+      # Shows in Grafana: if the relay can't be reached, it can't get through
+      # by definition. The relay notices that itself: the Watchdog pings stop
+      # and it mails "Ei yhteyttä: salko-monitoring" after about 15 minutes.
+      - alert: AlertDeliveryFailing
         # Per attempt: alertmanager_notifications_failed_total waits for all retries
-        expr: sum(increase(alertmanager_notification_requests_failed_total{integration="email"}[30m])) > 0
+        expr: sum(increase(alertmanager_notification_requests_failed_total{integration="webhook"}[30m])) > 0
         labels:
           severity: warning
         annotations:
-          summary: "Alert emails are not getting through"
-          description: "{{ $value | humanize }} attempts to send an alert email failed in 30 minutes. See its log (salko-alertmanager) and the SMTP relay setting in the Google Admin console (monitoring/README.md)."
+          summary: "Alerts are not getting through to the alert relay"
+          description: "{{ $value | humanize }} attempts to send to alerts.vanttula.fi failed in 30 minutes. See the log of salko-alertmanager and the relay's status (monitoring/README.md, \"Alerts\")."
+
+  # Not an alert: always firing, so that the relay knows this stack is alive.
+  # Alertmanager sends it to the relay's heartbeat check salko-monitoring.
+  - name: meta
+    rules:
+      - alert: Watchdog
+        expr: vector(1)
+        labels:
+          severity: none
+        annotations:
+          summary: "Watchdog: the monitoring stack is alive"
+          description: "Always firing. If the alert relay stops hearing it, it emails."

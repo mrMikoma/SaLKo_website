@@ -59,11 +59,11 @@ the agent.
 
 Secrets: `GRAFANA_ADMIN_PASSWORD` (Grafana and pgAdmin), `POSTGRES_PASSWORD`
 (the exporters log in as `salko_admin`) and `UMAMI_APP_SECRET`. The agents'
-password is not a GitHub secret: it is made on the server. Alert emails need
-none either (see "Alert emails").
+password is not a GitHub secret: it is made on the server. Alerts need one:
+`ALERT_RELAY_TOKEN` (see "Alerts").
 
-Started by hand, the workflow can also **send a test alert email** (the
-"Send a test alert email" box): see "Alert emails".
+Started by hand, the workflow can also **send a test alert** (the "Send a test
+alert" box): see "Alerts".
 
 ## Moving the server to another host
 
@@ -87,14 +87,13 @@ when that variable is unset. To move it:
    `~/monitoring/{prometheus,loki,grafana}-data` to the new host, keeping the
    owners (65534, 10001, 472). Without this, the new server starts empty, and
    the old data stays on salko0 until it is deleted.
-5. **Allow the new host to send alert emails:** add its public IPv4 address to
-   the SMTP relay setting in the Google Admin console ("Alert emails", below).
-6. **Run "Deploy Monitoring Stack"** from `main` with "Send a test alert email"
+5. **Run "Deploy Monitoring Stack"** from `main` with "Send a test alert"
    ticked. The server starts on the new host, and the agent on salko0 switches
    to `http://<MONITORING_SERVER_IP>:3101` and stops the old server's
-   containers there (`SERVER_ELSEWHERE`). The test email shows that the new
-   host's alerts get through.
-7. **Grafana** is then at `http://<MONITORING_SERVER_IP>:3000` over the VPN.
+   containers there (`SERVER_ELSEWHERE`). The test alert shows that the new
+   host's alerts get through. Nothing needs allowing: the alert relay accepts
+   a host by its token, not its address.
+6. **Grafana** is then at `http://<MONITORING_SERVER_IP>:3000` over the VPN.
    `grafana.savonlinnanlentokerho.fi` goes through Traefik on salko0 and only
    reaches a Grafana on the same host. To keep the name, add a Traefik file
    route to `http://<MONITORING_SERVER_IP>:3000` with the `internal-only`
@@ -165,51 +164,73 @@ docker run --rm --entrypoint promtool -v "$PWD/monitoring/prometheus:/etc/promet
   prom/prometheus:v3.15.1 check config /etc/prometheus/prometheus.yml
 ```
 
-## Alert emails
+## Alerts
 
 Prometheus hands firing alerts to Alertmanager
-(`monitoring/alertmanager/alertmanager.yml`), which emails them to
-**admin@savonlinnanlentokerho.fi**, from the same address.
+(`monitoring/alertmanager/alertmanager.yml`), which sends them to the **alert
+relay**, a Cloudflare Worker at `alerts.vanttula.fi` (repository homelab-iac,
+`alert-relay/`). The relay emails **admin@savonlinnanlentokerho.fi**, and it
+also watches this stack from outside:
 
-- **When:** the first email comes a minute after an alert starts firing, so
-  that alerts starting together arrive as one email. One email covers one alert
-  and severity: the same alert on several targets is one email, but a site
-  outage doesn't share an email with a disk warning. While it lasts, a reminder
-  comes every 4 hours for `critical` and every 12 hours for `warning`. A
-  "RESOLVED" email follows when it's over.
+```
+ Prometheus ─alerts─▶ Alertmanager ─POST /v1/alertmanager─▶ ┐
+            └ Watchdog ───────────▶ POST /v1/ping/salko-monitoring ─▶ alert relay ─▶ email
+ the relay's own cron, every minute ─GET https://savonlinnanlentokerho.fi/api/health ─▶ ┘
+```
+
+| Layer | Catches | Mail |
+|---|---|---|
+| Alertmanager → relay | the 18 alert rules in `alerts.yml` | `[salko] <summary>`, "Ratkesi: …" when over |
+| Watchdog heartbeat | salko0, Docker, Prometheus or Alertmanager dead: nobody is left to send alerts | "Ei yhteyttä: salko-monitoring" about 15 min after the last Watchdog |
+| The relay's probe `salko-prod` | the site not answering a visitor, whatever the state of salko0 (the 2026-11-08 502 case) | "Ei vastaa: salko-prod" after 3 failed minutes, "Vastaa taas" when it is back |
+
+- **When (alert rules):** the first mail comes a minute after an alert starts
+  firing, so that alerts starting together arrive as one. One mail covers one
+  alert and severity: the same alert on several targets is one mail, but a
+  site outage doesn't share a mail with a disk warning. While it lasts, a
+  reminder comes every 4 hours for `critical` and every 12 hours for `warning`.
+  A "Ratkesi" mail follows when it's over.
 - **Not sent while their cause fires:** the health check, slowness and errors
   while the site is down; every alert about the app host while its agent is
   silent; the disk at 85 % while it is at 95 %.
-- **The email** (`monitoring/alertmanager/templates/salko.tmpl`): the subject
-  is `[SaLKo CRITICAL] <summary>`, `[SaLKo WARNING] …` or `[SaLKo RESOLVED] …`.
-  The body has each alert's summary, description and start time (Finnish time)
-  and a link to the overview in Grafana.
+- **The mail:** formatted by the relay (Finnish times, up to 10 alerts, the
+  common labels as "Tilanne"), from `salko@vanttula.fi`. Alertmanager's
+  summary and description are English.
 - **Muting during maintenance:** in Grafana, go to Alerting → Silences, choose
   the **Alertmanager** source, and add a silence for the alert names and a
-  duration.
+  duration. That doesn't silence the relay's own two layers: the Watchdog
+  mail only comes when the stack really stops, and the probe mail when the
+  site really doesn't answer (a planned deploy that takes the site down for
+  3 minutes sends one).
+- **Duplicate mails when the site is down:** the relay's probe and the
+  internal `WebsiteDown` alert are independent on purpose. Two mails, from two
+  vantage points, tell more than one.
 
-### Setup in the Google Admin console (once)
+### Setup (once)
 
-Alertmanager sends through Google Workspace's SMTP relay,
-`smtp-relay.gmail.com:587`. The relay accepts mail by the sending server's IP
-address, so there is no password to store. An app password for
-`smtp.gmail.com` would open the whole mailbox, which was ruled out for the
-website's mail too (`nextjs/docs/MAIL_SETUP.md`). Hetzner blocks outgoing
-ports 25 and 465, but not 587.
+1. **Relay side** (homelab-iac, `alert-relay/README.md`, "The SaLKo client"):
+   add admin@savonlinnanlentokerho.fi under `salko` in
+   `ALERT_RELAY_MEMBERS`, make a token (`openssl rand -hex 32`) and add its
+   SHA-256 to `ALERT_RELAY_CLIENTS` as client `salko` (group `salko`, check
+   `salko-monitoring`). Run the relay's workflow; the admin address then
+   clicks Cloudflare's verification mail.
+2. **This repository:** `gh secret set ALERT_RELAY_TOKEN` with the raw token.
+   Deploy Monitoring Stack writes it to `~/monitoring/relay/token` on the
+   server (mode 0640; Alertmanager runs as nobody with the deploy user's
+   group), and refuses to run without it.
+3. **In the club's Google Workspace**, so that an alarm doesn't depend on a
+   spam filter: vanttula.fi is a new sending domain. Add a Gmail filter on
+   the admin mailbox: From `@vanttula.fi` → Never send to spam. (Allowlisting
+   it in Admin console → Apps → Google Workspace → Gmail → Spam, phishing and
+   malware → Inbound gateway / Email allowlist works too.)
+4. Run **Deploy Monitoring Stack** from `main` with **Send a test alert**
+   ticked. The run waits for Alertmanager's delivery to the relay and fails
+   with the reason otherwise. Two mails arrive: `[salko] Test alert from the
+   monitoring deploy`, and five minutes later its "Ratkesi".
 
-1. In the Google Admin console, go to Apps → Google Workspace → Gmail →
-   Routing → **SMTP relay service** → Configure. Name it "SaLKo monitoring".
-2. **Allowed senders:** Only addresses in my domains.
-3. **Authentication:** tick "Only accept mail from the specified IP addresses"
-   and add the monitoring server's **public** IPv4 address: salko0's, or the
-   monitoring host's when it has moved. Leave "Require SMTP Authentication"
-   unticked.
-4. **Encryption:** tick "Require TLS encryption". Save. Google says a change
-   can take up to 24 hours, usually it is minutes.
-5. Run **Deploy Monitoring Stack** from `main` with **Send a test alert email**
-   ticked. The run waits until Alertmanager has handed the email to Google, or
-   fails with Google's answer. Two emails arrive: `[SaLKo WARNING] Test alert
-   from the monitoring deploy`, and five minutes later its `RESOLVED`.
+The relay sends its own "Kuukausitesti" to the admin address on the first
+Monday of each month at 12:00. If it doesn't arrive, the relay or its mail
+is broken.
 
 ### What it doesn't catch
 
@@ -218,7 +239,7 @@ ports 25 and 465, but not 587.
   going down entirely. With the server on another host, an outage of salko0 is
   emailed (`WebsiteDown`, `MonitoringAgentSilent`). Catching the server's own
   death would need a heartbeat to an outside service, which isn't set up.
-- **Email that can't be sent.** That shows in Grafana as `AlertEmailsFailing`.
+- **Alerts that can't be delivered to the relay.** That shows in Grafana as `AlertDeliveryFailing`; the relay itself mails when the Watchdog stops.
 
 ## Logs
 
@@ -273,7 +294,13 @@ docker logs salko-alloy                   # push or scrape errors
 - **Server won't start on a new host:** run the Ansible provision for it
   first (data directory owners).
 - **No alert emails:** `docker logs salko-alertmanager` on the server shows
-  `Notify attempt failed` with Google's answer. A refused relay means the
-  Admin console doesn't list the server's public IP ("Alert emails"). Run the
-  workflow with "Send a test alert email" to try again. Grafana shows
-  `AlertEmailsFailing` meanwhile.
+  `Notify attempt failed` with the relay's answer: 401 = `ALERT_RELAY_TOKEN`
+  and the relay's `ALERT_RELAY_CLIENTS` disagree, 403 = the client may not use
+  group `salko`, 502 = the relay couldn't mail the admin address (not
+  verified in Cloudflare, or the group has no members). `curl
+  https://alerts.vanttula.fi/v1/health` shows whether the relay is up. Run
+  the workflow with "Send a test alert" to try again. Grafana shows
+  `AlertDeliveryFailing` meanwhile.
+- **"Ei yhteyttä: salko-monitoring" but the stack is fine:** Alertmanager
+  can't reach the relay (see above), or its Watchdog route is broken:
+  `docker exec salko-alertmanager amtool config routes --alertmanager.url=http://localhost:9093`.
