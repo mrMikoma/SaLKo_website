@@ -13,7 +13,7 @@ name: salko-monitoring-agent
 
 services:
   alloy:
-    image: grafana/alloy:v1.21.3
+    image: grafana/alloy:v1.22.0
     container_name: ${NAME_PREFIX}-alloy
     command:
       - run
@@ -142,7 +142,7 @@ services:
       - traefik.http.services.pgadmin.loadbalancer.server.port=80
 
   umami:
-    image: ghcr.io/umami-software/umami:3.4.1
+    image: ghcr.io/umami-software/umami:3.5.0
     container_name: ${NAME_PREFIX}-umami
     environment:
       - DATABASE_TYPE=postgresql
