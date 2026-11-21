@@ -55,6 +55,7 @@ export type UserData = {
   postalCode: string;
   phone: string;
   auth_provider: string;
+  bulletinEmails: boolean;
 };
 
 export const ChangePasswordSchema = z.object({

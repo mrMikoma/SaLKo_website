@@ -58,5 +58,5 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
   applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 REVOKE ALL ON schema_migrations FROM :app_user;
-INSERT INTO schema_migrations (filename, checksum) VALUES ('020_price_list.sql', 'init')
+INSERT INTO schema_migrations (filename, checksum) VALUES ('021_bulletin_email.sql', 'init')
 ON CONFLICT (filename) DO NOTHING;

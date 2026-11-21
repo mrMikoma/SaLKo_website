@@ -10,6 +10,7 @@ import { ChangePasswordSchema } from "./definitions";
 import { failedPasswordChecks } from "./loginLimits";
 import { waitText } from "./rateLimit";
 import { logger } from "@/utilities/logger";
+import type { ActionResult } from "@/utilities/actionResult";
 
 const log = logger.child({ module: "profile" });
 
@@ -96,6 +97,22 @@ export async function updateProfile(
       },
       status: "error",
     };
+  }
+}
+
+/** The member's choice of getting bulletins by email (utilities/bulletinMail.ts) */
+export async function setBulletinEmails(enabled: boolean): Promise<ActionResult> {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { status: "error", error: SESSION_ENDED };
+    }
+    await pool.query("UPDATE users SET bulletin_emails = $1 WHERE id = $2", [Boolean(enabled), session.user.id]);
+    revalidatePath("/jasenalue/profiili");
+    return { status: "success", result: null };
+  } catch (error) {
+    log.error("Changing the bulletin email choice failed", { err: error });
+    return { status: "error", error: "Valinnan tallennus epäonnistui. Yritä uudelleen." };
   }
 }
 

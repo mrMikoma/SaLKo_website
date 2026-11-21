@@ -4,6 +4,7 @@ import { useState } from "react";
 import UserInfo from "./userInfo";
 import ProfileEditForm from "./profileEditForm";
 import ChangePasswordForm from "./changePasswordForm";
+import BulletinEmailToggle from "./bulletinEmailToggle";
 import { UserData } from "@/utilities/definitions";
 
 interface ProfileManagerProps {
@@ -82,6 +83,7 @@ const ProfileManager = ({ user }: ProfileManagerProps) => {
           postalCode={user.postalCode || ""}
           phone={user.phone || ""}
         />
+        <BulletinEmailToggle initial={user.bulletinEmails} />
         <div className="mt-6 pt-6 border-t-2 border-swhite/10">
           <div className="flex flex-col sm:flex-row gap-3">
             <button

@@ -29,6 +29,7 @@ export interface AdminBulletin {
   status: BulletinStatus;
   createdAt: string; // ISO
   publishedAt: string | null;
+  emailedAt: string | null; // when it was first sent to the members by email
   author: string | null;
 }
 
@@ -105,7 +106,7 @@ export async function fetchAllBulletinsForAdmin(): Promise<{
     }
 
     const response = await connectionPool.query(
-      `SELECT b.id, b.title, b.content, b.status, b.created_at, b.published_at,
+      `SELECT b.id, b.title, b.content, b.status, b.created_at, b.published_at, b.emailed_at,
               u.full_name AS author
        FROM bullets b
        LEFT JOIN users u ON u.id = b.user_id
@@ -120,6 +121,7 @@ export async function fetchAllBulletinsForAdmin(): Promise<{
         status: row.status,
         createdAt: toIso(row.created_at)!,
         publishedAt: toIso(row.published_at),
+        emailedAt: toIso(row.emailed_at),
         author: row.author,
       })),
     };

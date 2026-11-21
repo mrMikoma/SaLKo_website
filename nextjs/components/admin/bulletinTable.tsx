@@ -20,12 +20,15 @@ import {
   toggleLineStyle,
   toggleWrap,
 } from "@/utilities/markdownEdit";
+import { sendBulletinEmail } from "@/utilities/bulletinMail";
 import { callAction } from "@/utilities/callAction";
 import { useDraft } from "@/hooks/useDraft";
 import DraftNotice from "@/components/DraftNotice";
 
 interface BulletinTableProps {
   bulletins: AdminBulletin[];
+  // Sending by email: on when mail is set up and not off (MAIL_MODE)
+  mail: { canSend: boolean; recipients: number | null; redirectTo: string | null };
 }
 
 // Buttons and fields as on the flight log and billing pages
@@ -260,7 +263,7 @@ function MarkdownEditor({
 const NO_TEXT = { title: "", content: "" };
 const NO_EDIT = { id: null as number | null, title: "", content: "" };
 
-const BulletinTable = ({ bulletins }: BulletinTableProps) => {
+const BulletinTable = ({ bulletins, mail }: BulletinTableProps) => {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -331,6 +334,25 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
     });
   };
 
+  const handleEmail = (bulletin: AdminBulletin) => {
+    const who = mail.redirectTo
+      ? `Kehitystila: viestit menevät kaikki osoitteeseen ${mail.redirectTo}.`
+      : `Viesti lähtee ${mail.recipients ?? "kaikille"} jäsenelle, jotka eivät ole kieltäneet tiedotteita profiilissaan.`;
+    const again = bulletin.emailedAt
+      ? " Tiedote on jo lähetetty: viesti lähtee vain niille, jotka eivät ole vielä saaneet sitä."
+      : "";
+    if (!confirm(`Lähetetäänkö tiedote "${bulletin.title}" sähköpostina? ${who}${again}`)) return;
+    setError(null);
+    startTransition(async () => {
+      const result = await callAction(() => sendBulletinEmail(bulletin.id));
+      if (result.status === "success") {
+        showSuccess(result.result.text);
+      } else {
+        setError(result.error);
+      }
+    });
+  };
+
   const handleEdit = (bulletin: AdminBulletin) => {
     setEditingId(bulletin.id);
     setEditedBulletin({ title: bulletin.title, content: bulletin.content });
@@ -392,6 +414,12 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
         >
           {success}
         </div>
+      )}
+
+      {!mail.canSend && (
+        <p className="mx-4 sm:mx-6 mt-4 text-sm text-gray-600">
+          Tiedotteita ei voi vielä lähettää sähköpostina: sähköposti ei ole käytössä tässä ympäristössä.
+        </p>
       )}
 
       {/* Create form */}
@@ -583,6 +611,11 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
                               Luonnos
                             </span>
                           )}
+                          {bulletin.emailedAt && (
+                            <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-900">
+                              Lähetetty sähköpostina {formatDate(bulletin.emailedAt)}
+                            </span>
+                          )}
                           <span>Luotu {formatDate(bulletin.createdAt)}</span>
                           {bulletin.author && <span>• {bulletin.author}</span>}
                         </div>
@@ -595,6 +628,16 @@ const BulletinTable = ({ bulletins }: BulletinTableProps) => {
                         >
                           {bulletin.status === "published" ? "Palauta luonnokseksi" : "Julkaise"}
                         </button>
+                        {bulletin.status === "published" && (
+                          <button
+                            onClick={() => handleEmail(bulletin)}
+                            disabled={isPending || !mail.canSend}
+                            title={mail.canSend ? undefined : "Sähköposti ei ole käytössä (MAIL_MODE)"}
+                            className={rowButton}
+                          >
+                            {bulletin.emailedAt ? "Lähetä sähköpostina uudelleen" : "Lähetä sähköpostina"}
+                          </button>
+                        )}
                         <button
                           onClick={() => handleEdit(bulletin)}
                           disabled={isPending}
