@@ -1,0 +1,107 @@
+name: Dependabot auto-merge
+
+# Dependabot's pull requests into dev merge by themselves once ci-ok passes,
+# when none of their updates changes a major version. Whether one does is
+# decided by .github/scripts/dependabot_automerge.py, which leaves anything it
+# can't read for a person, as it does the majors. Releases to main stay manual.
+#
+# A GitHub App of the repository owner's approves the pull request (dev
+# needs one approving review) and turns on auto-merge. A merge made with the
+# built-in GITHUB_TOKEN would start no workflows, so kehitys would not
+# deploy; the App's merge does start them. The App needs Contents, Pull
+# requests and Workflows (read and write), is installed on this repository
+# only, and its client ID and private key are the Dependabot secrets
+# AUTOMERGE_APP_CLIENT_ID and AUTOMERGE_APP_PRIVATE_KEY. Without them this
+# only reports its decision.
+
+on:
+  pull_request:
+    branches:
+      - dev
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: dependabot-auto-merge-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  auto-merge:
+    name: Decide and auto-merge
+    if: github.event.pull_request.user.login == 'dependabot[bot]' && github.repository == 'mrMikoma/SaLKo_website'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      HAS_APP: ${{ secrets.AUTOMERGE_APP_CLIENT_ID != '' && secrets.AUTOMERGE_APP_PRIVATE_KEY != '' }}
+    steps:
+      # Also checks that the commits are Dependabot's own
+      - name: Read Dependabot's metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # The decision script as dev has it, not as the pull request does;
+      # nothing of the pull request runs here
+      - name: Checkout the decision script
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+
+      - name: Decide
+        id: decide
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+          BODY: ${{ github.event.pull_request.body }}
+          UPDATES: ${{ steps.metadata.outputs.updated-dependencies-json }}
+          UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
+        run: python3 -I .github/scripts/dependabot_automerge.py | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: No App set up
+        if: env.HAS_APP != 'true'
+        run: echo "::notice::The auto-merge App's Dependabot secrets are not set, so this pull request waits for a person"
+
+      - name: Get the App's token
+        id: app-token
+        if: env.HAS_APP == 'true'
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
+        with:
+          client-id: ${{ secrets.AUTOMERGE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.AUTOMERGE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-workflows: write
+
+      # A new push (Dependabot's rebase) dismisses the approval, and this runs
+      # again on it
+      - name: Approve and turn on auto-merge
+        if: env.HAS_APP == 'true' && steps.decide.outputs.auto == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          gh pr review "$PR_URL" --approve
+          # Auto-merge waits for ci-ok; when everything has already passed,
+          # GitHub refuses to turn it on, and the pull request merges at once
+          if ! gh pr merge "$PR_URL" --auto --merge; then
+            gh pr merge "$PR_URL" --merge
+          fi
+
+      # In case an earlier push had turned it on
+      - name: Leave it for a person
+        if: env.HAS_APP == 'true' && steps.decide.outputs.auto != 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          if [ "$(gh pr view "$PR_URL" --json autoMergeRequest --jq '.autoMergeRequest != null')" = true ]; then
+            gh pr merge "$PR_URL" --disable-auto
+          fi
