@@ -62,8 +62,10 @@ jobs:
 
       - name: Determine next image version
         id: image-version
+        env:
+          BRANCH: ${{ github.head_ref || github.ref_name }}
         run: |
-          package_name="salko_website-nextjs-${{ github.head_ref || github.ref_name }}"
+          package_name="salko_website-nextjs-$BRANCH"
 
           # Fetch package versions from GitHub Container Registry
           latest_version=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
@@ -137,7 +139,10 @@ jobs:
             -f image_version="$VERSION" -f branch_name="$BRANCH"
 
       - name: Notify deployment
+        env:
+          BRANCH: ${{ github.head_ref || github.ref_name }}
+          VERSION: ${{ needs.build-and-publish.outputs.new_version }}
         run: |
-          echo "Deployment triggered for version ${{ needs.build-and-publish.outputs.new_version }} in branch ${{ github.head_ref || github.ref_name }}."
+          echo "Deployment triggered for version $VERSION in branch $BRANCH."
           # TODO: Add notification logic here
           # e.g., send a message to Discord, email etc.
