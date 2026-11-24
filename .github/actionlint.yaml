@@ -1,0 +1,12 @@
+# actionlint, run by checks.yaml (the Workflows job).
+paths:
+  .github/workflows/**/*.yaml:
+    ignore:
+      # shellcheck's notes on unquoted variables (SC2086) and grouped
+      # redirects (SC2129) in the run scripts written before the check
+      - 'SC2086'
+      - 'SC2129'
+  .github/workflows/deploy-cronjobs-docker.yaml:
+    ignore:
+      # The deploy's heredoc is expanded on the runner on purpose
+      - 'SC2087'

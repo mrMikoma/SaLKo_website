@@ -1,22 +1,13 @@
 name: Test
 
+# Pull requests run this from checks.yaml (its App job) when they change
+# nextjs/, postgres/ or this file. A manual run tests the branch it runs on.
 on:
-  pull_request:
-    branches:
-      - dev
-      - main
-    paths:
-      - "nextjs/**"
-      - "postgres/**"
-      - ".github/workflows/test.yaml"
+  workflow_call: {}
   workflow_dispatch: {}
 
 permissions:
   contents: read
-
-concurrency:
-  group: test-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
 
 jobs:
   test:
