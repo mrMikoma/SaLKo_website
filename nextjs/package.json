@@ -24,7 +24,7 @@
     "antd": "^6.7.1",
     "bcrypt": "^6.0.0",
     "dotenv": "^18.0.10",
-    "googleapis": "^188.0.0",
+    "googleapis": "^190.0.0",
     "luxon": "^3.7.2",
     "next": "^16.4.6",
     "next-auth": "^5.0.0-beta.32",
