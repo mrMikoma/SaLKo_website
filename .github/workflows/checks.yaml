@@ -100,6 +100,13 @@ jobs:
         with:
           fetch-depth: 2
 
+      # The runner's own Compose still wants the env files that live on the
+      # server, even with --no-env-resolution
+      - name: Set up Docker Compose
+        uses: docker/setup-compose-action@v2.4.0
+        with:
+          version: v5.8.0
+
       - name: Check the configs
         env:
           # The base branch: an Umami update migrates its database from there
@@ -115,6 +122,13 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7.0.1
+
+      # The runner's own Compose still wants the env files that live on the
+      # server, even with --no-env-resolution
+      - name: Set up Docker Compose
+        uses: docker/setup-compose-action@v2.4.0
+        with:
+          version: v5.8.0
 
       - name: Check the config
         run: .github/scripts/check-configs.sh traefik
@@ -201,6 +215,13 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7.0.1
+
+      # The runner's own Compose still wants the env files that live on the
+      # server, even with --no-env-resolution
+      - name: Set up Docker Compose
+        uses: docker/setup-compose-action@v2.4.0
+        with:
+          version: v5.8.0
 
       # The env files live on the server, so they are not read here
       - name: Every compose file parses

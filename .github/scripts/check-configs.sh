@@ -30,15 +30,24 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# ::error:: is a GitHub annotation; locally it is just a marker
-fail() { echo "::error::$*"; exit 1; }
+# ::error:: is a GitHub annotation; locally it is just a marker. On stderr,
+# so it shows from inside $(...) too.
+fail() {
+  echo "::error::$*" >&2
+  exit 1
+}
 step() { printf '\n== %s\n' "$*"; }
 
-# image <compose file> <service>: the image the file pins for the service
+# image <compose file> <service>: the image the file pins for the service.
+# Assign it to a variable before use (x=$(image ...)): a failure inside a
+# command's arguments would not stop the script.
 image() {
-  local img
-  img=$(docker compose -f "$1" config --no-env-resolution --no-path-resolution --format json 2>/dev/null |
-    jq -r --arg s "$2" '.services[$s].image // empty')
+  local json img
+  if ! json=$(docker compose -f "$1" config --no-env-resolution --no-path-resolution --format json 2>"$WORK/compose.err"); then
+    grep -v 'variable is not set' "$WORK/compose.err" >&2 || true
+    fail "Docker Compose can't read $1"
+  fi
+  img=$(jq -r --arg s "$2" '.services[$s].image // empty' <<<"$json")
   [ -n "$img" ] || fail "$1 has no image for $2"
   echo "$img"
 }
@@ -89,16 +98,26 @@ check_metrics() {
 }
 
 check_monitoring() {
+  local prometheus am loki gateway blackbox grafana_image alloy_image node_exporter pg_exporter postgres_image new
+  prometheus=$(image $SERVER prometheus)
+  am=$(image $SERVER alertmanager)
+  loki=$(image $SERVER loki)
+  gateway=$(image $SERVER monitoring-gateway)
+  blackbox=$(image $SERVER blackbox-exporter)
+  grafana_image=$(image $SERVER grafana)
+  alloy_image=$(image $AGENT alloy)
+  node_exporter=$(image $AGENT node-exporter)
+  pg_exporter=$(image $AGENT postgres-exporter-prod)
+  postgres_image=$(image docker-compose.prod.yaml postgres)
+  new=$(image $AGENT umami)
   docker network create "$NET" >/dev/null
 
   step "Prometheus: config and alert rules"
   docker run --rm --entrypoint promtool \
     -v "$PWD/monitoring/prometheus:/etc/prometheus:ro" \
-    "$(image $SERVER prometheus)" check config /etc/prometheus/prometheus.yml
+    "$prometheus" check config /etc/prometheus/prometheus.yml
 
   step "Alertmanager: config, start, metrics"
-  local am
-  am=$(image $SERVER alertmanager)
   echo check-token >"$WORK/token"
   chmod 644 "$WORK/token"
   local am_mounts=(-v "$PWD/monitoring/alertmanager:/etc/alertmanager:ro"
@@ -111,21 +130,21 @@ check_monitoring() {
 
   step "Loki: config"
   docker run --rm -v "$PWD/monitoring/loki/loki-config.yaml:/etc/loki/loki-config.yaml:ro" \
-    "$(image $SERVER loki)" -config.file=/etc/loki/loki-config.yaml -verify-config
+    "$loki" -config.file=/etc/loki/loki-config.yaml -verify-config
 
   step "Gateway (nginx): config"
   docker run --rm -v "$PWD/monitoring/gateway/nginx.conf:/etc/nginx/nginx.conf:ro" \
-    "$(image $SERVER monitoring-gateway)" nginx -t
+    "$gateway" nginx -t
 
   step "Blackbox exporter: config"
   docker run --rm -v "$PWD/monitoring/blackbox/blackbox.yml:/etc/blackbox/blackbox.yml:ro" \
-    "$(image $SERVER blackbox-exporter)" --config.file=/etc/blackbox/blackbox.yml --config.check
+    "$blackbox" --config.file=/etc/blackbox/blackbox.yml --config.check
 
   step "Grafana: data sources and dashboards"
   start grafana -e GF_SECURITY_ADMIN_PASSWORD=check \
     -e GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/provisioning/dashboards/salko-overview.json \
     -v "$PWD/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro" \
-    "$(image $SERVER grafana)"
+    "$grafana_image"
   local grafana dashboards sources got
   grafana="http://admin:check@$(ip grafana):3000"
   wait_http "$grafana/api/health" 120 || logs_and_fail grafana "Grafana didn't start"
@@ -152,7 +171,7 @@ check_monitoring() {
     -e MONITORING_PUSH_USER=agent -e MONITORING_PUSH_PASSWORD=check \
     -v "$PWD/monitoring/alloy/config.alloy:/etc/alloy/config.alloy:ro" \
     -v /var/run/docker.sock:/var/run/docker.sock:ro -v /var/log:/var/log:ro \
-    "$(image $AGENT alloy)" run /etc/alloy/config.alloy --storage.path=/tmp/alloy \
+    "$alloy_image" run /etc/alloy/config.alloy --storage.path=/tmp/alloy \
     --server.http.listen-addr=0.0.0.0:12345 --disable-reporting
   local alloy unhealthy
   alloy="http://$(ip alloy):12345"
@@ -163,12 +182,12 @@ check_monitoring() {
   echo "Every Alloy component is healthy."
 
   step "node-exporter: metrics"
-  start node-exporter "$(image $AGENT node-exporter)"
+  start node-exporter "$node_exporter"
   wait_http "http://$(ip node-exporter):9100/metrics" 30 || logs_and_fail node-exporter "node-exporter didn't start"
   check_metrics "http://$(ip node-exporter):9100/metrics" node_
 
   step "postgres-exporter: metrics"
-  start postgres -e POSTGRES_PASSWORD=check "$(image docker-compose.prod.yaml postgres)"
+  start postgres -e POSTGRES_PASSWORD=check "$postgres_image"
   # The init runs on a socket-only server; TCP answers once it is done
   for _ in $(seq 60); do
     docker exec "${PREFIX}postgres" pg_isready -q -h 127.0.0.1 -U postgres && break
@@ -177,7 +196,7 @@ check_monitoring() {
   docker exec "${PREFIX}postgres" pg_isready -q -h 127.0.0.1 -U postgres || logs_and_fail postgres "Postgres didn't start"
   start postgres-exporter \
     -e DATA_SOURCE_NAME="postgresql://postgres:check@${PREFIX}postgres:5432/postgres?sslmode=disable" \
-    "$(image $AGENT postgres-exporter-prod)"
+    "$pg_exporter"
   local exporter
   exporter="http://$(ip postgres-exporter):9187/metrics"
   wait_http "$exporter" 30 || logs_and_fail postgres-exporter "postgres-exporter didn't start"
@@ -186,8 +205,7 @@ check_monitoring() {
 
   step "Umami: database migrations and login"
   docker exec "${PREFIX}postgres" psql -q -U postgres -c 'CREATE DATABASE umami'
-  local new old=""
-  new=$(image $AGENT umami)
+  local old=""
   if [ -n "${BASE_REF:-}" ] && git show "$BASE_REF:$AGENT" >"$WORK/base-agent.yaml" 2>/dev/null; then
     old=$(image "$WORK/base-agent.yaml" umami)
   fi
@@ -215,13 +233,15 @@ run_umami() {
 }
 
 check_traefik() {
+  local traefik
+  traefik=$(image traefik/docker-compose.traefik.yaml traefik)
   docker network create "$NET" >/dev/null
 
   step "Traefik: static config and the file provider"
   # As traefik/docker-compose.traefik.yaml runs it; no routers, so no certificates
   start traefik -v "$PWD/traefik/traefik.yaml:/traefik.yaml:ro" \
     -v /var/run/docker.sock:/var/run/docker.sock:ro \
-    "$(image traefik/docker-compose.traefik.yaml traefik)" --configFile=/traefik.yaml
+    "$traefik" --configFile=/traefik.yaml
   sleep 10
   [ "$(docker inspect -f '{{.State.Running}}' "${PREFIX}traefik")" = true ] ||
     logs_and_fail traefik "Traefik stopped"
