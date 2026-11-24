@@ -12,7 +12,7 @@ name: salko-monitoring
 
 services:
   prometheus:
-    image: prom/prometheus:v3.15.1
+    image: prom/prometheus:v3.16.0
     container_name: ${NAME_PREFIX}-prometheus
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
@@ -37,7 +37,7 @@ services:
       - traefik.http.services.prometheus.loadbalancer.server.port=9090
 
   loki:
-    image: grafana/loki:3.7.9
+    image: grafana/loki:3.7.10
     container_name: ${NAME_PREFIX}-loki
     command: -config.file=/etc/loki/loki-config.yaml
     volumes:
@@ -57,7 +57,7 @@ services:
       - traefik.http.services.loki.loadbalancer.server.port=3100
 
   grafana:
-    image: grafana/grafana:12.4.14-ubuntu
+    image: grafana/grafana:12.4.15-ubuntu
     container_name: ${NAME_PREFIX}-grafana
     volumes:
       - ${MONITORING_DATA_DIR:-/home/salko/monitoring}/grafana-data:/var/lib/grafana
@@ -98,7 +98,7 @@ services:
   # (monitoring/alertmanager/alertmanager.yml).
   # Not published: Grafana shows its alerts and silences (Alerting).
   alertmanager:
-    image: prom/alertmanager:v0.34.2
+    image: prom/alertmanager:v0.35.0
     container_name: ${NAME_PREFIX}-alertmanager
     # nobody, plus the deploy user's group to read the relay token (0640)
     user: "65534:${ALERTMANAGER_GID:-65534}"
@@ -144,7 +144,7 @@ services:
   # http://<MONITORING_BIND_ADDR>:3101, the private address this host
   # publishes the gateway on.
   monitoring-gateway:
-    image: nginx:1.31.8-alpine
+    image: nginx:1.31.9-alpine
     container_name: ${NAME_PREFIX}-monitoring-gateway
     volumes:
       - ./monitoring/gateway/nginx.conf:/etc/nginx/nginx.conf:ro
