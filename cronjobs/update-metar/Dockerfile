@@ -1,5 +1,5 @@
 # Cronjob Dockerfile for METAR updates
-FROM node:24.22.2-alpine
+FROM node:24.22.3-alpine
 
 # Set working directory
 WORKDIR /app
