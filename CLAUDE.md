@@ -36,7 +36,12 @@ bun run test:e2e --project=setup                # only (re)create the e2e accoun
 
 ## Testing and Browser Checks
 
-Playwright e2e tests live in `nextjs/e2e/` (config: `nextjs/playwright.config.ts`). Unit tests for pure helpers live in `nextjs/tests/unit/` and run with `bun run test:unit` (bun's test runner). `.github/workflows/test.yaml` runs lint, the type check, the unit tests and the e2e suite on every PR to `dev` or `main` that touches `nextjs/` or `postgres/`. In CI the suite runs against a production build served by `.next/standalone/server.js`, as in the Docker image, and a Postgres built from `postgres/init/`.
+Playwright e2e tests live in `nextjs/e2e/` (config: `nextjs/playwright.config.ts`). Unit tests for pure helpers live in `nextjs/tests/unit/` and run with `bun run test:unit` (bun's test runner). `.github/workflows/checks.yaml` runs on every PR to `dev` or `main` and reports one result, `ci-ok`, which `dev` requires. Inside, it runs only the checks for what the PR changes; skipped ones count as passed:
+- `nextjs/` or `postgres/`: `test.yaml`, which runs lint, the type check, the unit tests and the e2e suite. In CI the suite runs against a production build served by `.next/standalone/server.js`, as in the Docker image, and a Postgres built from `postgres/init/`.
+- the monitoring and Traefik configs, with the images the compose files pin: `.github/scripts/check-configs.sh monitoring|traefik`, which also runs locally with Docker.
+- the cronjob image, Terraform (`fmt`, `validate`, no backend), the workflows (actionlint, settings in `.github/actionlint.yaml`) and every compose file.
+
+A manual run of Checks runs all of them on its branch.
 
 - `smoke.spec.ts` checks that every public page renders an `h1`, that protected routes send anonymous visitors to the login page, and that the login dialog opens.
 - Every test fails on an uncaught page error or a `console.error` (auto fixture in `e2e/fixtures.ts`), so import `test`/`expect` from `./fixtures`, not from `@playwright/test`.
@@ -179,7 +184,7 @@ CI/CD runs on GitHub Actions. Build jobs run on GitHub-hosted runners. Jobs that
 - `build-and-publish-dev.yaml` runs on pushes to `dev` that touch `nextjs/`, pushes the image to GHCR and starts `deploy-app-dev.yaml` from the same branch (`workflow_dispatch`), so changes to the dev deploy take effect on `dev` without waiting for `main`.
 - `build-and-publish-prod.yaml` (manual, refuses any branch but `main`) builds the prod image; `deploy-app-prod.yaml` (manual, from `main`) runs `docker compose pull && up` on the server. The production environment's variables `FEATURE_FLIGHT_LOG`, `FEATURE_BILLING` and `MAIL_MODE` switch the flight log, billing and email on at deploy; the release steps are in `nextjs/docs/GO_LIVE.md`.
 - `db-migrate.yaml` applies `postgres/migrations/` to the dev or prod database (see Schema Changes).
-- `test.yaml` runs lint, types and the e2e suite on PRs (see Testing and Browser Checks).
+- `checks.yaml` checks PRs, and calls `test.yaml` for the app (see Testing and Browser Checks).
 - `deploy-cronjobs-docker.yaml`, `deploy-monitoring.yaml` and `deploy-traefik.yaml` deploy the other stacks; `ansible-provision.yaml` and `terraform-plan-and-apply.yaml` manage the host. The monitoring stack is a server (Prometheus, Loki, Grafana, Alertmanager: on `vars.MONITORING_SERVER_IP`, or salko0 when unset) and an agent on salko0 (Grafana Alloy) that pushes to it. Alertmanager sends alerts to the alert relay Worker (`alerts.vanttula.fi`, in the homelab-iac repository), which emails admin@savonlinnanlentokerho.fi; the relay also watches the stack from outside (a Watchdog heartbeat, and a probe of `/api/health`). See `monitoring/README.md`.
 - Dispatch inputs are checked against known values in a first job, before a runner is created, and reach scripts only through `env:`. The deploys check out the commit the run is on: prod and Traefik from `main` only, kehitys from `dev` only, a cronjob deploy from the branch it deploys, and Ansible for real from `main` and as a dry run from `main` or `dev`.
 

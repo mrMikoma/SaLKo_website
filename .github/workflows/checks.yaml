@@ -1,0 +1,237 @@
+name: Checks
+
+# Every pull request into dev or main gets one result, the ci-ok job, which
+# dev requires before a merge. Inside, only the checks for what the pull
+# request changes run, so one that touches only compose files, workflows or
+# Terraform is checked too, and skipped checks count as passed.
+#
+# A manual run (Actions → Checks → Run workflow) runs every check on the
+# branch it runs on, e.g. a temporary branch that merges several pull
+# requests.
+
+on:
+  pull_request:
+    branches:
+      - dev
+      - main
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: What changed
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      app: ${{ steps.paths.outputs.app }}
+      monitoring: ${{ steps.paths.outputs.monitoring }}
+      traefik: ${{ steps.paths.outputs.traefik }}
+      cronjobs: ${{ steps.paths.outputs.cronjobs }}
+      terraform: ${{ steps.paths.outputs.terraform }}
+      workflows: ${{ steps.paths.outputs.workflows }}
+      compose: ${{ steps.paths.outputs.compose }}
+    steps:
+      # A pull request's checkout is its merge into the base branch, whose
+      # first parent is the base
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 2
+
+      - name: Sort the changed files
+        id: paths
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            files=$(git diff --name-only HEAD^1 HEAD)
+          else
+            files=$(git ls-files)
+          fi
+          echo "Changed files:"
+          printf '  %s\n' $files
+
+          # A change to these checks runs all of them
+          if [ "$GITHUB_EVENT_NAME" != "pull_request" ] ||
+            grep -qE '^\.github/(workflows/checks\.yaml|scripts/check-configs\.sh)$' <<<"$files"; then
+            all=true
+          else
+            all=false
+          fi
+
+          matches() {
+            if [ "$all" = true ] || grep -qE "$1" <<<"$files"; then echo true; else echo false; fi
+          }
+          {
+            echo "app=$(matches '^(nextjs/|postgres/|\.github/workflows/test\.yaml$)')"
+            echo "monitoring=$(matches '^(monitoring/|docker-compose\.monitoring(-agent)?\.yaml$|docker-compose\.prod\.yaml$)')"
+            echo "traefik=$(matches '^traefik/')"
+            echo "cronjobs=$(matches '^cronjobs/')"
+            echo "terraform=$(matches '^infra/terraform/')"
+            echo "workflows=$(matches '^\.github/')"
+            echo "compose=$(matches '(^|/)docker-compose[^/]*\.ya?ml$')"
+          } | tee -a "$GITHUB_OUTPUT"
+
+  # Lint, types, unit tests and e2e (test.yaml)
+  app:
+    name: App
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
+    uses: ./.github/workflows/test.yaml
+
+  # The monitoring configs with the images the compose files pin: the server
+  # (Prometheus, Alertmanager, Loki, Grafana, gateway, blackbox) and the
+  # agent (Alloy, exporters, Umami). docker-compose.prod.yaml is in because
+  # its Postgres image is the one postgres-exporter and Umami are checked
+  # against.
+  monitoring:
+    name: Monitoring configs
+    needs: changes
+    if: needs.changes.outputs.monitoring == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 2
+
+      - name: Check the configs
+        env:
+          # The base branch: an Umami update migrates its database from there
+          BASE_REF: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+        run: .github/scripts/check-configs.sh monitoring
+
+  traefik:
+    name: Traefik config
+    needs: changes
+    if: needs.changes.outputs.traefik == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+
+      - name: Check the config
+        run: .github/scripts/check-configs.sh traefik
+
+  cronjobs:
+    name: Cronjob images
+    needs: changes
+    if: needs.changes.outputs.cronjobs == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+
+      # The same build as deploy-cronjobs-docker.yaml: the repository root is
+      # the context
+      - name: Build the METAR job's image
+        run: docker build -f cronjobs/update-metar/Dockerfile -t update-metar:check .
+
+      # Loading every module checks the syntax and that the dependencies
+      # resolve, without running the job (index.ts would connect to the
+      # database)
+      - name: Its modules load
+        run: |
+          docker run --rm --entrypoint sh update-metar:check -c '
+            set -e
+            cd /app
+            for f in lib/*.ts; do
+              echo "$f"
+              npx --no-install tsx -e "import(\"./$f\").then(m => console.log(\"  exports:\", Object.keys(m).join(\", \")))"
+            done'
+
+  terraform:
+    name: Terraform
+    needs: changes
+    if: needs.changes.outputs.terraform == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: infra/terraform
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+
+      # The version terraform-plan-and-apply.yaml uses
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.16.5
+
+      - name: Format
+        run: terraform fmt -check -recursive -diff
+
+      # No backend and no secrets: the providers from the lock file, and the
+      # configuration against their schemas. The plan runs on main
+      # (terraform-plan-and-apply.yaml).
+      - name: Validate
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
+
+  workflows:
+    name: Workflows
+    needs: changes
+    if: needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+
+      # actionlint, with shellcheck for the run scripts; what it leaves out
+      # is in .github/actionlint.yaml
+      - name: actionlint
+        run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -color
+
+  compose:
+    name: Compose files
+    needs: changes
+    if: needs.changes.outputs.compose == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+
+      # The env files live on the server, so they are not read here
+      - name: Every compose file parses
+        run: |
+          status=0
+          for f in $(git ls-files '*docker-compose*.yaml' '*docker-compose*.yml'); do
+            if out=$(docker compose -f "$f" config -q --no-env-resolution 2>&1); then
+              echo "ok: $f"
+            else
+              grep -v 'variable is not set' <<<"$out" || true
+              echo "::error file=$f::$f doesn't parse"
+              status=1
+            fi
+          done
+          exit "$status"
+
+  # The one check dev requires. It fails when any check failed or was
+  # cancelled; a skipped check (nothing of its kind changed) is fine.
+  ci-ok:
+    name: ci-ok
+    needs: [changes, app, monitoring, traefik, cronjobs, terraform, workflows, compose]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Every check passed or was not needed
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          jq -r 'to_entries[] | "\(.key): \(.value.result)"' <<<"$RESULTS"
+          if jq -e 'any(.[]; .result == "failure" or .result == "cancelled")' <<<"$RESULTS" >/dev/null; then
+            echo "::error::A check failed; see the jobs above"
+            exit 1
+          fi
