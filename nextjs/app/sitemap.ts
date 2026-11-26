@@ -25,7 +25,7 @@ const pages: [path: string, lastModified: string][] = [
 
 // Hidden in production until the club members have reviewed them
 const pagesInReview: [path: string, lastModified: string][] = [
-  ["/kerho/historiaa", "2026-10-23"],
+  ["/kerho/historiaa", "2026-11-26"],
   ["/kerho/hallit", "2026-10-23"],
 ];
 

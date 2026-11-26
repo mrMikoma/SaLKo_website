@@ -7,8 +7,16 @@ import { isPagesInReviewEnabled } from "@/utilities/features";
 import PageHero from "@/components/pageHero";
 import ContentSection from "@/components/contentSection";
 import HistoryTimeline from "@/components/historyTimeline";
+import HistoryFigures, { type HistoryFigure } from "@/components/historyFigures";
 import historyData from "@/data/history.json";
 import { pageMetadata } from "@/utilities/seo";
+
+// A section is paragraphs with photos between them, in reading order
+type HistoryBlock = { text: string } | { figures: HistoryFigure[] };
+interface HistorySection {
+  title: string;
+  content: HistoryBlock[];
+}
 
 export const metadata = pageMetadata({
   title: "Historiaa – lentokerho vuodesta 1962",
@@ -32,7 +40,8 @@ export default function Page() {
     notFound();
   }
 
-  const { intro, sections, aircraft, documents, source } = historyData;
+  const { intro, aircraft, documents, source } = historyData;
+  const sections: HistorySection[] = historyData.sections;
 
   return (
     <div className="min-h-screen flex flex-col w-full">
@@ -75,11 +84,15 @@ export default function Page() {
                 {section.title}
               </h2>
               <div className="space-y-4">
-                {section.paragraphs.map((paragraph) => (
-                  <p key={paragraph.slice(0, 40)} className="text-swhite/85 leading-relaxed">
-                    {paragraph}
-                  </p>
-                ))}
+                {section.content.map((block, index) =>
+                  "figures" in block ? (
+                    <HistoryFigures key={index} figures={block.figures} />
+                  ) : (
+                    <p key={index} className="text-swhite/85 leading-relaxed">
+                      {block.text}
+                    </p>
+                  )
+                )}
               </div>
             </section>
           ))}
