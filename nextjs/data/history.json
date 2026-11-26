@@ -1,11 +1,11 @@
 {
-  "source": "Kerhon vanhojen verkkosivujen Historiaa-sivu (savonlinnanlentokerho.fi, joulukuu 2024)",
-  "intro": "Savonlinnassa on lennetty vähintään 1930-luvulta asti. Savonlinnan Lentokerho ry perustettiin 1.2.1962, ja vuodesta 1973 kerhon koti on ollut Savonlinnan lentoasema.",
+  "source": "kerhon historiikki ”SaLKo historiaa”, versio 26.11.2026. Kuvaajat ja kuvien lähteet on mainittu kuvateksteissä",
+  "intro": "Savonlinnassa on lennetty vuodesta 1938, jolloin perustettiin Savonlinnan purjelentokerho. Savonlinnan Lentokerho ry perustettiin 1.2.1962, ja vuodesta 1973 kerhon koti on ollut Savonlinnan lentoasema.",
   "milestones": [
     {
-      "year": "1930-luku",
-      "title": "Ensimmäiset lennot Saimaan jäältä",
-      "description": "Ilmapuolustusliiton aikana lennettiin Savonlinnassa rakennetulla Grunau 9 -alkeiskoulukoneella. Hinaus tehtiin autolla ja kenttänä oli Saimaan jää."
+      "year": "1938",
+      "title": "Savonlinnan purjelentokerho",
+      "description": "Savonlinnassa rakennetulla Grunau 9 -alkeiskoulukoneella lennettiin Saimaan jäältä autohinauksella, kunnes talvisota keskeytti toiminnan."
     },
     {
       "year": "1946",
@@ -20,7 +20,7 @@
     {
       "year": "1964",
       "title": "Oma koulukone",
-      "description": "Kerho osti Raahesta kaksipaikkaisen Scheibe Bergfalke II/55 -purjekoneen koulutukseen."
+      "description": "Kerho osti Raahen Ilmailukerholta kaksipaikkaisen Scheibe Bergfalke II/55 -purjekoneen koulutukseen."
     },
     {
       "year": "1973–1974",
@@ -30,12 +30,12 @@
     {
       "year": "1976",
       "title": "Moottorilentotoiminta alkaa",
-      "description": "Jussi Laine lensi kerhon uudelleen rakentaman Piper J-3 Cubin OH-PDX Naarajärveltä Savonlinnaan."
+      "description": "Jussi Laine lensi kerhon uudelleen rakentaman Piper J-3 Cubin OH-PDX Tikkakoskelta Savonlinnaan."
     },
     {
       "year": "1978",
       "title": "Ensimmäinen oma halli",
-      "description": "Halli rakennettiin, kun J-3:lle tarvittiin säilytyspaikka. Samana vuonna kerho hankki PIK-3c Kajavan."
+      "description": "Halli rakennettiin talkootyönä, kun J-3:lle tarvittiin säilytyspaikka. Samana vuonna kerho hankki PIK-3c Kajavan."
     },
     {
       "year": "1982",
@@ -55,7 +55,7 @@
     {
       "year": "1992",
       "title": "Toinen halli 30-vuotisjuhlavuonna",
-      "description": "Lämpöeristetty, osin talkoilla rakennettu 350 neliön halli valmistui."
+      "description": "Lämpöeristetty, suurimmaksi osaksi talkoilla rakennettu 350 neliön halli valmistui."
     },
     {
       "year": "2010",
@@ -66,78 +66,471 @@
       "year": "2012",
       "title": "50 vuotta",
       "description": "Kerhon viisikymmenvuotisjuhlien ilmailupäivä toi lentoasemalle arviolta tuhatkunta kävijää."
+    },
+    {
+      "year": "2025",
+      "title": "Rallye myydään",
+      "description": "Yli 40 vuotta kerhoa palvellut Socata Rallye OH-SEE myytiin keväällä Lappeenrannan Ilmailuyhdistykselle."
+    },
+    {
+      "year": "2026",
+      "title": "Puolet OH-386:sta",
+      "description": "Kerho osti puolet Punkaharjun Ilmailukerhon Fournier RF 5 -moottoripurjekoneesta OH-386. Moottorin peruskorjaus valmistui alkusyksystä, ja kone palasi lentokäyttöön."
     }
   ],
   "sections": [
     {
-      "title": "Alkuvaiheet",
-      "paragraphs": [
-        "Savonlinnassa on lentämistä harrastettu kaksi kertaa enemmän tai vähemmän järjestäytyneessä muodossa ennen 1.2.1962, jolloin Savonlinnan Lentokerho ry perustettiin. Ensimmäisen kerran lentämistä harrastettiin Savonlinnassa 1930-luvulla Ilmapuolustusliiton aikana. Kalustona oli saksalaisten suunnittelema alkeiskoulukone Grunau 9, joka oli rakennettu Savonlinnassa. Hinaukset tehtiin autolla, ja lentokenttänä toimi Saimaan jää. Talvisota keskeytti savonlinnalaisen ilmailun kehityksen siltä erää.",
-        "Vuonna 1946, maailman tilanteen vähän rauhoituttua, Savonlinnassa yritettiin uudelleen harrastaa ilmailua. Tällä kertaa yhdistyksen nimenä oli Savonlinnan ilmailukerho. Lentämistä harrastettiin tälläkin kertaa jäältä, ja paikkana oli Pullinlahti. Kone oli suomalaisvalmisteinen alkeisliitokone Harakka II, tunnukseltaan H-37. Savonlinnan ilmailukerhon toiminta loppui sodanjälkeisille vuosille tyypilliseen rahapulaan ja porukan hajoamiseen.",
-        "Syksyllä 1961 Karjalaisen Heikin ja Koposen Matin aloitteesta porukka kokoontui Kuutin kahvilaan päättämään purjelentokoneen hankinnasta. Kokoontumisen tuloksena perustettiin Savonlinnan Lentokerho ry, lyhyesti SaLKo, 1.2.1962. Savonlinnan Lennokkikerho perustettiin samana päivänä kerhon lennokkijaostoksi. Lennokkijaoston ja kerhon yhteistoiminta oli alkuvaiheessa läheistä: useat innokkaat liidokkipojat lähtivät mukaan purjelentokurssille, ja lentonäytöksiä pidettiin yhdessä. Lennokkiharrastuksen ja SaLKon alkuvaiheista kannattaa lukea lisää Ossi Kilpeläisen kirjoittamasta Lennokkikerhon historiikista."
+      "title": "Savonlinnan Lentokerhon alkuvaiheet",
+      "content": [
+        {
+          "text": "Savonlinnassa lentämistä harrastettiin kahdesti enemmän tai vähemmän järjestäytyneessä muodossa ennen Savonlinnan Lentokerho ry:n perustamista 1.2.1962."
+        },
+        {
+          "text": "Ensimmäinen kerta ajoittui vuoteen 1938, jolloin perustettiin Savonlinnan purjelentokerho. Yhdistyksen perustajajäseniin kuului seudulla tunnettu yritysjohtaja A. J. Viljakainen. Kalustona oli Saksassa suunniteltu alkeiskoulukone Grunau 9, joka oli rakennettu Savonlinnassa. Hinaukset suoritettiin autohinauksella, ja lentopaikkana toimi Saimaan jää. Talvisota keskeytti savonlinnalaisen ilmailuharrastuksen kehityksen tältä erää."
+        },
+        {
+          "text": "Vuonna 1946, maailmantilanteen hieman rauhoituttua, Savonlinnassa yritettiin käynnistää ilmailuharrastusta uudelleen. Tällä kertaa yhdistyksen nimenä oli Savonlinnan ilmailukerho. Lentämistä harrastettiin jälleen järven jäältä, tällä kertaa Pullinlahdella. Kalustona oli suomalaisvalmisteinen Harakka II -alkeisliitokone, jonka tunnus oli H-37. Savonlinnan ilmailukerhon toiminta päättyi sodanjälkeisille vuosille tyypilliseen rahapulaan ja harrastajaporukan hajoamiseen."
+        },
+        {
+          "text": "Syksyllä 1961 Heikki Karjalaisen ja Matti Koposen aloitteesta kokoontui joukko ilmailusta kiinnostuneita Kuutin kahvilaan keskustelemaan purjelentokoneen hankinnasta. Mukana oli myös syksyllä Savonlinnaan muuttanut Pekka Laine. Kolmikon ilmailutaustat olivat eri puolilta Suomea: Heikki Karjalaisen Savonlinnasta, Matti Koposen Joensuusta ja Pekka Laineen Jyväskylästä. Kokoontumisen tuloksena perustettiin Savonlinnan Lentokerho ry, tuttavallisemmin SaLKo."
+        },
+        {
+          "text": "Samana päivänä perustettiin myös Savonlinnan Lennokkikerho, josta tuli SaLKon lennokkijaosto. Kerhon ja lennokkijaoston yhteistyö oli alkuvaiheessa tiivistä. Useat innokkaat liidokkipojat lähtivät mukaan purjelentokurssille, ja lisäksi järjestettiin yhteisiä lentonäytöksiä."
+        },
+        {
+          "text": "Savonlinnan lennokkiharrastuksen ja SaLKon alkuvaiheista kannattaa lukea lisää Ossi Kilpeläisen kirjoittamasta Lennokkikerhon historiikista."
+        }
       ]
     },
     {
       "title": "Lentotoiminnan alku",
-      "paragraphs": [
-        "Lentotoiminta alkoi kesällä 1962 Naarajärvellä, koska omaa kenttää ei ollut. Kerhon oma PIK-5c Cumulus OH-PBJ hinattiin sinne Hämeenlinnasta; siirtolennon aikana sitä ohjasi nyt jo edesmennyt lentokapteeni Juhani Horma. Ennen oman koulukoneen, Bergfalken, hankintaa vuonna 1964 kerhon jäsenet saivat koulutuksensa jyväskyläläisten Rhönlerchellä OH-KRM. Naarajärvellä lennettiin myös Varkauden lentokerhon SZD-10bis Czaplalla OH-KCA.",
-        "Toiminta siirtyi vasta valmistuneelle Savonlinnan lentoasemalle syksyllä 1973. Ennen sitä kerholaiset lensivät Naarajärven lisäksi muun muassa vuosina 1972 ja 1973 Pullinlahden jäältä ja kesäisin Lehtiniemen lentopaikalta. Kalustoa oli vuokralla Varkaudesta, ja kolme kerhon jäsentä lensi omalla HK-1 Keltiäisellään. 1970-luvun alussa purjelentoja lennettiin jälleen Keskisuomen ilmailijoiden kalustolla, koska omaa kalustoa ei ollut käytettävissä: Bergfalke oli vaurioitunut, ja OH-PBJ oli lentokiellossa rakentamisessa käytetyn lukkoliiman takia."
+      "content": [
+        {
+          "text": "Kerhon perustamisen aikaan Savonlinnassa ei ollut lentokenttää, eikä purjelentotoimintaan tarvittavaa hinauskalustoa. Tämän vuoksi käynnistettiin yhteistoimintaneuvottelut naapurikaupunkien ilmailuharrastajien kanssa."
+        },
+        {
+          "text": "Myös Jyväskylän, Kuopion, Joensuun ja Varkauden purjelentokerhoilla oli ongelmia hinausjärjestelyjen kanssa. Erityisesti vintturihinauksen järjestäminen oli vaikeaa, sillä isommilla lentokentillä ei sallittu niin sanottua lankahinausta eli vintturi- tai autohinausta. Kerhot alkoivat etsiä yhteistä lentopaikkaa, jossa tällainen toiminta olisi mahdollista. Neuvotteluissa päädyttiin selvittämään mahdollisuutta keskittää toimintaa Naarajärvelle. Pekka Laine oli ennen Savonlinnaan muuttoaan toiminut aktiivisesti Jyväskylän purjelentokerhossa, joten hän tunsi hyvin sen toiminnan ja ihmiset. Hänen kauttaan myös lentokerho liittyi mukaan neuvotteluihin. Näin lopulta löytyi lentopaikka myös Savonlinnan Lentokerhon toiminnalle."
+        },
+        {
+          "text": "Lentotoiminta käynnistyi kesällä 1962 Naarajärvellä. Siellä oli käytettävissä säilytyshalli, vintturihinauskalusto sekä lennonopettajia. Kerhon oma PIK-5c Cumulus, OH-PBJ, siirtolennettiin sinne Hämeenlinnasta. Koneen ohjaajana siirtolennolla toimi edesmennyt lentokapteeni Juhani Horma."
+        },
+        {
+          "figures": [
+            {
+              "src": "/images/historia/1962-pik-5c-oh-pbj-siirtolento.jpg",
+              "width": 1329,
+              "height": 882,
+              "alt": "Mustavalkoinen kuva: PIK-5c-purjekone nurmikentällä, ohjaaja seisoo koneen vieressä.",
+              "caption": "SaLKon PIK-5c, OH-PBJ, jonka siirtolennolta Hämeenlinna–Naarajärvi Juhani Horma on juuri laskeutunut. Naarajärvi, kesäkuu 1962."
+            }
+          ]
+        },
+        {
+          "text": "Ennen oman Scheibe Bergfalke II/55 -koulukoneen hankintaa vuonna 1964 kerhon jäsenet saivat lentokoulutuksensa jyväskyläläisten Schleicher Ka 4 Rhönlerche II -koneella, jonka rekisteritunnus oli OH-KRM. Kerholaiset lensivät Naarajärvellä myös Varkauden Lentokerhon SZD-10bis Czapla -koneella, jonka rekisteritunnus oli OH-KCA."
+        },
+        {
+          "figures": [
+            {
+              "src": "/images/historia/czapla-oh-kca.jpg",
+              "width": 1123,
+              "height": 765,
+              "alt": "Mustavalkoinen kuva: Czapla-purjekone metsän reunassa.",
+              "caption": "Varkauden Lentokerhon SZD-10bis Czapla, rekisteritunnukseltaan OH-KCA. Kuva: Ossi Kilpeläinen."
+            }
+          ]
+        },
+        {
+          "text": "Nykyisistä jäsenistä ainakin Jussi Laine on aloittanut ilmailu-uransa Naarajärvellä. Ennen Savonlinnan lentoaseman valmistumista kerholaiset lensivät Naarajärven lisäksi muun muassa vuosina 1972 ja 1973 Pullinlahden jäältä ja kesäisin Lehtiniemen lentopaikalta. Kalustoa oli vuokralla Varkaudesta, ja kolme kerhon jäsentä lensi omalla HK-1B Keltiäisellään."
+        },
+        {
+          "figures": [
+            {
+              "src": "/images/historia/1962-rhonlerche-koululento.jpg",
+              "width": 1216,
+              "height": 868,
+              "alt": "Mustavalkoinen kuva: neljä henkilöä purjekoneen avoimen ohjaamon ympärillä.",
+              "caption": "Schleicher Ka 4 Rhönlerche II, rekisteritunnukseltaan OH-KRF, lähdössä koululennolle Naarajärvellä kesäkuussa 1962. Kuvan henkilöt vasemmalta oikealle: lennonopettaja Pentti Paananen, oppilas Rauha Pääkkönen, Jyväskylän kerhon puheenjohtaja ja lennonopettaja Mikko Honkanen sekä oppilas Jussi Laine. Kuva: Jussi Laineen kokoelmat."
+            }
+          ]
+        },
+        {
+          "figures": [
+            {
+              "src": "/images/historia/lehtiniemen-lentopaikka-piirros.jpg",
+              "width": 1163,
+              "height": 1600,
+              "alt": "Käsin piirretty kartta Lehtiniemen lentopaikasta Sääminkiin vuodelta 1972.",
+              "caption": "Piirros Lehtiniemen lentopaikasta. Piirros on peräisin Savonlinnan Lentokerhon arkistosta."
+            },
+            {
+              "src": "/images/historia/1972-hk-1b-oh-hkc-immola.jpg",
+              "width": 1600,
+              "height": 1070,
+              "alt": "Keltainen HK-1B Keltiäinen -kone asematasolla, mies seisoo potkurin vieressä.",
+              "caption": "Pertti Sairanen juuri valmistuneen HK-1B Keltiäisen, OH-HKC:n, vieressä Immolassa 1972. Kuva: via Jussi-Pekka Sairanen."
+            }
+          ]
+        },
+        {
+          "text": "1970-luvun alussa kerholaiset lensivät jälleen Keski-Suomen Ilmailijoiden kalustolla, koska omaa kalustoa ei ollut käytettävissä. Bergfalke oli käytöstä poissa vaurioitumisen takia, ja OH-PBJ oli lentokiellossa rakennuksessa käytetyn lukkoliiman takia."
+        },
+        {
+          "text": "Toiminta siirtyi Naarajärveltä vastavalmistuneelle Savonlinnan lentoasemalle syksyllä 1973."
+        }
       ]
     },
     {
       "title": "Vintturit ja autohinaus",
-      "paragraphs": [
-        "Kerholaiset rakensivat 1960-luvun alussa V-30-vintturin, jossa oli Franklin-lentokonemoottori. Moottori oli peräisin Enso-Gutzeitin Republic Seabee OH-EGA -lentoveneestä, joka oli vaurioitunut epäonnistuneessa laskussa Imatralla ja poistettu rekisteristä vuonna 1958. Kerhon toiminnan hiipuessa 1970-luvun alussa moottori myytiin Poriin amfibion moottoriksi; nykyisin moottori ja OH-EGA:n jäännökset ovat metsämuseo Luston hallussa.",
-        "Myöhemmin SaLKon käytössä oli Punkaharjun Ilmailukerhon 1980-luvun alussa vanhan linja-auton alustalle rakentama vintturi, joka toimi kunnolla vain jäällä. Uusi vintturi hankittiin ostamalla: se oli rakennettu Sisu-kuorma-auton lavalle, ja sillä hinattiin purjekoneita kiitotien nurmialueelta. Vintturi myytiin Ruotsiin 1980-luvun lopussa, ja lentokonehinauksesta tuli pääasiallinen hinausmuoto.",
-        "Purjekoneita on hinattu myös autolla. Lentokentällä autohinausta käytettiin ensimmäisen kerran 1990-luvun alkupuolella, kun Rallye oli peruskorjauksessa. Köysillä vedettiin satoja hinauksia, pääasiassa jäällä, ja paras nousija oli kevyt Junior, jota hinattiin 820 metrin korkeuteen. Hinaustoiminta oli vilkkaimmillaan vuonna 2012, jolloin yli kolmannes kauden pursilennoista hinattiin autolla. Auto- ja vintturihinaus on nykyisin lentokentällä kielletty."
+      "content": [
+        {
+          "text": "Kerholaiset rakensivat 1960-luvun alussa Franklin-lentokonemoottorilla varustetun V-30-vintturin. Vintturin runko ja akseli saatiin linja-autoliike Ruposelta. Rakennustyöt tehtiin Jordanin myllyn pihapiirissä, josta saatiin myös tarvittavat työkalut. Heikki Karjalainen työskenteli myllyllä, ja sen silloinen johtaja Erik Jordan suhtautui hankkeeseen myönteisesti ja tuki rakentamista."
+        },
+        {
+          "text": "Vintturin Franklin 6A8-215-D8F -moottori oli peräisin Enso-Gutzeitin Republic Seabee -amfibiolentokoneesta, jonka rekisteritunnus oli OH-EGA. Moottori päätyi Savonlinnan Lentokerhon vintturin rakentajien käyttöön, kun OH-EGA vaurioitui epäonnistuneessa laskussa Imatralla ja poistettiin rekisteristä vuonna 1958."
+        },
+        {
+          "text": "Pekka Laine toimi sota-aikana ilmavoimissa lentokonemekaanikkona ja Yrjö Turkka hävittäjälentäjänä. Miehet tunsivat toisensa jo noilta ajoilta. Myöhemmin lentomestari Turkka lensi työkseen OH-EGA:lla. Kun kerhossa syntyi ajatus vintturin rakentamisesta, Laine tiesi, mistä siihen mahdollisesti saataisiin sopiva moottori. Vintturin alkuperäisen moottorin kampikammio halkesi myöhemmin, mutta kerho sai Enso-Gutzeitilta tilalle uuden moottorin. Kerhon purjelentotoiminnan hiipuessa 1970-luvun alussa moottori myytiin Poriin amfibiolentokoneen moottoriksi. Nykyisin Franklin-moottori ja OH-EGA-koneen jäännökset ovat metsämuseo Luston hallussa."
+        },
+        {
+          "figures": [
+            {
+              "src": "/images/historia/v-30-vintturi.jpg",
+              "width": 533,
+              "height": 383,
+              "alt": "Punainen vintturi pyörien päällä kentän laidalla.",
+              "caption": "SaLKon V-30-vintturi. Kuva: Sulo Siltari via Mikko Jaakkola."
+            }
+          ]
+        },
+        {
+          "text": "Vintturi oli purjelentokuvioissa mukana myös myöhemmin. Savonlinnan Lentokerhon käytössä oli Punkaharjun Ilmailukerhon 1980-luvun alussa vanhan linja-auton alustalle rakentama vintturi. Tämä vintturi oli kuitenkin niin heikkotehoinen, että se toimi kunnolla vain jäällä, missä hinauslangalla oli pienempi kitka. Punkaharjun Ilmailukerho luovutti vintturin Savonlinnan Lentokerholle, jotta sen osia olisi voitu käyttää uuden ja paremman vintturin tekoon."
+        },
+        {
+          "text": "Uusi vintturi koottiin nostamalla Immolasta ostettu vintturi Schaumanilta saadun Sisu Kontio -kuorma-auton rungolle. Tuohon aikaan kerhon puheenjohtaja oli Pertti Sairanen, ja hän oli silloisen kuitulevytehtaan johtaja. Uudesta vintturista tuli melko toimiva laite. Savonlinnan lentoasemaa hallinnoivan valtion lentokenttäyhtiön, Ilmailulaitoksen, linjaukset muuttuivat kuitenkin 1980- ja 1990-lukujen taitteessa vintturitoiminnan kannalta kielteiseen suuntaan. Vintturihinaukset kiellettiin, ja jouduttiin siirtymään lekohinauksiin. Vintturi myytiin Ruotsiin."
+        },
+        {
+          "text": "Autohinausta kokeiltiin ensimmäistä kertaa Savonlinnan lentokentällä 1990-luvun alkupuolella Rallyen ollessa peruskorjauksessa. Tuolloin kerholaiset rakensivat auton peräkoukkuun kiinnitettävän köyden kelauslaitteen ja vetovoima-anturin. Ensimmäinen hinausköysi oli kolmesta pätkästä yhdistetty noin 650 metriä pitkä sininen 10 millimetrin paksuinen polypropeeniköysi."
+        },
+        {
+          "text": "Köydellä vedettiin useita satoja hinauksia, pääasiassa jäällä, aina vuoteen 2010 asti, jolloin se oli haurastunut liikaa. Eniten köydellä hinattiin jäällä kahden kerholaisen omistamaa PIK-3c Kajava -konetta. Seuraavaksi tilattiin Piippo Oy:ltä 800 metriä 8 millimetrin paksuista oranssia polyeteeniköyttä, tavoitteena suurempien hinauskorkeuksien saavuttaminen. Tällä köydellä hinattiin lentokentällä Junior 820 metrin korkeuteen. Köysi havaittiin kuitenkin liian heikoksi raskaammalle Puchaczille, ja jo seuraavana vuonna hankittiin 700 metrin mittainen ja 12 millimetrin paksuinen polypropeeniköysi. Uudella köydellä ei tullut enää katkoja, mutta hinauskorkeudet jäivät sen suuremman vastuksen ja massan takia hieman alhaisemmiksi."
+        },
+        {
+          "text": "Hinausautoina käytettiin kerholaisten omistamia henkilöautoja, moottoritehojen vaihdellessa Seat Ibizan 90 hevosvoiman ja Opel Omegan 200 hevosvoiman välillä. Kerhon kaikkia purjekoneita hinattiin autohinauksella, ja parhaiten nousevaksi havaittiin kevyt ja hitaamman polaarin omaava Junior. Junioria hinattiin myös Laukansaaren jääkentältä vuonna 2005."
+        },
+        {
+          "text": "Hinaustoiminta lentokentällä oli vilkkaimmillaan vuonna 2012, jolloin yli kolmannes kauden purjelennoista hinattiin autolla. Autohinaustouhu päättyi lopulta lentoaseman päällikön Jussi Laineen eläköidyttyä."
+        },
+        {
+          "figures": [
+            {
+              "src": "/images/historia/2012-autohinaus-jantar.jpg",
+              "width": 718,
+              "height": 1080,
+              "alt": "Purjekone nousee sinisellä taivaalla hinausköyden päässä kiitotien yllä.",
+              "caption": "Opel Omega hinaa SZD-41A Jantar Standardin, OH-475, taivaalle Savonlinnan kiitotieltä 30 keväällä 2012. Kuva: Tero Kuutti."
+            }
+          ]
+        }
       ]
     },
     {
-      "title": "Purjelentokalusto",
-      "paragraphs": [
-        "Alkuvuosina kerholla oli PIK-5c:n lisäksi kaksipaikkainen Scheibe Bergfalke II/55 OH-KBD / OH-168, joka ostettiin Raahen IK ry:ltä ja rekisteröitiin SaLKolle 21.7.1964. Kone vaurioitui niin pahasti, että se poistettiin rekisteristä vuonna 1972 ja myytiin Vaasan Lentokerholle, joka peruskorjasi sen.",
-        "Seuraavaksi kerho hankki heinäkuussa 1978 Tampereen Ilmailuyhdistykseltä PIK-3c Kajavan OH-202 / OH-YKW, jonka kerho peruskorjasi omin voimin. Samaan aikaan käytössä oli vuonna 1983 Pudasjärveltä ostettu ASW-15 OH-407.",
-        "Vuonna 1990 kerho hankki uuden SZD-51-1 Juniorin OH-829 vintturin myynnistä saaduilla rahoilla, ja 1991 Karhulasta käytetyn SZD-41A Jantar Standardin OH-475. Jantarilla ehdittiin lentää vain vähän, koska vuonna 1993 annettiin siipisalkojen tyvitappeja koskeva määräys; tappien vaihto ja 1000 tunnin tarkastus venyivät, ja Jantar lensi seuraavan kerran vasta 29.8.2010.",
-        "Vuonna 2003 kerho osti Punkaharjun Ilmailukerholta L-13 Blanikin OH-514, joka oli jo ollut kerhojen yhteiskäytössä. Blanik myytiin 2011 Valkovenäjälle, kun keväällä 2010 Pieksämäeltä hankittu SZD-50-3 Puchacz OH-816 oli korvannut sen koulutuksessa."
+      "title": "Purjelentokaluston hankinnat ja myynnit",
+      "content": [
+        {
+          "text": "Kerhon alkuvuosien kalustoon kuulunut PIK-5c, OH-PBJ, vaurioitui pahasti vuonna 1963 Naarajärvellä järjestetyssä maaliinlaskukilpailussa. Koneen siipi katkesi ja ohjaamomuna tuhoutui. Pekka Laineen osaamisella kerholaiset korjasivat koneen talven aikana lennokkikerhon tiloissa Heikinpohjan ”Mölytsyssä”. PIK-5c lensi jälleen seuraavana kesänä Naarajärvellä."
+        },
+        {
+          "figures": [
+            {
+              "src": "/images/historia/pik-5c-oh-pbj-naarajarvi.jpg",
+              "width": 1600,
+              "height": 1119,
+              "alt": "Valkoinen PIK-5c-purjekone kentällä metsän edessä.",
+              "caption": "OH-PBJ Naarajärvellä. Kuva: Pertti Sairanen."
+            }
+          ]
+        },
+        {
+          "text": "Kerhon kalustoon kuului myös kaksipaikkainen Scheibe Bergfalke II/55, rekisteritunnukseltaan OH-KBD, jonka SaLKo osti Raahen Ilmailukerholta. Kone rekisteröitiin SaLKon nimiin 21.7.1964, ja sitä käytettiin purjelentokoulutukseen Naarajärvellä. Bergfalke vaurioitui kuitenkin niin pahasti, että se poistettiin rekisteristä 1.6.1972."
+        },
+        {
+          "text": "Seuraavana vuonna SaLKo myi vaurioituneen koneen Vaasan Lentokerholle, sillä kerhon toiminta oli hiipunut, eikä korjaajia löytynyt. Vaasalaiset peruskorjasivat koneen vuosina 1973–1974 ja käyttivät sitä koulutukseen. Joulukuussa 1980 kone myytiin Kalajokilaakson Ilmailukerholle Ylivieskaan, jossa sitä käytettiin niin ikään koulutustoiminnassa. Bergfalke poistettiin lopullisesti rekisteristä 15.8.1988."
+        },
+        {
+          "figures": [
+            {
+              "src": "/images/historia/1974-bergfalke-oh-168-vaasa.jpg",
+              "width": 800,
+              "height": 582,
+              "alt": "Oranssi Bergfalke-purjekone kiitotiellä, taustalla hinauskone.",
+              "caption": "Scheibe Bergfalke II/55, OH-168 (aiemmin OH-KBD), lähdössä koelennolle PIK-15 Hinun, OH-YHF, hinaamana Vaasassa 14.5.1974. Kuva: Henry Laaksonen via Jukka Nisula."
+            }
+          ]
+        },
+        {
+          "text": "Bergfalken jälkeen seuraava purjelentokonehankinta oli PIK-3c Kajava, OH-202, jonka aiempi tunnus oli OH-YKW. Kajavan kerho hankki heinäkuun lopussa 1978 Tampereen Ilmailuyhdistykseltä. Kajava peruskorjattiin kerhon omin voimin. Kajava myytiin Ouluun 1990-luvun alussa, missä sille on tekeillä peruskorjaus. Kajavan kanssa yhtä aikaa kerholla oli käytössä ASW 15, rekisteritunnukseltaan OH-407. Kerho osti ASW:n Rajansiivet ry:ltä Pudasjärveltä vuonna 1983. Kone myytiin kerhon jäsenelle 1990-luvun alussa."
+        },
+        {
+          "figures": [
+            {
+              "src": "/images/historia/asw-15-ja-kajava.jpg",
+              "width": 1600,
+              "height": 1109,
+              "alt": "Mustavalkoinen kuva: mies pitelee kylttiä, taustalla kaksi purjekonetta jäällä.",
+              "caption": "Purjelennon opettaja Paavo Koponen. Taustalla ASW 15, OH-407, ja PIK-3c Kajava, OH-202. Kuva: Jussi Laineen kokoelmat."
+            }
+          ]
+        },
+        {
+          "text": "ASW 15 -koneen jälkeen seuraava purjekonehankinta oli uusi harjoituskone SZD-51-1 Junior, OH-829, jonka kerho hankki vuonna 1990 vintturin myynnistä saaduilla rahoilla."
+        },
+        {
+          "text": "Seuraavana vuonna, eli 1991, kerho osti Karhulasta käytetyn SZD-41A Jantar Standard -koneen. Sillä kerho ehti lentää melko lyhyen aikaa, koska vuonna 1993 senaikainen Ilmailulaitos julkaisi koneen siipisalkojen ”sormitappien” vaihtoa koskevan määräyksen. Koneeseen päätettiin samalla tehdä 1000 tunnin tarkastus, ja se venyi tappien vaihdon kanssa tekijöiden puutteen vuoksi. Jantar lensi seuraavan kerran vasta 29.8.2010, 18 vuoden ja 25 päivän tauon jälkeen."
+        },
+        {
+          "figures": [
+            {
+              "src": "/images/historia/1998-jantar-sormitappi.jpg",
+              "width": 1131,
+              "height": 1600,
+              "alt": "Mies työskentelee työkalulla purjekoneen siiven tyven kimpussa.",
+              "caption": "Jussi Laine irrottaa Jantarin siipisalon sormitappia 1998."
+            },
+            {
+              "src": "/images/historia/2012-jantar-lennossa.jpg",
+              "width": 524,
+              "height": 330,
+              "alt": "Valkoinen purjekone lennossa järvimaiseman yllä.",
+              "caption": "Jantar oikeassa elementissään huhtikuussa 2012. Kuva: Tero Kuutti."
+            }
+          ]
+        },
+        {
+          "text": "Vuonna 2003 kerho osti Punkaharjun Ilmailukerholta sen L-13 Blanik -koneen, rekisteritunnukseltaan OH-514. Blanik oli tätä ennen ollut Punkaharjun ja Savonlinnan kerhojen yhteisessä käytössä."
+        },
+        {
+          "figures": [
+            {
+              "src": "/images/historia/blanik-oh-514-vintturilahto.jpg",
+              "width": 927,
+              "height": 598,
+              "alt": "Blanik-purjekone lähdössä nurmikentältä, siivenkannattaja juoksee siiven kärjessä.",
+              "caption": "Blanik starttaa vintturihinauksella Savonlinnan lentoaseman kiitotien 30 nurmialueelta. Siiven kärjessä Ossi Kilpeläinen. Kuva: Jarmo Hiltunen."
+            }
+          ]
+        },
+        {
+          "text": "Blanik myytiin lokakuussa 2011 Valkovenäjälle, Pieksämäeltä keväällä 2010 hankitun SZD-50-3 Puchacz -koneen, rekisteritunnukseltaan OH-816, korvattua sen koulutuskäytössä. Blanikin lisäksi Savonlinnan Lentokerhon ja Punkaharjun Ilmailukerhon yhteiskäytössä oli PIK-16c Vasama, OH-303. PuIK myi koneen 1990-luvun alussa Jämille, missä se tuhoutui 27.3.2009 lento-onnettomuudessa törmätessään sähkölinjaan."
+        },
+        {
+          "figures": [
+            {
+              "src": "/images/historia/vasama-oh-303-punkaharju.jpg",
+              "width": 1545,
+              "height": 1024,
+              "alt": "Viisi henkilöä siirtää Vasama-purjekonetta lumisella lentopaikalla.",
+              "caption": "PIK-16c Vasamaa, OH-303, ollaan siirtämässä jääkentälle peruskorjauksen jälkeistä koelentoa varten Punkaharjun lentopaikalla. Kuvassa vasemmalta: Esko Eerikäinen (pyrstö), Myllyksen veljeksistä todennäköisesti Timo (siiven kärki), Kalervo Meskanen (siiven tyvi putken oviaukossa), Liisa Meskanen (oven takana) ja tuntematon (Vasaman nokka). Kuvaaja tuntematon."
+            }
+          ]
+        }
       ]
     },
     {
-      "title": "Purjelentokoulutus Savonlinnan lentoasemalla",
-      "paragraphs": [
-        "Purjelentokoulutus kentällä alkoi lainakalustolla vuonna 1974: kurssia varten oli vuokrattu Mikkelin ilmailuyhdistyksen SZD-9 Bocian OH-193 ja hinauksiin Cessna 175. 1970-luvun lopusta alkaen koulutus järjestettiin yhdessä Punkaharjun Ilmailukerhon kanssa.",
-        "Opettajina ovat toimineet ainakin Kalervo Meskanen, Antti Mutikainen, Markku Varis, Jukka Honkanen, Paavo Koponen ja Kyösti Rönkkönen, 1990-luvun puolivälistä Mikko Saajanlehto ja vuosina 2002–2006 Matti Peura. Muutaman vuoden tauon jälkeen opettajakurssin kävivät Tero Kuutti vuonna 2010 ja Joonatan Jääskeläinen vuonna 2012."
+      "title": "Purjelentokoulutus Savonlinnan lentokentällä",
+      "content": [
+        {
+          "text": "Purjelentokoulutus Savonlinnan lentokentällä alkoi lainakalustolla vuonna 1974. Kerholla oli silloin vuokralla purjelentokurssia varten Mikkelin Ilmailuyhdistyksen SZD-9bis 1 Bocian, OH-173. Kone noudettiin ”lekohinauksella”, hinauskoneena oli Piper PA-11 Cub Special, ja lentäjänä koneen omistaja Esko Tikka. Esko Tikka omisti myös Länsi-Savo-lehden ja kirjapainon. Bociania lensi Jussi Laine."
+        },
+        {
+          "text": "Kun Savonlinnaan tarvittiin kurssia varten hinauskone, se löytyi Jyväskylästä: Cessna 175. Kurssin oppilaina olivat muun muassa tuleva SaLKon purjelennon opettaja Markku Varis ja myöhempien aikojen puheenjohtaja Jorma Paavilainen."
+        },
+        {
+          "text": "Myöhemmin, 1970-luvun lopulta alkaen, purjelentokoulutus tapahtui yhteistyönä Punkaharjun Ilmailukerhon kanssa. Opettajina toimivat ainakin Kalervo Meskanen, Antti Mutikainen, Markku Varis, Jukka Honkanen, Paavo Koponen ja Kyösti Rönkkönen. 1990-luvun puolivälistä eteenpäin opettajana oli Mikko Saajanlehto. Vuodesta 2001 vuoteen 2006 opettajana toimi Matti Peura."
+        },
+        {
+          "text": "Tämän jälkeen kerho oli muutaman vuoden ajan vailla omaa opettajaa, kunnes vuonna 2010 Suomen Urheiluilmailuopiston opettajakurssin kävi Tero Kuutti ja vuonna 2012 Joonatan Jääskeläinen."
+        },
+        {
+          "figures": [
+            {
+              "src": "/images/historia/blanik-oh-514-tutustumislento.jpg",
+              "width": 928,
+              "height": 602,
+              "alt": "Blanik-purjekoneen ohjaamossa istuu kaksi henkilöä, kolmas avustaa koneen vieressä.",
+              "caption": "Anna-Maija Tikkanen lähdössä tutustumislennolle purjelennon opettaja Markku Variksen kanssa L-13 Blanikilla, OH-514. Ossi Kilpeläinen avustaa. Kuva: Jarmo Hiltunen."
+            }
+          ]
+        }
       ]
     },
     {
       "title": "Moottorilentotoiminta",
-      "paragraphs": [
-        "Moottorilentotoiminta alkoi lokakuussa 1976, kun Jussi Laine lensi vasta uudelleen rakennetun Piper J-3C-65 Cubin OH-PDX Naarajärveltä Savonlinnaan. Koneen kerho osti kesällä 1974 Saksasta rahoilla, jotka oli osin saatu ostamalla kaupungin uuden lentokentän suoja-alueilla viljelemä kaura pystyssä ja myymällä se muun muassa siemenviljaksi, sekä järjestämällä lentonäytös lentoaseman vihkiäisiin. Vuonna 1945 valmistunut Cub oli huonokuntoinen, ja kerho rakensi siihen Jussi Laineen johdolla uudet siivet.",
-        "Nopeammaksi koneeksi hankittiin keväällä 1980 Saksasta Laverda F.8-L Falco IV OH-FAA, Suomen ainoa laatuaan. Se tuhoutui jo 6.6.1980 koululennon mahalaskussa. Osin vakuutusrahoilla kerho osti helmikuussa 1982 Vaasasta Socata Rallye MS 893E:n OH-SEE, jota on käytetty purjekoneiden hinaukseen, palolentoihin ja koulutukseen.",
-        "Vuonna 1988 kerho hankki Kanadasta Cessna 172:n, jonka tunnukseksi tuli OH-CON. Cessnaa on käytetty matkalentoihin, koulutukseen, SAR-toimintaan ja palolentoihin, ja se sai uuden moottorin vuonna 2006. Moottorilentokoulutus alkoi J-3:lla 1970-luvun loppupuolella; opettajina ovat toimineet muun muassa Risto Sihvola, Jussi Halme, Juha \"Tino\" Rossi, Jorma Löppönen, Juhani Korpela, Pekka Hiltunen, Timo Flink, Rauna Ylinen ja Jani Löija."
+      "content": [
+        {
+          "text": "Savonlinnan Lentokerhon moottorilentotoiminta alkoi lokakuussa 1976, jolloin Jussi Laine lensi vasta uudelleen rakennetun Piper J3C-65 Cubin, OH-PDX, Tikkakoskelta Savonlinnan lentokentälle."
+        },
+        {
+          "text": "Piperin kerho osti kesällä 1974 Saksasta rahalla, joka oli osin hankittu ostamalla pystyssä oleva kaupungin vastavalmistuneen lentokentän suoja-alueilla viljelemä kaura ja myymällä se sitten muun muassa siemenviljaksi. Koneen ostamiseen kerho sai rahaa myös järjestämällä lentonäytöksen Savonlinnan lentokentän vihkimistilaisuuden yhteyteen 12.6.1974."
+        },
+        {
+          "text": "Vuonna 1945 valmistunut Piper, sarjanumeroltaan 15179, oli huonokuntoinen ja vaati uudelleen rakentamisen. Varsinkin siivet olivat huonokuntoiset. Laineen Jussin toimiessa porukan vetäjänä kerho rakensi Piperiin uudet siivet. Laine suunnitteli uusiin siipiin alkuperäisestä poikkeavat, seosalumiinilevystä prässäämällä tehdyt siipikaaret."
+        },
+        {
+          "figures": [
+            {
+              "src": "/images/historia/j-3-cub-siiven-kokoaminen.jpg",
+              "width": 856,
+              "height": 1216,
+              "alt": "Mustavalkoinen kuva: mies kumartuneena puisen siipirakenteen ylle hallissa.",
+              "caption": "Jussi Laine kokoaa Piper J3C-65 Cub -koneen siipeä Naarajärvellä. Kuva: Pertti Sairanen."
+            }
+          ]
+        },
+        {
+          "text": "Hitaan J3:n lisäksi kerholaiset halusivat nopeamman koneen, joten keväällä 1980 kerholle hankittiin Laverda F.8-L Falco IV, joka sai rekisteritunnuksen OH-FAA. Kone hankittiin jälleen Saksasta, kuten J3. Falcon elämä Savonlinnassa jäi valitettavan lyhyeksi, sillä se tuhoutui koululennon yhteydessä jo 6.6.1980 mahalaskussa Savonlinnan lentokentälle. Kyseinen Falco oli ainoa tyyppinsä edustaja Suomessa. Lyhyestä kerhollaoloajasta huolimatta kerho ehti suorittaa Falcolle perushuollon keväällä 1980."
+        },
+        {
+          "figures": [
+            {
+              "src": "/images/historia/1980-falco-oh-faa-tankilla.jpg",
+              "width": 1545,
+              "height": 1024,
+              "alt": "Punavalkoinen Falco-lentokone asematasolla, ympärillä neljä henkilöä.",
+              "caption": "Falco tankilla keväällä 1980. Kuva: Jussi Laineen arkistot."
+            },
+            {
+              "src": "/images/historia/falco-oh-faa-peruskorjaus.jpg",
+              "width": 1545,
+              "height": 1024,
+              "alt": "Falco-lentokone hallissa huollettavana, ympärillä työkaluja ja kaksi henkilöä.",
+              "caption": "Falco peruskorjauksessa lentoaseman kunnossapidon hallissa. Kuva: Jussi Laineen arkistot."
+            }
+          ]
+        },
+        {
+          "text": "Osin Falcosta saaduilla vakuutusrahoilla kerho osti helmikuussa 1982 Vaasasta tavanomaisemman yleisilmailukoneen, Socata Rallye M.S. 893E:n, OH-SEE. Sitä kerho käytti purjelentokoneiden hinauksiin, palolentoihin sekä uusien lentäjien koulutukseen. Rallye peruskorjattiin ja moottori uusittiin 1990-luvun alussa. Kone myytiin Lappeenrannan Ilmailuyhdistykselle keväällä 2025."
+        },
+        {
+          "figures": [
+            {
+              "src": "/images/historia/rallye-oh-see-haislahti.jpg",
+              "width": 1600,
+              "height": 1070,
+              "alt": "Rallye-lentokone lumisella jääkentällä, taustalla rakennuksia.",
+              "caption": "Rallye, OH-SEE, Savonlinnan Haislahden jääkentällä. Kuva: Pertti Sairanen."
+            }
+          ]
+        },
+        {
+          "text": "Rallyen lisäksi kerho hankki vuonna 1988 Cessna 172N Skyhawk 100 II -koneen. Alun perin Cessna oli tarkoitus hankkia korvaamaan Rallye, mutta hintaerimielisyyksien vuoksi Rallyestä jo sovitut kaupat peruuntuivat. Cessna ostettiin Kanadasta, ja sen tunnukseksi tuli OH-CON. Cessnaa kerho on käyttänyt matkalentoihin, uusien lentäjien koulutukseen, SAR-toimintaan ja palolentoihin. Cessna sai vuonna 2006 uuden moottorin."
+        },
+        {
+          "text": "Cessnan hankinnassa lentokerholle oli apuna Markku Vanonen, joka oli kotoisin Mäntyharjulta. Hän oli aikanaan lennättänyt kesäisin yleisöä vesikoneella Savonlinnan satamassa. Sittemmin Markku oli muuttanut Kanadaan lentotöihin."
+        },
+        {
+          "text": "Jussi Laineella oli Markun yhteystiedot, joten hän otti tähän yhteyttä ja kysyi, voisiko Markku etsiä meille sopivaa käytettyä Cessnaa. Markku lupasi auttaa. Sopiva kone löytyikin Torontosta, vaikka Markku asui Vancouverissa, usean aikavyöhykkeen päässä. Hän työskenteli kuitenkin reittikoneen perämiehenä, ja koska hänen lentonsa suuntautuivat silloin tällöin myös Torontoon, sovittiin, että hän kävisi katsomassa konetta. Kaupoista päästiin sopimukseen."
+        },
+        {
+          "text": "Seuraavaksi tuli vastaan toinen onnekas sattuma. Markku kertoi tuntevansa Torontossa asuvan suomalaisen lentokonemekaanikon. Kun Jussi oli seuraavan kerran yhteydessä Markkuun, tämä kertoi, että Raine Pennanen tunsi Jussin! Maailma on pieni. Raine oli kotoisin Kinkomaalta ja ollut Jussin vanhemman veljen luokkatoveri Jyväskylän lyseossa. Jussi ja hänen veljensä Matti olivat asuneet Säynätsalossa, vain noin viiden kilometrin päässä Kinkomaalta."
+        },
+        {
+          "text": "Jussi otti Raineen yhteyttä, ja he sopivat, että Raine purkaisi Cessnan osiin ja pakkaisi sen merikonttiin kuljetusta varten."
+        },
+        {
+          "text": "Cessna kuljetettiin ensin rekalla Torontosta Halifaxin satamaan, josta kontti jatkoi rahtilaivalla Saksan Bremerhaveniin. Siellä kontti siirrettiin pienempään Itämeren liikenteessä kulkevaan konttialukseen, joka toi sen Helsinkiin. Helsingistä kontti kuljetettiin vielä rekalla Hyvinkäälle, missä Konekorhonen kokosi koneen jälleen lentokuntoiseksi."
+        },
+        {
+          "figures": [
+            {
+              "src": "/images/historia/1988-cessna-oh-con-noutajat.jpg",
+              "width": 1520,
+              "height": 1088,
+              "alt": "Neljä miestä seisoo Cessnan vieressä asematasolla.",
+              "caption": "Kuvassa Cessnan Hyvinkäältä Savonlinnaan noutajat: Eero Saarela, Uolevi Simola, Jorma Paavilainen ja Jussi Laine. Hyvinkää–Savonlinna-välillä pilottina oli Jussi Laine."
+            }
+          ]
+        },
+        {
+          "text": "SaLKolla ei aluksi ollut tarjota moottorilentokoulutusta. Kerholaiset hakeutuivat koulutukseen henkilökohtaisesti. Seppo Pihlman Joroisista omisti Rallye Club 100 -koulukoneen, ja sillä hän koulutti Savonlinnassa Lehtiniemessä ja Pullinlahden jäällä vuosina 1972–1973."
+        },
+        {
+          "text": "Moottorilentokoulutus omalla koulutusluvalla alkoi kerhon Piper J3C-65 Cub -koneella 1970-luvun loppupuolella. Kerhon moottorilentokursseilla on koulutettu vuosien saatossa useita kymmeniä moottorilentäjiä. Osa lentäjistä on jatkanut uraansa ammatti-ilmailuun muun muassa lennontiedottajana, ilmavoimissa tai liikenneilmailun parissa. Opettajia kerholla on ollut useita, muun muassa Risto Sihvola, Jussi Halme, Juha ”Tino” Rossi, Jorma Löppönen, Juhani Korpela, Pekka Hiltunen, Ari Koponen, Timo Flink, Rauna Ylinen, Jani Löija ja Marko Lötjönen. Tämänhetkinen opettaja on Tero Kuutti."
+        },
+        {
+          "figures": [
+            {
+              "src": "/images/historia/1970-luku-moottorilentokurssi.jpg",
+              "width": 1545,
+              "height": 1024,
+              "alt": "Viisi henkilöä seisoo hallissa Piper Cub -koneen edessä.",
+              "caption": "Moottorilentokurssi 1970-luvun lopulta. Kuvassa vasemmalta: oppilas Matti Karvinen, oppilas Veli Kylmälä, lennonopettaja Risto Sihvola, tuntematon ja oppilas Jorma Paavilainen. Kuva: Jussi Laineen arkistot."
+            }
+          ]
+        },
+        {
+          "text": "Vuosien saatossa kerhon jäsenet ovat lentäneet myös Punkaharjun Ilmailukerhon Fournier RF 5 -moottoripurjelentokoneella, jonka rekisteritunnus on OH-386. Koneen moottorin kampikammiosta löytyi halkeama vuoden 2024 vuositarkastuksen yhteydessä. Moottorin peruskorjauksen ja ulkopuolisella teetettyjen huoltotöiden kustannusten takia Savonlinnan Lentokerho osti koneesta puolet vuonna 2026. Moottorin peruskorjaus valmistui alkusyksystä 2026, ja kone palasi lentokäyttöön."
+        }
       ]
     },
     {
-      "title": "Hallit ja kerhotalo",
-      "paragraphs": [
-        "Kerhon ensimmäinen oma halli valmistui vuonna 1978, kun J-3:lle tarvittiin säilytyspaikka. Eristämättömän 280 neliön hallin oviaukko on 17 metriä leveä, ja nykyään siinä säilytetään lähinnä purjekoneita. Kerhon 30-vuotisjuhlavuonna 1992 valmistui toinen, lämpöeristetty 350 neliön halli, joka tehtiin osin talkootyönä. Hallien välissä oli 1970-luvulla valmistunut kerhokoppi, jonka tilalle tuotiin joulukuussa 2011 uusi, työmaakopista muutettu kerhokoppi."
+      "title": "Tilat",
+      "content": [
+        {
+          "text": "Kerhon ensimmäinen oma halli valmistui vuonna 1978. Se tehtiin talkootyönä. Hallin rakentaminen alkoi, kun kerhon Piper J3C-65 Cub -koneelle piti saada säilytyspaikka. Eristämättömän hallin seinät ja katto ovat peltiverhoiltuja. Lattia on puoliksi betonivalua ja puoliksi asfaltoitu. Kokoa hallilla on 280 neliötä, oviaukon ollessa 17 metriä leveä. Nykyään tässä hallissa säilytetään lähinnä purjekoneita."
+        },
+        {
+          "figures": [
+            {
+              "src": "/images/historia/1978-ensimmainen-halli-rakenteilla.jpg",
+              "width": 1546,
+              "height": 1024,
+              "alt": "Mustavalkoinen kuva: rakennustarvikkeita lentoaseman alueella, taustalla lennonjohtotorni.",
+              "caption": "Kerhon ensimmäinen oma halli rakenteilla. Kuva: Jussi Laineen arkistot."
+            }
+          ]
+        },
+        {
+          "text": "Kerhon 30-vuotisjuhlien kunniaksi vuonna 1992 valmistui toinen, lämpöeristetty halli, jossa on 350 neliötä. Halli tehtiin suurimmalta osin talkootyönä. Hallien välissä oli 1970-luvulla valmistunut kerhokoppi. Joulukuussa 2011 vanha, huonokuntoinen kerhokoppi siirrettiin syrjään, ja sen tilalle laitettiin uusi, työmaakopista muutettu toimistotila."
+        }
       ]
     },
     {
       "title": "Lentonäytökset",
-      "paragraphs": [
-        "SaLKo on järjestänyt tai ollut mukana järjestämässä ainakin kahdeksaa lentonäytöstä Savonlinnan lentoasemalla. Ensimmäinen pidettiin lentoaseman avajaisissa 1974, ja näytöksiä järjestettiin muutaman vuoden välein vuoteen 1992 asti. Seuraava ilmailutapahtuma oli vuonna 2012 kerhon 50-vuotisjuhlien kunniaksi, ja se toi kentälle tuhatkunta henkeä. Näytöksiin ovat perinteisesti osallistuneet Suomen ilmavoimat, kerho omalla kalustollaan, taitolentäjät sekä lukuisat experimental- ja ultrakevyet koneet, ja niitä on mainostettu lähiseudulla jaetulla SaLKon Lentosanomat -lehtisellä."
+      "content": [
+        {
+          "text": "Savonlinnan Lentokerho on järjestänyt yhteistyössä Punkaharjun Ilmailukerhon kanssa kahdeksan lentonäytöstä Savonlinnan lentoasemalla viimeisen neljänkymmenen vuoden aikana. Ensimmäinen näytös järjestettiin juhlistamaan lentoaseman avajaisia 1974. Tämän jälkeen näytöksiä pidettiin muutaman vuoden välein aina vuoteen 1992 asti."
+        },
+        {
+          "text": "Seuraavaa ilmailutapahtumaa lentoasemalla sai odottaa parikymmentä vuotta, aina vuoteen 2012 asti. Tuolloin kerhon 50-vuotisjuhlien kunniaksi pidetty ilmailupäivä toi kentälle arvioiden mukaan tuhatkunta henkeä."
+        },
+        {
+          "text": "Kerhon näytöksiin ovat perinteisesti osallistuneet Suomen ilmavoimat ja lentokerho omalla kalustollaan. Näytöksissä on ollut taitolentoesityksiä vaihtelevalla kalustolla ja lukuisa määrä vierailevia experimental- ja ultrakevyitä koneita. Näytöksiä ja lentokerhon toimintaa mainostamaan on tuotettu lähiseudulla jaettava SaLKon Lentosanomat -lehtinen."
+        },
+        {
+          "figures": [
+            {
+              "src": "/images/historia/1987-lentonaytos-mig-21.jpg",
+              "width": 928,
+              "height": 602,
+              "alt": "MiG-21-hävittäjä rullaa, taustalla yleisöä aidan takana.",
+              "caption": "Yleisö seuraa, kun Karjalan lennoston MiG-21bis, MG-138, rullaa asematasolle vuoden 1987 näytöksessä. Kuva: Jarmo Hiltunen."
+            }
+          ]
+        }
       ]
     }
   ],
   "aircraft": {
     "club": [
-      "Grunau 9 – Ilmapuolustusliiton aikana",
-      "Harakka II, H-37 – valmistunut 1947, Savonlinnan ilmailukerho",
+      "Grunau 9 – Savonlinnan purjelentokerho, 1938",
+      "Harakka II, H-37 – Savonlinnan ilmailukerho, 1946",
       "PIK-5c Cumulus, OH-PBJ – hankittu 1962, myyty Lappeenrantaan 1970-luvun alussa",
       "Scheibe Bergfalke II/55, OH-KBD / OH-168 – hankittu 1964, myyty vaurioituneena Vaasan Lentokerholle 1973",
       "PIK-3c Kajava, OH-202 / OH-YKW – valmistunut 1959, hankittu 1978, myyty Ouluun 1990-luvun alussa",
-      "Laverda F.8-L Falco IV, OH-FAA – valmistunut 1964, tuhoutui mahalaskussa 6.6.1980",
+      "Laverda F.8-L Falco IV, OH-FAA – valmistunut 1964, hankittu 1980, tuhoutui mahalaskussa 6.6.1980",
+      "Socata Rallye M.S. 893E, OH-SEE – hankittu 1982, myyty Lappeenrannan Ilmailuyhdistykselle 2025",
       "ASW 15, OH-407 – valmistunut 1971, hankittu 1983, myyty kerhon jäsenelle 1990-luvun alussa",
+      "PIK-16c Vasama, OH-303 – yhteiskäytössä Punkaharjun Ilmailukerhon kanssa, myyty Jämille 1990-luvun alussa",
       "L-13 Blanik, OH-514 – valmistunut 1977, hankittu 2003, myyty Valkovenäjälle 2011"
     ],
     "members": [
