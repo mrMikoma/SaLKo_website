@@ -51,6 +51,16 @@ The logger works as a safety net. The call sites are still meant not to pass per
 
 In JSON mode, `instrumentation.ts` sends `console.*` through the logger as well (`installConsoleBridge`). Next's own `⨯ Error: …` for a failed request, and anything a library prints, therefore becomes a JSON record with a level (`log`/`info` → info, `warn` → warn, `error` → error) and `"module":"console"`, and goes through the same redaction. Only the few lines Next prints before `register()` runs stay plain text (`▲ Next.js 16…`, `✓ Ready`).
 
+## Failed requests
+
+`instrumentation.ts` exports Next's `onRequestError` hook. Every request that fails on the server (page render, route handler, server action) writes one `error` record, `"msg":"Request failed"`, `"module":"request"`, with `method`, `path` (without the query string, so tokens and codes in the URL are not logged), `routerKind`, `routePath`, `routeType`, `renderSource` and the serialized `err` (type, message, stack, `digest`). Headers, cookies and bodies are never logged. Next still prints its own `⨯ Error` line, which the console bridge logs as well (`module="console"`), so a failed request gives two records; filter on `module="request"` for the structured one. The logic is in `utilities/requestError.ts`.
+
+In Grafana Explore (Loki):
+
+```
+{compose_service="nextjs"} | json | module="request"
+```
+
 ## Tests
 
-`tests/unit/logger.test.ts` covers levels, the record shape, key and value redaction, error serialization (pg and Google API errors) and the console bridge.
+`tests/unit/logger.test.ts` covers levels, the record shape, key and value redaction, error serialization (pg and Google API errors), the console bridge, and `tests/unit/requestError.test.ts` the failed-request record.

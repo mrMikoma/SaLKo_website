@@ -14,3 +14,20 @@ export async function register() {
     logLevel: process.env.LOG_LEVEL || "default",
   });
 }
+
+// Next.js calls this for every request that fails on the server (a page, route
+// handler, server action or proxy). One structured `error` record is written
+// in addition to Next's own console line (which the bridge also logs, as
+// module "console").
+export async function onRequestError(
+  err: unknown,
+  request: { method: string; path: string },
+  context: { routerKind: string; routePath: string; routeType: string; renderSource?: string },
+) {
+  if (process.env.NEXT_RUNTIME !== "nodejs") return;
+  const [{ logger }, { logRequestError }] = await Promise.all([
+    import("./utilities/logger"),
+    import("./utilities/requestError"),
+  ]);
+  logRequestError(logger, err, request, context);
+}
