@@ -36,7 +36,7 @@ env:
   # them is secret, the key stays in Bitwarden
   APP_CLIENT_ID: "Iv23linr8ABNCMheQaUx"
   BWS_CLOUD_REGION: "us"
-  BWS_ID_GH_APP_PRIVATE_KEY: "00000000-0000-0000-0000-000000000000"
+  BWS_ID_GH_APP_PRIVATE_KEY: "5f412219-5904-4096-bd34-b50f01491403"
 
 concurrency:
   group: dependabot-auto-merge-${{ github.event.pull_request.number }}
