@@ -21,7 +21,11 @@ resource "github_branch_protection" "main" {
   }
 }
 
-# Development branch protection
+# Development branch protection. Dependabot's minor and patch updates merge
+# by themselves (.github/workflows/dependabot-auto-merge.yaml): the GitHub
+# App gives the one approval, which a Code Owners review would not accept,
+# and branches need not be up to date, because Dependabot rebases only on
+# conflicts. ci-ok (checks.yaml) must pass.
 resource "github_branch_protection" "dev" {
   repository_id = var.github_repository
 
@@ -29,8 +33,13 @@ resource "github_branch_protection" "dev" {
   enforce_admins   = false
   allows_deletions = false
 
+  required_status_checks {
+    strict   = false
+    contexts = ["ci-ok"]
+  }
+
   required_pull_request_reviews {
-    require_code_owner_reviews      = true
+    require_code_owner_reviews      = false
     dismiss_stale_reviews           = true
     required_approving_review_count = 1
   }

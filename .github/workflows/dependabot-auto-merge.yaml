@@ -5,14 +5,17 @@ name: Dependabot auto-merge
 # decided by .github/scripts/dependabot_automerge.py, which leaves anything it
 # can't read for a person, as it does the majors. Releases to main stay manual.
 #
-# A GitHub App of the repository owner's approves the pull request (dev
-# needs one approving review) and turns on auto-merge. A merge made with the
-# built-in GITHUB_TOKEN would start no workflows, so kehitys would not
-# deploy; the App's merge does start them. The App needs Contents, Pull
-# requests and Workflows (read and write), is installed on this repository
-# only, and its client ID and private key are the Dependabot secrets
+# The GitHub App that Terraform also uses (GH_APP_*) approves the pull
+# request (dev needs one approving review) and turns on auto-merge. A merge
+# made with the built-in GITHUB_TOKEN would start no workflows, so kehitys
+# would not deploy; the App's merge does start them. For this the App needs
+# Contents, Pull requests and Workflows (read and write); the token asked
+# for below gets only those. Its client ID and a private key of its own
+# (revocable without breaking Terraform) are the Dependabot secrets
 # AUTOMERGE_APP_CLIENT_ID and AUTOMERGE_APP_PRIVATE_KEY. Without them this
-# only reports its decision.
+# only reports its decision. dev's protection (Terraform,
+# infra/terraform/modules/github) asks for ci-ok and one approval, not a
+# Code Owners review.
 
 on:
   pull_request:
