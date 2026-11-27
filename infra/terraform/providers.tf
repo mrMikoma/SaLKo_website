@@ -53,6 +53,8 @@ provider "github" {
   app_auth {
     id              = var.github_app_id
     installation_id = var.github_app_installation_id
-    pem_file        = base64decode(var.github_app_private_key_pem)
+    # The key as it is (Bitwarden Secrets Manager, which the auto-merge
+    # workflow reads too), or base64-encoded (the GitHub secret)
+    pem_file = startswith(var.github_app_private_key_pem, "-----BEGIN") ? var.github_app_private_key_pem : base64decode(var.github_app_private_key_pem)
   }
 }

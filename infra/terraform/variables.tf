@@ -104,7 +104,7 @@ variable "github_app_installation_id" {
 }
 
 variable "github_app_private_key_pem" {
-  description = "Path to GitHub App private key file"
+  description = "GitHub App private key: the PEM, or the PEM base64-encoded"
   type        = string
 }
 

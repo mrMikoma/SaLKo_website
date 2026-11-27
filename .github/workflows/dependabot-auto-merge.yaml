@@ -5,17 +5,18 @@ name: Dependabot auto-merge
 # decided by .github/scripts/dependabot_automerge.py, which leaves anything it
 # can't read for a person, as it does the majors. Releases to main stay manual.
 #
-# The GitHub App that Terraform also uses (GH_APP_*) approves the pull
-# request (dev needs one approving review) and turns on auto-merge. A merge
-# made with the built-in GITHUB_TOKEN would start no workflows, so kehitys
-# would not deploy; the App's merge does start them. For this the App needs
-# Contents, Pull requests and Workflows (read and write); the token asked
-# for below gets only those. Its client ID and a private key of its own
-# (revocable without breaking Terraform) are the Dependabot secrets
-# AUTOMERGE_APP_CLIENT_ID and AUTOMERGE_APP_PRIVATE_KEY. Without them this
-# only reports its decision. dev's protection (Terraform,
-# infra/terraform/modules/github) asks for ci-ok and one approval, not a
-# Code Owners review.
+# The GitHub App that Terraform also uses approves the pull request (dev
+# needs one approving review) and turns on auto-merge. A merge made with the
+# built-in GITHUB_TOKEN would start no workflows, so kehitys would not
+# deploy; the App's merge does start them. For this the App needs Contents,
+# Pull requests and Workflows (read and write); the token asked for below
+# gets only those. dev's protection (Terraform, infra/terraform/modules/github)
+# asks for ci-ok and one approval, not a Code Owners review.
+#
+# The App's private key comes from Bitwarden Secrets Manager, as in
+# homelab-iac. A run that Dependabot starts sees only the Dependabot
+# secrets, so BWS_ACCESS_TOKEN is there too, next to the Actions secret of
+# the same name. Without it this only reports its decision.
 
 on:
   pull_request:
@@ -30,6 +31,13 @@ permissions:
   contents: read
   pull-requests: read
 
+env:
+  # The App's client ID, and the Bitwarden region and secret id: none of
+  # them is secret, the key stays in Bitwarden
+  APP_CLIENT_ID: "Iv23linr8ABNCMheQaUx"
+  BWS_CLOUD_REGION: "us"
+  BWS_ID_GH_APP_PRIVATE_KEY: "00000000-0000-0000-0000-000000000000"
+
 concurrency:
   group: dependabot-auto-merge-${{ github.event.pull_request.number }}
   cancel-in-progress: true
@@ -41,7 +49,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     env:
-      HAS_APP: ${{ secrets.AUTOMERGE_APP_CLIENT_ID != '' && secrets.AUTOMERGE_APP_PRIVATE_KEY != '' }}
+      HAS_APP: ${{ secrets.BWS_ACCESS_TOKEN != '' }}
     steps:
       # Also checks that the commits are Dependabot's own
       - name: Read Dependabot's metadata
@@ -68,17 +76,34 @@ jobs:
           UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
         run: python3 -I .github/scripts/dependabot_automerge.py | tee -a "$GITHUB_STEP_SUMMARY"
 
-      - name: No App set up
+      - name: No Bitwarden token
         if: env.HAS_APP != 'true'
-        run: echo "::notice::The auto-merge App's Dependabot secrets are not set, so this pull request waits for a person"
+        run: echo "::notice::The Dependabot secret BWS_ACCESS_TOKEN is not set, so this pull request waits for a person"
+
+      - name: Check the Bitwarden secret id is filled in
+        if: env.HAS_APP == 'true'
+        run: |
+          if env | grep -E '^BWS_ID_[A-Z0-9_]+=0{8}-'; then
+            echo "::error::Fill in the Bitwarden secret id at the top of .github/workflows/dependabot-auto-merge.yaml"
+            exit 1
+          fi
+
+      - name: Get the App's key from Bitwarden
+        if: env.HAS_APP == 'true'
+        uses: bitwarden/sm-action@1238aae8fc64b212641190a9227c8a734ab1a793 # v3.0.1
+        with:
+          access_token: ${{ secrets.BWS_ACCESS_TOKEN }}
+          cloud_region: ${{ env.BWS_CLOUD_REGION }}
+          secrets: |
+            ${{ env.BWS_ID_GH_APP_PRIVATE_KEY }} > APP_PRIVATE_KEY
 
       - name: Get the App's token
         id: app-token
         if: env.HAS_APP == 'true'
         uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
         with:
-          client-id: ${{ secrets.AUTOMERGE_APP_CLIENT_ID }}
-          private-key: ${{ secrets.AUTOMERGE_APP_PRIVATE_KEY }}
+          client-id: ${{ env.APP_CLIENT_ID }}
+          private-key: ${{ env.APP_PRIVATE_KEY }}
           permission-contents: write
           permission-pull-requests: write
           permission-workflows: write
