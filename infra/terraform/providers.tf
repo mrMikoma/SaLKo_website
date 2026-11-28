@@ -20,6 +20,11 @@ terraform {
       source  = "hashicorp/random"
       version = "~> 3.9.0"
     }
+    # Writes Terraform's own values into Bitwarden Secrets Manager
+    bitwarden-secrets = {
+      source  = "bitwarden/bitwarden-secrets"
+      version = "~> 1.0.1"
+    }
   }
 
   backend "s3" {
@@ -46,6 +51,14 @@ provider "hcloud" {
 
 provider "cloudflare" {
   api_token = var.cloudflare_token
+}
+
+# Bitwarden's US cloud, like the workflows' sm-action (region us). The
+# machine account's token and the organization come from BW_ACCESS_TOKEN and
+# BW_ORGANIZATION_ID (terraform-plan-and-apply.yaml).
+provider "bitwarden-secrets" {
+  api_url      = "https://api.bitwarden.com"
+  identity_url = "https://identity.bitwarden.com"
 }
 
 provider "github" {

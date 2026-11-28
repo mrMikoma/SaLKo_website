@@ -12,6 +12,9 @@ jobs:
   terraform-plan:
     name: Terraform Plan
     runs-on: ubuntu-24.04
+    # For its BWS_ACCESS_TOKEN (the Bitwarden provider), without the
+    # production approval: main may use development too
+    environment: development
 
     permissions:
       id-token: write
@@ -47,6 +50,8 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.CF_BUCKET_ACCESS_KEY }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.CF_BUCKET_SECRET_KEY }}
+          BW_ACCESS_TOKEN: ${{ secrets.BWS_ACCESS_TOKEN }}
+          BW_ORGANIZATION_ID: ${{ vars.BWS_ORGANIZATION_ID }}
         run: |
           echo "Running Terraform Plan..."
           export exitcode=0
@@ -127,6 +132,8 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.CF_BUCKET_ACCESS_KEY }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.CF_BUCKET_SECRET_KEY }}
+          BW_ACCESS_TOKEN: ${{ secrets.BWS_ACCESS_TOKEN }}
+          BW_ORGANIZATION_ID: ${{ vars.BWS_ORGANIZATION_ID }}
         run: |
           terraform -chdir=infra/terraform apply -auto-approve -input=false \
             -var="hetzner_api_token=${{ secrets.HETZNER_API_TOKEN }}" \
