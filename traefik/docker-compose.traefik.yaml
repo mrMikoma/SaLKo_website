@@ -60,6 +60,13 @@ services:
       # Mounts the `acme.json` file (used for storing SSL certificates) into the container for certificate management.
 
     labels:
+      - "logging=promtail"
+      # Alloy ships this container's logs, including the access log, to Loki
+      # (monitoring/alloy/config.alloy).
+
+      - "environment=prod"
+      # The `environment` label on the logs in Grafana.
+
       - "traefik.enable=true"
       # Enables Traefik for this container, allowing it to manage traffic for the container.
 

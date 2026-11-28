@@ -6,8 +6,37 @@ api:
   dashboard: true
   debug: false
 
+# Traefik's own log (start, certificates, provider errors), on stderr
 log:
   level: INFO
+  format: json
+
+# One JSON line per request on stdout. The container is labelled
+# logging=promtail, so Alloy ships it to Loki (monitoring/alloy/config.alloy).
+accessLog:
+  format: json
+  # Every status is logged: this is a small club site, and the 2xx lines show
+  # that the site is alive. Add a `filters.statusCodes` block here only if the
+  # volume ever becomes a problem.
+  bufferingSize: 100
+  fields:
+    defaultMode: keep
+    names:
+      # Visitors' addresses are personal data and nothing in the dashboards
+      # needs them
+      ClientAddr: drop
+      ClientHost: drop
+      ClientPort: drop
+      ClientUsername: drop
+    headers:
+      # Cookie, Authorization and Set-Cookie must never reach the logs. Drop
+      # all request and response headers, and keep two harmless ones.
+      defaultMode: drop
+      names:
+        User-Agent: keep
+        Content-Type: keep
+  # RequestPath is the path without the query string (tokens and codes in
+  # URLs); RequestURI-style fields are not logged.
 
 entryPoints:
   web:
