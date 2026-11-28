@@ -136,7 +136,7 @@ and deploy:
 - **System Overview**: CPU, memory, disk, network, load
 - **Container Metrics**: per-container CPU, memory, network
 - **PostgreSQL Metrics**: connections, transactions, size, cache hit ratio
-- **Application Logs**: logs and log rate per service
+- **Application Logs** (`logs-dashboard.json`): the Next.js app's logs first, then Traefik and the other services. Filters: `service` (a fixed list, default `nextjs`, so the app is listed even when it wrote nothing in the range), `environment`, `level` and a free-text `search`. Panels: log rate by level, errors and warnings in the last 6 hours, top `module` values, the latest error and warn records, the full log, Traefik requests per second by status class and its 4xx/5xx requests, and the log rate per service.
 
 ## Uptime probes and alerts
 
@@ -259,6 +259,30 @@ also reads the host's `/var/log/*log`. Labels: `host`, `container`,
   redacts its own records as well. This catches the rest, such as
   postgres-exporter printing its DSN on a parse error, or Postgres `DETAIL:`
   lines with row values.
+
+### Next.js logs
+
+- **Find them:** Grafana → Explore → Loki: `{compose_service="nextjs"}`. Errors
+  and warnings only: `{compose_service="nextjs"} | json | level=~"error|warn"`.
+  Failed requests: `{compose_service="nextjs"} | json | module="request"`.
+  Count by module: `sum by (module) (count_over_time({compose_service="nextjs"} | json [1h]))`.
+- **A quiet app writes nothing.** The app logs `info` and up, and only when
+  something happens (plus `Server started` at boot), so an empty range doesn't
+  mean the logs are broken. The Application Logs dashboard lists the services
+  from a fixed list for that reason. Widen the time range, or look for
+  `{job="docker"} |= "Server started"`.
+- **Traefik access log:** `traefik/traefik.yaml` writes one JSON line per
+  request. It has no cookies, authorisation headers, query strings or client
+  addresses. Alloy adds the low-cardinality label `status_class` (`2xx`…`5xx`)
+  and the structured metadata `router` and `method`:
+  `{compose_service="traefik", status_class="5xx"} | json`.
+- **Deploys:** dashboards and Alloy deploy with the monitoring stack on a push
+  to `main`, so a change merged into `dev` shows in Grafana after the next
+  release. Traefik's config and labels are deployed by the manual **Deploy
+  Traefik** workflow (from `main`), which recreates the container.
+- **Error-rate alert:** not set up. Loki's `ruler` has no rule storage and
+  points at `localhost`, so alert rules on logs would need a configured Loki
+  ruler (rule storage, Alertmanager URL) first. A possible later step.
 
 To collect a new service's logs, give it the label:
 

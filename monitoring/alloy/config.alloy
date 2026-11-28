@@ -8,6 +8,9 @@
 //   MONITORING_PUSH_URL       the gateway, http://monitoring-gateway:8080 on the same host
 //   MONITORING_PUSH_USER/_PASSWORD  the gateway's login (deploy-monitoring.yaml)
 //
+// Container and file logs go through the `traefik` stage (status class of the
+// Traefik access log) and then the `redact` stage, which sees every line.
+//
 // Alloy's own UI is on :12345 on the salko_monitoring network.
 
 // ---------------------------------------------------------------------------
@@ -99,7 +102,7 @@ loki.source.docker "containers" {
 	host          = "unix:///var/run/docker.sock"
 	targets       = discovery.docker.containers.targets
 	relabel_rules = discovery.relabel.containers.rules
-	forward_to    = [loki.process.redact.receiver]
+	forward_to    = [loki.process.traefik.receiver]
 }
 
 // The host's own logs (syslog, auth.log, ...)
@@ -114,7 +117,49 @@ loki.source.file "system" {
 	targets = local.file_match.system.targets
 	// A file seen for the first time is read from its end, not its history
 	tail_from_end = true
-	forward_to    = [loki.process.redact.receiver]
+	forward_to    = [loki.process.traefik.receiver]
+}
+
+// Traefik's JSON access log (traefik/traefik.yaml). Only lines of the traefik
+// container are touched; every other line passes through unchanged. The status
+// class (2xx..5xx) becomes a label, as there are only four. The router and the
+// method are structured metadata: searchable, but not part of the stream, so
+// they add no streams. Paths stay in the line (high cardinality: never a label).
+loki.process "traefik" {
+	stage.match {
+		selector = "{compose_service=\"traefik\"} |= \"DownstreamStatus\""
+
+		stage.regex {
+			expression = "\"DownstreamStatus\":(?P<status_digit>[1-5])\\d\\d"
+		}
+
+		stage.template {
+			source   = "status_class"
+			template = "{{ .status_digit }}xx"
+		}
+
+		stage.labels {
+			values = {
+				status_class = "",
+			}
+		}
+
+		stage.json {
+			expressions = {
+				router = "RouterName",
+				method = "RequestMethod",
+			}
+		}
+
+		stage.structured_metadata {
+			values = {
+				router = "",
+				method = "",
+			}
+		}
+	}
+
+	forward_to = [loki.process.redact.receiver]
 }
 
 // Secrets and personal data out of every line before it leaves the host. The
